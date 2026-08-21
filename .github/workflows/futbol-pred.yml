@@ -1,0 +1,76 @@
+name: futbol-pred (cron)
+
+# Ejecuta el pipeline de predicción y publica el feed que consume Fútbol Edge.
+# Las claves se configuran como Secrets del repo:
+#   FOOTBALL_DATA_API_KEY, API_FOOTBALL_KEY, ODDS_API_KEY, DATABASE_URL (opcional)
+
+on:
+  schedule:
+    # Cada 12 horas: 06:00 y 18:00 UTC (08:00 y 20:00 en Madrid).
+    - cron: "0 6,18 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  predict:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: football
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Instalar dependencias
+        run: |
+          pip install -r requirements.txt
+          pip install -e .
+
+      - name: Tests (fail-fast antes de predecir)
+        run: pytest -q
+
+      - name: Ejecutar pipeline
+        env:
+          FOOTBALL_DATA_API_KEY: ${{ secrets.FOOTBALL_DATA_API_KEY }}
+          API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
+          ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          for league in laliga segunda champions; do
+            echo "=== $league ==="
+            python -m futbol_pred.cli run --league $league || true
+          done
+
+      - name: Generar feed para Fútbol Edge
+        env:
+          FOOTBALL_DATA_API_KEY: ${{ secrets.FOOTBALL_DATA_API_KEY }}
+          API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
+          ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python -m futbol_pred.dashboard
+
+      - name: Publicar feed actualizado en la rama
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/dashboard.json
+          if git diff --cached --quiet; then
+            echo "El feed no ha cambiado"
+          else
+            git commit -m "Actualizar feed automático de Fútbol Edge"
+            git push origin "HEAD:${GITHUB_REF_NAME}"
+          fi
+
+      - name: Subir informes como artefacto
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: predicciones
+          path: football/data/*.json
+          if-no-files-found: ignore

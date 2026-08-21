@@ -1,0 +1,69 @@
+name: smoke-test (datos reales)
+
+# Prueba en vivo: corre en los runners de GitHub (con internet) al hacer push
+# a la rama de desarrollo. Valida que las claves (Secrets) llegan a las APIs.
+# Se puede borrar cuando el circuito esté confirmado.
+
+on:
+  push:
+    branches:
+      - main
+    # Evita bucle: el commit del feed (data/**) no vuelve a disparar el workflow.
+    paths-ignore:
+      - "football/data/**"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: football
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Instalar
+        run: |
+          pip install -r requirements.txt
+          pip install -e .
+
+      - name: Tests
+        run: pytest -q
+
+      - name: Pipeline con datos reales (LaLiga y Champions)
+        env:
+          FOOTBALL_DATA_API_KEY: ${{ secrets.FOOTBALL_DATA_API_KEY }}
+          API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
+        run: |
+          echo "### LaLiga ###"
+          python -m futbol_pred.cli run --league laliga
+          echo "### Champions ###"
+          python -m futbol_pred.cli run --league champions
+          echo "### Backtest LaLiga ###"
+          python -m futbol_pred.cli backtest --league laliga
+
+      - name: Generar feed REAL para Fútbol Edge
+        env:
+          FOOTBALL_DATA_API_KEY: ${{ secrets.FOOTBALL_DATA_API_KEY }}
+          API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
+        run: python -m futbol_pred.dashboard || echo "sin próximos partidos en el horizonte"
+
+      - name: Publicar feed real si cambió
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/dashboard.json || true
+          if git diff --cached --quiet; then
+            echo "El feed no ha cambiado"
+          else
+            git commit -m "Actualizar feed real de Fútbol Edge [skip smoke]"
+            git push origin "HEAD:${GITHUB_REF_NAME}"
+          fi

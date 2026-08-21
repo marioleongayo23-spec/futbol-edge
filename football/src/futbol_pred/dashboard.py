@@ -1,0 +1,276 @@
+"""Genera el feed JSON que consume la app privada Fútbol Edge.
+
+El cron usa las claves ya configuradas en GitHub Secrets. Si no hay ninguna
+fuente real configurada, no sobrescribe el último feed válido con datos demo.
+"""
+
+from __future__ import annotations
+
+import json
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+from zoneinfo import ZoneInfo
+
+from .config import DATA_DIR
+from .ingest.api_football import ApiFootballClient, Fixture
+from .ingest.football_data import FootballDataClient
+from .pipeline import fit_model_from_fixtures, get_fixtures, predict_match
+
+MADRID = ZoneInfo("Europe/Madrid")
+OUTPUT = Path(DATA_DIR) / "dashboard.json"
+LEAGUES = {
+    "laliga": "LaLiga",
+    "segunda": "LaLiga Hypermotion",
+    "champions": "Champions League",
+}
+FINISHED = {"FINISHED", "AWARDED", "FT", "AET", "PEN"}
+
+
+def current_season(now: datetime | None = None) -> int:
+    now = now or datetime.now(timezone.utc)
+    return now.year if now.month >= 7 else now.year - 1
+
+
+def is_pending(fixture: Fixture) -> bool:
+    return (
+        fixture.home_goals is None
+        and fixture.away_goals is None
+        and fixture.status.upper() not in FINISHED
+    )
+
+
+def ensure_aware(value: datetime) -> datetime:
+    return value if value.tzinfo is not None else value.replace(tzinfo=timezone.utc)
+
+
+def fixture_payload(
+    fixture: Fixture,
+    model,
+    generated_at: str,
+    stats=None,
+    team_meta: dict | None = None,
+) -> dict:
+    kickoff = ensure_aware(fixture.kickoff).astimezone(MADRID)
+    team_meta = team_meta or {}
+    hmeta = team_meta.get(fixture.home_team, {})
+    ameta = team_meta.get(fixture.away_team, {})
+    finished = not is_pending(fixture)
+    payload = {
+        "id": f"{fixture.source}-{fixture.api_id}",
+        "date": kickoff.date().isoformat(),
+        "kickoff": kickoff.isoformat(),
+        "matchday": fixture.matchday,
+        "stage": fixture.stage,
+        "home": fixture.home_team,
+        "away": fixture.away_team,
+        "homeCrest": fixture.home_crest or hmeta.get("crest"),
+        "awayCrest": fixture.away_crest or ameta.get("crest"),
+        "homeTla": fixture.home_tla or hmeta.get("tla"),
+        "awayTla": fixture.away_tla or ameta.get("tla"),
+        "homeColors": hmeta.get("colors"),
+        "awayColors": ameta.get("colors"),
+        "league": LEAGUES.get(fixture.league, fixture.league),
+        "venue": "Por confirmar",
+        "status": fixture.status or "SCHEDULED",
+        "finished": finished,
+        "source": fixture.source,
+        "engine": "calendar-only",
+        "updatedAt": generated_at,
+    }
+    # Honestidad: lo que aún no tenemos de una fuente real va como "pendiente",
+    # nunca inventado (jugadores/alineaciones y cuotas requieren fuente de pago).
+    payload["players"] = "pendiente_fuente_de_pago"
+    payload["odds"] = "pendiente_odds_api"
+
+    # Partido ya jugado: mostramos el resultado real, no predicción.
+    if finished and fixture.home_goals is not None:
+        payload["result"] = [fixture.home_goals, fixture.away_goals]
+        payload["engine"] = "resultado-real"
+        return payload
+
+    if model is None:
+        return payload
+    try:
+        prediction = predict_match(
+            model,
+            fixture.home_team,
+            fixture.away_team,
+            kickoff=fixture.kickoff,
+        )
+        matrix = model.predict_matrix(fixture.home_team, fixture.away_team)
+    except (KeyError, ValueError):
+        return payload
+
+    probs = prediction.one_x_two
+    eh, ea = prediction.expected_goals
+    # Guard de sanidad: al inicio de temporada el modelo tiene muy pocos
+    # partidos y produce predicciones degeneradas (p. ej. 0-5 al 100%). En ese
+    # caso NO publicamos predicción: es más honesto marcar "datos insuficientes"
+    # que mostrar un número absurdo.
+    degenerate = (
+        max(probs.values()) >= 0.985
+        or min(eh, ea) < 0.15
+        or max(eh, ea) > 4.0
+    )
+    if degenerate:
+        payload["engine"] = "datos-insuficientes"
+        payload["nota"] = "Modelo aún sin muestra fiable de la temporada"
+        return payload
+
+    top = matrix.top_correct_scores(1)[0]
+    payload.update({
+        "probs": [
+            round(probs["1"] * 100),
+            round(probs["X"] * 100),
+            round(probs["2"] * 100),
+        ],
+        "xg": [round(value, 2) for value in prediction.expected_goals],
+        "markets": {
+            "over_2_5": round(matrix.over(2.5), 3),
+            "over_1_5": round(matrix.over(1.5), 3),
+            "over_3_5": round(matrix.over(3.5), 3),
+            "btts": round(matrix.btts()["yes"], 3),
+            "marcador": f"{top[0]}-{top[1]}",
+        },
+        "engine": "dixon-coles",
+    })
+
+    # Si algún equipo aún no tiene histórico (recién ascendido, sin datos de la
+    # temporada), la predicción usa prior neutro: la marcamos como provisional.
+    if not (model.is_known(fixture.home_team) and model.is_known(fixture.away_team)):
+        payload["provisional"] = True
+        payload["nota"] = "Predicción provisional: algún equipo aún sin histórico"
+
+    # Estadísticas por equipo y totales (córners, tarjetas, remates, faltas...).
+    if stats is not None:
+        try:
+            sp = stats.predict_fixture(fixture.home_team, fixture.away_team)
+            if sp:
+                payload["stats"] = {
+                    k: {"home": v["home"], "away": v["away"], "total": v["total"]}
+                    for k, v in sp.items()
+                }
+        except (KeyError, ValueError):
+            pass
+    return payload
+
+
+def build_dashboard(
+    now: datetime | None = None,
+    horizon_days: int = 10,  # sin uso: ahora incluimos TODA la temporada
+) -> dict:
+    now = now or datetime.now(timezone.utc)
+    now = ensure_aware(now)
+    season = current_season(now)
+    generated_at = now.astimezone(MADRID).isoformat()
+    matches: list[dict] = []
+    errors: list[dict] = []
+
+    for league in LEAGUES:
+        try:
+            fixtures = get_fixtures(league, season=season)
+            if not fixtures:
+                continue
+            # Sembrado: el modelo se ajusta con la temporada ANTERIOR + la
+            # actual, así hay predicciones fiables desde la jornada 1
+            # (el decaimiento temporal ya pondera más lo reciente).
+            train = _seed_fixtures(league, season) + fixtures
+            try:
+                model = fit_model_from_fixtures(train, as_of=now.replace(tzinfo=None))
+            except (ValueError, KeyError):
+                model = None
+            stats = _fit_stats(league, season)
+            meta = _team_meta(league, season)
+            # TODOS los partidos de la temporada (resultados + próximos).
+            matches.extend(
+                fixture_payload(fx, model, generated_at, stats=stats, team_meta=meta)
+                for fx in sorted(fixtures, key=lambda item: ensure_aware(item.kickoff))
+            )
+        except Exception as exc:  # una liga no debe tumbar el resto del feed
+            status = getattr(getattr(exc, "response", None), "status_code", None)
+            errors.append({
+                "league": league,
+                "error": type(exc).__name__,
+                "http_status": status,
+            })
+
+    matches.sort(key=lambda item: item["kickoff"])
+    return {
+        "schema_version": 2,
+        "generated_at": generated_at,
+        "season": season,
+        "engine": "dixon-coles" if any(item["engine"] == "dixon-coles" for item in matches) else "calendar-only",
+        "data_sources": {
+            "fixtures": "football-data.org",
+            "stats": "football-data.co.uk (remates, córners, faltas, tarjetas)",
+            "players": "pendiente (requiere API de pago: API-Football)",
+            "odds": "pendiente (requiere The Odds API u similar)",
+        },
+        "disclaimer": "Probabilidades y ventaja estadística, no certezas. "
+                      "Los datos de jugadores y cuotas se muestran como pendientes "
+                      "hasta conectar una fuente real.",
+        "counts": {
+            "total": len(matches),
+            "jugados": sum(1 for m in matches if m.get("finished")),
+            "proximos": sum(1 for m in matches if not m.get("finished")),
+            "con_prediccion": sum(1 for m in matches if m.get("engine") == "dixon-coles"),
+        },
+        "matches": matches,
+        "errors": errors,
+    }
+
+
+def _seed_fixtures(league: str, season: int) -> list:
+    """Partidos jugados de la temporada anterior, para sembrar el modelo."""
+    try:
+        prev = get_fixtures(league, season=season - 1)
+        return [fx for fx in prev if fx.home_goals is not None]
+    except Exception:
+        return []
+
+
+def _team_meta(league: str, season: int) -> dict:
+    """Escudos y colores de club (gratis). {} si falla (no es crítico)."""
+    try:
+        return FootballDataClient().get_team_meta(league, season)
+    except Exception:
+        return {}
+
+
+def _fit_stats(league: str, season: int):
+    """Ajusta el modelo de estadísticas (córners, tarjetas...) para 1ª/2ª."""
+    if league not in ("laliga", "segunda"):
+        return None
+    try:
+        from .ingest.football_data_uk import FootballDataUKClient
+        from .model.stats_markets import StatsPredictor
+
+        rows = FootballDataUKClient().get_stats(league, season)
+        return StatsPredictor().fit(rows)
+    except Exception:
+        return None
+
+
+def main() -> int:
+    football_data = FootballDataClient()
+    api_football = ApiFootballClient()
+    if football_data.offline and api_football.offline:
+        print("Feed no actualizado: faltan FOOTBALL_DATA_API_KEY o API_FOOTBALL_KEY")
+        return 2
+
+    payload = build_dashboard()
+    if not payload["matches"]:
+        print("Feed no actualizado: las fuentes no devolvieron próximos partidos")
+        return 3
+
+    OUTPUT.parent.mkdir(parents=True, exist_ok=True)
+    OUTPUT.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    print(f"Feed actualizado: {len(payload['matches'])} partidos en {OUTPUT}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
