@@ -64,7 +64,14 @@ jobs:
             echo "El feed no ha cambiado"
           else
             git commit -m "Actualizar feed automático de Fútbol Edge"
-            git push origin "HEAD:${GITHUB_REF_NAME}"
+            # Robusto ante pushes concurrentes (cron + manual): rebase y reintenta.
+            pushed=0
+            for i in 1 2 3 4 5; do
+              git pull --rebase --autostash origin "${GITHUB_REF_NAME}" || true
+              if git push origin "HEAD:${GITHUB_REF_NAME}"; then pushed=1; break; fi
+              echo "push rechazado, reintento $i…"; sleep $((i * 3))
+            done
+            [ "$pushed" = 1 ] || { echo "No se pudo publicar el feed tras varios intentos"; exit 1; }
           fi
 
       - name: Subir informes como artefacto
