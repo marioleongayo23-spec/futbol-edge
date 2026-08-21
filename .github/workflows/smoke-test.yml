@@ -50,6 +50,9 @@ jobs:
           echo "### Backtest LaLiga ###"
           python -m futbol_pred.cli backtest --league laliga
 
+      - name: DIAG jugadores FBref (temporal)
+        run: python -m futbol_pred.ingest.fbref_players || true
+
       - name: Generar feed REAL para Fútbol Edge
         env:
           FOOTBALL_DATA_API_KEY: ${{ secrets.FOOTBALL_DATA_API_KEY }}
