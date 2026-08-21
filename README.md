@@ -74,6 +74,33 @@ bash scripts/schedule_12h.sh       # 3) (opcional) lo repite solo cada 12 h (08:
 - Si una fuente no responde, **conserva el override anterior** y sigue; nunca
   deja el feed vacío.
 
+## Modo 100% local (sin depender de GitHub)
+
+Para tener **toda la app en tu PC**, sin Vercel ni GitHub, pero **actualizándose
+sola cada 12 h** con un programador de tu propio ordenador:
+
+```bash
+git clone https://github.com/marioleongayo23-spec/futbol-edge.git
+cd futbol-edge
+bash scripts/setup_local.sh          # instala backend (.venv) + frontend (una vez)
+
+bash scripts/run_local.sh            # refresca datos + compila + abre http://localhost:8080
+LOCAL=1 bash scripts/schedule_12h.sh # actualiza SOLO en tu disco cada 12 h (sin push)
+```
+
+- `run_local.sh` compila la app apuntando al feed **local** (`/dashboard.json`) y
+  la sirve con `scripts/serve_local.py`, que siempre entrega el
+  `football/data/dashboard.json` más reciente de tu disco. No se consulta internet
+  para los datos (sí, opcionalmente, para escudos de equipos).
+- `LOCAL=1 scripts/schedule_12h.sh` programa `refresh_local.sh` (sin GitHub) a las
+  08:00 y 20:00. Sin `LOCAL=1`, publica en GitHub (`refresh_and_push.sh`).
+- Para que el servidor esté siempre encendido, deja `run_local.sh` corriendo o
+  añádelo al arranque de tu sistema.
+
+> Nota: las claves de API (`FOOTBALL_DATA_API_KEY`, `API_FOOTBALL_KEY`) siguen
+> siendo opcionales y se leen de tu shell o de un `.env` en la raíz. Los datos
+> gratuitos (calendario, resultados, Segunda, modelo) funcionan sin claves.
+
 ### Overrides manuales
 
 Si prefieres rellenar los datos a mano en vez de con los scrapers, copia y edita:

@@ -1,16 +1,22 @@
 #!/usr/bin/env bash
-# Programa el refresco local cada 12 horas en tu máquina.
+# Programa el refresco cada 12 horas en tu máquina.
 # - macOS  -> launchd (LaunchAgent), sobrevive reinicios.
 # - Linux  -> crontab del usuario.
 # Vuelve a ejecutarlo para reinstalar; usa --remove para quitarlo.
 #
-#   bash scripts/schedule_12h.sh          # instala (08:00 y 20:00)
-#   bash scripts/schedule_12h.sh --remove # desinstala
+#   bash scripts/schedule_12h.sh            # refresca y PUBLICA en GitHub
+#   LOCAL=1 bash scripts/schedule_12h.sh    # refresca SOLO en tu PC (sin GitHub)
+#   bash scripts/schedule_12h.sh --remove   # desinstala
 #
 set -euo pipefail
 cd "$(dirname "$0")/.."
 ROOT="$(pwd)"
-RUN="$ROOT/scripts/refresh_and_push.sh"
+# LOCAL=1 -> solo actualiza el disco (sin push). Por defecto, publica en GitHub.
+if [ "${LOCAL:-0}" = "1" ]; then
+  RUN="$ROOT/scripts/refresh_local.sh"
+else
+  RUN="$ROOT/scripts/refresh_and_push.sh"
+fi
 LABEL="com.futboledge.refresh"
 HOURS_1=8    # primera pasada
 HOURS_2=20   # segunda pasada (12h después)
