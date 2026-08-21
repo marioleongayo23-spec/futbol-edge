@@ -88,3 +88,36 @@ def test_ascendido_con_historico_recibe_prediccion_no_degenerada():
     assert max(probs.values()) < 0.985
     assert min(eh, ea) >= 0.15
     assert max(eh, ea) <= 4.0
+
+
+def test_equipo_sin_historico_usa_prior_de_ascenso_no_degenerado():
+    # Liga con fuerzas variadas; el ascendido NO aparece en el entrenamiento.
+    strong = ["Barcelona", "Real Madrid", "Atletico"]
+    mid = ["Sevilla", "Betis", "Valencia"]
+    weak = ["Cadiz", "Almeria", "Leganes"]
+    teams = strong + mid + weak
+    goals = {**{t: 3 for t in strong}, **{t: 2 for t in mid}, **{t: 1 for t in weak}}
+    seed, fid = [], 0
+    for rnd in range(4):
+        for i in range(len(teams)):
+            for j in range(len(teams)):
+                if i == j:
+                    continue
+                fid += 1
+                hg = max(0, goals[teams[i]] - (1 if teams[j] in strong else 0))
+                ag = max(0, goals[teams[j]] - 1)
+                seed.append(_fx(fid, teams[i], teams[j], hg, ag, 20 + rnd * 7))
+
+    model = fit_model_from_fixtures(seed)  # sin name_fn: nombres tal cual
+
+    # "Nuevo Ascendido" nunca visto -> usa prior de ascenso, no media de liga.
+    assert not model.is_known("Nuevo Ascendido")
+    assert model.promoted_attack <= 0.0  # ataque flojo respecto a la media (0)
+
+    for rival in ("Barcelona", "Valencia", "Cadiz"):
+        pred = predict_match(model, rival, "Nuevo Ascendido")
+        probs = pred.one_x_two
+        eh, ea = pred.expected_goals
+        assert max(probs.values()) < 0.985
+        assert min(eh, ea) >= 0.15
+        assert max(eh, ea) <= 4.0
