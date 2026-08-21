@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { accent, CREST_FALLBACK, feedAgeHours, fmtKick, hasPrediction, isStale, loadFeed } from "./feed";
+import { CREST_FALLBACK, feedAgeHours, fmtKick, hasPrediction, isStale, loadFeed } from "./feed";
 import { entropy, fairProbs, kelly, overround, plenoSign } from "./poisson";
 import { leaguesIn, projectedTable } from "./standings";
 import MatchDetail from "./MatchDetail";
@@ -24,6 +24,7 @@ function Icon({ name }) {
     resumen: <><rect x="3" y="3" width="7" height="9" rx="1.5" /><rect x="14" y="3" width="7" height="5" rx="1.5" /><rect x="14" y="12" width="7" height="9" rx="1.5" /><rect x="3" y="16" width="7" height="5" rx="1.5" /></>,
     clasificacion: <><line x1="4" y1="7" x2="20" y2="7" /><line x1="4" y1="12" x2="20" y2="12" /><line x1="4" y1="17" x2="14" y2="17" /></>,
     mercados: <><circle cx="12" cy="12" r="8" /><circle cx="12" cy="12" r="3.2" /><circle cx="12" cy="12" r="0.4" fill="currentColor" /></>,
+    partidos: <><circle cx="12" cy="12" r="8.5" /><path d="M12 3.5v17M3.5 12h17" /><path d="M12 3.5a13 8.5 0 0 0 0 17M12 3.5a13 8.5 0 0 1 0 17" /></>,
     jugadores: <><circle cx="9" cy="8" r="3.2" /><path d="M3.5 20a5.5 5.5 0 0 1 11 0" /><path d="M16 5.2a3.2 3.2 0 0 1 0 6M17.5 20a5.5 5.5 0 0 0-2.6-4.7" /></>,
     value: <><path d="M4 16l5-5 3 3 7-8" /><path d="M16 6h4v4" /></>,
     quiniela: <><path d="M7 4h10v3a5 5 0 0 1-10 0V4z" /><path d="M7 6H4v1a3 3 0 0 0 3 3M17 6h3v1a3 3 0 0 1-3 3" /><path d="M10 15v3M14 15v3M8 21h8" /></>,
@@ -48,81 +49,108 @@ function Skeletons({ n = 5 }) {
   );
 }
 
-function MatchCard({ m, onOpen }) {
-  const md = m.matchday ? "J" + m.matchday : (m.stage || "");
+
+/* ---------- Utilidades de calendario ---------- */
+const todayKey = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
+const dayLong = (s) => { try { return new Date(s + "T12:00:00").toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" }); } catch { return s; } };
+const dayWd = (s) => { try { return new Date(s + "T12:00:00").toLocaleDateString("es-ES", { weekday: "short" }); } catch { return ""; } };
+const dayNum = (s) => { try { return new Date(s + "T12:00:00").toLocaleDateString("es-ES", { day: "2-digit" }); } catch { return s; } };
+const hhmm = (iso) => { try { return new Date(iso).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" }); } catch { return ""; } };
+
+/* Fila compacta de partido para el calendario */
+function MatchRow({ m, onOpen }) {
+  const pred = hasPrediction(m);
+  const best = pred ? ["1", "X", "2"][m.probs.indexOf(Math.max(...m.probs))] : null;
   return (
-    <div className="card click" onClick={() => onOpen(m)}>
-      <div className="ctop">
-        <span>{m.league} · {md} · {fmtKick(m.kickoff)}</span>
-        {m.finished ? <span className="badge b-done">Final</span> : <span className="badge b-live">{m.status || "Programado"}</span>}
-      </div>
-      <div className="teams">
-        <div className="team">
-          <img className="crest" alt="" loading="lazy" src={m.homeCrest || CREST_FALLBACK} onError={(e) => (e.target.src = CREST_FALLBACK)} />
-          <div style={{ minWidth: 0 }}><div className="tn">{m.home}</div><div className="cbar" style={{ background: accent(m.homeColors) }} /></div>
-        </div>
-        <div className="mid">
-          {m.finished && m.result ? <><div className="score">{m.result[0]}–{m.result[1]}</div><div className="kick">final</div></>
-            : m.markets?.marcador ? <><div className="pred">{m.markets.marcador}</div><div className="kick">previsto</div></>
-              : <div className="kick">{fmtKick(m.kickoff)}</div>}
-        </div>
-        <div className="team away">
-          <img className="crest" alt="" loading="lazy" src={m.awayCrest || CREST_FALLBACK} onError={(e) => (e.target.src = CREST_FALLBACK)} />
-          <div style={{ minWidth: 0 }}><div className="tn">{m.away}</div><div className="cbar" style={{ background: accent(m.awayColors) }} /></div>
-        </div>
-      </div>
-      {hasPrediction(m) && (
-        <div className="pbar">
-          <div className="seg s1" style={{ flex: m.probs[0] }}>{m.probs[0] > 8 ? m.probs[0] + "%" : ""}</div>
-          <div className="seg sx" style={{ flex: m.probs[1] }}>{m.probs[1] > 8 ? m.probs[1] + "%" : ""}</div>
-          <div className="seg s2" style={{ flex: m.probs[2] }}>{m.probs[2] > 8 ? m.probs[2] + "%" : ""}</div>
-        </div>
-      )}
-      <div style={{ textAlign: "right", marginTop: 8, fontSize: ".75rem", color: "var(--blue)" }}>Ver análisis →</div>
-    </div>
+    <button className="mrow" onClick={() => onOpen(m)}>
+      <span className="mrow-time">{m.finished ? "FT" : hhmm(m.kickoff)}</span>
+      <span className="mrow-body">
+        <span className="mrow-line">
+          <span className="mrow-team"><img className="crest xs" alt="" loading="lazy" src={m.homeCrest || CREST_FALLBACK} onError={(e) => (e.target.src = CREST_FALLBACK)} /><span className="tn">{m.home}</span></span>
+          <span className="mrow-cen">{m.finished && m.result ? `${m.result[0]}–${m.result[1]}` : (m.markets?.marcador || "·")}</span>
+          <span className="mrow-team rev"><span className="tn">{m.away}</span><img className="crest xs" alt="" loading="lazy" src={m.awayCrest || CREST_FALLBACK} onError={(e) => (e.target.src = CREST_FALLBACK)} /></span>
+        </span>
+        {pred && (
+          <span className="mrow-bar">
+            <i className="s1" style={{ flex: m.probs[0] }} /><i className="sx" style={{ flex: m.probs[1] }} /><i className="s2" style={{ flex: m.probs[2] }} />
+          </span>
+        )}
+      </span>
+      <span className="mrow-tag">{m.league.replace("LaLiga", "1ª").replace("Hypermotion", "").replace("Champions League", "UCL")}{best ? ` · ${best}` : ""}</span>
+    </button>
   );
 }
 
-/* ---------- Resumen (home) ---------- */
-function Resumen({ data, matches, q, onOpen, goto }) {
-  const c = data.counts || {};
-  const upcoming = matches.filter((m) => !m.finished);
-  const nextMd = upcoming.map((m) => m.matchday).filter((x) => x != null).sort((a, b) => a - b)[0];
-  const shown = upcoming
-    .filter((m) => (nextMd == null || m.matchday === nextMd))
-    .filter((m) => !q || (m.home + " " + m.away + " " + m.league).toLowerCase().includes(q.toLowerCase()))
-    .slice(0, 12);
-  const table = useMemo(() => projectedTable(matches, leaguesIn(matches)[0]).slice(0, 5), [matches]);
+/* ---------- Resumen: dashboard de calendario por días ---------- */
+function Resumen({ matches, onOpen, goto }) {
+  const days = useMemo(() => [...new Set(matches.map((m) => m.date).filter(Boolean))].sort(), [matches]);
+  const startIdx = useMemo(() => {
+    const t = todayKey();
+    const i = days.findIndex((d) => d >= t);
+    return i < 0 ? Math.max(0, days.length - 1) : i;
+  }, [days]);
+  const [idx, setIdx] = useState(startIdx);
+
+  const day = days[idx];
+  const dayMatches = useMemo(() => matches.filter((m) => m.date === day).sort((a, b) => (a.kickoff || "").localeCompare(b.kickoff || "")), [matches, day]);
+  const predicted = dayMatches.filter(hasPrediction);
+  const pick = predicted
+    .map((m) => { const mx = Math.max(...m.probs); return { m, mx, s: ["1", "X", "2"][m.probs.indexOf(mx)] }; })
+    .sort((a, b) => b.mx - a.mx)[0];
+  const strong = predicted.filter((m) => Math.max(...m.probs) >= 55).length;
+  const goalsDay = predicted.length ? (predicted.reduce((s, m) => s + (m.xg ? m.xg[0] + m.xg[1] : 0), 0) / predicted.length) : 0;
+
+  const win = 9;
+  const start = Math.max(0, Math.min(idx - 4, Math.max(0, days.length - win)));
+  const strip = days.slice(start, start + win);
+  const t = todayKey();
+
   return (
     <>
-      <div className="grid-kpi">
-        <div className="kpi big"><b>{c.total || 0}</b><span>partidos</span></div>
-        <div className="kpi big"><b>{c.con_prediccion || 0}</b><span>con predicción</span></div>
-        <div className="kpi big"><b>{c.jugados || 0}</b><span>jugados</span></div>
-        <div className="kpi big"><b>{c.proximos || 0}</b><span>próximos</span></div>
+      <div className="stat-tiles">
+        <div className="stat"><span className="stat-k">Partidos</span><b className="stat-v">{dayMatches.length}</b><span className="stat-s">{dayLong(day)}</span></div>
+        <div className="stat"><span className="stat-k">Pick del día</span><b className="stat-v accent">{pick ? `${pick.s} · ${pick.mx}%` : "—"}</b><span className="stat-s">{pick ? `${pick.m.home}–${pick.m.away}` : "sin predicción"}</span></div>
+        <div className="stat"><span className="stat-k">Picks fuertes</span><b className="stat-v">{strong}</b><span className="stat-s">confianza ≥ 55%</span></div>
+        <div className="stat"><span className="stat-k">Goles esperados</span><b className="stat-v">{goalsDay.toFixed(2)}</b><span className="stat-s">media xG por partido</span></div>
       </div>
-      <div className="two-col">
-        <div>
-          <div className="sec-h"><h2>Próxima jornada{nextMd ? ` · J${nextMd}` : ""}</h2><button className="mini" onClick={() => goto("mercados")}>Ver mercados →</button></div>
-          {shown.length ? shown.map((m) => <MatchCard key={m.id} m={m} onOpen={onOpen} />) : <div className="state">No hay partidos próximos para “{q}”.</div>}
+
+      <div className="cal">
+        <div className="cal-nav">
+          <button className="cal-btn" disabled={idx <= 0} onClick={() => setIdx((i) => Math.max(0, i - 1))} aria-label="Día anterior">‹</button>
+          <div className="cal-title"><b>{dayLong(day)}</b>{day === t && <span className="cal-today">HOY</span>}</div>
+          <button className="cal-btn" disabled={idx >= days.length - 1} onClick={() => setIdx((i) => Math.min(days.length - 1, i + 1))} aria-label="Día siguiente">›</button>
+          <button className="cal-btn wide" onClick={() => setIdx(startIdx)}>Hoy</button>
         </div>
-        <div>
-          <div className="sec-h"><h2>Top clasificación</h2><button className="mini" onClick={() => goto("clasificacion")}>Ver tabla →</button></div>
-          <div className="card" style={{ padding: "6px 10px" }}>
-            <table className="tbl-cls">
-              <thead><tr><th>#</th><th className="tl">Equipo</th><th>Proy.</th></tr></thead>
-              <tbody>
-                {table.map((t, i) => (
-                  <tr key={t.name} className={i < 4 ? "row-ucl" : ""}>
-                    <td>{i + 1}</td>
-                    <td className="tl"><div className="cls-team"><img className="crest sm" alt="" loading="lazy" src={t.crest || CREST_FALLBACK} onError={(e) => (e.target.src = CREST_FALLBACK)} /><span className="tn">{t.name}</span></div></td>
-                    <td><b>{t.ptsProy}</b></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+        <div className="cal-strip">
+          {strip.map((d) => {
+            const n = matches.filter((m) => m.date === d).length;
+            return (
+              <button key={d} className={"cal-day" + (d === day ? " on" : "") + (d === t ? " today" : "")} onClick={() => setIdx(days.indexOf(d))}>
+                <span className="cd-wd">{dayWd(d)}</span>
+                <span className="cd-dm">{dayNum(d)}</span>
+                <span className="cd-n">{n}</span>
+              </button>
+            );
+          })}
         </div>
+      </div>
+
+      <div className="day-matches">
+        {dayMatches.length ? dayMatches.map((m) => <MatchRow key={m.id} m={m} onOpen={onOpen} />)
+          : <div className="state">No hay partidos este día.</div>}
+      </div>
+
+      <div className="sec-h" style={{ marginTop: 18 }}>
+        <h2>Explora</h2>
+      </div>
+      <div className="quick-links">
+        <button className="qlink" onClick={() => goto("partidos")}><Icon name="partidos" /><span>Partidos y mercados</span></button>
+        <button className="qlink" onClick={() => goto("clasificacion")}><Icon name="clasificacion" /><span>Clasificación</span></button>
+        <button className="qlink" onClick={() => goto("value")}><Icon name="value" /><span>Value bets</span></button>
+        <button className="qlink" onClick={() => goto("quiniela")}><Icon name="quiniela" /><span>Quiniela</span></button>
       </div>
     </>
   );
@@ -132,36 +160,55 @@ function Resumen({ data, matches, q, onOpen, goto }) {
 function Clasificacion({ matches }) {
   const ligas = useMemo(() => leaguesIn(matches), [matches]);
   const [liga, setLiga] = useState(ligas[0] || "");
-  const table = useMemo(() => projectedTable(matches, liga || ligas[0]), [matches, liga, ligas]);
+  const [mode, setMode] = useState("real"); // real | proy
+  const proj = useMemo(() => projectedTable(matches, liga || ligas[0]), [matches, liga, ligas]);
+  // Tabla REAL: ordenada por puntos reales y diferencia de goles real.
+  const real = useMemo(
+    () => [...proj].sort((a, b) => b.ptsReal - a.ptsReal || (b.gf - b.ga) - (a.gf - a.ga) || a.name.localeCompare(b.name)),
+    [proj]
+  );
+  const table = mode === "real" ? real : proj;
   if (!table.length) return <div className="state">Sin datos de clasificación.</div>;
-  const maxPts = Math.max(...table.map((t) => t.ptsProy), 1);
+  const projPos = new Map(proj.map((t, i) => [t.name, i + 1]));
   return (
     <>
       <div className="card">
-        <div className="lbl">Clasificación proyectada a fin de temporada</div>
-        <p className="note" style={{ color: "var(--muted)" }}>Puntos = reales de lo jugado + esperados del modelo (3·P(gana)+1·P(empata)) en los partidos con predicción.</p>
-        {ligas.length > 1 && <select value={liga} onChange={(e) => setLiga(e.target.value)} style={{ marginTop: 6 }}>{ligas.map((l) => <option key={l} value={l}>{l}</option>)}</select>}
+        <div className="row" style={{ justifyContent: "space-between" }}>
+          <div className="seg-toggle">
+            <button className={mode === "real" ? "on" : ""} onClick={() => setMode("real")}>Real</button>
+            <button className={mode === "proy" ? "on" : ""} onClick={() => setMode("proy")}>Proyección</button>
+          </div>
+          {ligas.length > 1 && <select value={liga} onChange={(e) => setLiga(e.target.value)}>{ligas.map((l) => <option key={l} value={l}>{l}</option>)}</select>}
+        </div>
+        <p className="note" style={{ color: "var(--muted)" }}>
+          {mode === "real"
+            ? "Clasificación real por jornadas jugadas. La columna Proy = posición proyectada a fin de temporada por el modelo."
+            : "Proyección a fin de temporada: puntos reales + esperados del modelo (3·P(gana)+1·P(empata))."}
+        </p>
       </div>
       <div className="card" style={{ padding: "6px 10px", overflowX: "auto" }}>
         <table className="tbl-cls">
-          <thead><tr><th>#</th><th className="tl">Equipo</th><th>PJ</th><th>Pts</th><th>Proy.</th><th>DG*</th></tr></thead>
+          <thead><tr><th>#</th><th className="tl">Equipo</th><th>PJ</th><th>G</th><th>E</th><th>P</th><th>GF</th><th>GC</th><th>DG</th><th>Pts</th><th>{mode === "real" ? "Proy" : "Real"}</th></tr></thead>
           <tbody>
-            {table.map((t, i) => (
-              <tr key={t.name} className={i < 4 ? "row-ucl" : i < 6 ? "row-eur" : i >= table.length - 3 ? "row-desc" : ""}>
-                <td>{i + 1}</td>
-                <td className="tl">
-                  <div className="cls-team"><img className="crest sm" alt="" loading="lazy" src={t.crest || CREST_FALLBACK} onError={(e) => (e.target.src = CREST_FALLBACK)} /><span className="tn">{t.name}</span></div>
-                  <div className="cls-bar"><span style={{ width: (t.ptsProy / maxPts * 100).toFixed(1) + "%" }} /></div>
-                </td>
-                <td>{t.pj}</td><td>{t.ptsReal}</td><td><b>{t.ptsProy}</b></td>
-                <td className={t.difGoles >= 0 ? "value-yes" : "value-no"}>{t.difGoles > 0 ? "+" : ""}{t.difGoles}</td>
-              </tr>
-            ))}
+            {table.map((t, i) => {
+              const gd = t.gf - t.ga;
+              return (
+                <tr key={t.name} className={i < 4 ? "row-ucl" : i < 6 ? "row-eur" : i >= table.length - 3 ? "row-desc" : ""}>
+                  <td>{i + 1}</td>
+                  <td className="tl"><div className="cls-team"><img className="crest sm" alt="" loading="lazy" src={t.crest || CREST_FALLBACK} onError={(e) => (e.target.src = CREST_FALLBACK)} /><span className="tn">{t.name}</span></div></td>
+                  <td>{t.pj}</td><td>{t.w}</td><td>{t.d}</td><td>{t.l}</td><td>{t.gf}</td><td>{t.ga}</td>
+                  <td className={gd >= 0 ? "value-yes" : "value-no"}>{gd > 0 ? "+" : ""}{gd}</td>
+                  <td><b>{mode === "real" ? t.ptsReal : t.ptsProy}</b></td>
+                  <td className="dim">{mode === "real" ? projPos.get(t.name) : t.ptsReal}</td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
       <div className="foot" style={{ marginTop: 8 }}>
-        <span className="dot d-ucl" /> Champions · <span className="dot d-eur" /> Europa · <span className="dot d-desc" /> Descenso · *DG = dif. de goles proyectada.
+        <span className="dot d-ucl" /> Champions · <span className="dot d-eur" /> Europa · <span className="dot d-desc" /> Descenso
+        {mode === "real" ? " · Proy = posición proyectada a fin de temporada" : " · Real = puntos ya sumados"}
       </div>
     </>
   );
@@ -374,7 +421,7 @@ function Datos({ data }) {
 }
 
 const NAV = [
-  ["resumen", "Resumen"], ["clasificacion", "Clasificación"], ["mercados", "Mercados"],
+  ["resumen", "Resumen"], ["partidos", "Partidos"], ["clasificacion", "Clasificación"],
   ["jugadores", "Jugadores"], ["value", "Value bets"], ["quiniela", "Quiniela"], ["datos", "Datos y modelos"],
 ];
 
@@ -448,7 +495,7 @@ export default function App() {
               <h1 className="view-title">{(NAV.find(([k]) => k === view) || [null, "Resumen"])[1]}</h1>
               {view === "resumen" && <Resumen data={data} matches={matches} q={q} onOpen={open} goto={goto} />}
               {view === "clasificacion" && <Clasificacion matches={matches} />}
-              {view === "mercados" && <Mercados matches={matches} q={q} onOpen={open} />}
+              {view === "partidos" && <Mercados matches={matches} q={q} onOpen={open} />}
               {view === "jugadores" && <Jugadores />}
               {view === "value" && <ValueBets matches={matches} bank={bank} setBank={setBank} />}
               {view === "quiniela" && <Quiniela matches={matches} tri={tri} dob={dob} setTri={setTri} setDob={setDob} />}
