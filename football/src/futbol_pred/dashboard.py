@@ -230,7 +230,7 @@ def build_dashboard(
         "data_sources": {
             "fixtures": "football-data.org (LaLiga) · football-data.co.uk (Segunda)",
             "stats": "football-data.co.uk (remates, córners, faltas, tarjetas)",
-            "players": "pendiente (requiere API de pago: API-Football)",
+            "players": "FBref / as.com (override manual football/data/players.json)",
             "odds": "pendiente (requiere The Odds API u similar)",
         },
         "disclaimer": "Probabilidades y ventaja estadística, no certezas. "
@@ -248,17 +248,44 @@ def build_dashboard(
 
 
 def _load_players(season: int) -> dict | None:
-    """Rankings de jugadores (goleadores, asistencias...) de as.com por liga."""
-    try:
-        from .ingest.players_as import get_top_players
-    except Exception:
-        return None
+    """Rankings de jugadores (goleadores, asistencias...) por liga.
+
+    Orden de preferencia:
+    1) Override manual: football/data/players.json (fiable; se rellena a mano o
+       con los scrapers ejecutados desde una IP no bloqueada).
+    2) FBref (tablas HTML reales) — bloquea IPs de datacenter/CI con 403.
+    3) as.com (rankings de temporada) — página renderizada por JS, sin tabla.
+    Devuelve {liga: {label, rankings:{cat:{label, players[]}}}} o None.
+    """
+    path = Path(DATA_DIR) / "players.json"
+    if path.exists():
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+            data = {k: v for k, v in data.items() if not k.startswith("_")}
+            if data:
+                return data
+        except Exception:
+            pass
+
+    fetchers = []
+    for modname, fn in (("fbref_players", "get_top_players"),
+                        ("players_as", "get_top_players")):
+        try:
+            mod = __import__(f"futbol_pred.ingest.{modname}", fromlist=[fn])
+            fetchers.append(getattr(mod, fn))
+        except Exception:
+            continue
+
     data: dict = {}
     for league, label in (("laliga", "LaLiga"), ("segunda", "LaLiga Hypermotion")):
-        try:
-            p = get_top_players(season, league=league)
-        except Exception:
-            p = None
+        p = None
+        for fetch in fetchers:
+            try:
+                p = fetch(season, league=league)
+            except Exception:
+                p = None
+            if p:
+                break
         if p:
             data[league] = {"label": label, "rankings": p}
     return data or None
