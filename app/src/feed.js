@@ -6,7 +6,8 @@ export const FEED_URL =
 
 // Copia empaquetada en /public como red de seguridad si el feed remoto falla
 // (por ejemplo sin conexión, o antes de que el cron haya publicado en main).
-const FALLBACK_URL = "/dashboard.json";
+// BASE_URL es "/" en Vercel y "/futbol-edge/" en GitHub Pages.
+const FALLBACK_URL = (import.meta.env.BASE_URL || "/") + "dashboard.json";
 
 async function fetchJson(url) {
   const r = await fetch(url + (url.includes("?") ? "&" : "?") + "t=" + Date.now());

@@ -4,7 +4,9 @@
 // no existen -> 404 del JS -> pantalla en negro. Network-first evita eso; los
 // assets con hash (inmutables) sí van cache-first.
 const CACHE = "futbol-edge-v3";
-const SHELL = ["/", "/index.html", "/manifest.webmanifest", "/dashboard.json"];
+// BASE = "/" (Vercel) o "/futbol-edge/" (GitHub Pages), derivado de la ruta del SW.
+const BASE = self.location.pathname.replace(/sw\.js$/, "");
+const SHELL = [BASE, BASE + "index.html", BASE + "manifest.webmanifest", BASE + "dashboard.json"];
 
 self.addEventListener("install", (e) => {
   e.waitUntil(
@@ -36,7 +38,7 @@ self.addEventListener("fetch", (e) => {
 
   const isNavigation = request.mode === "navigate" ||
     (request.destination === "document") ||
-    url.pathname === "/" || url.pathname.endsWith("/index.html");
+    url.pathname === BASE || url.pathname.endsWith("/index.html");
   const isFeed = url.pathname.endsWith("dashboard.json");
 
   // Navegación y feed: NETWORK-FIRST (siempre el HTML/datos frescos del deploy).
@@ -49,7 +51,7 @@ self.addEventListener("fetch", (e) => {
         }
         return res;
       }).catch(() =>
-        caches.match(request).then((r) => r || caches.match("/index.html") || caches.match("/"))
+        caches.match(request).then((r) => r || caches.match(BASE + "index.html") || caches.match(BASE))
       )
     );
     return;

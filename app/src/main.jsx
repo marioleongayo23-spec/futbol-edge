@@ -24,8 +24,9 @@ if ("serviceWorker" in navigator && import.meta.env.PROD) {
     reloaded = true;
     window.location.reload();
   });
+  const swUrl = (import.meta.env.BASE_URL || "/") + "sw.js";
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/sw.js", { updateViaCache: "none" })
+    navigator.serviceWorker.register(swUrl, { updateViaCache: "none" })
       .then((reg) => {
         reg.update();
         if (reg.waiting) reg.waiting.postMessage("skipWaiting");
