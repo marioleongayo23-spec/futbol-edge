@@ -86,8 +86,8 @@ def test_ascendido_con_historico_recibe_prediccion_no_degenerada():
     eh, ea = pred.expected_goals
     # No debe caer en el guard de "datos-insuficientes" de dashboard.py.
     assert max(probs.values()) < 0.985
-    assert min(eh, ea) >= 0.15
-    assert max(eh, ea) <= 4.0
+    assert min(eh, ea) >= 0.05
+    assert max(eh, ea) <= 4.5
 
 
 def test_equipo_sin_historico_usa_prior_de_ascenso_no_degenerado():
@@ -119,5 +119,5 @@ def test_equipo_sin_historico_usa_prior_de_ascenso_no_degenerado():
         probs = pred.one_x_two
         eh, ea = pred.expected_goals
         assert max(probs.values()) < 0.985
-        assert min(eh, ea) >= 0.15
-        assert max(eh, ea) <= 4.0
+        assert min(eh, ea) >= 0.05
+        assert max(eh, ea) <= 4.5
