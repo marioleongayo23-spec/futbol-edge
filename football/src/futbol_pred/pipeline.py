@@ -16,30 +16,50 @@ from .model import DixonColesModel
 from .value import BankrollPolicy, scan_market
 
 
+def _dbg(msg: str) -> None:
+    import os
+    import sys
+
+    if os.environ.get("DEBUG_INGEST"):
+        print(f"[ingest] {msg}", file=sys.stderr)
+
+
 def get_fixtures(league: str, season: int | None = None) -> list[Fixture]:
     """Fuente de fixtures con prioridad y fallback gratis.
 
-    football-data.org (LaLiga, Champions) → OpenFootball (Segunda, gratis) →
-    API-Football. En modo offline, datos de ejemplo. OpenFootball se consulta
-    en modo estricto (solo la temporada pedida) para no mezclar temporadas.
+    football-data.org (LaLiga/Champions en plan de pago) → API-Football →
+    OpenFootball (gratis, ideal para Segunda). Se devuelve la primera fuente con
+    datos de la temporada pedida (sin mezclar temporadas).
     """
+    from .ingest.openfootball import OpenFootballClient
+
+    season = season or settings.season
     fd = FootballDataClient()
     if not fd.offline:
         try:
             fx = fd.get_matches(league, season=season)
+            _dbg(f"{league} {season}: football-data -> {len(fx)}")
             if fx:
                 return fx
-        except Exception:
-            pass  # p. ej. Segunda no está en el plan free (403): probamos otra
-        from .ingest.openfootball import OpenFootballClient
+        except Exception as exc:
+            _dbg(f"{league} {season}: football-data ERROR {type(exc).__name__} "
+                 f"{getattr(getattr(exc, 'response', None), 'status_code', '')}")
 
-        of = OpenFootballClient().get_matches(
-            league, season=season or settings.season
-        )
+        af = ApiFootballClient()
+        if not af.offline:
+            try:
+                fx = af.get_fixtures(league, season=season)
+                _dbg(f"{league} {season}: api-football -> {len(fx)}")
+                if fx:
+                    return fx
+            except Exception as exc:
+                _dbg(f"{league} {season}: api-football ERROR {type(exc).__name__}")
+
+        of = OpenFootballClient().get_matches(league, season=season)
+        _dbg(f"{league} {season}: openfootball -> {len(of)}")
         if of:
             return of
-        af = ApiFootballClient()
-        return [] if af.offline else af.get_fixtures(league, season=season)
+        return []
     return ApiFootballClient().get_fixtures(league, season=season)
 
 
