@@ -121,3 +121,36 @@ def test_equipo_sin_historico_usa_prior_de_ascenso_no_degenerado():
         assert max(probs.values()) < 0.985
         assert min(eh, ea) >= 0.05
         assert max(eh, ea) <= 4.5
+
+
+def test_componente_desconectado_no_produce_xg_absurdo():
+    # Reproduce el bug real: los equipos de Segunda (incl. el ascendido) NUNCA
+    # juegan contra los de Primera en los datos de entrenamiento -> forman un
+    # "componente desconectado". Sin regularización, el optimizador dispara sus
+    # parámetros al límite y el xG sale ~0 (predicción degenerada). Con ridge
+    # (l2) los parámetros indeterminados se encogen y la predicción es sensata.
+    primera = ["Barcelona", "Real Madrid", "Atletico", "Sevilla", "Betis", "Valencia"]
+    segunda = ["Malaga", "Depor", "Racing", "Levante", "Elche", "Almeria"]
+    goles = {**{t: 3 for t in primera[:3]}, **{t: 2 for t in primera[3:]},
+             **{t: 2 for t in segunda}}
+    seed, fid = [], 0
+    for grupo, liga, season in ((primera, "laliga", 2025), (segunda, "segunda", 2025)):
+        for rnd in range(3):
+            for i in range(len(grupo)):
+                for j in range(len(grupo)):
+                    if i == j:
+                        continue
+                    fid += 1
+                    hg = goles[grupo[i]]
+                    ag = max(0, goles[grupo[j]] - 1)
+                    seed.append(_fx(fid, grupo[i], grupo[j], hg, ag, 40 + rnd * 7,
+                                    league=liga, season=season))
+
+    model = fit_model_from_fixtures(seed)
+    # Málaga (solo visto en Segunda) contra un equipo de Primera: no degenerado.
+    for home, away in (("Malaga", "Barcelona"), ("Barcelona", "Malaga")):
+        pred = predict_match(model, home, away)
+        eh, ea = pred.expected_goals
+        assert min(eh, ea) >= 0.05, f"{home} vs {away}: xg absurdo {eh:.3f},{ea:.3f}"
+        assert max(eh, ea) <= 4.5
+        assert max(pred.one_x_two.values()) < 0.985
