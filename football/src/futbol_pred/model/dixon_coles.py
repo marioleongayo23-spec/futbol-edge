@@ -45,6 +45,11 @@ class DixonColesModel:
     defence: dict[str, float] = field(default_factory=dict)
     intercept: float = 0.0
     fitted: bool = False
+    # Prior para equipos sin histórico (recién ascendidos): en vez de "media de
+    # liga" (0,0), se estiman con perfil de equipo de ascenso — ataque flojo y
+    # defensa floja — a partir de la distribución ya ajustada.
+    promoted_attack: float = 0.0
+    promoted_defence: float = 0.0
 
     # ------------------------------------------------------------------
     def _weights(self, days_ago: np.ndarray) -> np.ndarray:
@@ -106,6 +111,13 @@ class DixonColesModel:
         self.defence = {t: float(p[n : 2 * n][idx[t]]) for t in teams}
         self.home_adv = float(p[2 * n])
         self.rho = float(p[2 * n + 1])
+        # Perfil de ascenso: ataque bajo (percentil 20) y defensa floja
+        # (percentil 80 = concede más). Sirve de prior para equipos sin datos.
+        att_vals = np.array(list(self.attack.values()))
+        def_vals = np.array(list(self.defence.values()))
+        if att_vals.size:
+            self.promoted_attack = float(np.percentile(att_vals, 20))
+            self.promoted_defence = float(np.percentile(def_vals, 80))
         self.fitted = True
         return self
 
@@ -114,14 +126,14 @@ class DixonColesModel:
         return team in self.attack
 
     def _lambdas(self, home: str, away: str) -> tuple[float, float]:
-        # Equipo sin histórico (p. ej. recién ascendido): prior neutro =
-        # media de la liga (ataque/defensa 0). Así SIEMPRE hay predicción; el
-        # modelo se ajusta según juegue. Un recién ascendido queda, de partida,
-        # como el equipo medio y suele salir perdiendo contra los fuertes.
-        ah = self.attack.get(home, 0.0)
-        dh = self.defence.get(home, 0.0)
-        aa = self.attack.get(away, 0.0)
-        da = self.defence.get(away, 0.0)
+        # Equipo sin histórico (p. ej. recién ascendido): prior con perfil de
+        # ascenso (ataque flojo, defensa floja), no la media de liga. Así SIEMPRE
+        # hay predicción y refleja que un ascendido suele ser más débil; el
+        # modelo se afina según vaya jugando.
+        ah = self.attack.get(home, self.promoted_attack)
+        dh = self.defence.get(home, self.promoted_defence)
+        aa = self.attack.get(away, self.promoted_attack)
+        da = self.defence.get(away, self.promoted_defence)
         lh = np.exp(self.intercept + self.home_adv + ah + da)
         la = np.exp(self.intercept + aa + dh)
         return float(lh), float(la)
