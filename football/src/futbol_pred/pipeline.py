@@ -59,6 +59,14 @@ def get_fixtures(league: str, season: int | None = None) -> list[Fixture]:
         _dbg(f"{league} {season}: openfootball -> {len(of)}")
         if of:
             return of
+
+        # co.uk (gratis): vía para Segunda, que football-data.org no da en free.
+        from .ingest.football_data_uk import FootballDataUKClient
+
+        uk = FootballDataUKClient().get_fixtures(league, season)
+        _dbg(f"{league} {season}: co.uk -> {len(uk)}")
+        if uk:
+            return uk
         return []
     return ApiFootballClient().get_fixtures(league, season=season)
 

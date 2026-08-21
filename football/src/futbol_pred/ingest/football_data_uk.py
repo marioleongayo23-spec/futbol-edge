@@ -13,11 +13,18 @@ from __future__ import annotations
 
 import csv
 import io
+import zlib
 from dataclasses import dataclass
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 import requests
 
+from .api_football import Fixture
+
 BASE_URL = "https://www.football-data.co.uk/mmz4281"
+FIXTURES_URL = "https://www.football-data.co.uk/fixtures.csv"
+MADRID = ZoneInfo("Europe/Madrid")
 
 DIV_CODE = {"laliga": "SP1", "segunda": "SP2"}
 
@@ -61,6 +68,28 @@ class FootballDataUKClient:
         resp.raise_for_status()
         return self.parse(resp.text)
 
+    def get_fixtures(self, league: str, season: int) -> list[Fixture]:
+        """Fixtures de Segunda/LaLiga desde co.uk (gratis): jugados con resultado
+        (SPx.csv) + próximos (fixtures.csv). Es la vía libre para Segunda, que
+        football-data.org no sirve en su plan gratuito."""
+        if league not in DIV_CODE:
+            return []
+        div = DIV_CODE[league]
+        out: list[Fixture] = []
+        try:
+            r = requests.get(f"{BASE_URL}/{season_code(season)}/{div}.csv", timeout=self.timeout)
+            r.raise_for_status()
+            out += _parse_results(r.text, league, season)
+        except requests.RequestException:
+            pass
+        try:
+            r = requests.get(FIXTURES_URL, timeout=self.timeout)
+            r.raise_for_status()
+            out += _parse_fixtures(r.text, league, season, div)
+        except requests.RequestException:
+            pass
+        return out
+
     @staticmethod
     def parse(text: str) -> list[MatchStats]:
         reader = csv.DictReader(io.StringIO(text))
@@ -82,6 +111,75 @@ def _num(v) -> float | None:
         return float(v)
     except (TypeError, ValueError):
         return None
+
+
+def _int(v) -> int | None:
+    n = _num(v)
+    return int(n) if n is not None else None
+
+
+def _stable_id(*parts: str) -> int:
+    return zlib.crc32("|".join(parts).encode("utf-8")) & 0x7FFFFFFF
+
+
+def _parse_date(date: str | None, time: str | None) -> datetime | None:
+    if not date:
+        return None
+    date = date.strip()
+    t = (time or "").strip() or "16:00"
+    for fmt in ("%d/%m/%Y", "%d/%m/%y"):
+        try:
+            d = datetime.strptime(date, fmt)
+            try:
+                hh, mm = t.split(":")[:2]
+                d = d.replace(hour=int(hh), minute=int(mm))
+            except (ValueError, IndexError):
+                pass
+            return d.replace(tzinfo=MADRID)
+        except ValueError:
+            continue
+    return None
+
+
+def _parse_results(text: str, league: str, season: int) -> list[Fixture]:
+    """Partidos jugados de SPx.csv (con fecha y resultado)."""
+    out: list[Fixture] = []
+    for row in csv.DictReader(io.StringIO(text)):
+        home, away = row.get("HomeTeam"), row.get("AwayTeam")
+        hg, ag = _int(row.get("FTHG")), _int(row.get("FTAG"))
+        if not home or not away or hg is None or ag is None:
+            continue
+        ko = _parse_date(row.get("Date"), row.get("Time"))
+        if ko is None:
+            continue
+        out.append(Fixture(
+            api_id=_stable_id("couk", league, row.get("Date", ""), home, away),
+            league=league, season=season, kickoff=ko,
+            home_team=home, away_team=away, status="FINISHED",
+            home_goals=hg, away_goals=ag, source="football_data_uk",
+        ))
+    return out
+
+
+def _parse_fixtures(text: str, league: str, season: int, div: str) -> list[Fixture]:
+    """Próximos partidos de fixtures.csv (todas las ligas), filtrados por división."""
+    out: list[Fixture] = []
+    for row in csv.DictReader(io.StringIO(text)):
+        if (row.get("Div") or "").strip() != div:
+            continue
+        home, away = row.get("HomeTeam"), row.get("AwayTeam")
+        if not home or not away:
+            continue
+        ko = _parse_date(row.get("Date"), row.get("Time"))
+        if ko is None:
+            continue
+        out.append(Fixture(
+            api_id=_stable_id("couk", league, row.get("Date", ""), home, away),
+            league=league, season=season, kickoff=ko,
+            home_team=home, away_team=away, status="SCHEDULED",
+            home_goals=None, away_goals=None, source="football_data_uk",
+        ))
+    return out
 
 
 def _sample_stats() -> list[MatchStats]:
