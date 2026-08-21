@@ -136,6 +136,15 @@ def fixture_payload(
         or max(eh, ea) > 4.5
     )
     if degenerate:
+        import sys
+        print(
+            f"[degenerate] {fixture.home_team} vs {fixture.away_team}: "
+            f"eh={eh:.3f} ea={ea:.3f} pmax={max(probs.values()):.3f} "
+            f"known=({model.is_known(home_id)},{model.is_known(away_id)}) "
+            f"prom_att={getattr(model, 'promoted_attack', None)} "
+            f"prom_def={getattr(model, 'promoted_defence', None)}",
+            file=sys.stderr,
+        )
         payload["engine"] = "datos-insuficientes"
         payload["nota"] = "Modelo aún sin muestra fiable de la temporada"
         return payload
