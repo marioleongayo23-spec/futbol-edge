@@ -21,8 +21,8 @@ HEADERS = {
 }
 
 BASE = "https://as.com/resultados/futbol/primera/{season}/ranking/jugadores"
-# Subramas típicas del ranking de as.com.
-SUBRANKINGS = ["goleadores", "asistencias", "tarjetas_amarillas", "tarjetas_rojas", "minutos"]
+# Slugs reales de as.com (descubiertos de la página base). Se usa barra final.
+SUBRANKINGS = ["goles/", "asistencias/", "tarjetas/", "minutos/", "regates/"]
 
 
 def season_slug(season: int) -> str:
@@ -67,7 +67,8 @@ def _diagnose(season: int = 2026) -> None:
                 print(f"  head={r.text[:160]!r}")
                 continue
             try:
-                tables = pd.read_html(r.text)
+                import io
+                tables = pd.read_html(io.StringIO(r.text))
                 print(f"  tablas={len(tables)}")
                 for i, t in enumerate(tables[:3]):
                     cols = [str(c) for c in t.columns][:8]
