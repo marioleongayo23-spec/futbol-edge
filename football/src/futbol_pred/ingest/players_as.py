@@ -54,8 +54,11 @@ def _fetch(url: str, timeout: int = 20) -> requests.Response:
 
 
 def _log(msg: str) -> None:
+    import os
     import sys
-    print(f"[players_as] {msg}", file=sys.stderr)
+
+    if os.environ.get("DEBUG_INGEST"):
+        print(f"[players_as] {msg}", file=sys.stderr)
 
 
 def _pick_player_table(tables):
