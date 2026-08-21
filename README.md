@@ -48,3 +48,37 @@ cd app && npm install && npm run dev      # http://localhost:5173
 cd football && pip install -r requirements.txt && pytest
 python -m futbol_pred.cli run --league laliga
 ```
+
+## Actualización local sin bloqueos de IP
+
+Algunas fuentes (FBref para **jugadores** y Loterías y Apuestas para la
+**quiniela** oficial) devuelven `403` desde los runners de GitHub, pero sí
+responden desde una IP residencial española. Para eso hay un modo local que baja
+esos datos, regenera el feed y lo publica en `main` (de donde leen Vercel y la
+app). El cron de GitHub sigue actualizando cada 12 h todo lo accesible desde CI;
+esto añade lo que CI no puede.
+
+```bash
+bash scripts/setup_local.sh        # 1) instala backend (.venv) y frontend
+bash scripts/refresh_and_push.sh   # 2) baja jugadores + quiniela + feed y hace push
+bash scripts/schedule_12h.sh       # 3) (opcional) lo repite solo cada 12 h (08:00 y 20:00)
+#   scripts/schedule_12h.sh --remove   para quitar la programación
+```
+
+- Claves de API opcionales (para partidos de pago): exporta
+  `FOOTBALL_DATA_API_KEY` / `API_FOOTBALL_KEY`, o ponlas en un fichero `.env`
+  en la raíz (lo carga `refresh_and_push.sh`).
+- Solo un paso concreto:
+  `cd football && python -m futbol_pred.refresh_local --no-quiniela` (o
+  `--no-players`, `--no-feed`, `--season 2026`).
+- Si una fuente no responde, **conserva el override anterior** y sigue; nunca
+  deja el feed vacío.
+
+### Overrides manuales
+
+Si prefieres rellenar los datos a mano en vez de con los scrapers, copia y edita:
+
+- `football/data/players.json.example` → `players.json`
+- `football/data/quiniela.json.example` → `quiniela.json`
+
+El feed usa el override si existe; el resto lo calcula el modelo.
