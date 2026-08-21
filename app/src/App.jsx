@@ -246,15 +246,47 @@ function Mercados({ matches, q, onOpen }) {
 }
 
 /* ---------- Jugadores (fuente de pago pendiente) ---------- */
-function Jugadores() {
+function Jugadores({ players }) {
+  const ligas = players ? Object.keys(players) : [];
+  const [liga, setLiga] = useState(ligas[0] || "");
+  if (!players || !ligas.length) {
+    return (
+      <div className="card">
+        <div className="lbl">Jugadores</div>
+        <p className="note">⚠️ Aún sin datos de jugadores en el feed. El cron los obtiene de as.com (goleadores, asistencias, tarjetas, minutos); aparecerán tras la próxima actualización.</p>
+      </div>
+    );
+  }
+  const cur = players[liga] || players[ligas[0]];
+  const rankings = cur.rankings || {};
   return (
-    <div className="card">
-      <div className="lbl">Jugadores</div>
-      <p className="note">⚠️ Los datos por jugador (alineaciones, lesiones, minutos, xG individual) requieren una <b>fuente de pago</b> (API-Football). Están marcados como <code>pendiente</code> en el feed.</p>
-      <p style={{ color: "var(--muted)", fontSize: ".85rem" }}>
-        Cuando añadas <code>API_FOOTBALL_KEY</code> en los secrets del repo, el cron podrá enriquecer el feed con datos de jugadores y esta sección se activará automáticamente.
-      </p>
-    </div>
+    <>
+      <div className="card">
+        <div className="row" style={{ justifyContent: "space-between" }}>
+          <div className="lbl" style={{ margin: 0 }}>Ranking de jugadores · {cur.label}</div>
+          {ligas.length > 1 && <select value={liga} onChange={(e) => setLiga(e.target.value)}>{ligas.map((l) => <option key={l} value={l}>{players[l].label}</option>)}</select>}
+        </div>
+        <p className="note" style={{ color: "var(--muted)" }}>Fuente: as.com. Alineaciones/lesiones en vivo siguen requiriendo API de pago.</p>
+      </div>
+      <div className="players-grid">
+        {Object.entries(rankings).map(([slug, rk]) => (
+          <div className="card" key={slug} style={{ padding: "10px 12px" }}>
+            <div className="lbl" style={{ marginTop: 4 }}>{rk.label}</div>
+            <table className="tbl-mk">
+              <tbody>
+                {rk.players.slice(0, 10).map((p) => (
+                  <tr key={p.rank}>
+                    <td style={{ width: 22, color: "var(--dim)" }}>{p.rank}</td>
+                    <td className="tl"><b>{p.player}</b><div className="mk-sub">{p.team}</div></td>
+                    <td style={{ textAlign: "right" }}><b className="value-yes">{p.value != null ? (Number.isInteger(p.value) ? p.value : p.value.toFixed(0)) : "—"}</b></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ))}
+      </div>
+    </>
   );
 }
 
@@ -635,7 +667,7 @@ export default function App() {
               {view === "resumen" && <Resumen data={data} matches={matches} q={q} onOpen={open} goto={goto} />}
               {view === "clasificacion" && <Clasificacion matches={matches} />}
               {view === "partidos" && <Mercados matches={matches} q={q} onOpen={open} />}
-              {view === "jugadores" && <Jugadores />}
+              {view === "jugadores" && <Jugadores players={data.players} />}
               {view === "value" && <ValueBets matches={matches} bank={bank} setBank={setBank} />}
               {view === "cartera" && <Cartera matches={matches} />}
               {view === "quiniela" && <Quiniela matches={matches} quiniela={data.quiniela} tri={tri} dob={dob} setTri={setTri} setDob={setDob} />}
