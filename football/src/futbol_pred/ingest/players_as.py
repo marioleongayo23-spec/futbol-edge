@@ -109,9 +109,42 @@ def _rows_from(table, slug: str, top: int):
     return out
 
 
+def _next_data(html: str):
+    """Extrae el JSON de Next.js (__NEXT_DATA__) de la página de as.com."""
+    import json
+    import re
+
+    m = re.search(r'<script id="__NEXT_DATA__"[^>]*>(.*?)</script>', html, re.S)
+    if not m:
+        return None
+    try:
+        return json.loads(m.group(1))
+    except ValueError:
+        return None
+
+
+def _find_player_lists(obj, out, depth=0):
+    """Busca recursivamente listas de dicts que parezcan jugadores (tienen un
+    campo de nombre y algún dato numérico)."""
+    if depth > 8:
+        return
+    if isinstance(obj, list):
+        if len(obj) >= 5 and all(isinstance(x, dict) for x in obj[:5]):
+            keys = set().union(*[set(x.keys()) for x in obj[:5]])
+            namek = {"nombre", "name", "jugador", "player", "playerName", "slug"} & keys
+            if namek:
+                out.append((sorted(keys)[:14], len(obj), obj[0]))
+        for x in obj:
+            _find_player_lists(x, out, depth + 1)
+    elif isinstance(obj, dict):
+        for v in obj.values():
+            _find_player_lists(v, out, depth + 1)
+
+
 def get_top_players(season: int = 2026, league: str = "laliga", top: int = 15) -> dict | None:
     """Rankings de jugadores de as.com por categoría. {slug: {label, players[]}}."""
     import io
+    import json
 
     import pandas as pd
 
@@ -119,22 +152,41 @@ def get_top_players(season: int = 2026, league: str = "laliga", top: int = 15) -
     base = BASE_TMPL.format(comp=comp, season=season_slug(season))
     out: dict = {}
     for slug, label in CATEGORIES.items():
-        url = f"{base}/{slug}/"
+        for url in (f"{base}/{slug}/", f"{base}/{slug}"):
+            try:
+                r = _fetch(url)
+            except Exception as exc:  # noqa: BLE001
+                _log(f"{slug}: error {type(exc).__name__}: {exc}")
+                r = None
+            if r is not None and r.ok:
+                break
+        if r is None or not r.ok:
+            _log(f"{slug}: HTTP {getattr(r, 'status_code', '?')}")
+            continue
+
+        # 1) intento por tabla HTML
+        rows = []
         try:
-            r = _fetch(url)
-            if not r.ok:
-                _log(f"{slug}: HTTP {r.status_code}")
-                continue
-            tables = pd.read_html(io.StringIO(r.text))
-        except Exception as exc:  # noqa: BLE001
-            _log(f"{slug}: error {type(exc).__name__}: {exc}")
-            continue
-        table = _pick_player_table(tables)
-        if table is None:
-            _log(f"{slug}: sin tabla de jugadores (tablas={len(tables)})")
-            continue
-        _log(f"{slug}: cols={[str(c) for c in table.columns][:8]}")
-        rows = _rows_from(table, slug, top)
+            table = _pick_player_table(pd.read_html(io.StringIO(r.text)))
+            if table is not None:
+                rows = _rows_from(table, slug, top)
+        except Exception:
+            pass
+
+        # 2) fallback: JSON embebido de Next.js
+        if not rows:
+            nd = _next_data(r.text)
+            if nd is not None:
+                cands: list = []
+                _find_player_lists(nd, cands)
+                if cands:
+                    keys, n, first = max(cands, key=lambda c: c[1])
+                    _log(f"{slug}: NEXT_DATA lista jugadores keys={keys} n={n} first={json.dumps(first, ensure_ascii=False)[:220]}")
+                else:
+                    _log(f"{slug}: NEXT_DATA presente pero sin lista de jugadores")
+            else:
+                _log(f"{slug}: ni tabla ni NEXT_DATA")
+
         if rows:
             out[slug] = {"label": label, "players": rows}
             _log(f"{slug}: {len(rows)} jugadores, top={rows[0]}")
