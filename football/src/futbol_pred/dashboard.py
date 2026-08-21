@@ -14,10 +14,32 @@ from zoneinfo import ZoneInfo
 from .config import DATA_DIR
 from .ingest.api_football import ApiFootballClient, Fixture
 from .ingest.football_data import FootballDataClient
+from .normalize import canonical_team
 from .pipeline import fit_model_from_fixtures, get_fixtures, predict_match
 
 MADRID = ZoneInfo("Europe/Madrid")
 OUTPUT = Path(DATA_DIR) / "dashboard.json"
+
+
+def _canon(name: str) -> str:
+    """canonical_team sin ruido de warnings (equipos desconocidos se dejan igual)."""
+    import warnings
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        return canonical_team(name)
+
+
+# Plan de sembrado por liga: temporadas y divisiones previas con las que se
+# ajusta el modelo, para que los recién ascendidos tengan histórico real. El
+# solape de equipos entre temporadas/divisiones (ascensos y descensos) calibra
+# la escala de fuerza entre Primera y Segunda; el decaimiento temporal ya
+# pondera menos lo antiguo.
+SEED_PLAN = {
+    "laliga": [("laliga", 1), ("laliga", 2), ("segunda", 1)],
+    "segunda": [("segunda", 1), ("segunda", 2), ("laliga", 1)],
+    "champions": [("champions", 1)],
+}
 LEAGUES = {
     "laliga": "LaLiga",
     "segunda": "LaLiga Hypermotion",
@@ -90,14 +112,15 @@ def fixture_payload(
 
     if model is None:
         return payload
+    home_id, away_id = _canon(fixture.home_team), _canon(fixture.away_team)
     try:
         prediction = predict_match(
             model,
-            fixture.home_team,
-            fixture.away_team,
+            home_id,
+            away_id,
             kickoff=fixture.kickoff,
         )
-        matrix = model.predict_matrix(fixture.home_team, fixture.away_team)
+        matrix = model.predict_matrix(home_id, away_id)
     except (KeyError, ValueError):
         return payload
 
@@ -137,7 +160,7 @@ def fixture_payload(
 
     # Si algún equipo aún no tiene histórico (recién ascendido, sin datos de la
     # temporada), la predicción usa prior neutro: la marcamos como provisional.
-    if not (model.is_known(fixture.home_team) and model.is_known(fixture.away_team)):
+    if not (model.is_known(home_id) and model.is_known(away_id)):
         payload["provisional"] = True
         payload["nota"] = "Predicción provisional: algún equipo aún sin histórico"
 
@@ -176,7 +199,9 @@ def build_dashboard(
             # (el decaimiento temporal ya pondera más lo reciente).
             train = _seed_fixtures(league, season) + fixtures
             try:
-                model = fit_model_from_fixtures(train, as_of=now.replace(tzinfo=None))
+                model = fit_model_from_fixtures(
+                    train, as_of=now.replace(tzinfo=None), name_fn=_canon
+                )
             except (ValueError, KeyError):
                 model = None
             stats = _fit_stats(league, season)
@@ -221,12 +246,28 @@ def build_dashboard(
 
 
 def _seed_fixtures(league: str, season: int) -> list:
-    """Partidos jugados de la temporada anterior, para sembrar el modelo."""
-    try:
-        prev = get_fixtures(league, season=season - 1)
-        return [fx for fx in prev if fx.home_goals is not None]
-    except Exception:
-        return []
+    """Partidos jugados con los que sembrar el modelo.
+
+    Incluye temporadas anteriores de la propia liga y de la otra división,
+    para que los recién ascendidos (p. ej. de Segunda a Primera) tengan
+    fuerza estimada a partir de sus datos reales y no de un prior neutro.
+    """
+    seeds: list = []
+    seen: set = set()
+    for src_league, back in SEED_PLAN.get(league, [(league, 1)]):
+        try:
+            prev = get_fixtures(src_league, season=season - back)
+        except Exception:
+            continue
+        for fx in prev:
+            if fx.home_goals is None:
+                continue
+            key = (fx.source, fx.league, fx.season, fx.api_id)
+            if key in seen:
+                continue
+            seen.add(key)
+            seeds.append(fx)
+    return seeds
 
 
 def _team_meta(league: str, season: int) -> dict:

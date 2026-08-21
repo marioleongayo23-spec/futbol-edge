@@ -55,18 +55,26 @@ class MatchPrediction:
 
 
 def fit_model_from_fixtures(
-    fixtures: list[Fixture], as_of: datetime | None = None
+    fixtures: list[Fixture],
+    as_of: datetime | None = None,
+    name_fn=None,
 ) -> DixonColesModel:
-    """Ajusta Dixon-Coles usando solo partidos ya jugados (FT)."""
+    """Ajusta Dixon-Coles usando solo partidos ya jugados (FT).
+
+    ``name_fn`` (opcional) mapea el nombre de cada equipo antes de ajustar
+    (p. ej. ``canonical_team``), para que un mismo club en distintas fuentes o
+    divisiones enlace bajo un único identificador.
+    """
     played = [f for f in fixtures if f.home_goals is not None]
     if not played:
         raise ValueError("No hay partidos jugados para ajustar el modelo")
 
+    name_fn = name_fn or (lambda n: n)
     as_of = as_of or datetime.utcnow()
     home_teams, away_teams, hg, ag, days = [], [], [], [], []
     for f in played:
-        home_teams.append(f.home_team)
-        away_teams.append(f.away_team)
+        home_teams.append(name_fn(f.home_team))
+        away_teams.append(name_fn(f.away_team))
         hg.append(f.home_goals)
         ag.append(f.away_goals)
         ko = f.kickoff.replace(tzinfo=None) if f.kickoff.tzinfo else f.kickoff
