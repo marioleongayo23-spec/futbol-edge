@@ -126,14 +126,14 @@ def fixture_payload(
 
     probs = prediction.one_x_two
     eh, ea = prediction.expected_goals
-    # Guard de sanidad: al inicio de temporada el modelo tiene muy pocos
-    # partidos y produce predicciones degeneradas (p. ej. 0-5 al 100%). En ese
-    # caso NO publicamos predicción: es más honesto marcar "datos insuficientes"
-    # que mostrar un número absurdo.
+    # Guard de sanidad: descarta predicciones REALMENTE rotas (p. ej. un único
+    # resultado al ~100%). El umbral inferior de goles es laxo a propósito: un
+    # equipo muy flojo (recién ascendido) contra una gran defensa puede tener un
+    # xG legítimamente bajo (~0.1) y merece predicción, no "datos insuficientes".
     degenerate = (
         max(probs.values()) >= 0.985
-        or min(eh, ea) < 0.15
-        or max(eh, ea) > 4.0
+        or min(eh, ea) < 0.05
+        or max(eh, ea) > 4.5
     )
     if degenerate:
         payload["engine"] = "datos-insuficientes"
