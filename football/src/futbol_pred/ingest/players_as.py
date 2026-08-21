@@ -44,12 +44,21 @@ def _fetch(url: str, timeout: int = 20) -> requests.Response:
 
 
 def _diagnose(season: int = 2026) -> None:
+    import re
+
     import pandas as pd
 
     slug = season_slug(season)
-    urls = [BASE.format(season=slug)] + [
-        f"{BASE.format(season=slug)}/{sub}" for sub in SUBRANKINGS
-    ]
+    base = BASE.format(season=slug)
+    # 1) descubre las categorías reales enlazadas desde la página base.
+    try:
+        r0 = _fetch(base)
+        cats = sorted(set(re.findall(r"/ranking/jugadores/([a-z_]+)", r0.text)))
+        print(f"[AS] categorías encontradas en base: {cats}")
+    except Exception as exc:  # noqa: BLE001
+        print(f"[AS] no pude leer categorías: {exc}")
+
+    urls = [base] + [f"{base}/{sub}" for sub in SUBRANKINGS]
     for url in urls:
         try:
             r = _fetch(url)
