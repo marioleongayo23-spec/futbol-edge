@@ -39,6 +39,11 @@ class DixonColesModel:
 
     xi: float = 0.0018  # decaimiento temporal (~medio año de vida útil)
     max_goals: int = 10
+    # Regularización L2 (ridge) sobre ataque/defensa: estabiliza el ajuste y
+    # evita que equipos con datos escasos o en un "componente desconectado"
+    # (p. ej. un ascendido cuyo histórico es solo de Segunda, sin cruces con
+    # Primera) disparen sus parámetros al límite y produzcan xG absurdos.
+    l2: float = 0.5
     rho: float = 0.0
     home_adv: float = 0.0
     attack: dict[str, float] = field(default_factory=dict)
@@ -100,9 +105,11 @@ class DixonColesModel:
             tau = _tau(hg, ag, lh.mean(), la.mean(), rho)
             tau = np.clip(tau, 1e-9, None)
             ll = ll + np.log(tau)
-            return -float((w * ll).sum())
+            # Ridge: penaliza ataque (centrado) y defensa hacia 0 (media de liga).
+            penalty = self.l2 * (float(att @ att) + float(deff @ deff))
+            return -float((w * ll).sum()) + penalty
 
-        bounds = [(-3, 3)] * (2 * n) + [(-1, 1), (-0.2, 0.2)]
+        bounds = [(-2, 2)] * (2 * n) + [(-1, 1), (-0.2, 0.2)]
         res = minimize(neg_log_like, init, method="L-BFGS-B", bounds=bounds)
 
         p = res.x
