@@ -220,6 +220,70 @@ def run_backtest(league: str = "laliga", season: int | None = None) -> dict:
     }
 
 
+def run_model_report(league: str = "laliga", season: int | None = None) -> dict | None:
+    """Informe de calibración y comparación de modelos (walk-forward).
+
+    Devuelve, para la liga indicada, las métricas de baseline/Elo/Dixon-Coles
+    y la tabla de calibración (prob. predicha vs frecuencia real) del modelo en
+    producción (Dixon-Coles) para los tres signos 1/X/2. None si no hay datos.
+    """
+    from .backtest import (
+        BaselineRates,
+        DixonColesPredictor,
+        EloPredictor,
+        walk_forward,
+    )
+    from .config import LEAGUE_META
+
+    try:
+        tpr = LEAGUE_META.get(league, {}).get("teams_per_round")
+        fixtures = get_fixtures(league, season=season)
+        matches = fixtures_to_matches(fixtures, teams_per_round=tpr)
+    except Exception:
+        return None
+    if not matches:
+        return None
+
+    predictors = {
+        "baseline": BaselineRates(),
+        "elo": EloPredictor(),
+        "dixon_coles": DixonColesPredictor(min_matches=30),
+    }
+    metrics: dict = {}
+    dc_result = None
+    for name, pred in predictors.items():
+        try:
+            res = walk_forward(matches, pred, min_train_rounds=3)
+        except Exception:
+            continue
+        m = res.metrics()
+        if not m.get("n"):
+            continue
+        metrics[name] = {k: (round(v, 4) if isinstance(v, float) else v)
+                         for k, v in m.items()}
+        if name == "dixon_coles":
+            dc_result = res
+
+    if not metrics:
+        return None
+
+    calibration = {}
+    n_pred = 0
+    if dc_result is not None:
+        n_pred = len(dc_result.predictions)
+        for sign in ("1", "X", "2"):
+            calibration[sign] = dc_result.calibration(selection=sign, bins=10)
+
+    return {
+        "league": league,
+        "season": season or settings.season,
+        "n_matches": len(matches),
+        "n_predicciones": n_pred,
+        "predictors": metrics,
+        "calibration": calibration,
+    }
+
+
 def value_report(
     probs: dict[str, float], odds: dict[str, float], market: str = "1x2"
 ) -> list[dict]:

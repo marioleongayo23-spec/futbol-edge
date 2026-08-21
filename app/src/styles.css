@@ -246,6 +246,27 @@ code{background:var(--card2);border:1px solid var(--line);border-radius:5px;padd
 .s-del{background:none;border:none;cursor:pointer;opacity:.6;font-size:.85rem}
 .s-del:hover{opacity:1}
 
+/* ---------- Datos y modelos: rendimiento y calibración ---------- */
+.row-between{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.mut{font-size:.76rem;color:var(--muted);line-height:1.5}
+.tbl-wrap{overflow-x:auto}
+.metrics-tbl th{color:var(--muted);font-weight:600;font-size:.72rem}
+.metrics-tbl td{font-variant-numeric:tabular-nums}
+.metrics-tbl .row-live td{background:rgba(90,162,255,.06)}
+.metrics-tbl .cell-best{color:var(--green);font-weight:800}
+.tag-live{margin-left:8px;font-size:.6rem;font-weight:800;letter-spacing:.05em;color:var(--blue);border:1px solid var(--line);border-radius:999px;padding:1px 7px;vertical-align:middle}
+.calib-wrap{display:grid;grid-template-columns:300px 1fr;gap:18px;align-items:start}
+.calib-svg{width:100%;max-width:300px;height:auto}
+.calib-box{fill:none;stroke:var(--line)}
+.calib-grid{stroke:var(--line);stroke-dasharray:3 4;opacity:.5}
+.calib-diag{stroke:var(--dim);stroke-dasharray:5 5}
+.calib-dot{fill:rgba(90,162,255,.55);stroke:var(--blue)}
+.calib-axis{fill:var(--muted);font-size:11px}
+.calib-legend p{font-size:.78rem;color:var(--muted);line-height:1.5;margin:0 0 8px}
+.calib-tbl{margin-top:6px}
+.calib-tbl td,.calib-tbl th{font-size:.74rem;padding:5px 8px}
+@media(max-width:720px){.calib-wrap{grid-template-columns:1fr}.calib-svg{margin:0 auto}}
+
 .scrim{display:none}
 
 @media(max-width:860px){

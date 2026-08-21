@@ -15,7 +15,7 @@ from .config import DATA_DIR
 from .ingest.api_football import ApiFootballClient, Fixture
 from .ingest.football_data import FootballDataClient
 from .normalize import canonical_team
-from .pipeline import fit_model_from_fixtures, get_fixtures, predict_match
+from .pipeline import fit_model_from_fixtures, get_fixtures, predict_match, run_model_report
 
 MADRID = ZoneInfo("Europe/Madrid")
 OUTPUT = Path(DATA_DIR) / "dashboard.json"
@@ -226,6 +226,7 @@ def build_dashboard(
         "season": season,
         "quiniela": _load_quiniela_oficial(),
         "players": _load_players(season),
+        "model": _load_model_report(season),
         "engine": "dixon-coles" if any(item["engine"] == "dixon-coles" for item in matches) else "calendar-only",
         "data_sources": {
             "fixtures": "football-data.org (LaLiga) · football-data.co.uk (Segunda)",
@@ -245,6 +246,20 @@ def build_dashboard(
         "matches": matches,
         "errors": errors,
     }
+
+
+def _load_model_report(season: int) -> dict | None:
+    """Calibración y comparación de modelos por liga (para 'Datos y modelos')."""
+    out: dict = {}
+    for league, label in (("laliga", "LaLiga"), ("segunda", "LaLiga Hypermotion")):
+        try:
+            rep = run_model_report(league=league, season=season)
+        except Exception:
+            rep = None
+        if rep:
+            rep["label"] = label
+            out[league] = rep
+    return out or None
 
 
 def _load_players(season: int) -> dict | None:

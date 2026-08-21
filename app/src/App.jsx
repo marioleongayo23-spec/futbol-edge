@@ -436,11 +436,126 @@ function ValueBets({ matches, bank, setBank }) {
 }
 
 /* ---------- Datos y modelos ---------- */
+/* Diagrama de fiabilidad: prob. predicha (x) vs frecuencia real (y). */
+function CalibDiagram({ table, w = 300, h = 300 }) {
+  const pad = 34;
+  const iw = w - pad * 2, ih = h - pad * 2;
+  const X = (p) => pad + p * iw;
+  const Y = (p) => pad + (1 - p) * ih;
+  const maxN = Math.max(1, ...table.map((b) => b.n));
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} className="calib-svg" role="img" aria-label="Diagrama de calibración">
+      <rect x={pad} y={pad} width={iw} height={ih} className="calib-box" />
+      {[0.25, 0.5, 0.75].map((g) => (
+        <g key={g}>
+          <line x1={X(g)} y1={pad} x2={X(g)} y2={pad + ih} className="calib-grid" />
+          <line x1={pad} y1={Y(g)} x2={pad + iw} y2={Y(g)} className="calib-grid" />
+        </g>
+      ))}
+      <line x1={X(0)} y1={Y(0)} x2={X(1)} y2={Y(1)} className="calib-diag" />
+      {table.map((b) => (
+        <circle key={b.bin} cx={X(b.avg_pred)} cy={Y(b.obs_freq)} r={4 + 8 * (b.n / maxN)} className="calib-dot">
+          <title>{`${b.bin} · n=${b.n} · pred ${(b.avg_pred * 100).toFixed(0)}% → real ${(b.obs_freq * 100).toFixed(0)}%`}</title>
+        </circle>
+      ))}
+      <text x={pad + iw / 2} y={h - 6} className="calib-axis" textAnchor="middle">prob. predicha →</text>
+      <text x={12} y={pad + ih / 2} className="calib-axis" textAnchor="middle" transform={`rotate(-90 12 ${pad + ih / 2})`}>frecuencia real →</text>
+    </svg>
+  );
+}
+
+const METRIC_INFO = [
+  ["rps", "RPS", "Ranked Probability Score (menor = mejor)"],
+  ["brier", "Brier", "Error cuadrático (menor = mejor)"],
+  ["log_loss", "LogLoss", "Pérdida logarítmica (menor = mejor)"],
+  ["accuracy", "Acierto", "% de signos acertados (mayor = mejor)"],
+];
+const PRED_LABEL = { baseline: "Base (tasas)", elo: "Elo", dixon_coles: "Dixon-Coles" };
+
+function ModelReport({ model }) {
+  const ligas = model ? Object.keys(model) : [];
+  const [liga, setLiga] = useState(ligas[0]);
+  if (!model || !ligas.length) return null;
+  const rep = model[liga] || model[ligas[0]];
+  const preds = rep.predictors || {};
+  const names = Object.keys(preds);
+  // Mejor (menor) por métrica descendente-mala; para accuracy, mayor es mejor.
+  const best = {};
+  for (const [key] of METRIC_INFO) {
+    const vals = names.map((n) => preds[n][key]).filter((v) => v != null);
+    if (!vals.length) continue;
+    best[key] = key === "accuracy" ? Math.max(...vals) : Math.min(...vals);
+  }
+  const calib1 = (rep.calibration && rep.calibration["1"]) || [];
+  return (
+    <>
+      <div className="card">
+        <div className="row-between">
+          <div className="lbl">Rendimiento del modelo (walk-forward)</div>
+          {ligas.length > 1 && (
+            <select value={liga} onChange={(e) => setLiga(e.target.value)}>
+              {ligas.map((l) => <option key={l} value={l}>{model[l].label}</option>)}
+            </select>
+          )}
+        </div>
+        <div className="mut" style={{ margin: "4px 0 10px" }}>
+          Validación honesta: se entrena solo con el pasado y se predice cada jornada.
+          {" "}<b>{rep.n_predicciones}</b> predicciones evaluadas esta temporada.
+        </div>
+        <div className="tbl-wrap">
+          <table className="tbl-mk metrics-tbl">
+            <thead>
+              <tr>
+                <th className="tl">Modelo</th>
+                {METRIC_INFO.map(([k, lbl, tip]) => <th key={k} title={tip}>{lbl}</th>)}
+              </tr>
+            </thead>
+            <tbody>
+              {names.map((n) => (
+                <tr key={n} className={n === "dixon_coles" ? "row-live" : ""}>
+                  <td className="tl">{PRED_LABEL[n] || n}{n === "dixon_coles" && <span className="tag-live">EN USO</span>}</td>
+                  {METRIC_INFO.map(([k]) => {
+                    const v = preds[n][k];
+                    const isBest = v != null && best[k] != null && v === best[k];
+                    return <td key={k} className={isBest ? "cell-best" : ""}>{v == null ? "—" : (k === "accuracy" ? (v * 100).toFixed(0) + "%" : v.toFixed(3))}</td>;
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="mut" style={{ marginTop: 8 }}>Verde = mejor valor por columna. RPS es el estándar en fútbol; premia acercarse al resultado ordenado 1-X-2.</div>
+      </div>
+      {calib1.length > 0 && (
+        <div className="card">
+          <div className="lbl">Calibración (victoria local)</div>
+          <div className="calib-wrap">
+            <CalibDiagram table={calib1} />
+            <div className="calib-legend">
+              <p>Cada punto es un tramo de probabilidad. Si el modelo está bien calibrado, los puntos caen sobre la diagonal: cuando dice “45%”, acierta el 45% de las veces.</p>
+              <p>El tamaño del punto refleja cuántos partidos hay en ese tramo.</p>
+              <table className="tbl-mk calib-tbl">
+                <thead><tr><th className="tl">Tramo</th><th>N</th><th>Predicha</th><th>Real</th></tr></thead>
+                <tbody>
+                  {calib1.map((b) => (
+                    <tr key={b.bin}><td className="tl">{b.bin}</td><td>{b.n}</td><td>{(b.avg_pred * 100).toFixed(0)}%</td><td>{(b.obs_freq * 100).toFixed(0)}%</td></tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 function Datos({ data }) {
   const ds = data.data_sources || {};
   const ageH = feedAgeHours(data);
   return (
     <>
+      <ModelReport model={data.model} />
       <div className="card">
         <div className="lbl">Motor y estado</div>
         <div className="chips">
