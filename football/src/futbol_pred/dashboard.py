@@ -225,6 +225,7 @@ def build_dashboard(
         "generated_at": generated_at,
         "season": season,
         "quiniela": _load_quiniela_oficial(),
+        "players": _load_players(season),
         "engine": "dixon-coles" if any(item["engine"] == "dixon-coles" for item in matches) else "calendar-only",
         "data_sources": {
             "fixtures": "football-data.org (LaLiga) · football-data.co.uk (Segunda)",
@@ -244,6 +245,23 @@ def build_dashboard(
         "matches": matches,
         "errors": errors,
     }
+
+
+def _load_players(season: int) -> dict | None:
+    """Rankings de jugadores (goleadores, asistencias...) de as.com por liga."""
+    try:
+        from .ingest.players_as import get_top_players
+    except Exception:
+        return None
+    data: dict = {}
+    for league, label in (("laliga", "LaLiga"), ("segunda", "LaLiga Hypermotion")):
+        try:
+            p = get_top_players(season, league=league)
+        except Exception:
+            p = None
+        if p:
+            data[league] = {"label": label, "rankings": p}
+    return data or None
 
 
 def _load_quiniela_oficial() -> dict | None:

@@ -20,9 +20,19 @@ HEADERS = {
     "Accept-Language": "es-ES,es;q=0.9",
 }
 
+LEAGUE_PATH = {"laliga": "primera", "segunda": "segunda"}
+BASE_TMPL = "https://as.com/resultados/futbol/{comp}/{season}/ranking/jugadores"
 BASE = "https://as.com/resultados/futbol/primera/{season}/ranking/jugadores"
 # Slugs reales de as.com (descubiertos de la página base). Se usa barra final.
 SUBRANKINGS = ["goles/", "asistencias/", "tarjetas/", "minutos/", "regates/"]
+
+# Categorías que exponemos en la app: slug de as.com -> etiqueta.
+CATEGORIES = {
+    "goles": "Goleadores",
+    "asistencias": "Asistencias",
+    "tarjetas": "Tarjetas",
+    "minutos": "Minutos",
+}
 
 
 def season_slug(season: int) -> str:
@@ -41,6 +51,94 @@ class PlayerStat:
 
 def _fetch(url: str, timeout: int = 20) -> requests.Response:
     return requests.get(url, headers=HEADERS, timeout=timeout)
+
+
+def _log(msg: str) -> None:
+    import sys
+    print(f"[players_as] {msg}", file=sys.stderr)
+
+
+def _pick_player_table(tables):
+    """Elige la tabla de ranking (más filas y con una columna de texto/nombre)."""
+    best, best_rows = None, 0
+    for t in tables:
+        if t.shape[0] < 3 or t.shape[1] < 2:
+            continue
+        has_text = any(str(t[c].dtype) == "object" for c in t.columns)
+        if has_text and t.shape[0] > best_rows:
+            best, best_rows = t, t.shape[0]
+    return best
+
+
+def _rows_from(table, slug: str, top: int):
+    """Extrae (rank, jugador, equipo, valor) de la tabla de as.com de forma
+    heurística: la columna de jugador es la primera de texto larga, la de equipo
+    la siguiente de texto, y el valor la última columna numérica."""
+    import pandas as pd
+
+    cols = list(table.columns)
+    lc = {c: str(c).strip().lower() for c in cols}
+    text_cols = [c for c in cols if str(table[c].dtype) == "object"]
+    num_cols = [c for c in cols if pd.api.types.is_numeric_dtype(table[c])]
+
+    def find(*keys):
+        for c in cols:
+            if any(k in lc[c] for k in keys):
+                return c
+        return None
+
+    player_col = find("jugador", "nombre") or (text_cols[0] if text_cols else None)
+    team_col = find("equipo", "club") or next((c for c in text_cols if c != player_col), None)
+    value_col = find(slug, "total") or (num_cols[-1] if num_cols else None)
+    if player_col is None or value_col is None:
+        return []
+
+    out = []
+    for i, (_, row) in enumerate(table.iterrows()):
+        if i >= top:
+            break
+        player = str(row[player_col]).strip()
+        if not player or player.lower() == "nan":
+            continue
+        team = str(row[team_col]).strip() if team_col is not None else ""
+        try:
+            value = float(row[value_col])
+        except (TypeError, ValueError):
+            value = None
+        out.append({"rank": i + 1, "player": player, "team": team, "value": value})
+    return out
+
+
+def get_top_players(season: int = 2026, league: str = "laliga", top: int = 15) -> dict | None:
+    """Rankings de jugadores de as.com por categoría. {slug: {label, players[]}}."""
+    import io
+
+    import pandas as pd
+
+    comp = LEAGUE_PATH.get(league, "primera")
+    base = BASE_TMPL.format(comp=comp, season=season_slug(season))
+    out: dict = {}
+    for slug, label in CATEGORIES.items():
+        url = f"{base}/{slug}/"
+        try:
+            r = _fetch(url)
+            if not r.ok:
+                _log(f"{slug}: HTTP {r.status_code}")
+                continue
+            tables = pd.read_html(io.StringIO(r.text))
+        except Exception as exc:  # noqa: BLE001
+            _log(f"{slug}: error {type(exc).__name__}: {exc}")
+            continue
+        table = _pick_player_table(tables)
+        if table is None:
+            _log(f"{slug}: sin tabla de jugadores (tablas={len(tables)})")
+            continue
+        _log(f"{slug}: cols={[str(c) for c in table.columns][:8]}")
+        rows = _rows_from(table, slug, top)
+        if rows:
+            out[slug] = {"label": label, "players": rows}
+            _log(f"{slug}: {len(rows)} jugadores, top={rows[0]}")
+    return out or None
 
 
 def _diagnose(season: int = 2026) -> None:
