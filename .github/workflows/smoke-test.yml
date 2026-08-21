@@ -54,7 +54,6 @@ jobs:
         env:
           FOOTBALL_DATA_API_KEY: ${{ secrets.FOOTBALL_DATA_API_KEY }}
           API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
-          DEBUG_INGEST: "1"
         run: python -m futbol_pred.dashboard || echo "sin próximos partidos en el horizonte"
 
       - name: Publicar feed real si cambió

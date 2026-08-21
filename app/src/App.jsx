@@ -29,6 +29,7 @@ function Icon({ name }) {
     value: <><path d="M4 16l5-5 3 3 7-8" /><path d="M16 6h4v4" /></>,
     quiniela: <><path d="M7 4h10v3a5 5 0 0 1-10 0V4z" /><path d="M7 6H4v1a3 3 0 0 0 3 3M17 6h3v1a3 3 0 0 1-3 3" /><path d="M10 15v3M14 15v3M8 21h8" /></>,
     datos: <><ellipse cx="12" cy="5.5" rx="7" ry="2.8" /><path d="M5 5.5v6c0 1.5 3.1 2.8 7 2.8s7-1.3 7-2.8v-6" /><path d="M5 11.5v6c0 1.5 3.1 2.8 7 2.8s7-1.3 7-2.8v-6" /></>,
+    cartera: <><rect x="3" y="6" width="18" height="13" rx="2.5" /><path d="M3 9h18" /><circle cx="16.5" cy="13.5" r="1.3" fill="currentColor" /></>,
     search: <><circle cx="11" cy="11" r="7" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></>,
   };
   return <svg {...p} aria-hidden="true">{paths[name]}</svg>;
@@ -420,9 +421,128 @@ function Datos({ data }) {
   );
 }
 
+/* ---------- Mi cartera: registro de apuestas, ROI y bankroll ---------- */
+const LS_BETS = "fe_bets_v1";
+const LS_BANK0 = "fe_bank0_v1";
+const loadLS = (k, def) => { try { const v = localStorage.getItem(k); return v == null ? def : JSON.parse(v); } catch { return def; } };
+const saveLS = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* ignore */ } };
+
+function Sparkline({ points, w = 260, h = 56 }) {
+  if (points.length < 2) return <div className="spark-empty">Registra apuestas para ver tu evolución</div>;
+  const min = Math.min(0, ...points), max = Math.max(0, ...points);
+  const rng = max - min || 1;
+  const step = w / (points.length - 1);
+  const y = (v) => h - 6 - ((v - min) / rng) * (h - 12);
+  const d = points.map((v, i) => `${i === 0 ? "M" : "L"}${(i * step).toFixed(1)},${y(v).toFixed(1)}`).join(" ");
+  const last = points[points.length - 1];
+  return (
+    <svg className="spark" viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" width="100%" height={h}>
+      <line x1="0" y1={y(0)} x2={w} y2={y(0)} stroke="var(--line)" strokeDasharray="3 3" />
+      <path d={d} fill="none" stroke={last >= 0 ? "var(--green)" : "var(--red)"} strokeWidth="2" />
+    </svg>
+  );
+}
+
+function Cartera({ matches }) {
+  const [bets, setBets] = useState(() => loadLS(LS_BETS, []));
+  const [bank0, setBank0] = useState(() => loadLS(LS_BANK0, 1000));
+  const [f, setF] = useState({ match: "", sel: "1", odds: "", stake: "" });
+  useEffect(() => saveLS(LS_BETS, bets), [bets]);
+  useEffect(() => saveLS(LS_BANK0, bank0), [bank0]);
+
+  const suggestions = useMemo(() => matches.filter(hasPrediction).slice(0, 200).map((m) => `${m.home} - ${m.away}`), [matches]);
+
+  const pl = (b) => b.result === "won" ? b.stake * (b.odds - 1) : b.result === "lost" ? -b.stake : 0;
+  const settled = bets.filter((b) => b.result !== "open");
+  const staked = settled.reduce((s, b) => s + b.stake, 0);
+  const profit = settled.reduce((s, b) => s + pl(b), 0);
+  const roi = staked ? (profit / staked) * 100 : 0;
+  const wins = settled.filter((b) => b.result === "won").length;
+  const hit = settled.length ? (wins / settled.length) * 100 : 0;
+  const bank = Number(bank0) + profit;
+  const curve = useMemo(() => {
+    const chrono = bets.filter((b) => b.result !== "open").slice().reverse();
+    const val = (b) => b.result === "won" ? b.stake * (b.odds - 1) : b.result === "lost" ? -b.stake : 0;
+    return chrono.map((_, i) => chrono.slice(0, i + 1).reduce((s, b) => s + val(b), 0));
+  }, [bets]);
+
+  const add = () => {
+    const odds = Number(f.odds), stake = Number(f.stake);
+    if (!(odds > 1) || !(stake > 0) || !f.match.trim()) return;
+    setBets([{ id: Date.now(), date: new Date().toISOString().slice(0, 10), match: f.match.trim(), sel: f.sel, odds, stake, result: "open" }, ...bets]);
+    setF({ match: "", sel: "1", odds: "", stake: "" });
+  };
+  const settle = (id, result) => setBets(bets.map((b) => b.id === id ? { ...b, result } : b));
+  const del = (id) => setBets(bets.filter((b) => b.id !== id));
+
+  return (
+    <>
+      <div className="stat-tiles">
+        <div className="stat"><span className="stat-k">Bankroll</span><b className="stat-v">{bank.toFixed(0)}€</b><span className="stat-s">inicio {Number(bank0).toFixed(0)}€</span></div>
+        <div className="stat"><span className="stat-k">Beneficio</span><b className={"stat-v " + (profit >= 0 ? "accent" : "")} style={profit < 0 ? { color: "var(--red)" } : null}>{profit >= 0 ? "+" : ""}{profit.toFixed(2)}€</b><span className="stat-s">{settled.length} apuestas cerradas</span></div>
+        <div className="stat"><span className="stat-k">ROI / Yield</span><b className="stat-v" style={{ color: roi >= 0 ? "var(--green)" : "var(--red)" }}>{roi >= 0 ? "+" : ""}{roi.toFixed(1)}%</b><span className="stat-s">{staked.toFixed(0)}€ apostados</span></div>
+        <div className="stat"><span className="stat-k">Acierto</span><b className="stat-v">{hit.toFixed(0)}%</b><span className="stat-s">{wins}/{settled.length} ganadas</span></div>
+      </div>
+
+      <div className="card">
+        <div className="lbl">Evolución del beneficio</div>
+        <Sparkline points={curve} />
+      </div>
+
+      <div className="card">
+        <div className="lbl">Registrar apuesta</div>
+        <div className="row">
+          <input className="grow" list="fe-matches" placeholder="Partido (o texto libre)" value={f.match} onChange={(e) => setF({ ...f, match: e.target.value })} />
+          <datalist id="fe-matches">{suggestions.map((s) => <option key={s} value={s} />)}</datalist>
+          <select value={f.sel} onChange={(e) => setF({ ...f, sel: e.target.value })}>
+            <option value="1">1</option><option value="X">X</option><option value="2">2</option>
+            <option value="Over">Over</option><option value="Under">Under</option><option value="BTTS">BTTS</option><option value="Otro">Otro</option>
+          </select>
+          <input type="number" step="0.01" placeholder="Cuota" style={{ width: 90 }} value={f.odds} onChange={(e) => setF({ ...f, odds: e.target.value })} />
+          <input type="number" step="1" placeholder="Stake €" style={{ width: 90 }} value={f.stake} onChange={(e) => setF({ ...f, stake: e.target.value })} />
+          <button className="add-btn" onClick={add}>Añadir</button>
+        </div>
+        <div className="row" style={{ marginTop: 8 }}>
+          <span className="lbl" style={{ margin: 0 }}>Bankroll inicial</span>
+          <input type="number" style={{ width: 110 }} value={bank0} onChange={(e) => setBank0(e.target.value)} />
+        </div>
+      </div>
+
+      {bets.length === 0 ? <div className="state">Aún no has registrado apuestas.</div> : (
+        <div className="card" style={{ padding: "6px 10px", overflowX: "auto" }}>
+          <table className="tbl-mk">
+            <thead><tr><th className="tl">Fecha · Partido</th><th>Sel</th><th>Cuota</th><th>Stake</th><th>P/L</th><th>Estado</th><th></th></tr></thead>
+            <tbody>
+              {bets.map((b) => (
+                <tr key={b.id}>
+                  <td className="tl"><b>{b.match}</b><div className="mk-sub">{b.date}</div></td>
+                  <td><span className={"q-" + (b.sel === "1" ? "1" : b.sel === "2" ? "2" : "X")}>{b.sel}</span></td>
+                  <td>{b.odds.toFixed(2)}</td><td>{b.stake}€</td>
+                  <td className={pl(b) > 0 ? "value-yes" : pl(b) < 0 ? "value-no" : "dim"}>{b.result === "open" ? "—" : `${pl(b) >= 0 ? "+" : ""}${pl(b).toFixed(2)}€`}</td>
+                  <td>
+                    {b.result === "open" ? (
+                      <span className="settle">
+                        <button className="s-won" onClick={() => settle(b.id, "won")}>✓</button>
+                        <button className="s-lost" onClick={() => settle(b.id, "lost")}>✗</button>
+                        <button className="s-void" onClick={() => settle(b.id, "void")}>N</button>
+                      </span>
+                    ) : <span className={"pill " + (b.result === "won" ? "y" : "")}>{b.result === "won" ? "Ganada" : b.result === "lost" ? "Perdida" : "Nula"}</span>}
+                  </td>
+                  <td><button className="s-del" onClick={() => del(b.id)}>🗑</button></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </>
+  );
+}
+
 const NAV = [
   ["resumen", "Resumen"], ["partidos", "Partidos"], ["clasificacion", "Clasificación"],
-  ["jugadores", "Jugadores"], ["value", "Value bets"], ["quiniela", "Quiniela"], ["datos", "Datos y modelos"],
+  ["value", "Value bets"], ["cartera", "Mi cartera"], ["quiniela", "Quiniela"],
+  ["jugadores", "Jugadores"], ["datos", "Datos y modelos"],
 ];
 
 export default function App() {
@@ -498,6 +618,7 @@ export default function App() {
               {view === "partidos" && <Mercados matches={matches} q={q} onOpen={open} />}
               {view === "jugadores" && <Jugadores />}
               {view === "value" && <ValueBets matches={matches} bank={bank} setBank={setBank} />}
+              {view === "cartera" && <Cartera matches={matches} />}
               {view === "quiniela" && <Quiniela matches={matches} tri={tri} dob={dob} setTri={setTri} setDob={setDob} />}
               {view === "datos" && <Datos data={data} />}
             </>

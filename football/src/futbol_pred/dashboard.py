@@ -226,7 +226,7 @@ def build_dashboard(
         "season": season,
         "engine": "dixon-coles" if any(item["engine"] == "dixon-coles" for item in matches) else "calendar-only",
         "data_sources": {
-            "fixtures": "football-data.org",
+            "fixtures": "football-data.org (LaLiga) · football-data.co.uk (Segunda)",
             "stats": "football-data.co.uk (remates, córners, faltas, tarjetas)",
             "players": "pendiente (requiere API de pago: API-Football)",
             "odds": "pendiente (requiere The Odds API u similar)",
