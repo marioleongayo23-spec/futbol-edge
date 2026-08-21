@@ -259,66 +259,85 @@ function Jugadores() {
 }
 
 /* ---------- Quiniela ---------- */
-function Quiniela({ matches, tri, dob, setTri, setDob }) {
+const Q_STOP = new Set(["cf", "fc", "cd", "ud", "sd", "rc", "cp", "club", "de", "la", "el", "los", "real"]);
+const qNorm = (s) => (s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9 ]/g, " ");
+const qTokens = (s) => qNorm(s).split(/\s+/).filter((t) => t.length >= 3 && !Q_STOP.has(t));
+const qTeamMatch = (a, b) => { const A = new Set(qTokens(a)); return qTokens(b).some((t) => A.has(t)); };
+const qFindMatch = (local, visit, list) => list.find((m) => qTeamMatch(local, m.home) && qTeamMatch(visit, m.away));
+
+function Quiniela({ matches, quiniela, tri, dob, setTri, setDob }) {
   const [copied, setCopied] = useState(false);
-  const pool = matches.filter(hasPrediction).slice(0, 15);
-  const ms = pool.slice(0, 14);
-  const pleno = pool[14];
-  const fc = ms.map((m) => {
-    const pr = { 1: m.probs[0] / 100, X: m.probs[1] / 100, 2: m.probs[2] / 100 };
+  const predicted = useMemo(() => matches.filter(hasPrediction), [matches]);
+  const official = quiniela && Array.isArray(quiniela.partidos) && quiniela.partidos.length >= 14 ? quiniela : null;
+
+  const items = official
+    ? quiniela.partidos.slice(0, 15).map((p) => ({ local: p.local, visitante: p.visitante, m: qFindMatch(p.local, p.visitante, predicted) }))
+    : predicted.slice(0, 15).map((m) => ({ local: m.home, visitante: m.away, m }));
+  const ms = items.slice(0, 14);
+  const pleno = items[14];
+
+  const fc = ms.map((it) => {
+    if (!it.m) return { it, pr: null, best: "1", ent: -1 };
+    const pr = { 1: it.m.probs[0] / 100, X: it.m.probs[1] / 100, 2: it.m.probs[2] / 100 };
     const best = Object.keys(pr).reduce((a, b) => (pr[a] > pr[b] ? a : b));
-    return { m, pr, best, ent: entropy(pr) };
+    return { it, pr, best, ent: entropy(pr) };
   });
-  const ranked = [...fc.keys()].sort((a, b) => fc[b].ent - fc[a].ent);
+  const ranked = [...fc.keys()].filter((i) => fc[i].pr).sort((a, b) => fc[b].ent - fc[a].ent);
   const mult = {};
   ranked.slice(0, tri).forEach((i) => (mult[i] = ["1", "X", "2"]));
   let d = 0;
   for (const i of ranked) { if (d >= dob) break; if (mult[i]) continue; mult[i] = Object.keys(fc[i].pr).sort((a, b) => fc[i].pr[b] - fc[i].pr[a]).slice(0, 2); d++; }
   let cost = 1; fc.forEach((_, i) => (cost *= mult[i] ? mult[i].length : 1));
-  let pAll = 1; fc.forEach((f, i) => { const sel = mult[i] || [f.best]; pAll *= sel.reduce((s, x) => s + f.pr[x], 0); });
-  const plenoScore = pleno?.markets?.marcador?.split("-").map((n) => parseInt(n, 10));
+  let pAll = 1; fc.forEach((f, i) => { if (!f.pr) return; const sel = mult[i] || [f.best]; pAll *= sel.reduce((s, x) => s + f.pr[x], 0); });
+  const nPred = fc.filter((f) => f.pr).length;
+  const plenoScore = pleno?.m?.markets?.marcador?.split("-").map((n) => parseInt(n, 10));
   const plenoSigns = plenoScore ? [plenoSign(plenoScore[0]), plenoSign(plenoScore[1])] : null;
+
   const copy = async () => {
-    const lines = fc.map((f, i) => { const sel = mult[i] || [f.best]; return `${i + 1}. ${f.m.home} - ${f.m.away}  →  ${sel.join("/")}`; });
-    if (pleno && plenoSigns) lines.push(`P15. ${pleno.home} - ${pleno.away}  →  ${plenoSigns[0]} - ${plenoSigns[1]}`);
+    const lines = fc.map((f, i) => { const sel = f.pr ? (mult[i] || [f.best]) : ["-"]; return `${i + 1}. ${f.it.local} - ${f.it.visitante}  →  ${sel.join("/")}`; });
+    if (pleno) lines.push(`P15. ${pleno.local} - ${pleno.visitante}  →  ${plenoSigns ? plenoSigns.join(" - ") : "-"}`);
     lines.push(`Coste: ${cost} columnas`);
     try { await navigator.clipboard.writeText(lines.join("\n")); setCopied(true); setTimeout(() => setCopied(false), 1800); } catch { /* ignore */ }
   };
+
   return (
     <>
       <div className="card">
+        {official
+          ? <div className="lbl">🎫 Quiniela oficial{quiniela.jornada ? ` · Jornada ${quiniela.jornada}` : ""} (LAE) con los signos del modelo</div>
+          : <div className="lbl">Quiniela del modelo (15 partidos con predicción). Añade <code>football/data/quiniela.json</code> para usar la combinación oficial de LAE.</div>}
         <div className="row">
           <div className="grow"><div className="lbl">Triples</div><input type="range" min="0" max="8" value={tri} className="grow" onChange={(e) => setTri(+e.target.value)} /> {tri}</div>
           <div className="grow"><div className="lbl">Dobles</div><input type="range" min="0" max="8" value={dob} className="grow" onChange={(e) => setDob(+e.target.value)} /> {dob}</div>
         </div>
         <div className="chips">
-          {ms.length < 14 && <span className="chip">Solo <b>{ms.length}</b>/14 con predicción</span>}
+          {nPred < ms.length && <span className="chip">{ms.length - nPred} sin predicción del modelo</span>}
           <span className="chip">Coste <b>{cost}</b> columnas</span>
-          <span className="chip">Prob. pleno al {ms.length} <b>{(pAll * 100).toFixed(3)}%</b></span>
+          <span className="chip">Prob. pleno <b>{(pAll * 100).toFixed(3)}%</b></span>
           <button className="mini" onClick={copy}>{copied ? "✓ Copiado" : "📋 Copiar quiniela"}</button>
         </div>
       </div>
       {fc.map((f, i) => {
-        const sel = mult[i] || [f.best];
+        const sel = f.pr ? (mult[i] || [f.best]) : null;
         return (
           <div className="card" key={i} style={{ padding: "10px 14px" }}>
-            <div className="ctop"><span>{i + 1} · {f.m.league} J{f.m.matchday || ""}</span><span>{fmtKick(f.m.kickoff)}</span></div>
+            <div className="ctop"><span>{i + 1}{f.it.m ? ` · ${f.it.m.league} J${f.it.m.matchday || ""}` : ""}</span><span>{f.it.m ? fmtKick(f.it.m.kickoff) : ""}</span></div>
             <div className="row" style={{ justifyContent: "space-between" }}>
-              <div className="tn" style={{ flex: 1 }}>{f.m.home} <span style={{ color: "var(--dim)" }}>vs</span> {f.m.away}</div>
-              <div className="q-sign">{sel.map((s) => <span key={s} className={"q-" + s}>{s}</span>)}</div>
+              <div className="tn" style={{ flex: 1 }}>{f.it.local} <span style={{ color: "var(--dim)" }}>vs</span> {f.it.visitante}</div>
+              <div className="q-sign">{sel ? sel.map((s) => <span key={s} className={"q-" + s}>{s}</span>) : <span className="dim">sin pred.</span>}</div>
             </div>
-            <div className="chips"><span className="chip">1 <b>{f.m.probs[0]}%</b></span><span className="chip">X <b>{f.m.probs[1]}%</b></span><span className="chip">2 <b>{f.m.probs[2]}%</b></span></div>
+            {f.pr && <div className="chips"><span className="chip">1 <b>{f.it.m.probs[0]}%</b></span><span className="chip">X <b>{f.it.m.probs[1]}%</b></span><span className="chip">2 <b>{f.it.m.probs[2]}%</b></span></div>}
           </div>
         );
       })}
-      {pleno && plenoSigns && (
+      {pleno && (
         <div className="card pleno" style={{ padding: "12px 14px" }}>
-          <div className="ctop"><span>🏆 Pleno al 15 · {pleno.league} J{pleno.matchday || ""}</span><span>{fmtKick(pleno.kickoff)}</span></div>
+          <div className="ctop"><span>🏆 Pleno al 15{pleno.m ? ` · ${pleno.m.league} J${pleno.m.matchday || ""}` : ""}</span><span>{pleno.m ? fmtKick(pleno.m.kickoff) : ""}</span></div>
           <div className="row" style={{ justifyContent: "space-between" }}>
-            <div className="tn" style={{ flex: 1 }}>{pleno.home} <span style={{ color: "var(--dim)" }}>vs</span> {pleno.away}</div>
-            <div className="q-sign pleno-sc">{plenoSigns[0]} <span style={{ color: "var(--dim)" }}>-</span> {plenoSigns[1]}</div>
+            <div className="tn" style={{ flex: 1 }}>{pleno.local} <span style={{ color: "var(--dim)" }}>vs</span> {pleno.visitante}</div>
+            <div className="q-sign pleno-sc">{plenoSigns ? <>{plenoSigns[0]} <span style={{ color: "var(--dim)" }}>-</span> {plenoSigns[1]}</> : <span className="dim">sin pred.</span>}</div>
           </div>
-          <div className="chips"><span className="chip">Marcador previsto <b>{pleno.markets.marcador}</b></span></div>
+          {pleno.m?.markets?.marcador && <div className="chips"><span className="chip">Marcador previsto <b>{pleno.m.markets.marcador}</b></span></div>}
         </div>
       )}
     </>
@@ -619,7 +638,7 @@ export default function App() {
               {view === "jugadores" && <Jugadores />}
               {view === "value" && <ValueBets matches={matches} bank={bank} setBank={setBank} />}
               {view === "cartera" && <Cartera matches={matches} />}
-              {view === "quiniela" && <Quiniela matches={matches} tri={tri} dob={dob} setTri={setTri} setDob={setDob} />}
+              {view === "quiniela" && <Quiniela matches={matches} quiniela={data.quiniela} tri={tri} dob={dob} setTri={setTri} setDob={setDob} />}
               {view === "datos" && <Datos data={data} />}
             </>
           )}

@@ -224,6 +224,7 @@ def build_dashboard(
         "schema_version": 2,
         "generated_at": generated_at,
         "season": season,
+        "quiniela": _load_quiniela_oficial(),
         "engine": "dixon-coles" if any(item["engine"] == "dixon-coles" for item in matches) else "calendar-only",
         "data_sources": {
             "fixtures": "football-data.org (LaLiga) · football-data.co.uk (Segunda)",
@@ -243,6 +244,40 @@ def build_dashboard(
         "matches": matches,
         "errors": errors,
     }
+
+
+def _load_quiniela_oficial() -> dict | None:
+    """Combinación oficial de la quiniela (14 + Pleno al 15).
+
+    1) Override manual: football/data/quiniela.json (fiable; se puede rellenar a
+       mano o con el fetch de LAE desde una IP española).
+    2) Intento a la API de LAE (suele dar 403 fuera de España / en runners CI).
+    Devuelve {jornada, fecha, partidos:[{orden, local, visitante}]} o None.
+    """
+    path = Path(DATA_DIR) / "quiniela.json"
+    if path.exists():
+        try:
+            q = json.loads(path.read_text(encoding="utf-8"))
+            if q.get("partidos"):
+                return q
+        except Exception:
+            pass
+    try:
+        from .ingest.quiniela_lae import get_current_quiniela
+
+        q = get_current_quiniela()
+        if q:
+            return {
+                "jornada": q.jornada,
+                "fecha": q.fecha,
+                "partidos": [
+                    {"orden": m.orden, "local": m.local, "visitante": m.visitante}
+                    for m in q.partidos
+                ],
+            }
+    except Exception:
+        pass
+    return None
 
 
 def _seed_fixtures(league: str, season: int) -> list:
