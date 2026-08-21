@@ -77,3 +77,22 @@ export function kelly(p, o) {
 export function entropy(pr) {
   return -[pr[1], pr.X, pr[2]].reduce((s, x) => s + (x > 0 ? x * Math.log(x) : 0), 0);
 }
+
+// Cuotas decimales -> probabilidades implícitas "justas" (sin margen del
+// operador). Normaliza 1/cuota para que sumen 1, quitando el overround (vig).
+export function fairProbs(odds) {
+  const inv = odds.map((o) => (o > 1 ? 1 / o : 0));
+  const s = inv.reduce((a, b) => a + b, 0);
+  if (s <= 0) return odds.map(() => 0);
+  return inv.map((v) => v / s);
+}
+
+// Margen del operador (overround) a partir de las cuotas: cuánto se lleva la casa.
+export function overround(odds) {
+  return odds.reduce((a, o) => a + (o > 1 ? 1 / o : 0), 0) - 1;
+}
+
+// Signo del Pleno al 15 de la quiniela: 0, 1, 2 o M (3 o más goles).
+export function plenoSign(goals) {
+  return goals >= 3 ? "M" : String(goals);
+}

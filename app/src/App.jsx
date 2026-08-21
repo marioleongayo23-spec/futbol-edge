@@ -1,8 +1,36 @@
 import { useEffect, useMemo, useState } from "react";
-import { accent, CREST_FALLBACK, fmtKick, hasPrediction, loadFeed } from "./feed";
-import { entropy, kelly } from "./poisson";
+import { accent, CREST_FALLBACK, feedAgeHours, fmtKick, hasPrediction, isStale, loadFeed } from "./feed";
+import { entropy, fairProbs, kelly, overround, plenoSign } from "./poisson";
+import { leaguesIn, projectedTable } from "./standings";
 import MatchDetail from "./MatchDetail";
 import { ALLOWED_EMAIL, authEnabled, sendMagicLink, signOut, useSession } from "./supabase";
+
+/* ---------- Tema claro/oscuro ---------- */
+function useTheme() {
+  const [theme, setTheme] = useState(() => {
+    try { return localStorage.getItem("theme") || "dark"; } catch { return "dark"; }
+  });
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    try { localStorage.setItem("theme", theme); } catch { /* ignore */ }
+  }, [theme]);
+  return [theme, () => setTheme((t) => (t === "dark" ? "light" : "dark"))];
+}
+
+/* ---------- Skeleton de carga ---------- */
+function Skeletons({ n = 5 }) {
+  return (
+    <>
+      {Array.from({ length: n }).map((_, i) => (
+        <div className="card" key={i} aria-hidden="true">
+          <div className="skel" style={{ width: "45%", height: 12 }} />
+          <div className="skel" style={{ width: "100%", height: 40, marginTop: 14 }} />
+          <div className="skel" style={{ width: "100%", height: 30, marginTop: 12 }} />
+        </div>
+      ))}
+    </>
+  );
+}
 
 function Login() {
   const [email, setEmail] = useState("");
@@ -39,7 +67,7 @@ function MatchCard({ m, onOpen }) {
       </div>
       <div className="teams">
         <div className="team">
-          <img className="crest" src={m.homeCrest || CREST_FALLBACK} onError={(e) => (e.target.src = CREST_FALLBACK)} />
+          <img className="crest" alt="" loading="lazy" src={m.homeCrest || CREST_FALLBACK} onError={(e) => (e.target.src = CREST_FALLBACK)} />
           <div style={{ minWidth: 0 }}><div className="tn">{m.home}</div><div className="cbar" style={{ background: accent(m.homeColors) }} /></div>
         </div>
         <div className="mid">
@@ -48,7 +76,7 @@ function MatchCard({ m, onOpen }) {
               : <div className="kick">{fmtKick(m.kickoff)}</div>}
         </div>
         <div className="team away">
-          <img className="crest" src={m.awayCrest || CREST_FALLBACK} onError={(e) => (e.target.src = CREST_FALLBACK)} />
+          <img className="crest" alt="" loading="lazy" src={m.awayCrest || CREST_FALLBACK} onError={(e) => (e.target.src = CREST_FALLBACK)} />
           <div style={{ minWidth: 0 }}><div className="tn">{m.away}</div><div className="cbar" style={{ background: accent(m.awayColors) }} /></div>
         </div>
       </div>
@@ -64,8 +92,66 @@ function MatchCard({ m, onOpen }) {
   );
 }
 
+/* ---------- Clasificación proyectada ---------- */
+function Clasificacion({ matches }) {
+  const ligas = useMemo(() => leaguesIn(matches), [matches]);
+  const [liga, setLiga] = useState(ligas[0] || "");
+  const table = useMemo(() => projectedTable(matches, liga || ligas[0]), [matches, liga, ligas]);
+  if (!table.length) return <div className="state">Sin datos de clasificación.</div>;
+  const maxPts = Math.max(...table.map((t) => t.ptsProy), 1);
+  return (
+    <>
+      <div className="card">
+        <div className="lbl">Clasificación proyectada a fin de temporada</div>
+        <p className="note" style={{ color: "var(--muted)" }}>
+          Puntos = reales de lo jugado + esperados del modelo (3·P(gana)+1·P(empata)) en los partidos con predicción.
+        </p>
+        {ligas.length > 1 && (
+          <select value={liga} onChange={(e) => setLiga(e.target.value)} style={{ marginTop: 6 }}>
+            {ligas.map((l) => <option key={l} value={l}>{l}</option>)}
+          </select>
+        )}
+      </div>
+      <div className="card" style={{ padding: "6px 10px", overflowX: "auto" }}>
+        <table className="tbl-cls">
+          <thead>
+            <tr><th>#</th><th className="tl">Equipo</th><th>PJ</th><th>Pts</th><th>Proy.</th><th>DG*</th></tr>
+          </thead>
+          <tbody>
+            {table.map((t, i) => (
+              <tr key={t.name} className={i < 4 ? "row-ucl" : i < 6 ? "row-eur" : i >= table.length - 3 ? "row-desc" : ""}>
+                <td>{i + 1}</td>
+                <td className="tl">
+                  <div className="cls-team">
+                    <img className="crest sm" alt="" loading="lazy" src={t.crest || CREST_FALLBACK} onError={(e) => (e.target.src = CREST_FALLBACK)} />
+                    <span className="tn">{t.name}</span>
+                  </div>
+                  <div className="cls-bar"><span style={{ width: (t.ptsProy / maxPts * 100).toFixed(1) + "%" }} /></div>
+                </td>
+                <td>{t.pj}</td>
+                <td>{t.ptsReal}</td>
+                <td><b>{t.ptsProy}</b></td>
+                <td className={t.difGoles >= 0 ? "value-yes" : "value-no"}>{t.difGoles > 0 ? "+" : ""}{t.difGoles}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="foot" style={{ marginTop: 8 }}>
+        <span className="dot d-ucl" /> Champions · <span className="dot d-eur" /> Europa · <span className="dot d-desc" /> Descenso ·
+        &nbsp;*DG = diferencia de goles proyectada (real + xG del modelo).
+      </div>
+    </>
+  );
+}
+
+/* ---------- Quiniela (14 + Pleno al 15, dobles/triples y exportar) ---------- */
 function Quiniela({ matches, tri, dob, setTri, setDob }) {
-  const ms = matches.filter(hasPrediction).slice(0, 14);
+  const [copied, setCopied] = useState(false);
+  const pool = matches.filter(hasPrediction).slice(0, 15);
+  const ms = pool.slice(0, 14);
+  const pleno = pool[14];
+
   const fc = ms.map((m) => {
     const pr = { 1: m.probs[0] / 100, X: m.probs[1] / 100, 2: m.probs[2] / 100 };
     const best = Object.keys(pr).reduce((a, b) => (pr[a] > pr[b] ? a : b));
@@ -78,6 +164,21 @@ function Quiniela({ matches, tri, dob, setTri, setDob }) {
   for (const i of ranked) { if (d >= dob) break; if (mult[i]) continue; mult[i] = Object.keys(fc[i].pr).sort((a, b) => fc[i].pr[b] - fc[i].pr[a]).slice(0, 2); d++; }
   let cost = 1; fc.forEach((_, i) => (cost *= mult[i] ? mult[i].length : 1));
   let pAll = 1; fc.forEach((f, i) => { const sel = mult[i] || [f.best]; pAll *= sel.reduce((s, x) => s + f.pr[x], 0); });
+
+  // Pleno al 15: marcador exacto (0/1/2/M por equipo).
+  const plenoScore = pleno?.markets?.marcador?.split("-").map((n) => parseInt(n, 10));
+  const plenoSigns = plenoScore ? [plenoSign(plenoScore[0]), plenoSign(plenoScore[1])] : null;
+
+  const copy = async () => {
+    const lines = fc.map((f, i) => {
+      const sel = mult[i] || [f.best];
+      return `${i + 1}. ${f.m.home} - ${f.m.away}  →  ${sel.join("/")}`;
+    });
+    if (pleno && plenoSigns) lines.push(`P15. ${pleno.home} - ${pleno.away}  →  ${plenoSigns[0]} - ${plenoSigns[1]}`);
+    lines.push(`Coste: ${cost} columnas`);
+    try { await navigator.clipboard.writeText(lines.join("\n")); setCopied(true); setTimeout(() => setCopied(false), 1800); } catch { /* ignore */ }
+  };
+
   return (
     <>
       <div className="card">
@@ -89,6 +190,7 @@ function Quiniela({ matches, tri, dob, setTri, setDob }) {
           {ms.length < 14 && <span className="chip">Solo <b>{ms.length}</b>/14 con predicción (pretemporada / falta Segunda)</span>}
           <span className="chip">Coste <b>{cost}</b> columnas</span>
           <span className="chip">Prob. pleno al {ms.length} <b>{(pAll * 100).toFixed(3)}%</b></span>
+          <button className="mini" onClick={copy}>{copied ? "✓ Copiado" : "📋 Copiar quiniela"}</button>
         </div>
       </div>
       {fc.map((f, i) => {
@@ -108,48 +210,88 @@ function Quiniela({ matches, tri, dob, setTri, setDob }) {
           </div>
         );
       })}
+      {pleno && plenoSigns && (
+        <div className="card pleno" style={{ padding: "12px 14px" }}>
+          <div className="ctop"><span>🏆 Pleno al 15 · {pleno.league} J{pleno.matchday || ""}</span><span>{fmtKick(pleno.kickoff)}</span></div>
+          <div className="row" style={{ justifyContent: "space-between" }}>
+            <div className="tn" style={{ flex: 1 }}>{pleno.home} <span style={{ color: "var(--dim)" }}>vs</span> {pleno.away}</div>
+            <div className="q-sign pleno-sc">{plenoSigns[0]} <span style={{ color: "var(--dim)" }}>-</span> {plenoSigns[1]}</div>
+          </div>
+          <div className="chips"><span className="chip">Marcador previsto <b>{pleno.markets.marcador}</b></span></div>
+        </div>
+      )}
     </>
   );
 }
 
+/* ---------- Value bets (quita el margen y calcula edge) ---------- */
 function ValueBets({ matches, bankroll }) {
   const ms = matches.filter(hasPrediction);
   const [odds, setOdds] = useState({});
   const bank = Number(bankroll) || 1000;
   if (!ms.length) return <div className="state">No hay partidos con predicción.</div>;
-  return ms.map((m, i) => {
-    const pr = { 1: m.probs[0] / 100, X: m.probs[1] / 100, 2: m.probs[2] / 100 };
+
+  const rows = ms.map((m, i) => {
+    const pr = [m.probs[0] / 100, m.probs[1] / 100, m.probs[2] / 100];
+    const o = ["1", "X", "2"].map((s) => Number(odds[i + s]));
+    const haveAll = o.every((x) => x > 1);
+    const fair = haveAll ? fairProbs(o) : null;
+    const vig = haveAll ? overround(o) : null;
     let best = null;
-    ["1", "X", "2"].forEach((s) => {
-      const o = Number(odds[i + s]);
-      if (o > 1) { const e = pr[s] * o - 1; if (!best || e > best.e) best = { s, o, e }; }
-    });
-    const stake = best ? Math.min(bank * kelly(pr[best.s], best.o) * 0.25, bank * 0.05) : 0;
-    return (
-      <div className="card" key={i}>
-        <div className="row" style={{ justifyContent: "space-between" }}>
-          <div className="tn" style={{ flex: 1 }}>{m.home} vs {m.away}</div>
-          <div className="chips">
-            <span className="chip">1 <b>{m.probs[0]}%</b></span><span className="chip">X <b>{m.probs[1]}%</b></span><span className="chip">2 <b>{m.probs[2]}%</b></span>
+    o.forEach((oo, j) => { if (oo > 1) { const e = pr[j] * oo - 1; if (!best || e > best.e) best = { j, s: ["1", "X", "2"][j], o: oo, e }; } });
+    const stake = best ? Math.min(bank * kelly(pr[best.j], best.o) * 0.25, bank * 0.05) : 0;
+    return { m, i, pr, o, fair, vig, best, stake };
+  });
+  const nValue = rows.filter((r) => r.best && r.best.e > 0.02).length;
+  const nWithOdds = rows.filter((r) => r.best).length;
+
+  return (
+    <>
+      <div className="card">
+        <div className="chips" style={{ marginTop: 0 }}>
+          <span className="chip">Con cuota <b>{nWithOdds}</b></span>
+          <span className="chip">Value (edge &gt; 2%) <b className={nValue ? "value-yes" : ""}>{nValue}</b></span>
+          <span className="chip">Bankroll <b>{bank.toLocaleString("es-ES")}€</b></span>
+        </div>
+        <p className="note" style={{ color: "var(--muted)" }}>Introduce las 3 cuotas: se quita el margen y se compara la probabilidad justa con la del modelo. Stake = Kelly ¼ (máx. 5%).</p>
+      </div>
+      {rows.map((r) => (
+        <div className="card" key={r.i}>
+          <div className="row" style={{ justifyContent: "space-between" }}>
+            <div className="tn" style={{ flex: 1 }}>{r.m.home} vs {r.m.away}</div>
+            <div className="chips">
+              {["1", "X", "2"].map((s, j) => (
+                <span key={s} className="chip">{s} <b>{r.m.probs[j]}%</b>{r.fair ? <span className="dim"> / {(r.fair[j] * 100).toFixed(0)}%</span> : null}</span>
+              ))}
+            </div>
+          </div>
+          <div className="row" style={{ marginTop: 8 }}>
+            {["1", "X", "2"].map((s, j) => {
+              const e = r.o[j] > 1 ? r.pr[j] * r.o[j] - 1 : null;
+              return (
+                <div key={s} className="odds-in">
+                  <input type="number" step="0.01" placeholder={"Cuota " + s} style={{ width: 92 }}
+                    value={odds[r.i + s] || ""} onChange={(ev) => setOdds({ ...odds, [r.i + s]: ev.target.value })} />
+                  {e != null && <span className={"edge " + (e > 0.02 ? "value-yes" : "value-no")}>{e > 0 ? "+" : ""}{(e * 100).toFixed(1)}%</span>}
+                </div>
+              );
+            })}
+          </div>
+          <div className="row" style={{ marginTop: 6 }}>
+            {r.vig != null && <span className="chip">Margen casa <b>{(r.vig * 100).toFixed(1)}%</b></span>}
+            {r.best && r.best.e > 0.02
+              ? <span className="pill y">VALUE {r.best.s}: edge {(r.best.e * 100).toFixed(1)}% · apostar {r.stake.toFixed(2)}€</span>
+              : r.best ? <span className="value-no">Sin value (mejor {r.best.s}: {(r.best.e * 100).toFixed(1)}%)</span> : null}
           </div>
         </div>
-        <div className="row" style={{ marginTop: 8 }}>
-          {["1", "X", "2"].map((s) => (
-            <input key={s} type="number" step="0.01" placeholder={"Cuota " + s} style={{ width: 96 }}
-              value={odds[i + s] || ""} onChange={(e) => setOdds({ ...odds, [i + s]: e.target.value })} />
-          ))}
-          <span className="grow">
-            {best && best.e > 0.02 ? <span className="pill y">VALUE {best.s}: edge {(best.e * 100).toFixed(1)}% · {stake.toFixed(2)}€</span>
-              : best ? <span className="value-no">Sin value (mejor {best.s}: {(best.e * 100).toFixed(1)}%)</span> : null}
-          </span>
-        </div>
-      </div>
-    );
-  });
+      ))}
+    </>
+  );
 }
 
 export default function App() {
   const { session, ready } = useSession();
+  const [theme, toggleTheme] = useTheme();
   const [data, setData] = useState(null);
   const [err, setErr] = useState("");
   const [tab, setTab] = useState("jornada");
@@ -157,18 +299,26 @@ export default function App() {
   const [md, setMd] = useState("");
   const [st, setSt] = useState("upcoming");
   const [q, setQ] = useState("");
+  const [league, setLeague] = useState("");
   const [bank, setBank] = useState(1000);
   const [tri, setTri] = useState(2);
   const [dob, setDob] = useState(4);
 
   useEffect(() => {
     if (authEnabled && !session) return;
-    loadFeed().then(setData).catch((e) => setErr(e.message));
+    loadFeed().then((d) => {
+      setData(d);
+      // Salto inteligente a la próxima jornada con partidos por jugar.
+      const next = d.matches.filter((m) => !m.finished).map((m) => m.matchday).filter((x) => x != null).sort((a, b) => a - b)[0];
+      if (next != null) setMd(String(next));
+    }).catch((e) => setErr(e.message));
   }, [session]);
 
-  const matches = data?.matches || [];
-  const matchdays = useMemo(() => [...new Set(matches.map((m) => m.matchday).filter((x) => x != null))].sort((a, b) => a - b), [data]);
+  const matches = useMemo(() => data?.matches || [], [data]);
+  const ligas = useMemo(() => leaguesIn(matches), [matches]);
+  const matchdays = useMemo(() => [...new Set(matches.map((m) => m.matchday).filter((x) => x != null))].sort((a, b) => a - b), [matches]);
   const filtered = matches.filter((m) => {
+    if (league && m.league !== league) return false;
     if (md && String(m.matchday) !== md) return false;
     if (st === "upcoming" && m.finished) return false;
     if (st === "done" && !m.finished) return false;
@@ -180,10 +330,16 @@ export default function App() {
   if (authEnabled && !session) return <Login />;
 
   const c = data?.counts || {};
+  const ageH = data ? feedAgeHours(data) : null;
+  const tabs = [["jornada", "📅 Jornada"], ["clasificacion", "🏆 Clasificación"], ["quiniela", "🎫 Quiniela"], ["value", "💰 Value bets"]];
+
   return (
     <>
       <header><div className="wrap h-in">
-        <h1 onClick={() => { setSel(null); setTab("jornada"); }}>⚽ Fútbol Edge</h1>
+        <div className="h-top">
+          <h1 onClick={() => { setSel(null); setTab("jornada"); }}>⚽ Fútbol Edge</h1>
+          <button className="theme-btn" onClick={toggleTheme} title="Cambiar tema" aria-label="Cambiar tema">{theme === "dark" ? "☀️" : "🌙"}</button>
+        </div>
         <div className="h-sub">
           {data ? `Actualizado ${new Date(data.generated_at).toLocaleString("es-ES")} · Temporada ${data.season}` : "Cargando…"}
           {authEnabled && <> · <a onClick={signOut} style={{ cursor: "pointer" }}>salir</a></>}
@@ -197,20 +353,32 @@ export default function App() {
 
       {!sel && (
         <nav><div className="wrap">
-          {[["jornada", "📅 Jornada"], ["quiniela", "🎫 Quiniela"], ["value", "💰 Value bets"]].map(([k, l]) => (
+          {tabs.map(([k, l]) => (
             <button key={k} className={"tab" + (tab === k ? " on" : "")} onClick={() => setTab(k)}>{l}</button>
           ))}
         </div></nav>
       )}
 
       <main className="wrap">
+        {data && isStale(data) && (
+          <div className="banner warn">⚠️ El feed puede estar desactualizado (hace {Math.round(ageH)} h). El cron lo refresca cada 12 h.</div>
+        )}
+        {data?._fromFallback && (
+          <div className="banner">Mostrando copia local del feed (no se pudo cargar el remoto).</div>
+        )}
         {err && <div className="state">No se pudo cargar el feed.<br />{err}</div>}
-        {!data && !err && <div className="state">Cargando datos reales…</div>}
+        {!data && !err && <Skeletons n={5} />}
 
         {data && sel && <MatchDetail m={sel} bankroll={bank} onBack={() => setSel(null)} />}
 
         {data && !sel && tab === "jornada" && <>
           <div className="controls">
+            {ligas.length > 1 && (
+              <select value={league} onChange={(e) => setLeague(e.target.value)}>
+                <option value="">Todas las ligas</option>
+                {ligas.map((l) => <option key={l} value={l}>{l}</option>)}
+              </select>
+            )}
             <select value={md} onChange={(e) => setMd(e.target.value)}>
               <option value="">Toda la jornada</option>
               {matchdays.map((x) => <option key={x} value={x}>Jornada {x}</option>)}
@@ -223,6 +391,8 @@ export default function App() {
           {filtered.length ? filtered.map((m) => <MatchCard key={m.id} m={m} onOpen={setSel} />)
             : <div className="state">No hay partidos para este filtro.</div>}
         </>}
+
+        {data && !sel && tab === "clasificacion" && <Clasificacion matches={matches} />}
 
         {data && !sel && tab === "quiniela" && <Quiniela matches={matches} tri={tri} dob={dob} setTri={setTri} setDob={setDob} />}
 

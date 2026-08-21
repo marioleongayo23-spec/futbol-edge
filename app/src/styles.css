@@ -3,6 +3,13 @@
   --tx:#eaf0f7;--muted:#8ba0b8;--dim:#5b6b82;
   --green:#22c98a;--greenD:#0f6b48;--blue:#5aa2ff;--red:#ff5d6c;--amber:#ffb020;
   --grad:linear-gradient(135deg,#1b8a5a 0%,#155e9c 100%);
+  --navbg:rgba(10,14,20,.94);--skel:#1a2637;
+}
+:root[data-theme="light"]{
+  --bg:#f3f6fb;--bg2:#e9eff7;--card:#ffffff;--card2:#f1f5fb;--line:#d8e1ee;
+  --tx:#0e1c2e;--muted:#5b6d86;--dim:#93a2b8;
+  --greenD:#1e9c6d;
+  --navbg:rgba(255,255,255,.92);--skel:#e4ebf4;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 body{margin:0;background:var(--bg);color:var(--tx);
@@ -18,7 +25,7 @@ h1{margin:0;font-size:1.4rem;font-weight:800;letter-spacing:-.02em;cursor:pointe
 .kpi{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.15);border-radius:12px;padding:6px 11px}
 .kpi b{font-size:1rem;display:block;line-height:1.1}
 .kpi span{font-size:.62rem;color:rgba(255,255,255,.8);text-transform:uppercase;letter-spacing:.04em}
-nav{position:sticky;top:0;z-index:10;background:rgba(10,14,20,.94);backdrop-filter:blur(10px);border-bottom:1px solid var(--line);display:flex;overflow-x:auto}
+nav{position:sticky;top:0;z-index:10;background:var(--navbg);backdrop-filter:blur(10px);border-bottom:1px solid var(--line);display:flex;overflow-x:auto}
 nav .wrap{display:flex;gap:4px}
 .tab{flex:0 0 auto;padding:12px 14px;font-size:.85rem;font-weight:600;color:var(--muted);border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap}
 .tab.on{color:var(--tx);border-bottom-color:var(--green)}
@@ -76,3 +83,44 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 .login{max-width:360px;margin:60px auto;text-align:center}
 .login input{width:100%;margin:10px 0}
 .login button{width:100%;background:var(--green);color:#04110b;font-weight:700;border:none;cursor:pointer}
+
+/* Cabecera: título + botón de tema */
+.h-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.theme-btn{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);border-radius:10px;padding:6px 10px;cursor:pointer;font-size:1rem;line-height:1}
+
+/* Banners de estado del feed */
+.banner{background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:12px 0;font-size:.8rem;color:var(--muted)}
+.banner.warn{border-color:var(--amber);color:var(--amber);background:rgba(255,176,32,.08)}
+
+/* Skeleton de carga */
+.skel{background:linear-gradient(90deg,var(--skel) 25%,var(--card2) 50%,var(--skel) 75%);background-size:200% 100%;border-radius:8px;animation:shimmer 1.3s infinite}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+/* Botón mini (copiar quiniela) */
+.mini{background:var(--card2);border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:.74rem;color:var(--tx);cursor:pointer}
+.mini:hover{border-color:var(--blue)}
+
+/* Clasificación proyectada */
+.tbl-cls{width:100%;border-collapse:collapse;font-size:.82rem}
+.tbl-cls th,.tbl-cls td{padding:7px 6px;text-align:center;border-bottom:1px solid var(--line);white-space:nowrap}
+.tbl-cls th.tl,.tbl-cls td.tl{text-align:left}
+.tbl-cls th{color:var(--muted);font-size:.68rem;text-transform:uppercase;letter-spacing:.03em}
+.cls-team{display:flex;align-items:center;gap:8px;min-width:0}
+.cls-team .tn{font-size:.86rem}
+.crest.sm{width:22px;height:22px}
+.cls-bar{height:4px;border-radius:3px;background:var(--card2);margin-top:4px;overflow:hidden}
+.cls-bar span{display:block;height:100%;background:linear-gradient(90deg,var(--green),var(--blue))}
+.row-ucl{box-shadow:inset 3px 0 0 var(--green)}
+.row-eur{box-shadow:inset 3px 0 0 var(--blue)}
+.row-desc{box-shadow:inset 3px 0 0 var(--red)}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;vertical-align:middle;margin:0 2px}
+.d-ucl{background:var(--green)}.d-eur{background:var(--blue)}.d-desc{background:var(--red)}
+
+/* Value bets: edge por selección */
+.odds-in{display:flex;flex-direction:column;gap:3px;align-items:flex-start}
+.edge{font-size:.7rem;font-weight:700;padding-left:2px}
+.dim{color:var(--dim)}
+
+/* Pleno al 15 */
+.card.pleno{border-color:var(--greenD);background:linear-gradient(180deg,rgba(34,201,138,.06),transparent)}
+.pleno-sc{font-size:1.15rem;color:var(--green)}
