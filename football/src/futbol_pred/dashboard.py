@@ -106,26 +106,21 @@ def fixture_payload(
     payload["players"] = "pendiente_fuente_de_pago"
     payload["odds"] = "pendiente_odds_api"
 
-    # Partido ya jugado: mostramos el resultado real, no predicción.
-    if finished and fixture.home_goals is not None:
+    # Partido ya jugado: resultado real + estadísticas reales para el post-partido.
+    finished_with_result = finished and fixture.home_goals is not None
+    if finished_with_result:
         payload["result"] = [fixture.home_goals, fixture.away_goals]
         payload["engine"] = "resultado-real"
         if real_stats:
             sr = real_stats.get((_canon(fixture.home_team), _canon(fixture.away_team)))
             if sr:
                 payload["statsReal"] = sr
-        return payload
 
     if model is None:
         return payload
     home_id, away_id = _canon(fixture.home_team), _canon(fixture.away_team)
     try:
-        prediction = predict_match(
-            model,
-            home_id,
-            away_id,
-            kickoff=fixture.kickoff,
-        )
+        prediction = predict_match(model, home_id, away_id, kickoff=fixture.kickoff)
         matrix = model.predict_matrix(home_id, away_id)
     except (KeyError, ValueError):
         return payload
@@ -142,17 +137,18 @@ def fixture_payload(
         or max(eh, ea) > 4.5
     )
     if degenerate:
-        payload["engine"] = "datos-insuficientes"
+        # En un partido jugado conservamos el resultado real; solo marcamos que
+        # la predicción no era fiable.
+        if not finished_with_result:
+            payload["engine"] = "datos-insuficientes"
         payload["nota"] = "Modelo aún sin muestra fiable de la temporada"
         return payload
 
     top = matrix.top_correct_scores(1)[0]
+    # Bloque de predicción. En un jugado sirve para comparar con lo real
+    # (esperado vs real); NO tocamos engine, que sigue siendo 'resultado-real'.
     payload.update({
-        "probs": [
-            round(probs["1"] * 100),
-            round(probs["X"] * 100),
-            round(probs["2"] * 100),
-        ],
+        "probs": [round(probs["1"] * 100), round(probs["X"] * 100), round(probs["2"] * 100)],
         "xg": [round(value, 2) for value in prediction.expected_goals],
         "markets": {
             "over_2_5": round(matrix.over(2.5), 3),
@@ -161,8 +157,9 @@ def fixture_payload(
             "btts": round(matrix.btts()["yes"], 3),
             "marcador": f"{top[0]}-{top[1]}",
         },
-        "engine": "dixon-coles",
     })
+    if not finished_with_result:
+        payload["engine"] = "dixon-coles"
 
     # Si algún equipo aún no tiene histórico (recién ascendido, sin datos de la
     # temporada), la predicción usa prior neutro: la marcamos como provisional.
@@ -170,7 +167,7 @@ def fixture_payload(
         payload["provisional"] = True
         payload["nota"] = "Predicción provisional: algún equipo aún sin histórico"
 
-    # Estadísticas por equipo y totales (córners, tarjetas, remates, faltas...).
+    # Estadísticas ESPERADAS por equipo (córners, tarjetas, remates, faltas...).
     if stats is not None:
         try:
             sp = stats.predict_fixture(fixture.home_team, fixture.away_team)
@@ -182,8 +179,8 @@ def fixture_payload(
         except (KeyError, ValueError):
             pass
 
-    # Cuotas reales de mercado (co.uk, gratis) + value bets del modelo.
-    if odds_map:
+    # Cuotas y value bets solo para partidos por jugar.
+    if not finished_with_result and odds_map:
         mo = odds_map.get((_canon(fixture.home_team), _canon(fixture.away_team)))
         if mo:
             _attach_odds_value(payload, mo, prediction.one_x_two, matrix)

@@ -1,5 +1,5 @@
 import { Fragment, useMemo, useState } from "react";
-import { accent, CREST_FALLBACK, fmtKick, hasPrediction } from "./feed";
+import { accent, CREST_FALLBACK, fmtKick } from "./feed";
 import { ah, btts, kelly, matrix, oneXtwo, over, topScores } from "./poisson";
 
 function Teams({ m }) {
@@ -60,7 +60,9 @@ export default function MatchDetail({ m, bankroll, onBack }) {
   const [vSel, setVSel] = useState("1");
   const [vOdds, setVOdds] = useState(2.0);
 
-  const M = useMemo(() => (hasPrediction(m) ? matrix(m.xg[0], m.xg[1]) : null), [m]);
+  // Matriz de marcadores si hay xG. Los partidos jugados también lo traen
+  // (para comparar lo esperado con lo real), aunque hasPrediction los excluya.
+  const M = useMemo(() => (Array.isArray(m.xg) && m.xg.length === 2 ? matrix(m.xg[0], m.xg[1]) : null), [m]);
   const p = M ? oneXtwo(M) : null;
 
   const md = m.matchday ? "J" + m.matchday : (m.stage || "");
@@ -87,8 +89,31 @@ export default function MatchDetail({ m, bankroll, onBack }) {
       </div>
 
       {m.finished && m.result && (
-        <div className="card"><div className="lbl">Resultado real</div>
-          <div className="score" style={{ textAlign: "center" }}>{m.result[0]} – {m.result[1]}</div></div>
+        <div className="card">
+          <div className="lbl">Resultado real</div>
+          <div className="score" style={{ textAlign: "center" }}>{m.result[0]} – {m.result[1]}</div>
+          {m.probs && (() => {
+            const outcome = m.result[0] > m.result[1] ? "1" : m.result[0] < m.result[1] ? "2" : "X";
+            const favIdx = m.probs.indexOf(Math.max(...m.probs));
+            const fav = ["1", "X", "2"][favIdx];
+            const hit = fav === outcome;
+            const pReal = m.probs[{ "1": 0, "X": 1, "2": 2 }[outcome]];
+            return (
+              <div style={{ marginTop: 12 }}>
+                <div className="lbl">Lo que anticipaba el modelo <span className="dim">(incluye forma reciente)</span></div>
+                <div className="chips">
+                  {["1", "X", "2"].map((s, j) => (
+                    <span key={s} className={"chip" + (s === outcome ? " value-yes" : "")}>{s} <b>{m.probs[j]}%</b></span>
+                  ))}
+                  {m.markets?.marcador && <span className="chip">Marcador previsto <b>{m.markets.marcador}</b></span>}
+                </div>
+                <div className="kv" style={{ marginTop: 8 }}><span>Pronóstico 1X2</span>
+                  {hit ? <span className="pill y">✓ Acierto ({fav} era el favorito)</span>
+                    : <span className="value-no">✗ Fallo (favorito {fav}, salió {outcome} · {pReal}%)</span>}</div>
+              </div>
+            );
+          })()}
+        </div>
       )}
 
       {!M && !m.finished && (
@@ -125,6 +150,7 @@ export default function MatchDetail({ m, bankroll, onBack }) {
             <Heat M={M} />
           </div>
 
+          {!m.finished && (<>
           <div className="card">
             <div className="lbl">Over / Under goles</div>
             <div className="row">
@@ -168,8 +194,28 @@ export default function MatchDetail({ m, bankroll, onBack }) {
             <div className="kv"><span>Recomendación</span>
               {edge > 0.02 ? <span className="pill y">APOSTAR · {stake.toFixed(2)}€</span> : <span className="value-no">Sin value</span>}</div>
           </div>
+          </>)}
 
-          {m.stats && (
+          {m.statsReal ? (
+            <div className="card">
+              <div className="lbl">Estadísticas: real vs esperado</div>
+              <table>
+                <thead><tr><th>Métrica</th><th>Local</th><th>Visit.</th></tr></thead>
+                <tbody>
+                  {[["goals", "Goles"], ["shots", "Remates"], ["sot", "Tiros a puerta"], ["corners", "Córners"],
+                    ["fouls", "Faltas"], ["yellows", "Amarillas"], ["reds", "Rojas"]]
+                    .filter(([k]) => m.statsReal[k]).map(([k, lab]) => (
+                      <tr key={k}>
+                        <td>{lab}</td>
+                        <td>{m.statsReal[k].home}{m.stats?.[k] && Math.abs(m.stats[k].home - m.statsReal[k].home) >= 0.5 ? <span className="dim"> · esp {m.stats[k].home}</span> : null}</td>
+                        <td>{m.statsReal[k].away}{m.stats?.[k] && Math.abs(m.stats[k].away - m.statsReal[k].away) >= 0.5 ? <span className="dim"> · esp {m.stats[k].away}</span> : null}</td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+              <p className="note" style={{ color: "var(--muted)" }}>Reales (co.uk) frente a lo que esperaba el modelo. Fuente de stats con ~1 día de retraso.</p>
+            </div>
+          ) : m.stats && (
             <div className="card">
               <div className="lbl">Estadísticas esperadas</div>
               <table>
