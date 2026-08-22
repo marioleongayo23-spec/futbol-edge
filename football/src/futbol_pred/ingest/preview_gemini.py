@@ -12,13 +12,15 @@ Diagnóstico:  python -m futbol_pred.ingest.preview_gemini
 
 from __future__ import annotations
 
-import json
 import os
+import time
 
 import requests
 
 API_KEY = os.getenv("AI_API_KEY") or os.getenv("GEMINI_API_KEY")
-MODEL = os.getenv("GEMINI_MODEL", "gemini-flash-latest")
+# gemini-2.5-flash-lite: gratis y MUY estable (gemini-flash-latest daba 503s
+# intermitentes y respuestas vacías por 'thinking'). Cambiable por env.
+MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash-lite")
 _URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 
 _SYSTEM = (
@@ -62,28 +64,43 @@ def _prompt(m: dict) -> str:
     return _SYSTEM + "\n\nDatos:\n" + "\n".join(partes) + "\n\nEscribe la previa:"
 
 
-def generate_preview(m: dict, timeout: int = 30) -> str | None:
+def generate_preview(m: dict, timeout: int = 30, retries: int = 3) -> str | None:
+    """Genera la previa; reintenta ante límites de ratio (429) o respuestas
+    vacías (los modelos 'thinking' a veces agotan los tokens razonando)."""
     if not API_KEY:
         return None
     body = {
         "contents": [{"parts": [{"text": _prompt(m)}]}],
-        "generationConfig": {"temperature": 0.85, "maxOutputTokens": 500},
+        # maxOutputTokens holgado: los modelos flash 'thinking' consumen tokens
+        # internos antes de escribir; con poco margen devolvían texto vacío.
+        "generationConfig": {"temperature": 0.85, "maxOutputTokens": 1200},
     }
-    try:
-        r = requests.post(
-            _URL.format(model=MODEL),
-            params={"key": API_KEY},
-            json=body,
-            timeout=timeout,
-        )
+    for attempt in range(retries):
+        try:
+            r = requests.post(
+                _URL.format(model=MODEL),
+                params={"key": API_KEY},
+                json=body,
+                timeout=timeout,
+            )
+        except requests.RequestException:
+            time.sleep(2 * (attempt + 1))
+            continue
+        if r.status_code in (429, 500, 503):  # ratio/servidor: espera y reintenta
+            time.sleep(4 * (attempt + 1))
+            continue
         if not r.ok:
             return None
-        data = r.json()
-        parts = (data.get("candidates") or [{}])[0].get("content", {}).get("parts", [])
-        text = "".join(p.get("text", "") for p in parts).strip()
-        return text or None
-    except (requests.RequestException, ValueError, KeyError, IndexError):
-        return None
+        try:
+            data = r.json()
+            parts = (data.get("candidates") or [{}])[0].get("content", {}).get("parts", [])
+            text = "".join(p.get("text", "") for p in parts).strip()
+        except (ValueError, KeyError, IndexError):
+            text = ""
+        if text:
+            return text
+        time.sleep(2)  # respuesta vacía: un reintento corto
+    return None
 
 
 def _diagnose() -> None:
