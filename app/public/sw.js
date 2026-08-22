@@ -3,7 +3,7 @@
 // un redeploy el index.html cacheado apuntaría a bundles con hash antiguo que ya
 // no existen -> 404 del JS -> pantalla en negro. Network-first evita eso; los
 // assets con hash (inmutables) sí van cache-first.
-const CACHE = "futbol-edge-v3";
+const CACHE = "futbol-edge-v4";
 // BASE = "/" (Vercel) o "/futbol-edge/" (GitHub Pages), derivado de la ruta del SW.
 const BASE = self.location.pathname.replace(/sw\.js$/, "");
 const SHELL = [BASE, BASE + "index.html", BASE + "manifest.webmanifest", BASE + "dashboard.json"];
@@ -43,8 +43,10 @@ self.addEventListener("fetch", (e) => {
 
   // Navegación y feed: NETWORK-FIRST (siempre el HTML/datos frescos del deploy).
   if (isNavigation || isFeed) {
+    // no-store evita que una index.html cacheada por HTTP apunte a bundles viejos.
+    const fresh = isNavigation ? new Request(request, { cache: "no-store" }) : request;
     e.respondWith(
-      fetch(request).then((res) => {
+      fetch(fresh).then((res) => {
         if (res && res.ok && url.origin === self.location.origin) {
           const copy = res.clone();
           caches.open(CACHE).then((c) => c.put(request, copy));
