@@ -378,20 +378,27 @@ function Quiniela({ matches, quiniela, tri, dob, setTri, setDob }) {
 
 /* ---------- Value bets ---------- */
 function ValueBets({ matches, bank, setBank }) {
-  const ms = matches.filter(hasPrediction);
+  const ms = matches.filter(hasPrediction).filter((m) => !m.finished);
   const [odds, setOdds] = useState({});
   const bankN = Number(bank) || 1000;
-  const rows = ms.map((m, i) => {
+  let rows = ms.map((m, i) => {
     const pr = [m.probs[0] / 100, m.probs[1] / 100, m.probs[2] / 100];
-    const o = ["1", "X", "2"].map((s) => Number(odds[i + s]));
+    // Cuotas reales de mercado (media de casas, co.uk) cargadas del feed;
+    // el usuario puede sobrescribirlas escribiendo en el input.
+    const feedO = m.odds?.["1x2"]?.odds || null;
+    const o = ["1", "X", "2"].map((s) => {
+      const v = odds[i + s];
+      return Number(v != null && v !== "" ? v : (feedO ? feedO[s] : NaN));
+    });
     const haveAll = o.every((x) => x > 1);
     const fair = haveAll ? fairProbs(o) : null;
     const vig = haveAll ? overround(o) : null;
     let best = null;
     o.forEach((oo, j) => { if (oo > 1) { const e = pr[j] * oo - 1; if (!best || e > best.e) best = { j, s: ["1", "X", "2"][j], o: oo, e }; } });
     const stake = best ? Math.min(bankN * kelly(pr[best.j], best.o) * 0.25, bankN * 0.05) : 0;
-    return { m, i, pr, o, fair, vig, best, stake };
+    return { m, i, pr, o, feedO, fair, vig, best, stake };
   });
+  rows = rows.sort((a, b) => (b.best?.e ?? -9) - (a.best?.e ?? -9));
   const nValue = rows.filter((r) => r.best && r.best.e > 0.02).length;
   const nWithOdds = rows.filter((r) => r.best).length;
   return (
@@ -404,7 +411,7 @@ function ValueBets({ matches, bank, setBank }) {
             <span className="chip">Value (edge&gt;2%) <b className={nValue ? "value-yes" : ""}>{nValue}</b></span>
           </div>
         </div>
-        <p className="note" style={{ color: "var(--muted)" }}>Introduce las 3 cuotas: se quita el margen y se compara la probabilidad justa con la del modelo. Stake = Kelly ¼ (máx. 5%).</p>
+        <p className="note" style={{ color: "var(--muted)" }}>Cuotas de mercado (media de casas, co.uk) cargadas automáticamente; puedes sobrescribirlas. Se quita el margen y se compara con el modelo. Stake = Kelly ¼ (máx. 5%).</p>
       </div>
       {!ms.length && <div className="state">No hay partidos con predicción.</div>}
       {rows.map((r) => (
@@ -418,7 +425,7 @@ function ValueBets({ matches, bank, setBank }) {
               const e = r.o[j] > 1 ? r.pr[j] * r.o[j] - 1 : null;
               return (
                 <div key={s} className="odds-in">
-                  <input type="number" step="0.01" placeholder={"Cuota " + s} style={{ width: 92 }} value={odds[r.i + s] || ""} onChange={(ev) => setOdds({ ...odds, [r.i + s]: ev.target.value })} />
+                  <input type="number" step="0.01" placeholder={"Cuota " + s} style={{ width: 92 }} value={odds[r.i + s] ?? (r.feedO ? r.feedO[s] : "")} onChange={(ev) => setOdds({ ...odds, [r.i + s]: ev.target.value })} />
                   {e != null && <span className={"edge " + (e > 0.02 ? "value-yes" : "value-no")}>{e > 0 ? "+" : ""}{(e * 100).toFixed(1)}%</span>}
                 </div>
               );

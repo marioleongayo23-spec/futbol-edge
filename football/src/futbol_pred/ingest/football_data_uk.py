@@ -53,6 +53,14 @@ def season_code(season: int) -> str:
     return f"{yy:02d}{(yy + 1) % 100:02d}"
 
 
+def _decode(resp: requests.Response) -> str:
+    """co.uk sirve CSV UTF-8 con BOM, pero sin charset en la cabecera, así que
+    requests lo decodifica como ISO-8859-1 y el BOM queda como 'ï»¿' pegado a la
+    primera columna ('Div'), rompiendo el DictReader. Forzamos utf-8-sig: quita
+    el BOM y respeta los acentos de los nombres de equipo."""
+    return resp.content.decode("utf-8-sig", errors="replace")
+
+
 class FootballDataUKClient:
     def __init__(self, timeout: int = 20):
         self.timeout = timeout
@@ -66,7 +74,7 @@ class FootballDataUKClient:
         url = f"{BASE_URL}/{season_code(season)}/{div}.csv"
         resp = requests.get(url, timeout=self.timeout)
         resp.raise_for_status()
-        return self.parse(resp.text)
+        return self.parse(_decode(resp))
 
     def get_fixtures(self, league: str, season: int) -> list[Fixture]:
         """Fixtures de Segunda/LaLiga desde co.uk (gratis): jugados con resultado
@@ -79,15 +87,49 @@ class FootballDataUKClient:
         try:
             r = requests.get(f"{BASE_URL}/{season_code(season)}/{div}.csv", timeout=self.timeout)
             r.raise_for_status()
-            out += _parse_results(r.text, league, season)
+            out += _parse_results(_decode(r), league, season)
         except requests.RequestException:
             pass
         try:
             r = requests.get(FIXTURES_URL, timeout=self.timeout)
             r.raise_for_status()
-            out += _parse_fixtures(r.text, league, season, div)
+            out += _parse_fixtures(_decode(r), league, season, div)
         except requests.RequestException:
             pass
+        return out
+
+    def get_odds(self, div_filter: str | None = None) -> list[dict]:
+        """Cuotas de los próximos partidos desde fixtures.csv (gratis).
+
+        Devuelve [{div, home, away, odds:{'1x2':{...}, 'ou25':{...}}}]. Usa la
+        media de mercado (AvgH/D/A) y cae a Bet365 si falta. Es la vía libre
+        para value bets sin The Odds API.
+        """
+        try:
+            r = requests.get(FIXTURES_URL, timeout=self.timeout)
+            r.raise_for_status()
+        except requests.RequestException:
+            return []
+        out: list[dict] = []
+        for row in csv.DictReader(io.StringIO(_decode(r).lstrip("﻿"))):
+            div = (row.get("Div") or "").strip()
+            if div_filter and div != div_filter:
+                continue
+            home, away = row.get("HomeTeam"), row.get("AwayTeam")
+            if not home or not away:
+                continue
+            h = _num(row.get("AvgH")) or _num(row.get("B365H"))
+            d = _num(row.get("AvgD")) or _num(row.get("B365D"))
+            a = _num(row.get("AvgA")) or _num(row.get("B365A"))
+            over = _num(row.get("Avg>2.5")) or _num(row.get("B365>2.5"))
+            under = _num(row.get("Avg<2.5")) or _num(row.get("B365<2.5"))
+            odds: dict = {}
+            if h and d and a:
+                odds["1x2"] = {"1": h, "X": d, "2": a}
+            if over and under:
+                odds["ou25"] = {"over": over, "under": under}
+            if odds:
+                out.append({"div": div, "home": home, "away": away, "odds": odds})
         return out
 
     @staticmethod
@@ -144,7 +186,7 @@ def _parse_date(date: str | None, time: str | None) -> datetime | None:
 def _parse_results(text: str, league: str, season: int) -> list[Fixture]:
     """Partidos jugados de SPx.csv (con fecha y resultado)."""
     out: list[Fixture] = []
-    for row in csv.DictReader(io.StringIO(text)):
+    for row in csv.DictReader(io.StringIO(text.lstrip("﻿"))):
         home, away = row.get("HomeTeam"), row.get("AwayTeam")
         hg, ag = _int(row.get("FTHG")), _int(row.get("FTAG"))
         if not home or not away or hg is None or ag is None:
@@ -162,9 +204,13 @@ def _parse_results(text: str, league: str, season: int) -> list[Fixture]:
 
 
 def _parse_fixtures(text: str, league: str, season: int, div: str) -> list[Fixture]:
-    """Próximos partidos de fixtures.csv (todas las ligas), filtrados por división."""
+    """Próximos partidos de fixtures.csv (todas las ligas), filtrados por división.
+
+    OJO: fixtures.csv viene con BOM al inicio, que rompería la clave 'Div' del
+    DictReader (quedaría '﻿Div') y descartaría todas las filas. Se limpia.
+    """
     out: list[Fixture] = []
-    for row in csv.DictReader(io.StringIO(text)):
+    for row in csv.DictReader(io.StringIO(text.lstrip("﻿"))):
         if (row.get("Div") or "").strip() != div:
             continue
         home, away = row.get("HomeTeam"), row.get("AwayTeam")

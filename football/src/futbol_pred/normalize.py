@@ -38,7 +38,8 @@ _LALIGA: list[TeamEntry] = [
     TeamEntry("Real Madrid", ("Real Madrid CF",)),
     TeamEntry("Betis", ("Real Betis Balompié", "Real Betis")),
     TeamEntry("Ath Madrid", ("Club Atlético de Madrid", "Atletico Madrid",
-                             "Atlético Madrid", "Atlético de Madrid")),
+                             "Atlético Madrid", "Atlético de Madrid", "Atl. Madrid",
+                             "Atl Madrid")),
     TeamEntry("Levante", ("Levante UD",)),
     TeamEntry("Osasuna", ("CA Osasuna",)),
     TeamEntry("Sociedad", ("Real Sociedad de Fútbol", "Real Sociedad")),
@@ -60,7 +61,8 @@ _SPAIN_EXTRA: list[TeamEntry] = [
     TeamEntry("Eibar", ("SD Eibar",)),
     TeamEntry("Malaga", ("Málaga CF", "Málaga")),
     TeamEntry("Zaragoza", ("Real Zaragoza",)),
-    TeamEntry("Santander", ("Racing Santander", "Real Racing Club")),
+    TeamEntry("Santander", ("Racing Santander", "Real Racing Club",
+                            "Real Racing Club de Santander")),
     TeamEntry("Sp Gijon", ("Sporting Gijón", "Real Sporting de Gijón")),
     TeamEntry("Tenerife", ("CD Tenerife",)),
     TeamEntry("Albacete", ("Albacete BP", "Albacete Balompié")),
@@ -75,7 +77,8 @@ _SPAIN_EXTRA: list[TeamEntry] = [
     TeamEntry("Alcorcon", ("AD Alcorcón", "Alcorcón")),
     TeamEntry("Castellon", ("CD Castellón", "Castellón")),
     TeamEntry("Cordoba", ("Córdoba CF", "Córdoba")),
-    TeamEntry("Deportivo", ("Deportivo La Coruña", "RC Deportivo", "RC Deportivo de La Coruña")),
+    TeamEntry("Deportivo", ("Deportivo La Coruña", "RC Deportivo", "RC Deportivo de La Coruña",
+                            "RC Deportivo La Coruña", "Dep. A Coruna", "Dep A Coruna", "La Coruna")),
 ]
 
 # --- Grandes de Champions (para cruzar ligas; se irá ampliando) ------------

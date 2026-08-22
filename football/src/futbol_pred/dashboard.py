@@ -71,6 +71,8 @@ def fixture_payload(
     generated_at: str,
     stats=None,
     team_meta: dict | None = None,
+    real_stats: dict | None = None,
+    odds_map: dict | None = None,
 ) -> dict:
     kickoff = ensure_aware(fixture.kickoff).astimezone(MADRID)
     team_meta = team_meta or {}
@@ -108,6 +110,10 @@ def fixture_payload(
     if finished and fixture.home_goals is not None:
         payload["result"] = [fixture.home_goals, fixture.away_goals]
         payload["engine"] = "resultado-real"
+        if real_stats:
+            sr = real_stats.get((_canon(fixture.home_team), _canon(fixture.away_team)))
+            if sr:
+                payload["statsReal"] = sr
         return payload
 
     if model is None:
@@ -175,7 +181,59 @@ def fixture_payload(
                 }
         except (KeyError, ValueError):
             pass
+
+    # Cuotas reales de mercado (co.uk, gratis) + value bets del modelo.
+    if odds_map:
+        mo = odds_map.get((_canon(fixture.home_team), _canon(fixture.away_team)))
+        if mo:
+            _attach_odds_value(payload, mo, prediction.one_x_two, matrix)
     return payload
+
+
+def _attach_odds_value(payload: dict, market_odds: dict, one_x_two: dict, matrix) -> None:
+    """Añade payload['odds'] (mercado + prob. justa sin vig) y payload['value']
+    (edge del modelo por selección) usando cuotas reales de co.uk."""
+    from .value.odds import remove_vig
+
+    block: dict = {}
+    value: list[dict] = []
+
+    o = market_odds.get("1x2")
+    if o and all(o.get(k) for k in ("1", "X", "2")):
+        fair = remove_vig([o["1"], o["X"], o["2"]])
+        block["1x2"] = {
+            "odds": {k: round(o[k], 2) for k in ("1", "X", "2")},
+            "fair": {"1": round(fair[0], 3), "X": round(fair[1], 3), "2": round(fair[2], 3)},
+        }
+        for sel in ("1", "X", "2"):
+            mp = one_x_two.get(sel, 0.0)
+            value.append({
+                "market": "1x2", "selection": sel, "odds": round(o[sel], 2),
+                "modelProb": round(mp, 3), "edge": round(mp * o[sel] - 1.0, 3),
+            })
+
+    ou = market_odds.get("ou25")
+    if ou and ou.get("over") and ou.get("under"):
+        try:
+            p_over = matrix.over(2.5)
+        except (KeyError, ValueError):
+            p_over = None
+        if p_over is not None:
+            fair = remove_vig([ou["over"], ou["under"]])
+            block["ou25"] = {
+                "odds": {"over": round(ou["over"], 2), "under": round(ou["under"], 2)},
+                "fair": {"over": round(fair[0], 3), "under": round(fair[1], 3)},
+            }
+            for sel, mp in (("over", p_over), ("under", 1.0 - p_over)):
+                value.append({
+                    "market": "ou25", "selection": sel, "odds": round(ou[sel], 2),
+                    "modelProb": round(mp, 3), "edge": round(mp * ou[sel] - 1.0, 3),
+                })
+
+    if block:
+        payload["odds"] = block
+        value.sort(key=lambda v: v["edge"], reverse=True)
+        payload["value"] = value
 
 
 def build_dashboard(
@@ -206,9 +264,12 @@ def build_dashboard(
                 model = None
             stats = _fit_stats(league, season)
             meta = _team_meta(league, season)
+            real_stats = _real_stats_map(league, season)
+            odds_map = _odds_map(league)
             # TODOS los partidos de la temporada (resultados + próximos).
             matches.extend(
-                fixture_payload(fx, model, generated_at, stats=stats, team_meta=meta)
+                fixture_payload(fx, model, generated_at, stats=stats, team_meta=meta,
+                                real_stats=real_stats, odds_map=odds_map)
                 for fx in sorted(fixtures, key=lambda item: ensure_aware(item.kickoff))
             )
         except Exception as exc:  # una liga no debe tumbar el resto del feed
@@ -230,9 +291,9 @@ def build_dashboard(
         "engine": "dixon-coles" if any(item["engine"] == "dixon-coles" for item in matches) else "calendar-only",
         "data_sources": {
             "fixtures": "football-data.org (LaLiga) · football-data.co.uk (Segunda)",
-            "stats": "football-data.co.uk (remates, córners, faltas, tarjetas)",
+            "stats": "football-data.co.uk (remates, córners, faltas, tarjetas — reales y esperadas)",
             "players": "football-data.org (/scorers: goleadores y asistencias)",
-            "odds": "pendiente (requiere The Odds API u similar)",
+            "odds": "football-data.co.uk (media de mercado: 1X2 y over/under 2.5)",
         },
         "disclaimer": "Probabilidades y ventaja estadística, no certezas. "
                       "Los datos de jugadores y cuotas se muestran como pendientes "
@@ -388,6 +449,39 @@ def _fit_stats(league: str, season: int):
         return StatsPredictor().fit(rows)
     except Exception:
         return None
+
+
+def _real_stats_map(league: str, season: int) -> dict:
+    """Estadísticas REALES por partido jugado (co.uk), clave (canon_local, canon_visitante)."""
+    if league not in ("laliga", "segunda"):
+        return {}
+    try:
+        from .ingest.football_data_uk import FootballDataUKClient
+
+        rows = FootballDataUKClient().get_stats(league, season)
+    except Exception:
+        return {}
+    out: dict = {}
+    for ms in rows:
+        key = (_canon(ms.home_team), _canon(ms.away_team))
+        out[key] = {
+            k: {"home": v[0], "away": v[1], "total": v[0] + v[1]}
+            for k, v in ms.stats.items()
+        }
+    return out
+
+
+def _odds_map(league: str) -> dict:
+    """Cuotas de próximos partidos (co.uk fixtures.csv), clave (canon_local, canon_visitante)."""
+    if league not in ("laliga", "segunda"):
+        return {}
+    try:
+        from .ingest.football_data_uk import DIV_CODE, FootballDataUKClient
+
+        rows = FootballDataUKClient().get_odds(DIV_CODE.get(league))
+    except Exception:
+        return {}
+    return {(_canon(r["home"]), _canon(r["away"])): r["odds"] for r in rows}
 
 
 def main() -> int:
