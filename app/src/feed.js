@@ -53,6 +53,36 @@ export function isStale(data) {
 export const CREST_FALLBACK =
   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Ccircle cx='20' cy='20' r='18' fill='%23182231' stroke='%23233048'/%3E%3C/svg%3E";
 
+// Iniciales de un equipo (p. ej. "Real Oviedo" -> "OV", "Sporting de Gijón" -> "SG").
+const CREST_STOP = new Set(["cf", "fc", "cd", "ud", "sd", "rc", "cp", "de", "la", "el", "los", "real", "club", "b"]);
+function crestInitials(name) {
+  const words = (name || "").normalize("NFD").replace(/[̀-ͯ]/g, "")
+    .split(/[\s.]+/).filter((w) => w && !CREST_STOP.has(w.toLowerCase()));
+  const src = words.length ? words : [(name || "?")];
+  let ini = src.slice(0, 2).map((w) => w[0]).join("");
+  if (ini.length < 2 && (name || "").length >= 2) ini = name.slice(0, 2);
+  return ini.toUpperCase().slice(0, 3);
+}
+const CREST_PALETTE = ["#3b74d6", "#22c98a", "#ff5d6c", "#a371f7", "#ff9d4d", "#e3b341", "#39d0ff", "#c0473a", "#5aa2ff", "#a23b52"];
+function crestHashColor(name) {
+  let h = 0; for (const c of (name || "")) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  return CREST_PALETTE[h % CREST_PALETTE.length];
+}
+
+// Escudo real si lo hay; si no, un monograma (iniciales sobre color del club),
+// así ningún equipo se ve "sin escudo" (Segunda no trae escudos gratis).
+export function crestFor(name, colors, crest) {
+  if (crest) return crest;
+  const col = accent(colors);
+  const bg = col && col !== "var(--line)" ? col : crestHashColor(name);
+  const ini = crestInitials(name);
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='40' height='40'>`
+    + `<circle cx='20' cy='20' r='18' fill='${bg}' stroke='rgba(255,255,255,.18)'/>`
+    + `<text x='20' y='25.5' font-family='system-ui,-apple-system,sans-serif' font-size='13' `
+    + `font-weight='700' fill='#fff' text-anchor='middle'>${ini}</text></svg>`;
+  return "data:image/svg+xml," + encodeURIComponent(svg);
+}
+
 const COLORS = {
   white: "#e6edf3", red: "#ff5d6c", blue: "#5aa2ff", navy: "#3b74d6", sky: "#39d0ff",
   green: "#22c98a", yellow: "#ffb020", gold: "#e3b341", black: "#4a5468", maroon: "#c0473a",

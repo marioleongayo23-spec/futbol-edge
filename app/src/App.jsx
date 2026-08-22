@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { CREST_FALLBACK, feedAgeHours, fmtKick, hasPrediction, isStale, loadFeed } from "./feed";
+import { crestFor, feedAgeHours, fmtKick, hasPrediction, isStale, loadFeed } from "./feed";
 import { entropy, fairProbs, kelly, overround, plenoSign } from "./poisson";
 import { leaguesIn, projectedTable } from "./standings";
 import MatchDetail from "./MatchDetail";
@@ -70,9 +70,9 @@ function MatchRow({ m, onOpen }) {
       <span className="mrow-time">{m.finished ? "FT" : hhmm(m.kickoff)}</span>
       <span className="mrow-body">
         <span className="mrow-line">
-          <span className="mrow-team"><img className="crest xs" alt="" loading="lazy" src={m.homeCrest || CREST_FALLBACK} onError={(e) => (e.target.src = CREST_FALLBACK)} /><span className="tn">{m.home}</span></span>
+          <span className="mrow-team"><img className="crest xs" alt="" loading="lazy" src={crestFor(m.home, m.homeColors, m.homeCrest)} onError={(e) => (e.target.src = crestFor(m.home, m.homeColors, null))} /><span className="tn">{m.home}</span></span>
           <span className="mrow-cen">{m.finished && m.result ? `${m.result[0]}–${m.result[1]}` : (m.markets?.marcador || "·")}</span>
-          <span className="mrow-team rev"><span className="tn">{m.away}</span><img className="crest xs" alt="" loading="lazy" src={m.awayCrest || CREST_FALLBACK} onError={(e) => (e.target.src = CREST_FALLBACK)} /></span>
+          <span className="mrow-team rev"><span className="tn">{m.away}</span><img className="crest xs" alt="" loading="lazy" src={crestFor(m.away, m.awayColors, m.awayCrest)} onError={(e) => (e.target.src = crestFor(m.away, m.awayColors, null))} /></span>
         </span>
         {pred && (
           <span className="mrow-bar">
@@ -196,7 +196,7 @@ function Clasificacion({ matches }) {
               return (
                 <tr key={t.name} className={i < 4 ? "row-ucl" : i < 6 ? "row-eur" : i >= table.length - 3 ? "row-desc" : ""}>
                   <td>{i + 1}</td>
-                  <td className="tl"><div className="cls-team"><img className="crest sm" alt="" loading="lazy" src={t.crest || CREST_FALLBACK} onError={(e) => (e.target.src = CREST_FALLBACK)} /><span className="tn">{t.name}</span></div></td>
+                  <td className="tl"><div className="cls-team"><img className="crest sm" alt="" loading="lazy" src={crestFor(t.name, t.colors, t.crest)} onError={(e) => (e.target.src = crestFor(t.name, t.colors, null))} /><span className="tn">{t.name}</span></div></td>
                   <td>{t.pj}</td><td>{t.w}</td><td>{t.d}</td><td>{t.l}</td><td>{t.gf}</td><td>{t.ga}</td>
                   <td className={gd >= 0 ? "value-yes" : "value-no"}>{gd > 0 ? "+" : ""}{gd}</td>
                   <td><b>{mode === "real" ? t.ptsReal : t.ptsProy}</b></td>
@@ -217,8 +217,11 @@ function Clasificacion({ matches }) {
 
 /* ---------- Mercados ---------- */
 function Mercados({ matches, q, onOpen }) {
-  const ms = matches.filter(hasPrediction).filter((m) => !q || (m.home + " " + m.away + " " + m.league).toLowerCase().includes(q.toLowerCase()));
-  if (!ms.length) return <div className="state">No hay partidos con mercados para “{q}”.</div>;
+  // Al buscar, incluimos también los jugados (cualquiera con predicción);
+  // navegando sin buscar, solo los próximos con predicción.
+  const base = q.trim() ? matches.filter((m) => Array.isArray(m.probs)) : matches.filter(hasPrediction);
+  const ms = base.filter((m) => !q || (m.home + " " + m.away + " " + m.league).toLowerCase().includes(q.toLowerCase()));
+  if (!ms.length) return <div className="state">{q ? `No hay partidos para “${q}”.` : "No hay partidos con mercados."}</div>;
   const sign = (m) => { const p = [m.probs[0], m.probs[1], m.probs[2]]; const i = p.indexOf(Math.max(...p)); return ["1", "X", "2"][i]; };
   return (
     <div className="card" style={{ padding: "6px 10px", overflowX: "auto" }}>
@@ -768,7 +771,8 @@ export default function App() {
       <div className="main-col">
         <header className="topbar">
           <button className="burger" onClick={() => setMenuOpen((v) => !v)} aria-label="Menú">☰</button>
-          <div className="search"><Icon name="search" /><input placeholder="Buscar equipo o competición…" value={q} onChange={(e) => setQ(e.target.value)} /></div>
+          <div className="search"><Icon name="search" /><input placeholder="Buscar equipo o competición…" value={q}
+            onChange={(e) => { const v = e.target.value; setQ(v); if (v.trim()) { setSel(null); setView("partidos"); } }} /></div>
           <div className="top-right">
             <span className="badge-cal"><span className="dot d-ucl" /> {data ? "Calendario verificado" : "Cargando…"}</span>
             <button className="theme-btn" onClick={toggleTheme} title="Cambiar tema" aria-label="Cambiar tema">{theme === "dark" ? "☀️" : "🌙"}</button>
@@ -776,7 +780,7 @@ export default function App() {
         </header>
 
         <main className="content">
-          {data && isStale(data) && <div className="banner warn">⚠️ El feed puede estar desactualizado (hace {Math.round(feedAgeHours(data))} h). El cron lo refresca cada 12 h.</div>}
+          {data && isStale(data) && <div className="banner warn">⚠️ El feed puede estar desactualizado (hace {Math.round(feedAgeHours(data))} h). El cron lo refresca cada hora.</div>}
           {data?._fromFallback && <div className="banner">Mostrando copia local del feed (no se pudo cargar el remoto).</div>}
           {err && <div className="state">No se pudo cargar el feed.<br />{err}</div>}
           {!data && !err && <Skeletons n={5} />}

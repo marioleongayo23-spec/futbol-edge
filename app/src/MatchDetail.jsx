@@ -1,13 +1,13 @@
 import { Fragment, useMemo, useState } from "react";
-import { accent, CREST_FALLBACK, fmtKick } from "./feed";
+import { accent, crestFor, fmtKick } from "./feed";
 import { ah, btts, kelly, matrix, oneXtwo, over, topScores } from "./poisson";
 
 function Teams({ m }) {
   return (
     <div className="teams">
       <div className="team">
-        <img className="crest" src={m.homeCrest || CREST_FALLBACK}
-          onError={(e) => (e.target.src = CREST_FALLBACK)} />
+        <img className="crest" src={crestFor(m.home, m.homeColors, m.homeCrest)}
+          onError={(e) => (e.target.src = crestFor(m.home, m.homeColors, null))} />
         <div style={{ minWidth: 0 }}>
           <div className="tn">{m.home}</div>
           <div className="cbar" style={{ background: accent(m.homeColors) }} />
@@ -21,8 +21,8 @@ function Teams({ m }) {
             : <div className="kick">{fmtKick(m.kickoff)}</div>}
       </div>
       <div className="team away">
-        <img className="crest" src={m.awayCrest || CREST_FALLBACK}
-          onError={(e) => (e.target.src = CREST_FALLBACK)} />
+        <img className="crest" src={crestFor(m.away, m.awayColors, m.awayCrest)}
+          onError={(e) => (e.target.src = crestFor(m.away, m.awayColors, null))} />
         <div style={{ minWidth: 0 }}>
           <div className="tn">{m.away}</div>
           <div className="cbar" style={{ background: accent(m.awayColors) }} />
