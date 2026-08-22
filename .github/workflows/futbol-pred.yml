@@ -6,9 +6,10 @@ name: futbol-pred (cron)
 
 on:
   schedule:
-    # Cada hora, en punto. El commit solo se hace si el feed cambió,
-    # así que fuera de horario de partidos no genera ruido.
-    - cron: "0 * * * *"
+    # Cada 15 min: durante los partidos los resultados aparecen casi al momento.
+    # El commit solo se hace si el feed cambió, así que fuera de horario de
+    # partidos no genera ruido. (GitHub puede retrasar el cron en picos.)
+    - cron: "*/15 * * * *"
   workflow_dispatch: {}
 
 permissions:
@@ -54,6 +55,7 @@ jobs:
           API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
           ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          AI_API_KEY: ${{ secrets.AI_API_KEY }}
         run: python -m futbol_pred.dashboard
 
       - name: Publicar feed actualizado en la rama

@@ -2,6 +2,7 @@ import { Fragment, useMemo, useState } from "react";
 import { accent, crestFor, fmtKick } from "./feed";
 import { ah, btts, kelly, matrix, oneXtwo, over, topScores } from "./poisson";
 import { confidence, countdown, isSurprise } from "./insights";
+import { teamSquad } from "./teams";
 
 function Teams({ m, onTeam }) {
   const nameStyle = onTeam ? { cursor: "pointer" } : null;
@@ -58,7 +59,7 @@ function Heat({ M }) {
   );
 }
 
-export default function MatchDetail({ m, bankroll, onBack, onTeam }) {
+export default function MatchDetail({ m, bankroll, onBack, onTeam, players }) {
   const [ouL, setOuL] = useState(2.5);
   const [hcL, setHcL] = useState(-0.5);
   const [vSel, setVSel] = useState("1");
@@ -140,6 +141,41 @@ export default function MatchDetail({ m, bankroll, onBack, onTeam }) {
           <p className="note" style={{ color: "var(--muted)", marginTop: 4 }}>Redactado por IA (Gemini) a partir de los números del modelo. No es información de fuentes; interpreta los datos.</p>
         </div>
       )}
+
+      {players && (() => {
+        const hs = teamSquad(players, m.home), as = teamSquad(players, m.away);
+        if (!hs.length && !as.length) return null;
+        const catLine = (icon, label, sq, key) => {
+          const rows = sq.filter((p) => p[key] > 0).sort((a, b) => b[key] - a[key]).slice(0, 2);
+          if (!rows.length) return null;
+          return <div className="kv" style={{ padding: "5px 0" }}><span>{icon} {label}</span><span style={{ textAlign: "right", fontSize: ".82rem" }}>{rows.map((p) => `${p.player} (${p[key]})`).join(" · ")}</span></div>;
+        };
+        const col = (team, sq) => (
+          <div style={{ flex: 1, minWidth: 150 }}>
+            <div className="tn" style={{ marginBottom: 4 }}>{team}</div>
+            {!sq.length ? <div className="dim" style={{ fontSize: ".8rem" }}>Sin datos de jugadores</div> : <>
+              {catLine("⚽", "Gol", sq, "goals")}
+              {catLine("🅰️", "Asist.", sq, "assists")}
+              {catLine("🎯", "Remates", sq, "shots")}
+              {catLine("🟨", "Tarjeta", sq, "yc")}
+            </>}
+          </div>
+        );
+        return (
+          <div className="card">
+            <div className="lbl">Jugadores a seguir <span className="dim">(quién suele hacer cada acción, por forma de la temporada)</span></div>
+            <div className="row" style={{ alignItems: "flex-start", gap: 14 }}>
+              {col(m.home, hs)}
+              {col(m.away, as)}
+            </div>
+            {m.stats && (
+              <p className="note" style={{ color: "var(--muted)" }}>
+                Contexto del modelo (según rival): {m.home} ~{m.stats.shots?.home} remates y {m.stats.yellows?.home} tarjetas; {m.away} ~{m.stats.shots?.away} remates y {m.stats.yellows?.away} tarjetas.
+              </p>
+            )}
+          </div>
+        );
+      })()}
 
       {m.finished && m.result && (
         <div className="card">

@@ -3,7 +3,7 @@ import { crestFor, feedAgeHours, fmtKick, hasPrediction, isStale, loadFeed } fro
 import { entropy, fairProbs, kelly, overround, plenoSign } from "./poisson";
 import { leaguesIn, projectedTable } from "./standings";
 import { teamProfile, teamSquad } from "./teams";
-import { bestValue, confidence, countdown, getFavs, isSurprise, modelAccuracy, recentForm, toggleFav, topValueBets } from "./insights";
+import { bestValue, countdown, getFavs, modelAccuracy, recentForm, toggleFav, topValueBets } from "./insights";
 import MatchDetail from "./MatchDetail";
 import { authEnabled, signOut, useSession } from "./supabase";
 
@@ -953,7 +953,7 @@ export default function App() {
         <header className="topbar">
           <button className="burger" onClick={() => setMenuOpen((v) => !v)} aria-label="Menú">☰</button>
           <div className="search"><Icon name="search" /><input placeholder="Buscar equipo o competición…" value={q}
-            onChange={(e) => { const v = e.target.value; setQ(v); if (v.trim()) { setSel(null); setView("partidos"); } }} /></div>
+            onChange={(e) => { const v = e.target.value; setQ(v); if (v.trim()) { setSel(null); setTeamSel(null); setView("partidos"); } }} /></div>
           <div className="top-right">
             <span className="badge-cal"><span className="dot d-ucl" /> {data ? "Calendario verificado" : "Cargando…"}</span>
             <button className="theme-btn" onClick={toggleTheme} title="Cambiar tema" aria-label="Cambiar tema">{theme === "dark" ? "☀️" : "🌙"}</button>
@@ -961,12 +961,12 @@ export default function App() {
         </header>
 
         <main className="content">
-          {data && isStale(data) && <div className="banner warn">⚠️ El feed puede estar desactualizado (hace {Math.round(feedAgeHours(data))} h). El cron lo refresca cada hora.</div>}
+          {data && isStale(data) && <div className="banner warn">⚠️ El feed puede estar desactualizado (hace {Math.round(feedAgeHours(data))} h). El cron lo refresca cada 15 min.</div>}
           {data?._fromFallback && <div className="banner">Mostrando copia local del feed (no se pudo cargar el remoto).</div>}
           {err && <div className="state">No se pudo cargar el feed.<br />{err}</div>}
           {!data && !err && <Skeletons n={5} />}
 
-          {data && sel && <MatchDetail m={sel} bankroll={bank} onBack={() => setSel(null)} onTeam={openTeam} />}
+          {data && sel && <MatchDetail m={sel} bankroll={bank} onBack={() => setSel(null)} onTeam={openTeam} players={data.players} />}
 
           {data && !sel && teamSel && <TeamPage team={teamSel} matches={matches} players={data.players} onBack={() => setTeamSel(null)} onOpen={open} isFav={favs.has(teamSel)} onFav={onFav} />}
 

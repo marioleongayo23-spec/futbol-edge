@@ -85,7 +85,7 @@ export function getFavs() {
 }
 export function toggleFav(team) {
   const s = getFavs();
-  s.has(team) ? s.delete(team) : s.add(team);
+  if (s.has(team)) s.delete(team); else s.add(team);
   try { localStorage.setItem(FAV_KEY, JSON.stringify([...s])); } catch { /* ignore */ }
   return s;
 }
