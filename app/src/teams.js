@@ -72,22 +72,57 @@ export function teamProfile(matches, team) {
   };
 }
 
-// Goleadores/asistentes de este equipo desde data.players (football-data.org).
-export function teamScorers(players, team) {
+const _norm = (s) => (s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+
+// Clave canónica por equipo de LaLiga. Reglas ORDENADAS (gana la primera):
+// resuelve colisiones — Espanyol antes que Barcelona (su nombre largo la
+// contiene), Atlético antes que "madrid", etc. Une nombres de Understat y de
+// football-data ("Real Madrid" / "Real Madrid CF", "Atletico" / "Club Atlético
+// de Madrid"...). Los que no casan (Segunda) devuelven su nombre normalizado.
+const CANON_RULES = [
+  [/espanyol|espanol/, "espanyol"],
+  [/atl.tico|ath madrid/, "atletico"],
+  [/real madrid/, "real_madrid"],
+  [/rayo|vallecano/, "rayo"],
+  [/betis/, "betis"],
+  [/sociedad/, "sociedad"],
+  [/athletic|ath bilbao|bilbao/, "athletic"],
+  [/celta/, "celta"],
+  [/alav.s/, "alaves"],
+  [/oviedo/, "oviedo"],
+  [/villarreal/, "villarreal"],
+  [/barcelona/, "barcelona"],
+  [/sevilla/, "sevilla"],
+  [/valencia/, "valencia"],
+  [/getafe/, "getafe"],
+  [/girona/, "girona"],
+  [/osasuna/, "osasuna"],
+  [/levante/, "levante"],
+  [/elche/, "elche"],
+  [/mallorca/, "mallorca"],
+];
+function canonTeam(name) {
+  const n = _norm(name);
+  for (const [re, c] of CANON_RULES) if (re.test(n)) return c;
+  return n;
+}
+function _sameTeam(a, b) {
+  const x = canonTeam(a), y = canonTeam(b);
+  return !!x && x === y;
+}
+
+// Plantilla del equipo con estadísticas (Understat): lista completa con stats
+// por jugador. Cae a los rankings (football-data) si no hay lista completa.
+export function teamSquad(players, team) {
   if (!players) return [];
-  const out = [];
-  const norm = (s) => (s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
-  const t = norm(team);
   for (const lg of Object.values(players)) {
-    const r = lg?.rankings || {};
-    for (const [cat, block] of Object.entries(r)) {
-      for (const p of block.players || []) {
-        const pt = norm(p.team);
-        if (pt && (t.includes(pt) || pt.includes(t) || t.split(" ").some((w) => w.length > 3 && pt.includes(w)))) {
-          out.push({ ...p, cat: block.label || cat });
-        }
-      }
+    if (!Array.isArray(lg?.players)) continue;
+    const squad = lg.players.filter((p) => _sameTeam(p.team, team));
+    if (squad.length) {
+      return squad.slice().sort((a, b) =>
+        (b.goals - a.goals) || (b.assists - a.assists) || (b.min - a.min));
     }
   }
-  return out;
+  return [];
 }
+

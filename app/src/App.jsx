@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { crestFor, feedAgeHours, fmtKick, hasPrediction, isStale, loadFeed } from "./feed";
 import { entropy, fairProbs, kelly, overround, plenoSign } from "./poisson";
 import { leaguesIn, projectedTable } from "./standings";
-import { teamProfile, teamScorers } from "./teams";
+import { teamProfile, teamSquad } from "./teams";
 import MatchDetail from "./MatchDetail";
 import { authEnabled, signOut, useSession } from "./supabase";
 
@@ -270,7 +270,7 @@ function Jugadores({ players }) {
           <div className="lbl" style={{ margin: 0 }}>Ranking de jugadores · {cur.label}</div>
           {ligas.length > 1 && <select value={liga} onChange={(e) => setLiga(e.target.value)}>{ligas.map((l) => <option key={l} value={l}>{players[l].label}</option>)}</select>}
         </div>
-        <p className="note" style={{ color: "var(--muted)" }}>Fuente: football-data.org (goleadores y asistencias de la temporada). Alineaciones/lesiones en vivo siguen requiriendo API de pago.</p>
+        <p className="note" style={{ color: "var(--muted)" }}>Fuente: Understat (goles, asistencias, remates, xG y tarjetas por jugador de LaLiga). Se actualiza con el scraper local. Segunda y faltas por jugador no disponibles gratis.</p>
       </div>
       <div className="players-grid">
         {Object.entries(rankings).map(([slug, rk]) => (
@@ -733,7 +733,7 @@ function TeamRec({ r, label }) {
 }
 function TeamPage({ team, matches, players, onBack, onOpen }) {
   const p = useMemo(() => teamProfile(matches, team), [matches, team]);
-  const scorers = useMemo(() => teamScorers(players, team), [players, team]);
+  const squad = useMemo(() => teamSquad(players, team), [players, team]);
   return (
     <div>
       <button className="back" onClick={onBack}>← Volver</button>
@@ -767,10 +767,25 @@ function TeamPage({ team, matches, players, onBack, onOpen }) {
           </table>
         </div>
       )}
-      {scorers.length > 0 && (
-        <div className="card">
-          <div className="lbl">Jugadores destacados</div>
-          {scorers.map((s, i) => <div key={i} className="kv"><span>{s.player} <span className="dim">· {s.cat}</span></span><b>{s.value}</b></div>)}
+      {squad.length > 0 && (
+        <div className="card" style={{ padding: "6px 10px", overflowX: "auto" }}>
+          <div className="lbl" style={{ padding: "6px 6px 0" }}>Plantilla · {squad.length} jugadores <span className="dim">(Understat)</span></div>
+          <table className="tbl-mk">
+            <thead><tr><th className="tl">Jugador</th><th>Pos</th><th>G</th><th>A</th><th>Rem</th><th>xG</th><th>🟨</th></tr></thead>
+            <tbody>
+              {squad.map((s, i) => (
+                <tr key={i}>
+                  <td className="tl"><b>{s.player}</b></td>
+                  <td className="dim">{s.pos}</td>
+                  <td>{s.goals || ""}</td>
+                  <td>{s.assists || ""}</td>
+                  <td>{s.shots || ""}</td>
+                  <td className="dim">{s.xg || ""}</td>
+                  <td>{s.yc || ""}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
       <div className="card" style={{ padding: "6px 10px", overflowX: "auto" }}>

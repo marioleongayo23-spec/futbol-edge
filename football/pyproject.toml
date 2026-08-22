@@ -19,6 +19,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = ["pytest>=7.4"]
 xg = ["soccerdata>=1.6"]
+scraper = ["playwright>=1.40"]  # scraper local de jugadores (Understat)
 
 [project.scripts]
 futbol-pred = "futbol_pred.cli:main"
