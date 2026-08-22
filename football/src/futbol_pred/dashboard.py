@@ -176,14 +176,29 @@ def fixture_payload(
         payload["nota"] = "Predicción provisional: algún equipo aún sin histórico"
 
     # Estadísticas ESPERADAS por equipo (córners, tarjetas, remates, faltas...).
+    # El predictor de stats (co.uk) cae a la media de liga cuando un equipo aún
+    # no tiene muestra, y esa media está sesgada al local → contradecía al modelo
+    # (p. ej. el favorito visitante salía con menos goles/remates). Se ALINEA con
+    # la fuerza del modelo: goles = xG; remates/tiros/córners se reparten según la
+    # cuota de dominio (xG); faltas/tarjetas se dejan neutras (no dependen de quién
+    # domina). Total conservado.
     if stats is not None:
         try:
             sp = stats.predict_fixture(fixture.home_team, fixture.away_team)
             if sp:
-                payload["stats"] = {
-                    k: {"home": v["home"], "away": v["away"], "total": v["total"]}
-                    for k, v in sp.items()
-                }
+                tot_g = eh + ea
+                hshare = (eh / tot_g) if tot_g > 0 else 0.5
+                out_stats = {}
+                for k, v in sp.items():
+                    if k == "goals":
+                        h, a = round(eh, 2), round(ea, 2)
+                    elif k in ("shots", "sot", "corners"):
+                        t = v["total"]
+                        h, a = round(t * hshare, 1), round(t * (1 - hshare), 1)
+                    else:  # faltas, amarillas, rojas: sin sesgo por dominio
+                        h, a = v["home"], v["away"]
+                    out_stats[k] = {"home": h, "away": a, "total": round(h + a, 2)}
+                payload["stats"] = out_stats
         except (KeyError, ValueError):
             pass
 
