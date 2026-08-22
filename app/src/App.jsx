@@ -253,7 +253,7 @@ function Jugadores({ players }) {
     return (
       <div className="card">
         <div className="lbl">Jugadores</div>
-        <p className="note">⚠️ Aún sin datos de jugadores en el feed. El cron los obtiene de as.com (goleadores, asistencias, tarjetas, minutos); aparecerán tras la próxima actualización.</p>
+        <p className="note">⚠️ Aún sin datos de jugadores en el feed. El cron los obtiene de football-data.org (goleadores y asistencias); aparecerán tras la próxima actualización.</p>
       </div>
     );
   }
@@ -266,7 +266,7 @@ function Jugadores({ players }) {
           <div className="lbl" style={{ margin: 0 }}>Ranking de jugadores · {cur.label}</div>
           {ligas.length > 1 && <select value={liga} onChange={(e) => setLiga(e.target.value)}>{ligas.map((l) => <option key={l} value={l}>{players[l].label}</option>)}</select>}
         </div>
-        <p className="note" style={{ color: "var(--muted)" }}>Fuente: as.com. Alineaciones/lesiones en vivo siguen requiriendo API de pago.</p>
+        <p className="note" style={{ color: "var(--muted)" }}>Fuente: football-data.org (goleadores y asistencias de la temporada). Alineaciones/lesiones en vivo siguen requiriendo API de pago.</p>
       </div>
       <div className="players-grid">
         {Object.entries(rankings).map(([slug, rk]) => (
@@ -336,7 +336,7 @@ function Quiniela({ matches, quiniela, tri, dob, setTri, setDob }) {
     <>
       <div className="card">
         {official
-          ? <div className="lbl">🎫 Quiniela oficial{quiniela.jornada ? ` · Jornada ${quiniela.jornada}` : ""} (LAE) con los signos del modelo</div>
+          ? <div className="lbl">🎫 Quiniela oficial{quiniela.jornada ? ` · Jornada ${quiniela.jornada}` : ""} con los signos del modelo</div>
           : <div className="lbl">Quiniela del modelo (15 partidos con predicción). Añade <code>football/data/quiniela.json</code> para usar la combinación oficial de LAE.</div>}
         <div className="row">
           <div className="grow"><div className="lbl">Triples</div><input type="range" min="0" max="8" value={tri} className="grow" onChange={(e) => setTri(+e.target.value)} /> {tri}</div>

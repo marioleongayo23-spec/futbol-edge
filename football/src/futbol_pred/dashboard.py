@@ -231,7 +231,7 @@ def build_dashboard(
         "data_sources": {
             "fixtures": "football-data.org (LaLiga) · football-data.co.uk (Segunda)",
             "stats": "football-data.co.uk (remates, córners, faltas, tarjetas)",
-            "players": "FBref / as.com (override manual football/data/players.json)",
+            "players": "football-data.org (/scorers: goleadores y asistencias)",
             "odds": "pendiente (requiere The Odds API u similar)",
         },
         "disclaimer": "Probabilidades y ventaja estadística, no certezas. "
@@ -283,7 +283,8 @@ def _load_players(season: int) -> dict | None:
             pass
 
     fetchers = []
-    for modname, fn in (("fbref_players", "get_top_players"),
+    for modname, fn in (("players_football_data", "get_top_players"),
+                        ("fbref_players", "get_top_players"),
                         ("players_as", "get_top_players")):
         try:
             mod = __import__(f"futbol_pred.ingest.{modname}", fromlist=[fn])
@@ -322,21 +323,23 @@ def _load_quiniela_oficial() -> dict | None:
                 return q
         except Exception:
             pass
-    try:
-        from .ingest.quiniela_lae import get_current_quiniela
-
-        q = get_current_quiniela()
-        if q:
-            return {
-                "jornada": q.jornada,
-                "fecha": q.fecha,
-                "partidos": [
-                    {"orden": m.orden, "local": m.local, "visitante": m.visitante}
-                    for m in q.partidos
-                ],
-            }
-    except Exception:
-        pass
+    # Fuentes en cascada: LAE (oficial, suele dar 403 a scripts) y luego
+    # quinielafutbol.info (gratis y scrapeable, vía JSON-LD).
+    for module in ("quiniela_lae", "quiniela_quinifutbol"):
+        try:
+            mod = __import__(f"futbol_pred.ingest.{module}", fromlist=["get_current_quiniela"])
+            q = mod.get_current_quiniela()
+            if q and q.partidos:
+                return {
+                    "jornada": q.jornada,
+                    "fecha": q.fecha,
+                    "partidos": [
+                        {"orden": m.orden, "local": m.local, "visitante": m.visitante}
+                        for m in q.partidos
+                    ],
+                }
+        except Exception:
+            continue
     return None
 
 
