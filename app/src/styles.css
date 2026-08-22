@@ -186,7 +186,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 code{background:var(--card2);border:1px solid var(--line);border-radius:5px;padding:1px 5px;font-size:.82em}
 
 /* ===== Dashboard estilo Apple/NASA ===== */
-.stat-tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+.stat-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px}
 .stat{background:linear-gradient(180deg,var(--card),var(--bg2));border:1px solid var(--line);border-radius:16px;padding:14px 16px;position:relative;overflow:hidden}
 .stat::after{content:"";position:absolute;inset:0;background:radial-gradient(120px 60px at 90% -20%,rgba(34,201,138,.10),transparent)}
 .stat-k{font-size:.64rem;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
@@ -282,3 +282,33 @@ code{background:var(--card2);border:1px solid var(--line);border-radius:5px;padd
   .stat-tiles{grid-template-columns:repeat(2,1fr)}
   .quick-links{grid-template-columns:repeat(2,1fr)}
 }
+
+/* --- Mejoras UX/visuales --- */
+/* Puntos de forma reciente */
+.form-dots{display:inline-flex;gap:2px;margin:0 4px;vertical-align:middle}
+.fdot{width:6px;height:6px;border-radius:50%;display:inline-block}
+.fdot.f-W{background:var(--green)}
+.fdot.f-D{background:var(--dim)}
+.fdot.f-L{background:var(--red)}
+/* Etiqueta de value en filas */
+.tag-val{color:var(--amber);margin-right:5px;font-size:.7rem}
+/* Value del día */
+.vd-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 4px;border-top:1px solid var(--line);flex-wrap:wrap}
+.vd-row:first-of-type{border-top:none}
+.vd-team{font-weight:600;font-size:.9rem}
+/* Barra 1X2 con animación de entrada */
+.pbar .seg{animation:segIn .5s cubic-bezier(.2,.8,.2,1) both}
+@keyframes segIn{from{flex-basis:0;opacity:.3}to{opacity:1}}
+/* Estrellas de confianza */
+.conf-stars{letter-spacing:1px}
+.conf-stars .on{color:var(--amber)}
+.conf-stars .off{color:var(--line)}
+/* Botón favorito */
+.fav-btn{background:none;border:none;cursor:pointer;font-size:1.1rem;line-height:1;padding:2px 4px;color:var(--dim)}
+.fav-btn.on{color:var(--amber)}
+/* Cuenta atrás */
+.countdown{color:var(--amber);font-size:.74rem;font-weight:700}
+/* Tooltip con guion inferior (ayuda) */
+.help{border-bottom:1px dotted var(--dim);cursor:help}
+.seg-toggle-btn{background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:9px 13px;font-size:.82rem;font-weight:700;color:var(--muted);cursor:pointer}
+.seg-toggle-btn.on{background:var(--amber);color:#04110b;border-color:var(--amber)}

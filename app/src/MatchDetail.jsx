@@ -1,6 +1,7 @@
 import { Fragment, useMemo, useState } from "react";
 import { accent, crestFor, fmtKick } from "./feed";
 import { ah, btts, kelly, matrix, oneXtwo, over, topScores } from "./poisson";
+import { confidence, countdown, isSurprise } from "./insights";
 
 function Teams({ m, onTeam }) {
   const nameStyle = onTeam ? { cursor: "pointer" } : null;
@@ -62,6 +63,19 @@ export default function MatchDetail({ m, bankroll, onBack, onTeam }) {
   const [hcL, setHcL] = useState(-0.5);
   const [vSel, setVSel] = useState("1");
   const [vOdds, setVOdds] = useState(2.0);
+  const [copied, setCopied] = useState(false);
+
+  const conf = confidence(m);
+  const cd = m.finished ? "" : countdown(m.kickoff);
+  const surprise = isSurprise(m);
+  const share = async () => {
+    const lines = [`${m.home} vs ${m.away} — ${m.league}${m.matchday ? " J" + m.matchday : ""}`];
+    if (m.finished && m.result) lines.push(`Resultado: ${m.result[0]}-${m.result[1]}`);
+    if (Array.isArray(m.probs)) lines.push(`Modelo 1X2: ${m.probs[0]}% / ${m.probs[1]}% / ${m.probs[2]}%`);
+    if (m.markets?.marcador) lines.push(`Marcador previsto: ${m.markets.marcador}`);
+    lines.push("— vía Fútbol Edge");
+    try { await navigator.clipboard.writeText(lines.join("\n")); setCopied(true); setTimeout(() => setCopied(false), 1800); } catch { /* ignore */ }
+  };
 
   // Matriz de marcadores si hay xG. Los partidos jugados también lo traen
   // (para comparar lo esperado con lo real), aunque hasPrediction los excluya.
@@ -89,6 +103,16 @@ export default function MatchDetail({ m, bankroll, onBack, onTeam }) {
       <div className="card">
         <div className="ctop"><span>{m.league} · {md}</span><span>{fmtKick(m.kickoff)}</span></div>
         <Teams m={m} onTeam={onTeam} />
+        <div className="chips" style={{ justifyContent: "center" }}>
+          {cd && <span className="countdown">⏱ {cd}</span>}
+          {conf && !m.finished && (
+            <span className="chip" title={`Confianza ${conf.label} · favorito al ${conf.mx}%`}>
+              Confianza <span className="conf-stars">{[1, 2, 3].map((i) => <span key={i} className={i <= conf.stars ? "on" : "off"}>★</span>)}</span>
+            </span>
+          )}
+          {surprise && !m.finished && <span className="pill y" title="El favorito del modelo no coincide con el del mercado">⚡ Sorpresa</span>}
+          <button className="mini" onClick={share}>{copied ? "✓ Copiado" : "🔗 Compartir"}</button>
+        </div>
       </div>
 
       {Array.isArray(m.h2h) && m.h2h.length > 0 && (
@@ -164,16 +188,23 @@ export default function MatchDetail({ m, bankroll, onBack, onTeam }) {
             <div className="card"><div className="note">⚠️ {m.nota || "Predicción provisional: algún equipo aún sin histórico (recién ascendido). Se afina según juegue."}</div></div>
           )}
           <div className="card">
-            <div className="lbl">Resultado 1X2</div>
-            <div className="pbar">
-              <div className="seg s1" style={{ flex: m.probs[0] }}>{m.probs[0] > 8 ? m.probs[0] + "%" : ""}</div>
-              <div className="seg sx" style={{ flex: m.probs[1] }}>{m.probs[1] > 8 ? m.probs[1] + "%" : ""}</div>
-              <div className="seg s2" style={{ flex: m.probs[2] }}>{m.probs[2] > 8 ? m.probs[2] + "%" : ""}</div>
-            </div>
+            <div className="lbl">{m.finished ? "1X2 que daba el modelo" : "Resultado 1X2"}{m.calibrated && <span className="dim" title="Probabilidad del modelo mezclada con la del mercado (calibrada)"> · calibrado</span>}</div>
+            {(() => {
+              const hc = accent(m.homeColors), ac = accent(m.awayColors);
+              const hs = hc && hc.startsWith("#") ? { background: hc, color: "#fff" } : {};
+              const as = ac && ac.startsWith("#") ? { background: ac, color: "#fff" } : {};
+              return (
+                <div className="pbar">
+                  <div className="seg s1" style={{ flex: m.probs[0], ...hs }} title={`Gana ${m.home}: ${m.probs[0]}%`}>{m.probs[0] > 8 ? m.probs[0] + "%" : ""}</div>
+                  <div className="seg sx" style={{ flex: m.probs[1] }} title={`Empate: ${m.probs[1]}%`}>{m.probs[1] > 8 ? m.probs[1] + "%" : ""}</div>
+                  <div className="seg s2" style={{ flex: m.probs[2], ...as }} title={`Gana ${m.away}: ${m.probs[2]}%`}>{m.probs[2] > 8 ? m.probs[2] + "%" : ""}</div>
+                </div>
+              );
+            })()}
             <div className="chips">
-              <span className="chip">Marcador <b>{m.markets.marcador}</b></span>
-              <span className="chip">xG <b>{m.xg[0]}–{m.xg[1]}</b></span>
-              <span className="chip">BTTS <b>{Math.round(m.markets.btts * 100)}%</b></span>
+              <span className="chip" title="Marcador exacto más probable según el modelo">Marcador <b>{m.markets.marcador}</b></span>
+              <span className="chip help" title="Goles esperados (xG): calidad y cantidad de ocasiones que se esperan por equipo">xG <b>{m.xg[0]}–{m.xg[1]}</b></span>
+              <span className="chip help" title="BTTS = ambos equipos marcan (Both Teams To Score)">BTTS <b>{Math.round(m.markets.btts * 100)}%</b></span>
             </div>
             <div className="lbl">Mapa de marcadores (local ↓ / visitante →)</div>
             <Heat M={M} />

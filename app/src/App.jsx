@@ -3,6 +3,7 @@ import { crestFor, feedAgeHours, fmtKick, hasPrediction, isStale, loadFeed } fro
 import { entropy, fairProbs, kelly, overround, plenoSign } from "./poisson";
 import { leaguesIn, projectedTable } from "./standings";
 import { teamProfile, teamSquad } from "./teams";
+import { bestValue, confidence, countdown, getFavs, isSurprise, modelAccuracy, recentForm, toggleFav, topValueBets } from "./insights";
 import MatchDetail from "./MatchDetail";
 import { authEnabled, signOut, useSession } from "./supabase";
 
@@ -62,18 +63,29 @@ const dayWd = (s) => { try { return new Date(s + "T12:00:00").toLocaleDateString
 const dayNum = (s) => { try { return new Date(s + "T12:00:00").toLocaleDateString("es-ES", { day: "2-digit" }); } catch { return s; } };
 const hhmm = (iso) => { try { return new Date(iso).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" }); } catch { return ""; } };
 
+/* Puntos de forma reciente (V/E/D) */
+function FormDots({ form }) {
+  if (!form || !form.length) return null;
+  return (
+    <span className="form-dots" title="Forma reciente (izq→der, más antiguo→reciente)">
+      {form.map((f, i) => <i key={i} className={"fdot f-" + f} />)}
+    </span>
+  );
+}
+
 /* Fila compacta de partido para el calendario */
-function MatchRow({ m, onOpen }) {
+function MatchRow({ m, onOpen, formMap }) {
   const pred = hasPrediction(m);
   const best = pred ? ["1", "X", "2"][m.probs.indexOf(Math.max(...m.probs))] : null;
+  const val = bestValue(m);
   return (
     <button className="mrow" onClick={() => onOpen(m)}>
       <span className="mrow-time">{m.finished ? "FT" : hhmm(m.kickoff)}</span>
       <span className="mrow-body">
         <span className="mrow-line">
-          <span className="mrow-team"><img className="crest xs" alt="" loading="lazy" src={crestFor(m.home, m.homeColors, m.homeCrest)} onError={(e) => (e.target.src = crestFor(m.home, m.homeColors, null))} /><span className="tn">{m.home}</span></span>
+          <span className="mrow-team"><img className="crest xs" alt="" loading="lazy" src={crestFor(m.home, m.homeColors, m.homeCrest)} onError={(e) => (e.target.src = crestFor(m.home, m.homeColors, null))} /><span className="tn">{m.home}</span>{formMap && <FormDots form={formMap[m.home]} />}</span>
           <span className="mrow-cen">{m.finished && m.result ? `${m.result[0]}–${m.result[1]}` : (m.markets?.marcador || "·")}</span>
-          <span className="mrow-team rev"><span className="tn">{m.away}</span><img className="crest xs" alt="" loading="lazy" src={crestFor(m.away, m.awayColors, m.awayCrest)} onError={(e) => (e.target.src = crestFor(m.away, m.awayColors, null))} /></span>
+          <span className="mrow-team rev"><span className="tn">{m.away}</span>{formMap && <FormDots form={formMap[m.away]} />}<img className="crest xs" alt="" loading="lazy" src={crestFor(m.away, m.awayColors, m.awayCrest)} onError={(e) => (e.target.src = crestFor(m.away, m.awayColors, null))} /></span>
         </span>
         {pred && (
           <span className="mrow-bar">
@@ -81,13 +93,16 @@ function MatchRow({ m, onOpen }) {
           </span>
         )}
       </span>
-      <span className="mrow-tag">{m.league.replace("LaLiga", "1ª").replace("Hypermotion", "").replace("Champions League", "UCL")}{best ? ` · ${best}` : ""}</span>
+      <span className="mrow-tag">
+        {val && <span className="tag-val" title={`Value ${val.selection}: edge ${(val.edge * 100).toFixed(1)}%`}>◆</span>}
+        {m.league.replace("LaLiga", "1ª").replace("Hypermotion", "").replace("Champions League", "UCL")}{best ? ` · ${best}` : ""}
+      </span>
     </button>
   );
 }
 
 /* ---------- Resumen: dashboard de calendario por días ---------- */
-function Resumen({ matches, onOpen, goto }) {
+function Resumen({ matches, onOpen, goto, favs, onTeam }) {
   const days = useMemo(() => [...new Set(matches.map((m) => m.date).filter(Boolean))].sort(), [matches]);
   const startIdx = useMemo(() => {
     const t = todayKey();
@@ -104,6 +119,22 @@ function Resumen({ matches, onOpen, goto }) {
     .sort((a, b) => b.mx - a.mx)[0];
   const strong = predicted.filter((m) => Math.max(...m.probs) >= 55).length;
   const goalsDay = predicted.length ? (predicted.reduce((s, m) => s + (m.xg ? m.xg[0] + m.xg[1] : 0), 0) / predicted.length) : 0;
+  const acc = useMemo(() => modelAccuracy(matches), [matches]);
+  const formMap = useMemo(() => {
+    const map = {};
+    for (const m of dayMatches) { map[m.home] ??= recentForm(matches, m.home); map[m.away] ??= recentForm(matches, m.away); }
+    return map;
+  }, [matches, dayMatches]);
+  const dayValue = useMemo(() => topValueBets(dayMatches, 3), [dayMatches]);
+  const favList = useMemo(() => {
+    if (!favs || !favs.size) return [];
+    const now = Date.now();
+    return [...favs].map((t) => {
+      const fx = matches.filter((m) => m.home === t || m.away === t).sort((a, b) => (a.kickoff || "").localeCompare(b.kickoff || ""));
+      const next = fx.find((m) => new Date(m.kickoff).getTime() >= now) || fx[fx.length - 1];
+      return { team: t, m: next };
+    }).filter((x) => x.m);
+  }, [favs, matches]);
 
   const win = 9;
   const start = Math.max(0, Math.min(idx - 4, Math.max(0, days.length - win)));
@@ -117,7 +148,24 @@ function Resumen({ matches, onOpen, goto }) {
         <div className="stat"><span className="stat-k">Pick del día</span><b className="stat-v accent">{pick ? `${pick.s} · ${pick.mx}%` : "—"}</b><span className="stat-s">{pick ? `${pick.m.home}–${pick.m.away}` : "sin predicción"}</span></div>
         <div className="stat"><span className="stat-k">Picks fuertes</span><b className="stat-v">{strong}</b><span className="stat-s">confianza ≥ 55%</span></div>
         <div className="stat"><span className="stat-k">Goles esperados</span><b className="stat-v">{goalsDay.toFixed(2)}</b><span className="stat-s">media xG por partido</span></div>
+        <div className="stat" title="Aciertos 1X2 del modelo en partidos ya jugados esta temporada"><span className="stat-k">Acierto modelo</span><b className="stat-v accent">{acc.pct != null ? acc.pct + "%" : "—"}</b><span className="stat-s">{acc.total ? `${acc.hits}/${acc.total} aciertos 1X2` : "sin datos aún"}</span></div>
       </div>
+
+      {dayValue.length > 0 && (
+        <div className="card">
+          <div className="lbl">◆ Value del día <span className="dim">(modelo vs mercado)</span></div>
+          {dayValue.map(({ m, selection, edge, odds }) => (
+            <div key={m.id} className="vd-row click" onClick={() => onOpen(m)}>
+              <span className="vd-team">{m.home} <span className="dim">vs</span> {m.away}</span>
+              <span className="chips">
+                <span className="chip">Apuesta <b>{selection}</b></span>
+                <span className="chip">Cuota <b>{odds}</b></span>
+                <span className="pill y">+{(edge * 100).toFixed(1)}%</span>
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="cal">
         <div className="cal-nav">
@@ -141,9 +189,24 @@ function Resumen({ matches, onOpen, goto }) {
       </div>
 
       <div className="day-matches">
-        {dayMatches.length ? dayMatches.map((m) => <MatchRow key={m.id} m={m} onOpen={onOpen} />)
+        {dayMatches.length ? dayMatches.map((m) => <MatchRow key={m.id} m={m} onOpen={onOpen} formMap={formMap} />)
           : <div className="state">No hay partidos este día.</div>}
       </div>
+
+      {favList.length > 0 && (
+        <div className="card">
+          <div className="lbl">★ Tus equipos</div>
+          {favList.map(({ team, m }) => (
+            <div key={team} className="vd-row">
+              <span className="vd-team click" onClick={() => onTeam && onTeam(team)}>{team}</span>
+              <span className="chips">
+                <span className="chip click" onClick={() => onOpen(m)}>{m.finished && m.result ? `${m.result[0]}-${m.result[1]}` : (m.markets?.marcador || "·")} · {m.home === team ? "vs " + m.away : "@ " + m.home}</span>
+                <span className="dim" style={{ fontSize: ".72rem" }}>{m.finished ? "FT" : (countdown(m.kickoff) || fmtKick(m.kickoff))}</span>
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="sec-h" style={{ marginTop: 18 }}>
         <h2>Explora</h2>
@@ -218,19 +281,36 @@ function Clasificacion({ matches, onTeam }) {
 
 /* ---------- Mercados ---------- */
 function Mercados({ matches, q, onOpen }) {
+  const [liga, setLiga] = useState("");
+  const [onlyVal, setOnlyVal] = useState(false);
+  const ligas = useMemo(() => leaguesIn(matches), [matches]);
   // Al buscar, incluimos también los jugados (cualquiera con predicción);
   // navegando sin buscar, solo los próximos con predicción.
   const base = q.trim() ? matches.filter((m) => Array.isArray(m.probs)) : matches.filter(hasPrediction);
-  const ms = base.filter((m) => !q || (m.home + " " + m.away + " " + m.league).toLowerCase().includes(q.toLowerCase()));
-  if (!ms.length) return <div className="state">{q ? `No hay partidos para “${q}”.` : "No hay partidos con mercados."}</div>;
+  const ms = base
+    .filter((m) => !q || (m.home + " " + m.away + " " + m.league).toLowerCase().includes(q.toLowerCase()))
+    .filter((m) => !liga || m.league === liga)
+    .filter((m) => !onlyVal || bestValue(m));
   const sign = (m) => { const p = [m.probs[0], m.probs[1], m.probs[2]]; const i = p.indexOf(Math.max(...p)); return ["1", "X", "2"][i]; };
   return (
-    <div className="card" style={{ padding: "6px 10px", overflowX: "auto" }}>
+    <>
+      <div className="controls">
+        {ligas.length > 1 && (
+          <select value={liga} onChange={(e) => setLiga(e.target.value)}>
+            <option value="">Todas las ligas</option>
+            {ligas.map((l) => <option key={l} value={l}>{l}</option>)}
+          </select>
+        )}
+        <button className={"seg-toggle-btn" + (onlyVal ? " on" : "")} onClick={() => setOnlyVal((v) => !v)}>◆ Solo value</button>
+      </div>
+      {!ms.length ? <div className="state">{q ? `No hay partidos para “${q}”.` : "No hay partidos con estos filtros."}</div> : (
+      <div className="card" style={{ padding: "6px 10px", overflowX: "auto" }}>
       <table className="tbl-mk">
-        <thead><tr><th className="tl">Partido</th><th>1X2</th><th>Marcador</th><th>O2.5</th><th>U2.5</th><th>BTTS</th><th></th></tr></thead>
+        <thead><tr><th className="tl">Partido</th><th>1X2</th><th>Marcador</th><th>O2.5</th><th>U2.5</th><th>BTTS</th><th>◆</th><th></th></tr></thead>
         <tbody>
           {ms.map((m) => {
             const o25 = m.markets?.over_2_5 ?? null;
+            const val = bestValue(m);
             return (
               <tr key={m.id} className="click" onClick={() => onOpen(m)}>
                 <td className="tl"><div className="mk-team"><b>{m.home}</b> <span className="dim">vs</span> {m.away}<div className="mk-sub">{m.league} · J{m.matchday || ""} · {fmtKick(m.kickoff)}</div></div></td>
@@ -239,6 +319,7 @@ function Mercados({ matches, q, onOpen }) {
                 <td>{o25 != null ? Math.round(o25 * 100) + "%" : "—"}</td>
                 <td>{o25 != null ? Math.round((1 - o25) * 100) + "%" : "—"}</td>
                 <td>{m.markets?.btts != null ? Math.round(m.markets.btts * 100) + "%" : "—"}</td>
+                <td>{val ? <span className="value-yes" title={`Value ${val.selection}: +${(val.edge * 100).toFixed(1)}%`}>{val.selection} +{(val.edge * 100).toFixed(0)}%</span> : <span className="dim">—</span>}</td>
                 <td className="dim">›</td>
               </tr>
             );
@@ -246,6 +327,8 @@ function Mercados({ matches, q, onOpen }) {
         </tbody>
       </table>
     </div>
+      )}
+    </>
   );
 }
 
@@ -733,7 +816,7 @@ function TeamRec({ r, label }) {
     </div>
   );
 }
-function TeamPage({ team, matches, players, onBack, onOpen }) {
+function TeamPage({ team, matches, players, onBack, onOpen, isFav, onFav }) {
   const p = useMemo(() => teamProfile(matches, team), [matches, team]);
   const squad = useMemo(() => teamSquad(players, team), [players, team]);
   return (
@@ -742,7 +825,8 @@ function TeamPage({ team, matches, players, onBack, onOpen }) {
       <div className="card">
         <div className="row" style={{ alignItems: "center", gap: 12 }}>
           <img className="crest" alt="" src={crestFor(p.name, p.colors, p.crest)} onError={(e) => (e.target.src = crestFor(p.name, p.colors, null))} />
-          <div><div className="tn" style={{ fontSize: 20, fontWeight: 800 }}>{p.name}</div><div className="kick">{p.league}</div></div>
+          <div style={{ flex: 1 }}><div className="tn" style={{ fontSize: 20, fontWeight: 800 }}>{p.name}</div><div className="kick">{p.league}</div></div>
+          <button className={"fav-btn" + (isFav ? " on" : "")} onClick={() => onFav && onFav(p.name)} title={isFav ? "Quitar de favoritos" : "Añadir a favoritos"}>{isFav ? "★" : "☆"}</button>
         </div>
         {p.form.length > 0 && (
           <div className="chips" style={{ marginTop: 10 }}>
@@ -822,6 +906,7 @@ export default function App() {
   const [view, setView] = useState("resumen");
   const [sel, setSel] = useState(null);
   const [teamSel, setTeamSel] = useState(null);
+  const [favs, setFavs] = useState(getFavs);
   const [q, setQ] = useState("");
   const [bank, setBank] = useState(1000);
   const [tri, setTri] = useState(2);
@@ -833,6 +918,7 @@ export default function App() {
 
   const open = (m) => { setSel(m); window.scrollTo(0, 0); };
   const openTeam = (name) => { setTeamSel(name); setSel(null); setQ(""); window.scrollTo(0, 0); };
+  const onFav = (name) => setFavs(new Set(toggleFav(name)));
   const goto = (v) => { setView(v); setSel(null); setTeamSel(null); setMenuOpen(false); window.scrollTo(0, 0); };
   const userName = session?.user?.email?.split("@")[0] || "Mario León";
 
@@ -882,12 +968,12 @@ export default function App() {
 
           {data && sel && <MatchDetail m={sel} bankroll={bank} onBack={() => setSel(null)} onTeam={openTeam} />}
 
-          {data && !sel && teamSel && <TeamPage team={teamSel} matches={matches} players={data.players} onBack={() => setTeamSel(null)} onOpen={open} />}
+          {data && !sel && teamSel && <TeamPage team={teamSel} matches={matches} players={data.players} onBack={() => setTeamSel(null)} onOpen={open} isFav={favs.has(teamSel)} onFav={onFav} />}
 
           {data && !sel && !teamSel && (
             <>
               <h1 className="view-title">{(NAV.find(([k]) => k === view) || [null, "Resumen"])[1]}</h1>
-              {view === "resumen" && <Resumen data={data} matches={matches} q={q} onOpen={open} goto={goto} />}
+              {view === "resumen" && <Resumen data={data} matches={matches} q={q} onOpen={open} goto={goto} favs={favs} onTeam={openTeam} />}
               {view === "clasificacion" && <Clasificacion matches={matches} onTeam={openTeam} />}
               {view === "partidos" && <Mercados matches={matches} q={q} onOpen={open} />}
               {view === "jugadores" && <Jugadores players={data.players} />}
