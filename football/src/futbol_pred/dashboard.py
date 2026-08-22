@@ -73,6 +73,8 @@ def fixture_payload(
     team_meta: dict | None = None,
     real_stats: dict | None = None,
     odds_map: dict | None = None,
+    model_weight: float = 0.6,
+    h2h: dict | None = None,
 ) -> dict:
     kickoff = ensure_aware(fixture.kickoff).astimezone(MADRID)
     team_meta = team_meta or {}
@@ -105,6 +107,12 @@ def fixture_payload(
     # nunca inventado (jugadores/alineaciones y cuotas requieren fuente de pago).
     payload["players"] = "pendiente_fuente_de_pago"
     payload["odds"] = "pendiente_odds_api"
+
+    # Enfrentamientos directos pasados (hasta 6 más recientes).
+    if h2h:
+        meetings = h2h.get(frozenset((_canon(fixture.home_team), _canon(fixture.away_team))))
+        if meetings:
+            payload["h2h"] = meetings[-6:]
 
     # Partido ya jugado: resultado real + estadísticas reales para el post-partido.
     finished_with_result = finished and fixture.home_goals is not None
@@ -183,13 +191,19 @@ def fixture_payload(
     if not finished_with_result and odds_map:
         mo = odds_map.get((_canon(fixture.home_team), _canon(fixture.away_team)))
         if mo:
-            _attach_odds_value(payload, mo, prediction.one_x_two, matrix)
+            _attach_odds_value(payload, mo, prediction.one_x_two, matrix, model_weight)
     return payload
 
 
-def _attach_odds_value(payload: dict, market_odds: dict, one_x_two: dict, matrix) -> None:
-    """Añade payload['odds'] (mercado + prob. justa sin vig) y payload['value']
-    (edge del modelo por selección) usando cuotas reales de co.uk."""
+def _attach_odds_value(payload: dict, market_odds: dict, one_x_two: dict, matrix,
+                       model_weight: float = 0.6) -> None:
+    """Añade payload['odds'] (mercado + prob. justa sin vig) y payload['value'].
+
+    CALIBRACIÓN: con pocas jornadas el modelo va sobreconfiado, así que las
+    probabilidades finales se mezclan con las del mercado (sin margen) según
+    ``model_weight`` (crece con la temporada). El value se calcula con la
+    probabilidad calibrada → edges realistas, no inflados. Actualiza también
+    payload['probs'] (1X2) con la versión calibrada."""
     from .value.odds import remove_vig
 
     block: dict = {}
@@ -198,15 +212,22 @@ def _attach_odds_value(payload: dict, market_odds: dict, one_x_two: dict, matrix
     o = market_odds.get("1x2")
     if o and all(o.get(k) for k in ("1", "X", "2")):
         fair = remove_vig([o["1"], o["X"], o["2"]])
+        fair_probs = {"1": fair[0], "X": fair[1], "2": fair[2]}
+        # Mezcla modelo ↔ mercado y renormaliza.
+        w = max(0.0, min(1.0, model_weight))
+        cal = {s: w * one_x_two.get(s, 0.0) + (1 - w) * fair_probs[s] for s in ("1", "X", "2")}
+        tot = sum(cal.values()) or 1.0
+        cal = {s: cal[s] / tot for s in cal}
         block["1x2"] = {
             "odds": {k: round(o[k], 2) for k in ("1", "X", "2")},
-            "fair": {"1": round(fair[0], 3), "X": round(fair[1], 3), "2": round(fair[2], 3)},
+            "fair": {k: round(fair_probs[k], 3) for k in ("1", "X", "2")},
         }
+        payload["probs"] = [round(cal["1"] * 100), round(cal["X"] * 100), round(cal["2"] * 100)]
+        payload["calibrated"] = True
         for sel in ("1", "X", "2"):
-            mp = one_x_two.get(sel, 0.0)
             value.append({
                 "market": "1x2", "selection": sel, "odds": round(o[sel], 2),
-                "modelProb": round(mp, 3), "edge": round(mp * o[sel] - 1.0, 3),
+                "modelProb": round(cal[sel], 3), "edge": round(cal[sel] * o[sel] - 1.0, 3),
             })
 
     ou = market_odds.get("ou25")
@@ -217,11 +238,13 @@ def _attach_odds_value(payload: dict, market_odds: dict, one_x_two: dict, matrix
             p_over = None
         if p_over is not None:
             fair = remove_vig([ou["over"], ou["under"]])
+            w = max(0.0, min(1.0, model_weight))
+            cal_over = w * p_over + (1 - w) * fair[0]
             block["ou25"] = {
                 "odds": {"over": round(ou["over"], 2), "under": round(ou["under"], 2)},
                 "fair": {"over": round(fair[0], 3), "under": round(fair[1], 3)},
             }
-            for sel, mp in (("over", p_over), ("under", 1.0 - p_over)):
+            for sel, mp in (("over", cal_over), ("under", 1.0 - cal_over)):
                 value.append({
                     "market": "ou25", "selection": sel, "odds": round(ou[sel], 2),
                     "modelProb": round(mp, 3), "edge": round(mp * ou[sel] - 1.0, 3),
@@ -309,10 +332,19 @@ def build_dashboard(
             meta = _team_meta(league, season)
             real_stats = _real_stats_map(league, season)
             odds_map = _odds_map(league)
+            # Peso del modelo vs mercado para calibrar: con pocas jornadas jugadas
+            # el modelo va sobreconfiado, así que pesa más el mercado; según avanza
+            # la liga, el modelo gana peso. mpt = media de partidos por equipo.
+            played_n = sum(1 for f in fixtures if f.home_goals is not None)
+            teams_n = len({f.home_team for f in fixtures} | {f.away_team for f in fixtures})
+            mpt = (2 * played_n / teams_n) if teams_n else 0
+            model_w = max(0.2, min(0.9, mpt / 12))
+            h2h = _h2h_map(train)  # incluye temporadas previas (sembrado)
             # TODOS los partidos de la temporada (resultados + próximos).
             matches.extend(
                 fixture_payload(fx, model, generated_at, stats=stats, team_meta=meta,
-                                real_stats=real_stats, odds_map=odds_map)
+                                real_stats=real_stats, odds_map=odds_map,
+                                model_weight=model_w, h2h=h2h)
                 for fx in sorted(fixtures, key=lambda item: ensure_aware(item.kickoff))
             )
         except Exception as exc:  # una liga no debe tumbar el resto del feed
@@ -512,6 +544,27 @@ def _real_stats_map(league: str, season: int) -> dict:
             k: {"home": v[0], "away": v[1], "total": v[0] + v[1]}
             for k, v in ms.stats.items()
         }
+    return out
+
+
+def _h2h_map(fixtures) -> dict:
+    """Enfrentamientos directos pasados, clave = par canónico (sin orden).
+    Devuelve {frozenset(canon_a, canon_b): [ {date, home, away, hg, ag} ]}."""
+    out: dict = {}
+    for f in fixtures:
+        if f.home_goals is None or f.away_goals is None:
+            continue
+        key = frozenset((_canon(f.home_team), _canon(f.away_team)))
+        if len(key) != 2:
+            continue
+        ko = f.kickoff
+        out.setdefault(key, []).append({
+            "date": (ko.date().isoformat() if ko else ""),
+            "home": f.home_team, "away": f.away_team,
+            "hg": f.home_goals, "ag": f.away_goals,
+        })
+    for meetings in out.values():
+        meetings.sort(key=lambda m: m["date"])
     return out
 
 

@@ -590,7 +590,9 @@ function Datos({ data }) {
           <li><b>Dixon-Coles</b> con ponderación temporal y corrección de resultados bajos.</li>
           <li><b>Elo</b> dinámico para fuerza de equipos.</li>
           <li><b>Matriz de goles Poisson</b> en cliente → cualquier mercado (over/under, hándicap, BTTS, marcador exacto).</li>
-          <li><b>Value</b>: edge = prob·cuota − 1, staking con Kelly fraccionado.</li>
+          <li><b>Calibración con el mercado</b>: con pocas jornadas jugadas la probabilidad se mezcla con la del mercado (sin margen) y va pesando más el modelo según avanza la liga. Evita edges inflados.</li>
+          <li><b>Cara a cara (h2h)</b>: enfrentamientos directos pasados en el detalle del partido.</li>
+          <li><b>Value</b>: edge = prob·cuota − 1 (con la prob. calibrada), staking con Kelly fraccionado.</li>
         </ul>
       </div>
       <div className="foot">{data.disclaimer}</div>

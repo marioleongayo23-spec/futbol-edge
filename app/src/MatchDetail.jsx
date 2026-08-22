@@ -91,6 +91,22 @@ export default function MatchDetail({ m, bankroll, onBack, onTeam }) {
         <Teams m={m} onTeam={onTeam} />
       </div>
 
+      {Array.isArray(m.h2h) && m.h2h.length > 0 && (
+        <div className="card" style={{ padding: "6px 10px", overflowX: "auto" }}>
+          <div className="lbl" style={{ padding: "6px 6px 0" }}>Cara a cara · últimos {m.h2h.length}</div>
+          <table className="tbl-mk">
+            <tbody>
+              {m.h2h.slice().reverse().map((g, i) => (
+                <tr key={i}>
+                  <td className="tl">{g.home} <b>{g.hg}-{g.ag}</b> {g.away}</td>
+                  <td className="dim" style={{ textAlign: "right" }}>{g.date}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
       {m.preview && (
         <div className="card">
           <div className="lbl">📝 Análisis previo</div>
