@@ -88,6 +88,16 @@ export default function MatchDetail({ m, bankroll, onBack }) {
         <Teams m={m} />
       </div>
 
+      {m.preview && (
+        <div className="card">
+          <div className="lbl">📝 Análisis previo</div>
+          {m.preview.split(/\n+/).filter(Boolean).map((par, i) => (
+            <p key={i} style={{ margin: "0 0 8px", lineHeight: 1.55, color: "var(--text)" }}>{par}</p>
+          ))}
+          <p className="note" style={{ color: "var(--muted)", marginTop: 4 }}>Redactado por IA (Gemini) a partir de los números del modelo. No es información de fuentes; interpreta los datos.</p>
+        </div>
+      )}
+
       {m.finished && m.result && (
         <div className="card">
           <div className="lbl">Resultado real</div>

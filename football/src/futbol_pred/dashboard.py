@@ -233,6 +233,52 @@ def _attach_odds_value(payload: dict, market_odds: dict, one_x_two: dict, matrix
         payload["value"] = value
 
 
+def _attach_previews(matches: list[dict], now: datetime, horizon_days: int = 6, limit: int = 24) -> None:
+    """Añade una previa narrativa (Gemini) a los próximos partidos con predicción.
+
+    Reutiliza las previas del feed anterior (por id) para no re-llamar a Gemini
+    cada hora, y limita por fecha y cantidad para respetar el plan gratuito.
+    Sin clave (AI_API_KEY) no hace nada. Cualquier fallo se ignora en silencio.
+    """
+    try:
+        from .ingest.preview_gemini import API_KEY, generate_preview
+    except Exception:
+        return
+    if not API_KEY:
+        return
+
+    prev: dict[str, str] = {}
+    try:
+        old = json.loads(OUTPUT.read_text(encoding="utf-8"))
+        for m in old.get("matches", []):
+            if m.get("preview") and m.get("id"):
+                prev[m["id"]] = m["preview"]
+    except Exception:
+        pass
+
+    now = ensure_aware(now)
+    cands = [m for m in matches if not m.get("finished") and m.get("probs")]
+    cands.sort(key=lambda m: m.get("kickoff") or "")
+    made = 0
+    for m in cands:
+        cached = prev.get(m.get("id"))
+        if cached:
+            m["preview"] = cached
+            continue
+        if made >= limit:
+            continue
+        try:
+            days = (datetime.fromisoformat(m["kickoff"]) - now).days
+        except Exception:
+            days = 0
+        if days > horizon_days:
+            continue
+        txt = generate_preview(m)
+        if txt:
+            m["preview"] = txt
+            made += 1
+
+
 def build_dashboard(
     now: datetime | None = None,
     horizon_days: int = 10,  # sin uso: ahora incluimos TODA la temporada
@@ -278,6 +324,7 @@ def build_dashboard(
             })
 
     matches.sort(key=lambda item: item["kickoff"])
+    _attach_previews(matches, now)
     return {
         "schema_version": 2,
         "generated_at": generated_at,
