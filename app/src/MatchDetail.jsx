@@ -2,14 +2,16 @@ import { Fragment, useMemo, useState } from "react";
 import { accent, crestFor, fmtKick } from "./feed";
 import { ah, btts, kelly, matrix, oneXtwo, over, topScores } from "./poisson";
 
-function Teams({ m }) {
+function Teams({ m, onTeam }) {
+  const nameStyle = onTeam ? { cursor: "pointer" } : null;
   return (
     <div className="teams">
       <div className="team">
         <img className="crest" src={crestFor(m.home, m.homeColors, m.homeCrest)}
-          onError={(e) => (e.target.src = crestFor(m.home, m.homeColors, null))} />
+          onError={(e) => (e.target.src = crestFor(m.home, m.homeColors, null))}
+          onClick={() => onTeam && onTeam(m.home)} style={nameStyle} />
         <div style={{ minWidth: 0 }}>
-          <div className="tn">{m.home}</div>
+          <div className="tn" style={nameStyle} onClick={() => onTeam && onTeam(m.home)}>{m.home}</div>
           <div className="cbar" style={{ background: accent(m.homeColors) }} />
         </div>
       </div>
@@ -22,9 +24,10 @@ function Teams({ m }) {
       </div>
       <div className="team away">
         <img className="crest" src={crestFor(m.away, m.awayColors, m.awayCrest)}
-          onError={(e) => (e.target.src = crestFor(m.away, m.awayColors, null))} />
+          onError={(e) => (e.target.src = crestFor(m.away, m.awayColors, null))}
+          onClick={() => onTeam && onTeam(m.away)} style={nameStyle} />
         <div style={{ minWidth: 0 }}>
-          <div className="tn">{m.away}</div>
+          <div className="tn" style={nameStyle} onClick={() => onTeam && onTeam(m.away)}>{m.away}</div>
           <div className="cbar" style={{ background: accent(m.awayColors) }} />
         </div>
       </div>
@@ -54,7 +57,7 @@ function Heat({ M }) {
   );
 }
 
-export default function MatchDetail({ m, bankroll, onBack }) {
+export default function MatchDetail({ m, bankroll, onBack, onTeam }) {
   const [ouL, setOuL] = useState(2.5);
   const [hcL, setHcL] = useState(-0.5);
   const [vSel, setVSel] = useState("1");
@@ -85,7 +88,7 @@ export default function MatchDetail({ m, bankroll, onBack }) {
       <button className="back" onClick={onBack}>← Volver a la lista</button>
       <div className="card">
         <div className="ctop"><span>{m.league} · {md}</span><span>{fmtKick(m.kickoff)}</span></div>
-        <Teams m={m} />
+        <Teams m={m} onTeam={onTeam} />
       </div>
 
       {m.preview && (

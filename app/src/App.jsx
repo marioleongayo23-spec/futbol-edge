@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { crestFor, feedAgeHours, fmtKick, hasPrediction, isStale, loadFeed } from "./feed";
 import { entropy, fairProbs, kelly, overround, plenoSign } from "./poisson";
 import { leaguesIn, projectedTable } from "./standings";
+import { teamProfile, teamScorers } from "./teams";
 import MatchDetail from "./MatchDetail";
 import { authEnabled, signOut, useSession } from "./supabase";
 
@@ -158,7 +159,7 @@ function Resumen({ matches, onOpen, goto }) {
 }
 
 /* ---------- Clasificación proyectada ---------- */
-function Clasificacion({ matches }) {
+function Clasificacion({ matches, onTeam }) {
   const ligas = useMemo(() => leaguesIn(matches), [matches]);
   const [liga, setLiga] = useState(ligas[0] || "");
   const [mode, setMode] = useState("real"); // real | proy
@@ -196,7 +197,7 @@ function Clasificacion({ matches }) {
               return (
                 <tr key={t.name} className={i < 4 ? "row-ucl" : i < 6 ? "row-eur" : i >= table.length - 3 ? "row-desc" : ""}>
                   <td>{i + 1}</td>
-                  <td className="tl"><div className="cls-team"><img className="crest sm" alt="" loading="lazy" src={crestFor(t.name, t.colors, t.crest)} onError={(e) => (e.target.src = crestFor(t.name, t.colors, null))} /><span className="tn">{t.name}</span></div></td>
+                  <td className="tl"><div className="cls-team click" onClick={() => onTeam && onTeam(t.name)} style={{ cursor: "pointer" }}><img className="crest sm" alt="" loading="lazy" src={crestFor(t.name, t.colors, t.crest)} onError={(e) => (e.target.src = crestFor(t.name, t.colors, null))} /><span className="tn">{t.name}</span></div></td>
                   <td>{t.pj}</td><td>{t.w}</td><td>{t.d}</td><td>{t.l}</td><td>{t.gf}</td><td>{t.ga}</td>
                   <td className={gd >= 0 ? "value-yes" : "value-no"}>{gd > 0 ? "+" : ""}{gd}</td>
                   <td><b>{mode === "real" ? t.ptsReal : t.ptsProy}</b></td>
@@ -715,6 +716,81 @@ function Cartera({ matches }) {
   );
 }
 
+/* ---------- Página de equipo ---------- */
+const TEAM_STATS = { shots: "Remates", sot: "Tiros a puerta", corners: "Córners", fouls: "Faltas", yellows: "Amarillas" };
+function TeamRec({ r, label }) {
+  return (
+    <div className="card" style={{ flex: 1, minWidth: 150 }}>
+      <div className="lbl">{label}</div>
+      <div className="chips">
+        <span className="chip">PJ <b>{r.pj}</b></span>
+        <span className="chip">{r.w}-{r.d}-{r.l}</span>
+        <span className="chip">GF/GC <b>{r.gf}-{r.ga}</b></span>
+        <span className="chip">Pts <b>{r.pts}</b></span>
+      </div>
+    </div>
+  );
+}
+function TeamPage({ team, matches, players, onBack, onOpen }) {
+  const p = useMemo(() => teamProfile(matches, team), [matches, team]);
+  const scorers = useMemo(() => teamScorers(players, team), [players, team]);
+  return (
+    <div>
+      <button className="back" onClick={onBack}>← Volver</button>
+      <div className="card">
+        <div className="row" style={{ alignItems: "center", gap: 12 }}>
+          <img className="crest" alt="" src={crestFor(p.name, p.colors, p.crest)} onError={(e) => (e.target.src = crestFor(p.name, p.colors, null))} />
+          <div><div className="tn" style={{ fontSize: 20, fontWeight: 800 }}>{p.name}</div><div className="kick">{p.league}</div></div>
+        </div>
+        {p.form.length > 0 && (
+          <div className="chips" style={{ marginTop: 10 }}>
+            <span className="lbl" style={{ margin: 0 }}>Forma</span>
+            {p.form.map((f, i) => <span key={i} className={"pill " + (f === "W" ? "y" : f === "L" ? "" : "")} style={f === "L" ? { background: "var(--red)", color: "#fff" } : f === "D" ? { opacity: .6 } : null}>{f === "W" ? "V" : f === "L" ? "D" : "E"}</span>)}
+          </div>
+        )}
+      </div>
+      <div className="row" style={{ gap: 10, flexWrap: "wrap" }}>
+        <TeamRec r={p.overall} label="Total" />
+        <TeamRec r={p.home} label="Local" />
+        <TeamRec r={p.away} label="Visitante" />
+      </div>
+      {Object.keys(p.tendencies).length > 0 && (
+        <div className="card">
+          <div className="lbl">Tendencias por partido (media real)</div>
+          <table>
+            <thead><tr><th>Métrica</th><th>A favor</th><th>En contra</th></tr></thead>
+            <tbody>
+              {Object.entries(TEAM_STATS).filter(([k]) => p.tendencies[k]).map(([k, lab]) => (
+                <tr key={k}><td>{lab}</td><td>{p.tendencies[k].for}</td><td>{p.tendencies[k].against}</td></tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {scorers.length > 0 && (
+        <div className="card">
+          <div className="lbl">Jugadores destacados</div>
+          {scorers.map((s, i) => <div key={i} className="kv"><span>{s.player} <span className="dim">· {s.cat}</span></span><b>{s.value}</b></div>)}
+        </div>
+      )}
+      <div className="card" style={{ padding: "6px 10px", overflowX: "auto" }}>
+        <div className="lbl" style={{ padding: "6px 6px 0" }}>Partidos</div>
+        <table className="tbl-mk">
+          <tbody>
+            {p.fixtures.map((m) => (
+              <tr key={m.id} className="click" onClick={() => onOpen(m)}>
+                <td className="tl"><div className="mk-team"><b>{m.home}</b> <span className="dim">vs</span> {m.away}<div className="mk-sub">{m.league} · {fmtKick(m.kickoff)}</div></div></td>
+                <td style={{ fontWeight: 700 }}>{m.finished && m.result ? `${m.result[0]}-${m.result[1]}` : (m.markets?.marcador || "—")}</td>
+                <td className="dim">›</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 const NAV = [
   ["resumen", "Resumen"], ["partidos", "Partidos"], ["clasificacion", "Clasificación"],
   ["value", "Value bets"], ["cartera", "Mi cartera"], ["quiniela", "Quiniela"],
@@ -728,6 +804,7 @@ export default function App() {
   const [err, setErr] = useState("");
   const [view, setView] = useState("resumen");
   const [sel, setSel] = useState(null);
+  const [teamSel, setTeamSel] = useState(null);
   const [q, setQ] = useState("");
   const [bank, setBank] = useState(1000);
   const [tri, setTri] = useState(2);
@@ -738,7 +815,8 @@ export default function App() {
   const matches = useMemo(() => data?.matches || [], [data]);
 
   const open = (m) => { setSel(m); window.scrollTo(0, 0); };
-  const goto = (v) => { setView(v); setSel(null); setMenuOpen(false); window.scrollTo(0, 0); };
+  const openTeam = (name) => { setTeamSel(name); setSel(null); setQ(""); window.scrollTo(0, 0); };
+  const goto = (v) => { setView(v); setSel(null); setTeamSel(null); setMenuOpen(false); window.scrollTo(0, 0); };
   const userName = session?.user?.email?.split("@")[0] || "Mario León";
 
   return (
@@ -785,13 +863,15 @@ export default function App() {
           {err && <div className="state">No se pudo cargar el feed.<br />{err}</div>}
           {!data && !err && <Skeletons n={5} />}
 
-          {data && sel && <MatchDetail m={sel} bankroll={bank} onBack={() => setSel(null)} />}
+          {data && sel && <MatchDetail m={sel} bankroll={bank} onBack={() => setSel(null)} onTeam={openTeam} />}
 
-          {data && !sel && (
+          {data && !sel && teamSel && <TeamPage team={teamSel} matches={matches} players={data.players} onBack={() => setTeamSel(null)} onOpen={open} />}
+
+          {data && !sel && !teamSel && (
             <>
               <h1 className="view-title">{(NAV.find(([k]) => k === view) || [null, "Resumen"])[1]}</h1>
               {view === "resumen" && <Resumen data={data} matches={matches} q={q} onOpen={open} goto={goto} />}
-              {view === "clasificacion" && <Clasificacion matches={matches} />}
+              {view === "clasificacion" && <Clasificacion matches={matches} onTeam={openTeam} />}
               {view === "partidos" && <Mercados matches={matches} q={q} onOpen={open} />}
               {view === "jugadores" && <Jugadores players={data.players} />}
               {view === "value" && <ValueBets matches={matches} bank={bank} setBank={setBank} />}
