@@ -6,8 +6,9 @@ name: futbol-pred (cron)
 
 on:
   schedule:
-    # Cada 12 horas: 06:00 y 18:00 UTC (08:00 y 20:00 en Madrid).
-    - cron: "0 6,18 * * *"
+    # Cada hora, en punto. El commit solo se hace si el feed cambió,
+    # así que fuera de horario de partidos no genera ruido.
+    - cron: "0 * * * *"
   workflow_dispatch: {}
 
 permissions:

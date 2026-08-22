@@ -9,7 +9,7 @@ on:
   push:
     branches: [main]
   schedule:
-    - cron: "20 6,18 * * *"   # 20 min después del cron del feed, para llevar lo último
+    - cron: "20 * * * *"   # cada hora, 20 min tras el cron del feed (red de seguridad; el push a main ya redepliega)
   workflow_dispatch: {}
 
 permissions:
