@@ -6,11 +6,12 @@ import math
 
 from scipy.optimize import minimize_scalar
 
-from .backtest.ensemble import temperature_scale
+from .backtest.ensemble import candidate_beats_all_baselines, temperature_scale
 from .backtest.metrics import aggregate
 from .prediction_snapshots import latest_pre_match_snapshot
 
 SIGNS = ("1", "X", "2")
+GATE_METRICS = ("log_loss", "rps")
 
 
 def _dict(values) -> dict[str, float] | None:
@@ -49,6 +50,12 @@ def _fit(rows) -> tuple[float, float]:
     return weight, temp
 
 
+def market_candidate_beats_model(candidate: dict, champion: dict) -> bool:
+    """La mezcla solo se promociona si mejora estrictamente al modelo publicado."""
+
+    return candidate_beats_all_baselines(candidate, {"model": champion})
+
+
 def learn_market_calibration(matches: list[dict], league: str) -> dict | None:
     rows = []
     selected = sorted(
@@ -79,10 +86,7 @@ def learn_market_calibration(matches: list[dict], league: str) -> dict | None:
     champion = [(model, actual) for model, _, actual in validation]
     candidate_metrics = aggregate(candidate)
     champion_metrics = aggregate(champion)
-    accepted = (
-        candidate_metrics["log_loss"] <= champion_metrics["log_loss"]
-        and candidate_metrics["rps"] <= champion_metrics["rps"]
-    )
+    accepted = market_candidate_beats_model(candidate_metrics, champion_metrics)
     prod_weight, prod_temp = _fit(rows)
     return {
         "accepted": accepted,
@@ -90,6 +94,10 @@ def learn_market_calibration(matches: list[dict], league: str) -> dict | None:
         "n_validation": len(validation),
         "validation": candidate_metrics,
         "champion": champion_metrics,
+        "acceptance_gate": {
+            "rule": "strictly_better_than_published_model",
+            "metrics": list(GATE_METRICS),
+        },
         "production": {
             "model_weight": round(prod_weight, 4),
             "market_weight": round(1.0 - prod_weight, 4),
