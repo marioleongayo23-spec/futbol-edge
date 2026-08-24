@@ -7,6 +7,7 @@ fuente real configurada, no sobrescribe el último feed válido con datos demo.
 from __future__ import annotations
 
 import json
+import hashlib
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -20,6 +21,8 @@ from .ingest.api_football import ApiFootballClient, Fixture
 from .ingest.football_data import FootballDataClient
 from .normalize import canonical_team
 from .market_calibration import learn_market_calibration
+from .operational import annotate_prediction_context, attach_official_context, build_alerts, content_audit
+from .performance import build_performance
 from .pipeline import fit_model_from_fixtures, get_fixtures, predict_match, run_model_report
 from .prediction_snapshots import apply_prediction_snapshots, latest_pre_match_snapshot
 
@@ -395,12 +398,18 @@ def _force_ai() -> bool:
 
 
 def _ai_window(now: datetime) -> bool:
-    """Dos pasadas diarias: hora 00 y hora 10 de Madrid."""
+    """Dos controles diarios a las 00:15 y 10:15, tolerando retraso del cron."""
 
     if _force_ai():
         return True
-    hour = ensure_aware(now).astimezone(MADRID).hour
-    return hour in {0, 10}
+    # En Actions un push puede coincidir por casualidad con la hora. Si el
+    # workflow declara el tipo de ejecución, solo el cron abre la ventana.
+    import os
+    refresh_run = os.environ.get("AI_REFRESH_RUN")
+    if refresh_run is not None and not _env_true("AI_REFRESH_RUN"):
+        return False
+    local = ensure_aware(now).astimezone(MADRID)
+    return local.hour in {0, 10} and 15 <= local.minute < 45
 
 
 def _same_match_day(match: dict, now: datetime) -> bool:
@@ -441,6 +450,16 @@ def _mark_attempt(match: dict, kind: str, now: datetime) -> None:
     match["ai_attempts"] = attempts
 
 
+def _content_fingerprint(match: dict, kind: str) -> str:
+    """Huella de los datos que justifican regenerar contenido con IA."""
+
+    fields = ["home", "away", "kickoff", "probs", "xg", "stats", "tendencias"]
+    if kind == "lineup":
+        fields.extend(["players", "status"])
+    raw = {field: match.get(field) for field in fields}
+    return hashlib.sha256(json.dumps(raw, sort_keys=True, default=str).encode()).hexdigest()[:16]
+
+
 def _attach_previews(
     matches: list[dict],
     now: datetime,
@@ -464,8 +483,10 @@ def _attach_previews(
             meta = match.get("preview_meta") or {}
             age = _age_hours(now, meta.get("generated_at"))
             is_local_fallback = meta.get("provider") == "Motor estadístico local"
+            fingerprint = _content_fingerprint(match, "preview")
+            unchanged = meta.get("input_fingerprint") == fingerprint
             fresh = bool(match.get("preview")) and not is_local_fallback and age is not None and age < ttl_hours
-            if fresh and not _force_ai():
+            if (fresh or (unchanged and not is_local_fallback)) and not _force_ai():
                 continue
             if _can_attempt(match, "preview", now):
                 candidates.append(match)
@@ -485,6 +506,7 @@ def _attach_previews(
                 "model": result.model,
                 "generated_at": ensure_aware(now).isoformat(),
                 "quality": result.quality,
+                "input_fingerprint": _content_fingerprint(match, "preview"),
             }
 
     # Nunca se publica un próximo partido con predicción sin resumen. El texto
@@ -502,6 +524,7 @@ def _attach_previews(
                 "generated_at": stamp,
                 "quality": result.quality,
                 "provisional": True,
+                "input_fingerprint": _content_fingerprint(match, "preview"),
             }
 
 
@@ -526,6 +549,11 @@ def _attach_lineups(
     for match in matches:
         if match.get("alineacion"):
             ensure_position_metadata(match["alineacion"])
+            lineup = match["alineacion"]
+            lineup.setdefault(
+                "status",
+                "estimado" if lineup.get("provider") == "Motor estadístico local" else "probable",
+            )
 
     stale = []
     stamp = ensure_aware(now).isoformat()
@@ -537,6 +565,8 @@ def _attach_lineups(
             generated_at = lineup.get("generated_at") or lineup.get("ts")
             age = _age_hours(now, generated_at)
             is_local_fallback = lineup.get("provider") == "Motor estadístico local"
+            fingerprint = _content_fingerprint(match, "lineup")
+            unchanged = lineup.get("input_fingerprint") == fingerprint
             has_positions = (
                 len(lineup.get("posiciones_local") or []) == 11
                 and len(lineup.get("posiciones_visitante") or []) == 11
@@ -545,7 +575,7 @@ def _attach_lineups(
                 bool(lineup) and has_positions and not lineup.get("positions_inferred")
                 and not is_local_fallback and age is not None and age < ttl_hours
             )
-            if fresh and not _force_ai():
+            if (fresh or (unchanged and not is_local_fallback)) and not _force_ai():
                 continue
             if _can_attempt(match, "lineup", now):
                 stale.append(match)
@@ -566,6 +596,8 @@ def _attach_lineups(
                     "generated_at": stamp,
                     "ts": stamp,
                     "fuente": data.get("provider"),
+                    "status": data.get("status") or "probable",
+                    "input_fingerprint": _content_fingerprint(match, "lineup"),
                 }
 
     squads = squads or {}
@@ -581,34 +613,58 @@ def _attach_lineups(
                 "generated_at": stamp,
                 "ts": stamp,
                 "fuente": data.get("provider"),
+                "status": data.get("status") or "estimado",
+                "input_fingerprint": _content_fingerprint(match, "lineup"),
             }
 
-    # Excepción de seguridad para la carga inicial: fuera de ventana completa
-    # una sola vez los huecos sin ninguna alternativa gratuita. Al quedar
-    # cacheados no vuelve a regenerarlos; los refrescos normales son 00:00/10:00.
-    if available() and not _ai_window(now):
-        emergency = sorted([
-            match for match in matches
-            if not match.get("finished") and match.get("probs") and not match.get("alineacion")
-            and _within_horizon(match, now, 400) and _can_attempt(match, "lineup", now)
-        ], key=lambda match: match.get("kickoff") or "")[:10]
-        for match in emergency:
-            _mark_attempt(match, "lineup", now)
-        query = [{"partido": f"{match['home']} vs {match['away']}"} for match in emergency]
-        try:
-            generated = fetch_lineups(query) if query else {}
-        except Exception:
-            generated = {}
-        for match in emergency:
-            data = generated.get(f"{match['home']} vs {match['away']}")
+def _retry_incomplete(matches: list[dict], audit: dict, now: datetime, limit: int = 5) -> int:
+    """Segundo intento granular: una petición por partido, solo si falta contenido."""
+
+    if not _ai_window(now):
+        return 0
+    try:
+        from .ingest.ai_client import available
+        from .ingest.lineups_ai import fetch_lineups
+        from .ingest.preview_gemini import generate_preview
+    except Exception:
+        return 0
+    if not available():
+        return 0
+    by_id = {match.get("id"): match for match in matches}
+    stamp = ensure_aware(now).isoformat()
+    retried = 0
+    for issue in (audit.get("incomplete") or [])[:limit]:
+        match = by_id.get(issue.get("id"))
+        if not match:
+            continue
+        missing = set(issue.get("missing") or [])
+        _mark_attempt(match, "selective_retry", now)
+        if "previa" in missing:
+            try:
+                preview = generate_preview(match)
+            except Exception:
+                preview = None
+            if preview:
+                match["preview"] = preview.text
+                match["preview_meta"] = {
+                    "provider": preview.provider, "model": preview.model,
+                    "generated_at": stamp, "quality": preview.quality,
+                }
+        if missing.intersection({"once", "posiciones", "props"}):
+            key = f"{match['home']} vs {match['away']}"
+            try:
+                data = fetch_lineups([{"partido": key}]).get(key)
+            except Exception:
+                data = None
             if data:
                 match["alineacion"] = {
-                    **data,
-                    "generated_at": stamp,
-                    "ts": stamp,
-                    "fuente": data.get("provider"),
-                    "emergency_backfill": True,
+                    **data, "generated_at": stamp, "ts": stamp,
+                    "fuente": data.get("provider"), "status": data.get("status") or "probable",
+                    "input_fingerprint": _content_fingerprint(match, "lineup"),
+                    "selective_retry": True,
                 }
+        retried += 1
+    return retried
 
 
 def _squad_for(squads: dict[str, list[dict]], team: str | None) -> list[dict]:
@@ -717,6 +773,9 @@ def build_dashboard(
     season = current_season(now)
     generated_at = now.astimezone(MADRID).isoformat()
     previous = load_feed(OUTPUT)
+    from .ingest.ai_client import configure_daily_budget, diagnostics, usage_snapshot
+
+    configure_daily_budget((previous or {}).get("ai_usage"), now.astimezone(MADRID))
     model_report = _load_model_report(season)
     calibration_source = {"model": model_report} if model_report else previous
     market_calibration = {}
@@ -798,7 +857,7 @@ def build_dashboard(
     # convierte una tarjeta que funcionaba en un hueco en blanco.
     if previous:
         preserve_last_known_good(
-            {"schema_version": 5, "matches": matches},
+            {"schema_version": 6, "matches": matches},
             {"schema_version": previous.get("schema_version"), "matches": previous.get("matches", [])},
         )
     base_players = _merge_squad_players(
@@ -817,8 +876,16 @@ def build_dashboard(
     }
     _attach_previews(matches, now)
     _attach_lineups(matches, now, squads=all_squads)
+    official_updates = attach_official_context(matches, now)
+    annotate_prediction_context(matches)
+    first_audit = content_audit(matches, players, now)
+    retried = _retry_incomplete(matches, first_audit, now)
+    audit = content_audit(matches, players, now)
+    audit["selective_retries"] = retried
+    audit["official_lineup_updates"] = official_updates
+    ai_events = diagnostics()
     payload = {
-        "schema_version": 5,
+        "schema_version": 6,
         "generated_at": generated_at,
         "season": season,
         "quiniela": _load_quiniela_oficial(),
@@ -826,6 +893,11 @@ def build_dashboard(
         "model": model_report,
         "market_calibration": market_calibration or None,
         "accuracy": _aggregate_accuracy(matches),
+        "performance": build_performance(matches),
+        "content_audit": audit,
+        "ai_usage": usage_snapshot(),
+        "ai_health": {"events": ai_events[-30:]},
+        "alerts": build_alerts(previous, audit, ai_events, now),
         "engine": (
             "ensemble" if any(item["engine"] == "ensemble" for item in matches)
             else "dixon-coles" if any(item["engine"] == "dixon-coles" for item in matches)
@@ -836,7 +908,8 @@ def build_dashboard(
             "stats": "football-data.co.uk (3 temporadas; pseudo-xG, remates, córners, faltas y tarjetas)",
             "players": "football-data.org (plantillas, goleadores y asistencias)",
             "odds": "football-data.co.uk (media de mercado: 1X2 y over/under 2.5)",
-            "ai": "Gemini dinámico → Groq → motor local gratuito; solo partidos del día a las 00:00 y 10:00 Europe/Madrid, con backfill inicial anti-huecos",
+            "lineups": "API-Football para onces oficiales y bajas cerca del partido; football-data.org para plantillas",
+            "ai": "Gemini dinámico → Groq → motor estadístico local gratuito; control del día a las 00:15 y 10:15 Europe/Madrid, con presupuesto y caché",
         },
         "disclaimer": "Probabilidades y ventaja estadística, no certezas. "
                       "Las plantillas gratuitas y los onces del motor local son provisionales; "

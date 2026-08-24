@@ -14,17 +14,19 @@ _INSTR = (
     "exactamente 11 nombres únicos por lado; (2) bajas por lesión o sanción; "
     "y (3) de 3 a 5 jugadores clave de cada equipo con su estimación para ESE "
     "partido de goles (g), asistencias (a), remates (r), remates a puerta (rp), "
-    "faltas cometidas (fc), faltas recibidas (fr) y tarjetas (t). Todas las props "
+    "faltas cometidas (fc), faltas recibidas (fr), tarjetas (t), minutos previstos "
+    "(min) y probabilidad de ser titular (tit, de 0 a 1). No incluyas jugadores "
+    "con menos de 55 minutos previstos ni tit < 0.60. Todas las props "
     "son números esperados, no porcentajes. Devuelve EXCLUSIVAMENTE JSON válido:\n"
     '[{"partido":"<tal cual te lo doy>",'
     '"local":[{"j":"nombre","pos":"POR|LD|DFC|LI|CAD|MCD|MC|MP|CAI|ED|EI|DC"}],'
     '"visitante":[{"j":"nombre","pos":"POR|LD|DFC|LI|CAD|MCD|MC|MP|CAI|ED|EI|DC"}],'
-    '"bajas_local":["nombre (motivo)"],'
-    '"bajas_visitante":["nombre (motivo)"],'
+    '"bajas_local":["nombre (lesión|sanción|duda|rotación: motivo)"],'
+    '"bajas_visitante":["nombre (lesión|sanción|duda|rotación: motivo)"],'
     '"clave_local":[{"j":"nombre","g":0.4,"a":0.2,"r":2.5,"rp":1.1,'
-    '"fc":1.2,"fr":1.5,"t":0.3}],'
+    '"fc":1.2,"fr":1.5,"t":0.3,"min":82,"tit":0.9}],'
     '"clave_visitante":[{"j":"nombre","g":0.3,"a":0.2,"r":2.0,"rp":0.8,'
-    '"fc":1.5,"fr":1.0,"t":0.4}]}]\n'
+    '"fc":1.5,"fr":1.0,"t":0.4,"min":78,"tit":0.8}]}]\n'
     "Los 11 jugadores deben ir en su demarcación habitual REAL y pos debe ser la "
     "posición táctica concreta, no solo defensa/medio/delantero. Ordénalos desde "
     "el portero hasta el delantero, y de izquierda a derecha dentro de cada línea. "
@@ -120,6 +122,27 @@ def ensure_position_metadata(lineup: dict) -> bool:
     lineup["formacion_local"] = _formation(positions_local)
     lineup["formacion_visitante"] = _formation(positions_visitor)
     lineup["positions_inferred"] = bool(lineup.get("positions_inferred") or not had_positions)
+    for side in ("clave_local", "clave_visitante"):
+        for row in lineup.get(side) or []:
+            if isinstance(row, dict):
+                row.setdefault("min", 75.0)
+                row.setdefault("tit", 0.75)
+    lineup.setdefault(
+        "status", "estimado" if lineup.get("provider") == "Motor estadístico local" else "probable"
+    )
+    lineup.setdefault(
+        "disponibilidad_local",
+        _availability(lineup.get("bajas_local") or [], lineup.get("provider")),
+    )
+    lineup.setdefault(
+        "disponibilidad_visitante",
+        _availability(lineup.get("bajas_visitante") or [], lineup.get("provider")),
+    )
+    if not lineup.get("best_props"):
+        local_props = [row for row in lineup.get("clave_local") or [] if isinstance(row, dict)]
+        visitor_props = [row for row in lineup.get("clave_visitante") or [] if isinstance(row, dict)]
+        if local_props and visitor_props:
+            lineup["best_props"] = _best_props(local_props, visitor_props)
     quality = dict(lineup.get("quality") or {})
     quality["positions_players"] = 22
     lineup["quality"] = quality
@@ -133,6 +156,8 @@ _PROP_LIMITS = {
     "fc": (0.0, 8.0),
     "fr": (0.0, 8.0),
     "t": (0.0, 1.5),
+    "min": (0.0, 120.0),
+    "tit": (0.0, 1.0),
 }
 
 
@@ -183,15 +208,62 @@ def _clave(items) -> list[dict] | None:
         complete = True
         for key, (low, high) in _PROP_LIMITS.items():
             legacy_value = item.get("f") if key == "fc" and "fc" not in item else item.get(key)
+            # Compatibilidad con la caché previa: los nuevos campos reciben una
+            # estimación conservadora hasta el siguiente refresco de IA.
+            if legacy_value is None and key == "min":
+                legacy_value = 75
+            if legacy_value is None and key == "tit":
+                legacy_value = 0.75
             value = _number(legacy_value, low, high)
             if value is None:
                 complete = False
                 break
             row[key] = value
-        if complete:
+        if complete and row["min"] >= 55 and row["tit"] >= 0.6:
             seen.add(player.casefold())
             out.append(row)
     return out if len(out) >= 3 else None
+
+
+def _availability(items: list[str], provider: str | None = None) -> list[dict]:
+    """Estructura bajas legadas sin fingir una fuente periodística."""
+
+    out = []
+    for raw in items or []:
+        text = _name(raw)
+        if not text:
+            continue
+        lowered = _plain(text)
+        kind = next((label for token, label in (
+            ("SANC", "sanción"), ("DUDA", "duda"), ("ROT", "rotación"),
+            ("LES", "lesión"),
+        ) if token in lowered), "baja")
+        out.append({
+            "jugador": text.split(" (")[0],
+            "estado": kind,
+            "detalle": text,
+            "source": provider or "estimación del proveedor",
+            "official": False,
+        })
+    return out
+
+
+def _best_props(home: list[dict], away: list[dict]) -> list[dict]:
+    """Ranking estadístico interno; no se presenta como edge contra una cuota."""
+
+    candidates = []
+    for side, rows in (("local", home), ("visitante", away)):
+        for row in rows:
+            # Producción ofensiva ponderada por minutos y probabilidad de inicio.
+            score = (row["r"] + 1.5 * row["rp"] + 3 * row["g"] + 2 * row["a"])
+            score *= row["tit"] * min(1.0, row["min"] / 90)
+            candidates.append({
+                "jugador": row["jugador"], "lado": side,
+                "score": round(score, 2),
+                "motivo": f"{row['min']:.0f} min · {row['r']:.1f} remates · {row['rp']:.1f} a puerta",
+                "tipo": "ventaja_estadistica_sin_cuota",
+            })
+    return sorted(candidates, key=lambda item: item["score"], reverse=True)[:3]
 
 
 def _extract_json(text: str):
@@ -224,7 +296,7 @@ def _validate_item(item: dict) -> dict | None:
         return None
     abs_local = _unique_names(item.get("bajas_local"), limit=8) or []
     abs_visitor = _unique_names(item.get("bajas_visitante"), limit=8) or []
-    return {
+    result = {
         "local": local,
         "visitante": visitor,
         "posiciones_local": positions_local,
@@ -236,6 +308,7 @@ def _validate_item(item: dict) -> dict | None:
         "bajas_visitante": abs_visitor,
         "clave_local": key_local,
         "clave_visitante": key_visitor,
+        "status": "probable",
         "quality": {
             "complete": True,
             "lineup_players": len(local) + len(visitor),
@@ -244,6 +317,10 @@ def _validate_item(item: dict) -> dict | None:
             "score": 1.0,
         },
     }
+    result["disponibilidad_local"] = _availability(abs_local)
+    result["disponibilidad_visitante"] = _availability(abs_visitor)
+    result["best_props"] = _best_props(key_local, key_visitor)
+    return result
 
 
 def fetch_lineups(matches: list[dict], timeout: int = 60, retries: int = 1) -> dict:
@@ -277,6 +354,9 @@ def fetch_lineups(matches: list[dict], timeout: int = 60, retries: int = 1) -> d
             "provider": response.provider,
             "model": response.model,
         }
+        for side in ("disponibilidad_local", "disponibilidad_visitante"):
+            for row in out[canonical][side]:
+                row["source"] = response.provider
     return out
 
 
@@ -363,6 +443,8 @@ def _fallback_props(names: list[str], side: str, match: dict) -> list[dict]:
             "fc": round(fouls / 11, 1),
             "fr": round(fouls / 11, 1),
             "t": round(min(1.5, cards / 11), 1),
+            "min": round(82 - len(out) * 6, 1),
+            "tit": round(0.9 - len(out) * 0.05, 2),
         })
     return out
 
@@ -375,6 +457,8 @@ def build_statistical_lineup(match: dict, home_squad: list[dict], away_squad: li
         return None
     positions_local = _probable_positions(home_squad, local)
     positions_visitor = _probable_positions(away_squad, visitor)
+    key_local = _fallback_props(local, "home", match)
+    key_visitor = _fallback_props(visitor, "away", match)
     return {
         "local": local,
         "visitante": visitor,
@@ -385,10 +469,14 @@ def build_statistical_lineup(match: dict, home_squad: list[dict], away_squad: li
         "positions_inferred": True,
         "bajas_local": [],
         "bajas_visitante": [],
-        "clave_local": _fallback_props(local, "home", match),
-        "clave_visitante": _fallback_props(visitor, "away", match),
+        "clave_local": key_local,
+        "clave_visitante": key_visitor,
+        "disponibilidad_local": [],
+        "disponibilidad_visitante": [],
+        "best_props": _best_props(key_local, key_visitor),
+        "status": "estimado",
         "provider": "Motor estadístico local",
-        "model": "squad-stats-v1",
+        "model": "squad-stats-v2",
         "quality": {
             "complete": True,
             "lineup_players": 22,

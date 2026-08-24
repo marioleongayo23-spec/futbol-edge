@@ -68,8 +68,8 @@ jobs:
           ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           # IA: Gemini primero y Groq de fallback. El cron de resultados sigue
-          # cada 15 min; la IA solo refresca partidos del día a las 00:00 y
-          # 10:00 de Madrid, con caché entre ambas pasadas.
+          # cada 15 min; la IA solo refresca partidos del día a las 00:15 y
+          # 10:15 de Madrid, con caché entre ambas pasadas.
           AI_API_KEY: ${{ secrets.AI_API_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GEMINI_MODEL: ${{ secrets.GEMINI_MODEL }}
@@ -79,6 +79,13 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENAI_BASE_URL: ${{ secrets.OPENAI_BASE_URL }}
           OPENAI_MODEL: ${{ secrets.OPENAI_MODEL }}
+          # Tercer nivel opcional: endpoint gratuito/local OpenAI-compatible
+          # (Ollama, vLLM o LM Studio). Después queda el motor determinista.
+          LOCAL_AI_BASE_URL: ${{ secrets.LOCAL_AI_BASE_URL }}
+          LOCAL_AI_MODEL: ${{ secrets.LOCAL_AI_MODEL }}
+          LOCAL_AI_API_KEY: ${{ secrets.LOCAL_AI_API_KEY }}
+          AI_DAILY_CALL_BUDGET: "16"
+          AI_REFRESH_RUN: ${{ github.event_name == 'schedule' && '1' || '0' }}
           FORCE_AI: ${{ github.event_name == 'workflow_dispatch' && inputs.force_ai && '1' || '0' }}
         run: |
           python -m futbol_pred.dashboard
@@ -115,3 +122,18 @@ jobs:
           name: predicciones
           path: football/data/*.json
           if-no-files-found: ignore
+
+      - name: Verificar producción y feed publicado
+        if: github.ref == 'refs/heads/main'
+        run: |
+          ok=0
+          for i in 1 2 3 4 5; do
+            if curl -fsS --max-time 20 https://futbol-edge-snowy.vercel.app/ >/dev/null \
+              && curl -fsS --max-time 20 https://raw.githubusercontent.com/marioleongayo23-spec/futbol-edge/main/football/data/dashboard.json \
+                | python -c 'import json,sys; d=json.load(sys.stdin); assert d.get("feed_quality",{}).get("valid") is True'; then
+              ok=1
+              break
+            fi
+            sleep 12
+          done
+          [ "$ok" = 1 ] || { echo "Producción o feed no saludable"; exit 1; }

@@ -20,6 +20,16 @@ export function modelAccuracy(matches) {
 export function confidence(m) {
   if (!Array.isArray(m.probs)) return null;
   const mx = Math.max(...m.probs);
+  const published = m.prediction_confidence;
+  if (published?.score != null) {
+    const label = published.level ? published.level[0].toUpperCase() + published.level.slice(1) : "Media";
+    return {
+      stars: published.score >= 72 ? 3 : published.score >= 55 ? 2 : 1,
+      label, mx,
+      disagreement: (published.model_disagreement_pp || 0) / 100,
+      score: published.score,
+    };
+  }
   const components = m.model_meta?.components;
   const dc = components?.dixon_coles, elo = components?.elo;
   const disagreement = dc && elo

@@ -8,6 +8,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from difflib import SequenceMatcher
+import re
+import unicodedata
 
 import requests
 
@@ -40,6 +43,7 @@ class ApiFootballClient:
     def __init__(self, api_key: str | None = None, timeout: int = 20):
         self.api_key = api_key or settings.api_football_key
         self.timeout = timeout
+        self._day_cache: dict[str, list[dict]] = {}
 
     @property
     def offline(self) -> bool:
@@ -115,6 +119,114 @@ class ApiFootballClient:
             name = str(player.get("name") or "").strip()
             if name:
                 out.append({"name": name, "position": str(player.get("position") or "").strip()})
+        return out
+
+    @staticmethod
+    def _team_key(value: str) -> str:
+        text = unicodedata.normalize("NFKD", str(value or ""))
+        text = "".join(char for char in text if not unicodedata.combining(char)).casefold()
+        return re.sub(r"\b(fc|cf|cd|ud|club|deportivo)\b|[^a-z0-9]", "", text)
+
+    def find_fixture(self, home: str, away: str, kickoff: datetime) -> dict | None:
+        """Resuelve el id de API-Football por fecha y nombres, sin asumir ids comunes."""
+
+        if self.offline:
+            return None
+        day = kickoff.date().isoformat()
+        if day not in self._day_cache:
+            try:
+                self._day_cache[day] = self._get("fixtures", {"date": day}).get("response") or []
+            except Exception:
+                self._day_cache[day] = []
+        wanted_home, wanted_away = self._team_key(home), self._team_key(away)
+        best = None
+        for item in self._day_cache[day]:
+            teams = item.get("teams") or {}
+            actual_home = self._team_key((teams.get("home") or {}).get("name"))
+            actual_away = self._team_key((teams.get("away") or {}).get("name"))
+            score = (
+                SequenceMatcher(None, wanted_home, actual_home).ratio()
+                + SequenceMatcher(None, wanted_away, actual_away).ratio()
+            ) / 2
+            if best is None or score > best[0]:
+                best = (score, item)
+        return best[1] if best and best[0] >= 0.72 else None
+
+    @staticmethod
+    def _grid_position(grid: str | None, fallback: str | None = None) -> str:
+        """Traduce la cuadrícula oficial a demarcaciones compatibles con el campo."""
+
+        try:
+            line, column = (int(value) for value in str(grid).split(":"))
+        except (TypeError, ValueError):
+            line = column = 0
+        if line == 1:
+            return "POR"
+        if line == 2:
+            return "LI" if column == 1 else "LD" if column >= 4 else "DFC"
+        if line in {3, 4}:
+            if column == 1:
+                return "MI" if line == 3 else "EI"
+            if column >= 4:
+                return "MD" if line == 3 else "ED"
+            return "MCD" if line == 3 else "MP"
+        if line >= 5:
+            return "EI" if column == 1 else "ED" if column >= 3 else "DC"
+        raw = str(fallback or "").casefold()
+        return "POR" if raw == "g" else "DFC" if raw == "d" else "MC" if raw == "m" else "DC"
+
+    def get_official_lineup(self, fixture_id: int) -> list[dict]:
+        """Devuelve onces oficiales cuando ambos equipos publicaron 11 titulares."""
+
+        if self.offline:
+            return []
+        try:
+            response = self._get("fixtures/lineups", {"fixture": fixture_id}).get("response") or []
+        except Exception:
+            return []
+        out = []
+        for team in response:
+            starters = []
+            for raw in team.get("startXI") or []:
+                player = raw.get("player") or {}
+                name = str(player.get("name") or "").strip()
+                if name:
+                    starters.append({
+                        "name": name,
+                        "position": self._grid_position(player.get("grid"), player.get("pos")),
+                        "grid": player.get("grid"),
+                    })
+            if len(starters) == 11:
+                out.append({
+                    "team": str((team.get("team") or {}).get("name") or ""),
+                    "formation": team.get("formation"),
+                    "coach": str((team.get("coach") or {}).get("name") or ""),
+                    "starters": starters,
+                })
+        return out if len(out) == 2 else []
+
+    def get_absences(self, fixture_id: int) -> list[dict]:
+        """Lesiones/sanciones declaradas por API-Football; vacío si el plan no lo ofrece."""
+
+        if self.offline:
+            return []
+        try:
+            response = self._get("injuries", {"fixture": fixture_id}).get("response") or []
+        except Exception:
+            return []
+        out = []
+        for item in response:
+            player, team = item.get("player") or {}, item.get("team") or {}
+            name = str(player.get("name") or "").strip()
+            if name:
+                out.append({
+                    "jugador": name,
+                    "team": str(team.get("name") or ""),
+                    "estado": str(player.get("type") or "baja").casefold(),
+                    "detalle": str(player.get("reason") or player.get("type") or "Baja comunicada"),
+                    "source": "API-Football",
+                    "official": True,
+                })
         return out
 
 
