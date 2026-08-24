@@ -3,16 +3,18 @@ import { createRoot } from "react-dom/client";
 import "./styles.css";
 import App from "./App.jsx";
 
-// Aplica el tema guardado antes del primer render para evitar parpadeo.
-try {
-  document.documentElement.dataset.theme = localStorage.getItem("theme") || "dark";
-} catch { /* ignore */ }
-
 createRoot(document.getElementById("root")).render(
   <StrictMode>
     <App />
   </StrictMode>
 );
+
+// La casilla gobierna el tema mediante CSS. Aquí solo guardamos la preferencia;
+// no alteramos su estado para evitar dobles activaciones en móvil o PWA.
+document.addEventListener("change", (event) => {
+  if (!(event.target instanceof HTMLInputElement) || !event.target.matches(".theme-toggle")) return;
+  try { localStorage.setItem("theme", event.target.checked ? "light" : "dark"); } catch { /* ignore */ }
+});
 
 // Registro del service worker (PWA / offline). Solo en producción.
 if ("serviceWorker" in navigator && import.meta.env.PROD) {
