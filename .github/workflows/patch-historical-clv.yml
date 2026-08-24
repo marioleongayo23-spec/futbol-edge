@@ -1,0 +1,117 @@
+name: Apply historical CLV integration on PR
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: chatgpt/historical-clv
+          fetch-depth: 0
+      - name: Wire historical closing odds and CLV panel
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          # --- football-data.co.uk: histórico de cierre real ---
+          path = Path('football/src/futbol_pred/ingest/football_data_uk.py')
+          text = path.read_text(encoding='utf-8')
+          marker = '    return None\n\n\nclass FootballDataUKClient:'
+          helper = '''    return None\n\n\ndef _closing_odds(row: dict) -> dict | None:\n    """Cierre 1X2 histórico, priorizando consenso y sin mezclar fuentes."""\n\n    candidates = (\n        ("market_average", ("AvgCH", "AvgCD", "AvgCA")),\n        ("Bet365", ("B365CH", "B365CD", "B365CA")),\n    )\n    for source, columns in candidates:\n        values = [_num(row.get(column)) for column in columns]\n        if not all(value and value > 1 for value in values):\n            continue\n        return {\n            "source": "football-data.co.uk",\n            "market_source": source,\n            "1x2": dict(zip(("1", "X", "2"), values)),\n        }\n    return None\n\n\nclass FootballDataUKClient:'''
+          if 'def _closing_odds(' not in text:
+              if text.count(marker) != 1:
+                  raise SystemExit('closing helper marker not unique')
+              text = text.replace(marker, helper, 1)
+
+          parse_marker = '    @staticmethod\n    def parse(text: str) -> list[MatchStats]:'
+          method = '''    def get_historical_closing_odds(self, league: str, season: int) -> list[dict]:\n        """Cierres 1X2 de partidos jugados desde el CSV histórico de temporada."""\n        if league not in DIV_CODE:\n            return []\n        div = DIV_CODE[league]\n        try:\n            response = requests.get(\n                f"{BASE_URL}/{season_code(season)}/{div}.csv", timeout=self.timeout\n            )\n            response.raise_for_status()\n        except requests.RequestException:\n            return []\n        out: list[dict] = []\n        for row in csv.DictReader(io.StringIO(_decode(response).lstrip("﻿"))):\n            home, away = row.get("HomeTeam"), row.get("AwayTeam")\n            closing = _closing_odds(row)\n            if home and away and closing:\n                out.append({"home": home, "away": away, "closing_odds": closing})\n        return out\n\n'''
+          if 'def get_historical_closing_odds(' not in text:
+              if text.count(parse_marker) != 1:
+                  raise SystemExit('parse marker not unique')
+              text = text.replace(parse_marker, method + parse_marker, 1)
+          path.write_text(text, encoding='utf-8')
+
+          # --- dashboard: adjuntar cierre solo a partidos terminados ---
+          path = Path('football/src/futbol_pred/dashboard.py')
+          text = path.read_text(encoding='utf-8')
+          sig_old = '    real_stats: dict | None = None,\n    odds_map: dict | None = None,\n    model_weight: float = 0.6,'
+          sig_new = '    real_stats: dict | None = None,\n    odds_map: dict | None = None,\n    closing_odds_map: dict | None = None,\n    model_weight: float = 0.6,'
+          if sig_old in text:
+              text = text.replace(sig_old, sig_new, 1)
+          elif sig_new not in text:
+              raise SystemExit('fixture_payload signature marker not found')
+
+          finished_old = '''        if real_stats:\n            sr = real_stats.get((_canon(fixture.home_team), _canon(fixture.away_team)))\n            if sr:\n                payload["statsReal"] = sr\n\n    if model is None:\n'''
+          finished_new = '''        if real_stats:\n            sr = real_stats.get((_canon(fixture.home_team), _canon(fixture.away_team)))\n            if sr:\n                payload["statsReal"] = sr\n        if closing_odds_map:\n            closing = closing_odds_map.get((_canon(fixture.home_team), _canon(fixture.away_team)))\n            if closing:\n                payload["closing_odds"] = closing\n\n    if model is None:\n'''
+          if finished_old in text:
+              text = text.replace(finished_old, finished_new, 1)
+          elif 'payload["closing_odds"] = closing' not in text:
+              raise SystemExit('finished closing marker not found')
+
+          odds_fn = '''def _odds_map(league: str) -> dict:\n    """Cuotas de próximos partidos (co.uk fixtures.csv), clave (canon_local, canon_visitante)."""\n    if league not in ("laliga", "segunda"):\n        return {}\n    try:\n        from .ingest.football_data_uk import DIV_CODE, FootballDataUKClient\n\n        rows = FootballDataUKClient().get_odds(DIV_CODE.get(league))\n    except Exception:\n        return {}\n    return {(_canon(r["home"]), _canon(r["away"])): r["odds"] for r in rows}\n'''
+          closing_fn = '''\n\ndef _closing_odds_map(league: str, season: int) -> dict:\n    """Cierre histórico real de partidos jugados, separado de las cuotas live."""\n    if league not in ("laliga", "segunda"):\n        return {}\n    try:\n        from .ingest.football_data_uk import FootballDataUKClient\n\n        rows = FootballDataUKClient().get_historical_closing_odds(league, season)\n    except Exception:\n        return {}\n    return {\n        (_canon(row["home"]), _canon(row["away"])): row["closing_odds"]\n        for row in rows\n    }\n'''
+          if 'def _closing_odds_map(' not in text:
+              if text.count(odds_fn) != 1:
+                  raise SystemExit('odds map function marker not unique')
+              text = text.replace(odds_fn, odds_fn + closing_fn, 1)
+
+          odds_assign = '            odds_map = _odds_map(league)\n'
+          odds_assign_new = '            odds_map = _odds_map(league)\n            closing_odds_map = _closing_odds_map(league, season)\n'
+          if odds_assign_new not in text:
+              if text.count(odds_assign) != 1:
+                  raise SystemExit('odds assignment marker not unique')
+              text = text.replace(odds_assign, odds_assign_new, 1)
+
+          call_old = '                                real_stats=real_stats, odds_map=odds_map,\n                                model_weight=model_w, h2h=h2h, trends=trends,'
+          call_new = '                                real_stats=real_stats, odds_map=odds_map,\n                                closing_odds_map=closing_odds_map,\n                                model_weight=model_w, h2h=h2h, trends=trends,'
+          if call_old in text:
+              text = text.replace(call_old, call_new, 1)
+          elif 'closing_odds_map=closing_odds_map' not in text:
+              raise SystemExit('fixture payload call marker not found')
+          path.write_text(text, encoding='utf-8')
+
+          # --- App: enlazar apuesta nueva y mostrar panel ---
+          path = Path('app/src/App.jsx')
+          text = path.read_text(encoding='utf-8')
+          import_old = 'import ProbabilityQualityPanel from "./ProbabilityQualityPanel";'
+          import_new = 'import ProbabilityQualityPanel from "./ProbabilityQualityPanel";\nimport ClvPanel from "./ClvPanel";'
+          if 'import ClvPanel from "./ClvPanel";' not in text:
+              if text.count(import_old) != 1:
+                  raise SystemExit('CLV import marker not unique')
+              text = text.replace(import_old, import_new, 1)
+
+          add_old = '''    setBets([{ id: Date.now(), date: new Date().toISOString().slice(0, 10), match: f.match.trim(), sel: f.sel, odds, stake, result: "open" }, ...bets]);\n'''
+          add_new = '''    const linked = matches.find((match) => `${match.home} - ${match.away}` === f.match.trim());\n    setBets([{ id: Date.now(), date: new Date().toISOString().slice(0, 10), match: f.match.trim(), matchId: linked?.id || null, sel: f.sel, odds, stake, result: "open" }, ...bets]);\n'''
+          if add_old in text:
+              text = text.replace(add_old, add_new, 1)
+          elif 'matchId: linked?.id || null' not in text:
+              raise SystemExit('bet add marker not found')
+
+          panel_old = '''      </div>\n\n      <div className="card">\n        <div className="lbl">Evolución del beneficio</div>\n'''
+          panel_new = '''      </div>\n\n      <ClvPanel bets={bets} matches={matches} />\n\n      <div className="card">\n        <div className="lbl">Evolución del beneficio</div>\n'''
+          if '<ClvPanel bets={bets} matches={matches} />' not in text:
+              if text.count(panel_old) != 1:
+                  raise SystemExit(f'CLV panel marker count={text.count(panel_old)}')
+              text = text.replace(panel_old, panel_new, 1)
+          path.write_text(text, encoding='utf-8')
+          PY
+      - name: Validate and commit
+        run: |
+          git diff --check
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add football/src/futbol_pred/ingest/football_data_uk.py football/src/futbol_pred/dashboard.py app/src/App.jsx
+          if git diff --cached --quiet; then
+            echo "Nothing to commit"
+            exit 0
+          fi
+          git commit -m "Integrate historical closing odds and CLV"
+          git push origin HEAD:chatgpt/historical-clv
