@@ -76,38 +76,17 @@ def fetch_lineups(matches: list[dict], timeout: int = 60, retries: int = 2) -> d
     """matches: [{'partido': 'Local vs Visitante'}]. Devuelve {partido: {...}}.
 
     Una única llamada groundada para toda la lista."""
-    if not API_KEY or not matches:
+    if not matches:
         return {}
+    from .ai_client import chat
+
     lista = "\n".join(f"- {m['partido']}" for m in matches)
     prompt = _INSTR + "\n\nPartidos:\n" + lista + "\n\nJSON:"
-    body = {
-        "contents": [{"parts": [{"text": prompt}]}],
-        "generationConfig": {"temperature": 0.3, "maxOutputTokens": 8000},
-    }
-    for attempt in range(retries):
-        try:
-            r = requests.post(_URL.format(model=MODEL), params={"key": API_KEY},
-                              json=body, timeout=timeout)
-        except requests.RequestException:
-            time.sleep(3 * (attempt + 1))
-            continue
-        if r.status_code == 429:  # cuota diaria agotada: no reintentar
-            return {}
-        if r.status_code in (500, 503):
-            time.sleep(5 * (attempt + 1))
-            continue
-        if not r.ok:
-            return {}
-        try:
-            data = r.json()
-            parts = (data.get("candidates") or [{}])[0].get("content", {}).get("parts", [])
-            text = "".join(p.get("text", "") for p in parts)
-        except (ValueError, KeyError, IndexError):
-            return {}
-        arr = _extract_json(text)
-        if not arr:
-            time.sleep(2)
-            continue
+    text = chat(prompt, max_tokens=8000, temperature=0.3, timeout=timeout)
+    if not text:
+        return {}
+    arr = _extract_json(text)
+    if arr:
         out: dict = {}
         for item in arr:
             key = str(item.get("partido", "")).strip()

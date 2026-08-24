@@ -64,45 +64,11 @@ def _prompt(m: dict) -> str:
     return _SYSTEM + "\n\nDatos:\n" + "\n".join(partes) + "\n\nEscribe la previa:"
 
 
-def generate_preview(m: dict, timeout: int = 30, retries: int = 2) -> str | None:
-    """Genera la previa; reintenta ante límites de ratio (429) o respuestas
-    vacías (los modelos 'thinking' a veces agotan los tokens razonando)."""
-    if not API_KEY:
-        return None
-    body = {
-        "contents": [{"parts": [{"text": _prompt(m)}]}],
-        # maxOutputTokens holgado: los modelos flash 'thinking' consumen tokens
-        # internos antes de escribir; con poco margen devolvían texto vacío.
-        "generationConfig": {"temperature": 0.85, "maxOutputTokens": 1200},
-    }
-    for attempt in range(retries):
-        try:
-            r = requests.post(
-                _URL.format(model=MODEL),
-                params={"key": API_KEY},
-                json=body,
-                timeout=timeout,
-            )
-        except requests.RequestException:
-            time.sleep(2 * (attempt + 1))
-            continue
-        if r.status_code == 429:  # cuota diaria agotada: no reintentar (no se recupera hoy)
-            return None
-        if r.status_code in (500, 503):  # servidor: espera y reintenta
-            time.sleep(4 * (attempt + 1))
-            continue
-        if not r.ok:
-            return None
-        try:
-            data = r.json()
-            parts = (data.get("candidates") or [{}])[0].get("content", {}).get("parts", [])
-            text = "".join(p.get("text", "") for p in parts).strip()
-        except (ValueError, KeyError, IndexError):
-            text = ""
-        if text:
-            return text
-        time.sleep(2)  # respuesta vacía: un reintento corto
-    return None
+def generate_preview(m: dict, timeout: int = 40, retries: int = 2) -> str | None:
+    """Genera la previa con la cadena de fallback (Gemini → OpenAI/compatible)."""
+    from .ai_client import chat
+
+    return chat(_prompt(m), max_tokens=1200, temperature=0.85, timeout=timeout)
 
 
 def _diagnose() -> None:

@@ -309,10 +309,11 @@ def _attach_previews(matches: list[dict], now: datetime, horizon_days: int = 2, 
     Sin clave (AI_API_KEY) no hace nada. Cualquier fallo se ignora en silencio.
     """
     try:
-        from .ingest.preview_gemini import API_KEY, generate_preview
+        from .ingest.ai_client import available
+        from .ingest.preview_gemini import generate_preview
     except Exception:
         return
-    if not API_KEY:
+    if not available():
         return
 
     prev: dict[str, str] = {}
@@ -355,10 +356,11 @@ def _attach_lineups(matches: list[dict], now: datetime, horizon_days: int = 2,
     ttl_hours (por defecto 12 h) => ~2 llamadas/día aunque el feed corra cada
     15 min. Sin clave o ante cualquier fallo, no hace nada."""
     try:
-        from .ingest.lineups_ai import API_KEY, fetch_lineups
+        from .ingest.ai_client import available
+        from .ingest.lineups_ai import fetch_lineups
     except Exception:
         return
-    if not API_KEY:
+    if not available():
         return
 
     now = ensure_aware(now)
