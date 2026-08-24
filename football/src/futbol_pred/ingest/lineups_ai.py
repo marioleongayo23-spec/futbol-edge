@@ -28,15 +28,36 @@ _URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generate
 
 _INSTR = (
     "Eres analista de fútbol experto en LaLiga y Segunda de España. Para CADA "
-    "partido de la lista da el ONCE PROBABLE de cada equipo (11 jugadores, con tu "
-    "mejor criterio) y las posibles BAJAS por lesión o sanción que conozcas. "
-    "Devuelve EXCLUSIVAMENTE un JSON válido, sin texto alrededor, con esta forma:\n"
+    "partido de la lista da: (1) el ONCE PROBABLE de cada equipo (11 jugadores), "
+    "(2) las BAJAS por lesión o sanción que conozcas, y (3) los JUGADORES CLAVE de "
+    "cada equipo (hasta 4) con su estimación para ESE partido de goles (g), "
+    "asistencias (a), remates (r), faltas cometidas (f) y tarjetas (t). "
+    "Usa el rol y la calidad histórica del jugador aunque no tengas datos de la "
+    "temporada actual. Devuelve EXCLUSIVAMENTE un JSON válido, sin texto alrededor:\n"
     '[{"partido":"<tal cual te lo doy>","local":["11 nombres"],'
     '"visitante":["11 nombres"],"bajas_local":["nombre (motivo)"],'
-    '"bajas_visitante":["nombre (motivo)"]}]\n'
-    "Da SIEMPRE tu mejor estimación de los onces (aunque no sea segura). Si de "
-    "algún equipo no tienes ni idea, deja su lista vacía, pero incluye el partido."
+    '"bajas_visitante":["nombre (motivo)"],'
+    '"clave_local":[{"j":"nombre","g":0.4,"a":0.2,"r":2.5,"f":1.2,"t":0.3}],'
+    '"clave_visitante":[{"j":"nombre","g":0.3,"a":0.2,"r":2.0,"f":1.5,"t":0.4}]}]\n'
+    "Da SIEMPRE tu mejor estimación (aunque no sea segura). Incluye TODOS los "
+    "partidos de la lista; si de un equipo no sabes el once, deja su lista vacía "
+    "pero incluye igualmente sus jugadores clave más probables."
 )
+
+
+def _clave(items):
+    out = []
+    for it in (items or [])[:4]:
+        if not isinstance(it, dict) or not it.get("j"):
+            continue
+        row = {"jugador": str(it["j"])}
+        for k in ("g", "a", "r", "f", "t"):
+            try:
+                row[k] = round(float(it[k]), 1)
+            except (KeyError, TypeError, ValueError):
+                row[k] = None
+        out.append(row)
+    return out
 
 
 def _extract_json(text: str):
@@ -89,12 +110,16 @@ def fetch_lineups(matches: list[dict], timeout: int = 60, retries: int = 2) -> d
         for item in arr:
             key = str(item.get("partido", "")).strip()
             loc, vis = item.get("local") or [], item.get("visitante") or []
-            if key and (loc or vis):
+            clave_l = _clave(item.get("clave_local"))
+            clave_v = _clave(item.get("clave_visitante"))
+            if key and (loc or vis or clave_l or clave_v):
                 out[key] = {
                     "local": [str(x) for x in loc][:11],
                     "visitante": [str(x) for x in vis][:11],
                     "bajas_local": [str(x) for x in (item.get("bajas_local") or [])][:8],
                     "bajas_visitante": [str(x) for x in (item.get("bajas_visitante") or [])][:8],
+                    "clave_local": clave_l,
+                    "clave_visitante": clave_v,
                 }
         return out
     return {}

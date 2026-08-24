@@ -169,14 +169,6 @@ def fixture_payload(
     })
     if not finished_with_result:
         payload["engine"] = "dixon-coles"
-        # Tendencia (↑/→/↓) de las stats esperadas según forma y descanso.
-        if trends is not None:
-            try:
-                t = trends.trend(home_id, away_id, kickoff=fixture.kickoff)
-                if t:
-                    payload["tendencias"] = t
-            except Exception:  # noqa: BLE001 - la tendencia nunca tumba el feed
-                pass
 
     # Si algún equipo aún no tiene histórico (recién ascendido, sin datos de la
     # temporada), la predicción usa prior neutro: la marcamos como provisional.
@@ -209,6 +201,21 @@ def fixture_payload(
                     out_stats[k] = {"home": h, "away": a, "total": round(h + a, 2)}
                 payload["stats"] = out_stats
         except (KeyError, ValueError):
+            pass
+
+    # Tendencia (↑/→/↓) de las stats esperadas: forma reciente + lo que espera el
+    # modelo vs la media de liga + descanso. Solo en próximos con predicción.
+    if not finished_with_result and trends is not None:
+        try:
+            st = payload.get("stats") or {}
+            predicted = {"goals": eh + ea}
+            for k in ("shots", "corners", "yellows"):
+                if st.get(k):
+                    predicted[k] = st[k]["total"]
+            t = trends.trend(home_id, away_id, kickoff=fixture.kickoff, predicted=predicted)
+            if t:
+                payload["tendencias"] = t
+        except Exception:  # noqa: BLE001 - la tendencia nunca tumba el feed
             pass
 
     # Cuotas y value bets solo para partidos por jugar.
@@ -327,7 +334,7 @@ def _attach_previews(matches: list[dict], now: datetime, horizon_days: int = 6, 
 
 
 def _attach_lineups(matches: list[dict], now: datetime, horizon_days: int = 7,
-                    limit: int = 20, ttl_hours: int = 12) -> None:
+                    limit: int = 12, ttl_hours: int = 12) -> None:
     """Alineaciones probables + bajas (IA con búsqueda web) en UNA llamada/bloque.
 
     Cachea por id con marca de tiempo: solo re-consulta lo que tenga más de

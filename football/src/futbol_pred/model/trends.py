@@ -16,7 +16,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 RECENT = 5      # ventana de "forma reciente"
-MIN_N = 3       # mínimo de partidos para dar tendencia
+MIN_N = 2       # mínimo de partidos para la señal de forma
 UP = 0.06       # umbral relativo para marcar ↑/↓ (6%)
 REST_LOW = 3    # días de descanso "justo" (fatiga)
 
@@ -39,6 +39,15 @@ class TrendModel:
     # equipo -> métrica -> lista de TOTALES de partido (orden cronológico)
     totals: dict = field(default_factory=dict)
     last_played: dict = field(default_factory=dict)  # equipo -> fecha último jugado
+    league: dict = field(default_factory=dict)       # métrica -> media de liga
+
+    def _league_baseline(self) -> None:
+        agg: dict = {}
+        for _team, mets in self.totals.items():
+            for metric, seq in mets.items():
+                a = agg.setdefault(metric, [])
+                a.extend(seq)
+        self.league = {k: _mean(v) for k, v in agg.items() if v}
 
     def _add(self, team: str, metric: str, total: float) -> None:
         self.totals.setdefault(team, {}).setdefault(metric, []).append(total)
@@ -63,6 +72,7 @@ class TrendModel:
                     tot = r.stats[metric][0] + r.stats[metric][1]
                     self._add(h, metric, tot)
                     self._add(a, metric, tot)
+        self._league_baseline()
         return self
 
     def _delta(self, team: str, metric: str):
@@ -85,32 +95,50 @@ class TrendModel:
         except (TypeError, ValueError):
             return None
 
-    def trend(self, home: str, away: str, kickoff=None) -> dict:
-        """Tendencia por métrica: {metric: {dir, pct, label, reason}}."""
+    def trend(self, home: str, away: str, kickoff=None, predicted: dict | None = None) -> dict:
+        """Tendencia por métrica: {metric: {dir, pct, label, reason}}.
+
+        Combina dos señales para evitar el 'neutro' perpetuo de inicio de temporada:
+        1) forma reciente de cada equipo vs su propia media (si hay muestra),
+        2) lo que ESPERA el modelo para este partido vs la media de la liga
+           (disponible desde la jornada 1). Más el modificador por descanso."""
+        predicted = predicted or {}
         out: dict = {}
         rest_h = self._rest_days(home, kickoff) if kickoff else None
         rest_a = self._rest_days(away, kickoff) if kickoff else None
         for metric, cfg in METRICS.items():
             dh, da = self._delta(home, metric), self._delta(away, metric)
             deltas = [d for d, _ in (x for x in (dh, da) if x)]
-            if not deltas:
-                # Siempre devolvemos algo: neutro cuando no hay muestra fiable.
+            form_signal = (sum(deltas) / len(deltas)) if deltas else None
+
+            base = self.league.get(metric)
+            pv = predicted.get(metric)
+            model_signal = ((pv - base) / base) if (base and pv is not None) else None
+
+            reasons = []
+            # La forma manda si es clara; si no, el modelo vs la media de liga.
+            if form_signal is not None and abs(form_signal) >= UP:
+                signal = form_signal
+                both_up = dh and da and dh[0] > 0 and da[0] > 0
+                both_down = dh and da and dh[0] < 0 and da[0] < 0
+                if both_up:
+                    reasons.append(f"ambos por encima de su media reciente en {cfg['label'].lower()}")
+                elif both_down:
+                    reasons.append(f"ambos por debajo de su media reciente en {cfg['label'].lower()}")
+                else:
+                    who = home if (dh and abs(dh[0]) >= abs(da[0] if da else 0)) else away
+                    reasons.append(f"{who} marca la tendencia en {cfg['label'].lower()}")
+            elif model_signal is not None:
+                signal = model_signal
+                mas = "más" if signal > 0 else "menos"
+                reasons.append(f"el modelo espera {mas} {cfg['label'].lower()} que un partido medio")
+            elif form_signal is not None:
+                signal = form_signal
+                reasons.append("ligera inclinación por la forma reciente")
+            else:
                 out[metric] = {"dir": "flat", "pct": 0, "label": cfg["label"],
                                "reason": "sin muestra suficiente todavía"}
                 continue
-            signal = sum(deltas) / len(deltas)
-
-            # Modificador por descanso (fatiga) sobre goles/tarjetas/remates.
-            reasons = []
-            both_up = dh and da and dh[0] > 0 and da[0] > 0
-            both_down = dh and da and dh[0] < 0 and da[0] < 0
-            if both_up:
-                reasons.append(f"ambos por encima de su media reciente en {cfg['label'].lower()}")
-            elif both_down:
-                reasons.append(f"ambos por debajo de su media reciente en {cfg['label'].lower()}")
-            elif abs(signal) >= UP:
-                who = home if (dh and abs(dh[0]) >= abs(da[0] if da else 0)) else away
-                reasons.append(f"{who} marca la tendencia en {cfg['label'].lower()}")
 
             fat = cfg["fatigue"]
             if fat and ((rest_h is not None and rest_h <= REST_LOW) or

@@ -18,3 +18,11 @@ def test_fetch_sin_clave(monkeypatch):
 
 def test_fetch_lista_vacia():
     assert L.fetch_lineups([]) == {}
+
+
+def test_clave_parsea_props():
+    got = L._clave([{"j": "Lewandowski", "g": 0.6, "a": 0.2, "r": 3, "f": 1, "t": 0.3},
+                    {"nope": 1}])  # el segundo se descarta (sin 'j')
+    assert len(got) == 1
+    assert got[0]["jugador"] == "Lewandowski"
+    assert got[0]["g"] == 0.6 and got[0]["r"] == 3.0

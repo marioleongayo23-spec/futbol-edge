@@ -59,29 +59,45 @@ function Heat({ M }) {
   );
 }
 
-/* Once probable + bajas (IA con búsqueda web). */
+/* Once probable + bajas + jugadores clave con props (estimación IA). */
 function Alineacion({ m, a }) {
-  const col = (title, xi, bajas) => (
+  const col = (title, xi, bajas, clave) => (
     <div className="xi-col">
       <div className="xi-team">{title}</div>
       <ol className="xi-list">
         {(xi || []).map((p, i) => <li key={i}>{p}</li>)}
-        {!(xi || []).length && <li className="dim">sin datos</li>}
+        {!(xi || []).length && <li className="dim">once sin confirmar</li>}
       </ol>
       {(bajas || []).length > 0 && (
         <div className="xi-bajas"><b>Bajas:</b> {bajas.join(", ")}</div>
+      )}
+      {(clave || []).length > 0 && (
+        <div className="xi-props">
+          <div className="xi-props-h">Jugadores clave (estimación)</div>
+          <table className="props-tbl">
+            <thead><tr><th className="tl">Jugador</th><th title="Goles">G</th><th title="Asistencias">A</th><th title="Remates">R</th><th title="Faltas">F</th><th title="Tarjetas">T</th></tr></thead>
+            <tbody>
+              {clave.map((p, i) => (
+                <tr key={i}>
+                  <td className="tl">{p.jugador}</td>
+                  <td>{p.g ?? "–"}</td><td>{p.a ?? "–"}</td><td>{p.r ?? "–"}</td><td>{p.f ?? "–"}</td><td>{p.t ?? "–"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );
   return (
     <div className="card">
-      <div className="lbl">👥 Once probable y bajas</div>
+      <div className="lbl">👥 Once probable, bajas y jugadores clave</div>
       <div className="xi-grid">
-        {col(m.home, a.local, a.bajas_local)}
-        {col(m.away, a.visitante, a.bajas_visitante)}
+        {col(m.home, a.local, a.bajas_local, a.clave_local)}
+        {col(m.away, a.visitante, a.bajas_visitante, a.clave_visitante)}
       </div>
       <p className="note" style={{ color: "var(--muted)", marginTop: 6 }}>
-        Once PROBABLE estimado por IA ({a.fuente || "Gemini"}). No son datos oficiales; verifica antes de apostar.
+        Estimación de IA ({a.fuente || "Gemini"}) — once, bajas y props por jugador (G goles · A asist. · R remates · F faltas · T tarjetas). No son datos oficiales; verifica antes de apostar.
       </p>
     </div>
   );
@@ -94,19 +110,24 @@ function PostMatchStats({ m }) {
     const base = Math.max(Math.abs(real), Math.abs(pred), 1);
     return Math.max(0, Math.round(100 * (1 - Math.abs(real - pred) / base)));
   };
+  const num = (v) => (v == null || v === "" ? null : +Number(v).toFixed(1));
   const rows = [];
   // Goles: previsto = xG total; real = marcador.
-  if (m.result && m.xg) {
-    rows.push({ k: "goals", lab: "Goles", pred: +(m.xg[0] + m.xg[1]).toFixed(1), real: m.result[0] + m.result[1] });
+  if (m.xg || m.result) {
+    rows.push({ k: "goals", lab: "Goles",
+      pred: m.xg ? +(m.xg[0] + m.xg[1]).toFixed(1) : null,
+      real: m.result ? m.result[0] + m.result[1] : null });
   }
+  // Todas las métricas: se muestran aunque falte la real (queda pendiente).
   [["shots", "Remates"], ["sot", "Tiros a puerta"], ["corners", "Córners"],
    ["fouls", "Faltas"], ["yellows", "Amarillas"], ["reds", "Rojas"]].forEach(([k, lab]) => {
-    if (sr[k] && m.stats?.[k]) {
-      rows.push({ k, lab, pred: +Number(m.stats[k].total).toFixed(1), real: +Number(sr[k].total).toFixed(1) });
-    }
+    const pred = num(m.stats?.[k]?.total);
+    const real = num(sr[k]?.total);
+    if (pred != null || real != null) rows.push({ k, lab, pred, real });
   });
   const scored = rows.filter((r) => Number.isFinite(r.pred) && Number.isFinite(r.real));
   const avg = scored.length ? Math.round(scored.reduce((s, r) => s + acc(r.pred, r.real), 0) / scored.length) : null;
+  const anyReal = rows.some((r) => Number.isFinite(r.real) && r.k !== "goals");
   return (
     <div className="card">
       <div className="row-between">
@@ -117,16 +138,17 @@ function PostMatchStats({ m }) {
         <table className="tbl-mk cmp-tbl">
           <thead><tr><th className="tl">Métrica</th><th>Previsto</th><th>Real</th><th>Dif.</th><th>Acierto</th></tr></thead>
           <tbody>
-            {scored.map((r) => {
-              const dif = +(r.real - r.pred).toFixed(1);
-              const a = acc(r.pred, r.real);
+            {rows.map((r) => {
+              const both = Number.isFinite(r.pred) && Number.isFinite(r.real);
+              const dif = both ? +(r.real - r.pred).toFixed(1) : null;
+              const a = both ? acc(r.pred, r.real) : null;
               return (
                 <tr key={r.k}>
                   <td className="tl">{r.lab}</td>
-                  <td>{r.pred}</td>
-                  <td><b>{r.real}</b></td>
-                  <td className={dif > 0 ? "value-yes" : dif < 0 ? "value-no" : "dim"}>{dif > 0 ? "+" : ""}{dif}</td>
-                  <td><span className="acc-badge" style={{ "--acc": a + "%" }}>{a}%</span></td>
+                  <td>{r.pred != null ? r.pred : "—"}</td>
+                  <td>{r.real != null ? <b>{r.real}</b> : <span className="dim">pendiente</span>}</td>
+                  <td className={dif == null ? "dim" : dif > 0 ? "value-yes" : dif < 0 ? "value-no" : "dim"}>{dif == null ? "—" : (dif > 0 ? "+" : "") + dif}</td>
+                  <td>{a == null ? <span className="dim">—</span> : <span className="acc-badge" style={{ "--acc": a + "%" }}>{a}%</span>}</td>
                 </tr>
               );
             })}
@@ -135,7 +157,7 @@ function PostMatchStats({ m }) {
       </div>
       <p className="note" style={{ color: "var(--muted)", marginTop: 6 }}>
         Reales (co.uk, ~1 día de retraso) frente a lo que estimó el modelo. Diferencia = real − previsto.
-        {!m.statsReal && " (Stats detalladas aún no disponibles; se completan tras el partido.)"}
+        {!anyReal && " Las stats detalladas de este partido aún no están publicadas; se completan en la siguiente actualización."}
       </p>
     </div>
   );
