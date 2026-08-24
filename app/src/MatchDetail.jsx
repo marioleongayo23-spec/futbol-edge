@@ -59,42 +59,92 @@ function Heat({ M }) {
   );
 }
 
-/* Once probable + bajas + jugadores clave con props (estimación IA). */
-function Alineacion({ m, a }) {
-  const col = (title, xi, bajas, clave) => (
-    <div className="xi-col">
-      <div className="xi-team">{title}</div>
-      <ol className="xi-list">
-        {(xi || []).map((p, i) => <li key={i}>{p}</li>)}
-        {!(xi || []).length && <li className="dim">once sin confirmar</li>}
-      </ol>
-      {(bajas || []).length > 0 && (
-        <div className="xi-bajas"><b>Bajas:</b> {bajas.join(", ")}</div>
-      )}
-      {(clave || []).length > 0 && (
-        <div className="xi-props">
-          <div className="xi-props-h">Jugadores clave (estimación)</div>
-          <table className="props-tbl">
-            <thead><tr><th className="tl">Jugador</th><th title="Goles">G</th><th title="Asistencias">A</th><th title="Remates">R</th><th title="Faltas">F</th><th title="Tarjetas">T</th></tr></thead>
-            <tbody>
-              {clave.map((p, i) => (
-                <tr key={i}>
-                  <td className="tl">{p.jugador}</td>
-                  <td>{p.g ?? "–"}</td><td>{p.a ?? "–"}</td><td>{p.r ?? "–"}</td><td>{p.f ?? "–"}</td><td>{p.t ?? "–"}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+/* Reparte 11 nombres en líneas tipo formación: GK, DEF, MID, DEL. */
+function _lines(xi) {
+  const list = (xi || []).slice(0, 11);
+  if (!list.length) return [];
+  const gk = [list[0]];
+  const rest = list.slice(1);
+  const n = rest.length;
+  const d = Math.min(n, Math.ceil(n * 0.4));
+  const mrow = Math.max(0, Math.round((n - d) * 0.55));
+  const f = Math.max(0, n - d - mrow);
+  const out = [gk];
+  let i = 0;
+  [d, mrow, f].forEach((sz) => { if (sz > 0) { out.push(rest.slice(i, i + sz)); i += sz; } });
+  return out;
+}
+
+function _short(name) {
+  const parts = String(name).trim().split(/\s+/);
+  return parts.length > 1 ? parts[parts.length - 1] : parts[0];
+}
+
+function TeamHalf({ xi, side, color }) {
+  const lines = _lines(xi);
+  // Local: portero arriba (su portería) → delanteros hacia el centro.
+  // Visitante: se invierte para que ataque hacia el centro también.
+  const ordered = side === "home" ? lines : lines.slice().reverse();
+  if (!lines.length) return <div className="pitch-half empty">once sin confirmar</div>;
+  return (
+    <div className={"pitch-half " + side}>
+      {ordered.map((line, li) => (
+        <div className="pitch-line" key={li}>
+          {line.map((p, pi) => (
+            <div className="player" key={pi} title={p}>
+              <span className="dot" style={{ background: color }} />
+              <span className="pn">{_short(p)}</span>
+            </div>
+          ))}
         </div>
-      )}
+      ))}
     </div>
   );
+}
+
+function PropsTable({ title, clave }) {
+  if (!(clave || []).length) return null;
+  return (
+    <div className="xi-props">
+      <div className="xi-props-h">{title} · jugadores clave</div>
+      <table className="props-tbl">
+        <thead><tr><th className="tl">Jugador</th><th title="Goles">G</th><th title="Asistencias">A</th><th title="Remates">R</th><th title="Faltas">F</th><th title="Tarjetas">T</th></tr></thead>
+        <tbody>
+          {clave.map((p, i) => (
+            <tr key={i}>
+              <td className="tl">{p.jugador}</td>
+              <td>{p.g ?? "–"}</td><td>{p.a ?? "–"}</td><td>{p.r ?? "–"}</td><td>{p.f ?? "–"}</td><td>{p.t ?? "–"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+/* Once probable sobre el campo + bajas + jugadores clave con props (IA). */
+function Alineacion({ m, a }) {
   return (
     <div className="card">
-      <div className="lbl">👥 Once probable, bajas y jugadores clave</div>
-      <div className="xi-grid">
-        {col(m.home, a.local, a.bajas_local, a.clave_local)}
-        {col(m.away, a.visitante, a.bajas_visitante, a.clave_visitante)}
+      <div className="lbl">👥 Once probable</div>
+      <div className="pitch">
+        <div className="pitch-names"><span>{m.home}</span><span>{m.away}</span></div>
+        <div className="pitch-grass">
+          <div className="pitch-mid" />
+          <div className="pitch-circle" />
+          <TeamHalf xi={a.local} side="home" color="var(--green)" />
+          <TeamHalf xi={a.visitante} side="away" color="var(--blue)" />
+        </div>
+      </div>
+      {((a.bajas_local || []).length > 0 || (a.bajas_visitante || []).length > 0) && (
+        <div className="xi-grid" style={{ marginTop: 10 }}>
+          <div className="xi-bajas">{(a.bajas_local || []).length ? <><b>Bajas {m.home}:</b> {a.bajas_local.join(", ")}</> : null}</div>
+          <div className="xi-bajas">{(a.bajas_visitante || []).length ? <><b>Bajas {m.away}:</b> {a.bajas_visitante.join(", ")}</> : null}</div>
+        </div>
+      )}
+      <div className="xi-grid" style={{ marginTop: 10 }}>
+        <PropsTable title={m.home} clave={a.clave_local} />
+        <PropsTable title={m.away} clave={a.clave_visitante} />
       </div>
       <p className="note" style={{ color: "var(--muted)", marginTop: 6 }}>
         Estimación de IA ({a.fuente || "Gemini"}) — once, bajas y props por jugador (G goles · A asist. · R remates · F faltas · T tarjetas). No son datos oficiales; verifica antes de apostar.

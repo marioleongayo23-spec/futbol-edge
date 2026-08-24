@@ -340,3 +340,21 @@ code{background:var(--card2);border:1px solid var(--line);border-radius:5px;padd
 .props-tbl th,.props-tbl td{padding:4px 5px;text-align:center;border-bottom:1px solid var(--line)}
 .props-tbl th.tl,.props-tbl td.tl{text-align:left}
 .props-tbl th{color:var(--muted);font-weight:700}
+
+/* Campo de fútbol con los dos onces */
+.pitch{margin-top:6px}
+.pitch-names{display:flex;justify-content:space-between;font-size:.78rem;font-weight:700;margin-bottom:6px}
+.pitch-names span:first-child{color:var(--green)}
+.pitch-names span:last-child{color:var(--blue)}
+.pitch-grass{position:relative;display:flex;flex-direction:column;gap:0;border-radius:14px;padding:10px 6px;
+  background-color:#0f5a38;
+  background-image:repeating-linear-gradient(0deg,rgba(255,255,255,.06) 0 38px,rgba(255,255,255,0) 38px 76px);
+  border:1px solid var(--line);min-height:380px;overflow:hidden}
+.pitch-mid{position:absolute;left:8px;right:8px;top:50%;height:2px;background:rgba(255,255,255,.25);transform:translateY(-1px)}
+.pitch-circle{position:absolute;left:50%;top:50%;width:74px;height:74px;border:2px solid rgba(255,255,255,.22);border-radius:50%;transform:translate(-50%,-50%)}
+.pitch-half{display:flex;flex-direction:column;justify-content:space-around;flex:1;gap:4px;z-index:1}
+.pitch-half.empty{align-items:center;justify-content:center;color:rgba(255,255,255,.7);font-size:.8rem;min-height:150px}
+.pitch-line{display:flex;justify-content:space-around;align-items:center}
+.player{display:flex;flex-direction:column;align-items:center;gap:2px;max-width:76px}
+.player .dot{width:20px;height:20px;border-radius:50%;border:2px solid rgba(255,255,255,.85);box-shadow:0 2px 5px rgba(0,0,0,.4)}
+.player .pn{font-size:.66rem;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.8);text-align:center;line-height:1.1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:76px}
