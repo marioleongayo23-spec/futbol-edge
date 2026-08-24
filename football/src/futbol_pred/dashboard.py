@@ -734,6 +734,46 @@ def _squads_from_players(players: dict | None) -> dict[str, dict[str, list[dict]
     return out
 
 
+def _merge_lineup_players(players: dict | None, matches: list[dict]) -> dict:
+    """Garantiza que todo jugador mostrado en un once exista en el índice global."""
+
+    out = players or {}
+    league_keys = {
+        "LaLiga": "laliga", "LaLiga Hypermotion": "segunda",
+        "Champions League": "champions",
+    }
+    labels = {"laliga": "LaLiga", "segunda": "LaLiga Hypermotion", "champions": "Champions League"}
+    for match in matches:
+        lineup = match.get("alineacion") or {}
+        if not lineup:
+            continue
+        league = league_keys.get(match.get("league"), "segunda")
+        bucket = out.setdefault(league, {"label": labels.get(league, league), "rankings": {}, "players": []})
+        flat = bucket.setdefault("players", [])
+        existing = {(str(row.get("team")).casefold(), str(row.get("player")).casefold()) for row in flat}
+        for side, team, positions, props in (
+            (lineup.get("local") or [], match.get("home"), lineup.get("posiciones_local") or [], lineup.get("clave_local") or []),
+            (lineup.get("visitante") or [], match.get("away"), lineup.get("posiciones_visitante") or [], lineup.get("clave_visitante") or []),
+        ):
+            prop_by_name = {str(row.get("jugador")).casefold(): row for row in props if isinstance(row, dict)}
+            for index, name in enumerate(side):
+                key = (str(team).casefold(), str(name).casefold())
+                if not team or not name or key in existing:
+                    continue
+                prop = prop_by_name.get(str(name).casefold()) or {}
+                flat.append({
+                    "player": name, "team": team,
+                    "position": positions[index] if index < len(positions) else "",
+                    "goals": prop.get("g", 0), "assists": prop.get("a", 0),
+                    "shots": prop.get("r", 0), "yc": prop.get("t", 0),
+                    "min": prop.get("min", 0),
+                    "source": lineup.get("provider") or "once cacheado",
+                    "lineup_status": lineup.get("status") or "estimado",
+                })
+                existing.add(key)
+    return out
+
+
 def _fill_missing_free_squads(
     matches: list[dict],
     now: datetime,
@@ -877,9 +917,11 @@ def build_dashboard(
     _attach_previews(matches, now)
     _attach_lineups(matches, now, squads=all_squads)
     official_updates = attach_official_context(matches, now)
+    players = _merge_lineup_players(players, matches)
     annotate_prediction_context(matches)
     first_audit = content_audit(matches, players, now)
     retried = _retry_incomplete(matches, first_audit, now)
+    players = _merge_lineup_players(players, matches)
     audit = content_audit(matches, players, now)
     audit["selective_retries"] = retried
     audit["official_lineup_updates"] = official_updates
