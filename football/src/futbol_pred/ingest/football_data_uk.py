@@ -97,6 +97,25 @@ def _movement_meta(row: dict) -> dict | None:
     return None
 
 
+def _closing_odds(row: dict) -> dict | None:
+    """Cierre 1X2 histórico, priorizando consenso y sin mezclar fuentes."""
+
+    candidates = (
+        ("market_average", ("AvgCH", "AvgCD", "AvgCA")),
+        ("Bet365", ("B365CH", "B365CD", "B365CA")),
+    )
+    for source, columns in candidates:
+        values = [_num(row.get(column)) for column in columns]
+        if not all(value and value > 1 for value in values):
+            continue
+        return {
+            "source": "football-data.co.uk",
+            "market_source": source,
+            "1x2": dict(zip(("1", "X", "2"), values)),
+        }
+    return None
+
+
 class FootballDataUKClient:
     def __init__(self, timeout: int = 20):
         self.timeout = timeout
@@ -169,6 +188,26 @@ class FootballDataUKClient:
                 if movement:
                     odds["_meta"] = movement
                 out.append({"div": div, "home": home, "away": away, "odds": odds})
+        return out
+
+    def get_historical_closing_odds(self, league: str, season: int) -> list[dict]:
+        """Cierres 1X2 de partidos jugados desde el CSV histórico de temporada."""
+        if league not in DIV_CODE:
+            return []
+        div = DIV_CODE[league]
+        try:
+            response = requests.get(
+                f"{BASE_URL}/{season_code(season)}/{div}.csv", timeout=self.timeout
+            )
+            response.raise_for_status()
+        except requests.RequestException:
+            return []
+        out: list[dict] = []
+        for row in csv.DictReader(io.StringIO(_decode(response).lstrip("﻿"))):
+            home, away = row.get("HomeTeam"), row.get("AwayTeam")
+            closing = _closing_odds(row)
+            if home and away and closing:
+                out.append({"home": home, "away": away, "closing_odds": closing})
         return out
 
     @staticmethod

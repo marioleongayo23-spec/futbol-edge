@@ -6,6 +6,7 @@ import { teamProfile, teamSquad } from "./teams";
 import { bestValue, countdown, getFavs, modelAccuracy, recentForm, toggleFav, topValueBets } from "./insights";
 import MatchDetail from "./MatchDetail";
 import ProbabilityQualityPanel from "./ProbabilityQualityPanel";
+import ClvPanel from "./ClvPanel";
 import { authEnabled, signOut, useSession } from "./supabase";
 
 function savedLightTheme() {
@@ -830,7 +831,8 @@ function Cartera({ matches }) {
       setMessage("Completa partido, cuota mayor que 1 y stake positivo.");
       return;
     }
-    setBets([{ id: Date.now(), date: new Date().toISOString().slice(0, 10), match: f.match.trim(), sel: f.sel, odds, stake, result: "open" }, ...bets]);
+    const linked = matches.find((match) => `${match.home} - ${match.away}` === f.match.trim());
+    setBets([{ id: Date.now(), date: new Date().toISOString().slice(0, 10), match: f.match.trim(), matchId: linked?.id || null, sel: f.sel, odds, stake, result: "open" }, ...bets]);
     setF({ match: "", sel: "1", odds: "", stake: "" });
     setMessage("Apuesta añadida.");
   };
@@ -847,6 +849,8 @@ function Cartera({ matches }) {
         <div className="stat"><span className="stat-k">ROI / Yield</span><b className="stat-v" style={{ color: roi >= 0 ? "var(--green)" : "var(--red)" }}>{roi >= 0 ? "+" : ""}{roi.toFixed(1)}%</b><span className="stat-s">{staked.toFixed(0)}€ apostados</span></div>
         <div className="stat"><span className="stat-k">Acierto</span><b className="stat-v">{hit.toFixed(0)}%</b><span className="stat-s">{wins}/{settled.length} ganadas</span></div>
       </div>
+
+      <ClvPanel bets={bets} matches={matches} />
 
       <div className="card">
         <div className="lbl">Evolución del beneficio</div>
