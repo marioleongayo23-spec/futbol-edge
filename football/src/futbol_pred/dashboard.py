@@ -482,6 +482,48 @@ def _attach_venue_weather(matches: list[dict], now: datetime, client: WeatherCli
     return updated
 
 
+def _attach_archived_weather(
+    matches: list[dict],
+    now: datetime,
+    client: WeatherClient | None = None,
+    limit: int = 6,
+) -> int:
+    """Backfill incremental de tiempo pasado sin modificar predicciones.
+
+    Solo consulta partidos terminados hace al menos 12 horas y sin caché. Se
+    procesan primero los más antiguos para que un dato reciente aún no archivado
+    no bloquee el relleno del resto de la temporada.
+    """
+
+    weather = client or WeatherClient()
+    cutoff = ensure_aware(now) - timedelta(hours=12)
+    candidates: list[tuple[datetime, dict, dict]] = []
+    for match in matches:
+        if not match.get("finished") or match.get("weather_actual"):
+            continue
+        venue = match.get("venue_meta") or venue_for(match.get("home", ""))
+        if not venue:
+            continue
+        try:
+            kickoff = ensure_aware(datetime.fromisoformat(match["kickoff"])).astimezone(MADRID)
+        except (KeyError, TypeError, ValueError):
+            continue
+        if kickoff > cutoff:
+            continue
+        candidates.append((kickoff, match, venue))
+
+    candidates.sort(key=lambda row: row[0])
+    updated = 0
+    for kickoff, match, venue in candidates[:max(0, limit)]:
+        historical = weather.historical(venue, kickoff)
+        if not historical:
+            continue
+        historical["source_updated_at"] = ensure_aware(now).astimezone(MADRID).isoformat()
+        match["weather_actual"] = historical
+        updated += 1
+    return updated
+
+
 def _age_hours(now: datetime, value: str | None) -> float | None:
     try:
         stamp = ensure_aware(datetime.fromisoformat(str(value)))
@@ -966,6 +1008,7 @@ def build_dashboard(
             {"schema_version": 7, "matches": matches},
             {"schema_version": previous.get("schema_version"), "matches": previous.get("matches", [])},
         )
+    archived_weather_updates = _attach_archived_weather(matches, now)
     base_players = _merge_squad_players(
         _load_players(season), squads_by_league, (previous or {}).get("players")
     )
@@ -1003,6 +1046,7 @@ def build_dashboard(
     audit["selective_retries"] = retried
     audit["official_lineup_updates"] = official_updates
     audit["weather_updates"] = weather_updates
+    audit["archived_weather_updates"] = archived_weather_updates
     audit["state_simulations"] = state_simulations
     ai_events = diagnostics()
     payload = {
@@ -1032,7 +1076,7 @@ def build_dashboard(
             "odds": "football-data.co.uk (media de mercado: 1X2 y over/under 2.5)",
             "lineups": "API-Football para onces oficiales y bajas cerca del partido; football-data.org para plantillas",
             "ai": "Gemini dinámico → Groq → motor estadístico local gratuito; control del día a las 00:15 y 10:15 Europe/Madrid, con presupuesto y caché",
-            "weather": "Open-Meteo (CC BY 4.0), previsión horaria del estadio; refresco 00:15/10:15",
+            "weather": "Open-Meteo (CC BY 4.0): previsión horaria + Historical Forecast archivado por estadio; el histórico es solo para validación hasta superar gate",
             "tactics": "football-data.co.uk, perfiles observados casa/fuera de remates, córners, faltas, tarjetas y goles",
         },
         "disclaimer": "Probabilidades y ventaja estadística, no certezas. "
