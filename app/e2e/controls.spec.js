@@ -8,6 +8,10 @@ if (enriched) {
   enriched.tactical_matchup = { ...(enriched.tactical_matchup || {}), home: { style_vector: vector }, away: { style_vector: vector }, style_clashes: [{ edge: "contact", label: "Cruce de estilos", strength: 72 }] };
   enriched.lineup_impact = { evidence: "media", confidence_penalty_pp: 2, method: "Método auditable", home: { expected_minutes_avg: 76, starter_probability_avg_pct: 81, attack_presence_index: 9.2, official_absences: 0 }, away: { expected_minutes_avg: 74, starter_probability_avg_pct: 79, attack_presence_index: 8.7, official_absences: 1 } };
   enriched.state_simulation = { probabilities: { "1": .47, X: .28, "2": .25 }, simulations: 4000, expected_total_goals: 2.5, total_goals_range_80: [1, 5], over_2_5: .46, btts: .51, assumptions: { pace_multiplier: .92, estimated_goal_delta_vs_neutral: -.2, state_effects: "El equipo que pierde arriesga más." } };
+  // Fuerza un value enorme que DEBE quedar bloqueado por la abstención backend.
+  enriched.probs = [70, 20, 10];
+  enriched.odds = { "1x2": { odds: { "1": 2.0, X: 4.0, "2": 8.0 }, fair: { "1": .50, X: .25, "2": .25 } } };
+  enriched.recommendation = { decision: "no_pick", label: "Sin apuesta recomendada", reasons: ["confianza insuficiente", "datos incompletos"] };
 }
 const feed = JSON.stringify(feedData);
 const views = [
@@ -118,6 +122,19 @@ test("clasificación, quiniela y value modifican sus estados", async ({ page }) 
   const bankroll = page.getByRole("spinbutton", { name: "Bankroll para calcular stakes" });
   await bankroll.fill("1250");
   await expect(bankroll).toHaveValue("1250");
+});
+
+test("Value bets respeta no_pick aunque las cuotas generen edge", async ({ page }) => {
+  expect(enriched).toBeTruthy();
+  await gotoView(page, "Value bets");
+  const card = page.locator('.card[data-recommendation="no_pick"]').filter({ hasText: enriched.home }).filter({ hasText: enriched.away }).first();
+  await expect(card).toBeVisible();
+  await expect(card.getByText(/Sin apuesta recomendada/)).toBeVisible();
+  await expect(card.getByText(/confianza insuficiente/)).toBeVisible();
+  await expect(card.locator(".edge")).toHaveCount(0);
+  await expect(card.getByText(/VALUE/)).toHaveCount(0);
+  await expect(card.getByText(/apostar/)).toHaveCount(0);
+  await expect(card.getByRole("spinbutton")).toHaveCount(3);
 });
 
 test("cartera permite añadir, liquidar y eliminar", async ({ page }) => {
