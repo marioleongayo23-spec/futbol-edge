@@ -47,6 +47,7 @@ class MatchStats:
     away_team: str
     stats: dict[str, tuple[float, float]]  # nombre -> (local, visitante)
     referee: str | None = None
+    kickoff: datetime | None = None
 
 
 def season_code(season: int) -> str:
@@ -155,7 +156,13 @@ class FootballDataUKClient:
                 h, a = _num(row.get(hc)), _num(row.get(ac))
                 if h is not None and a is not None:
                     stats[name] = (h, a)
-            out.append(MatchStats(row["HomeTeam"], row["AwayTeam"], stats, (row.get("Referee") or "").strip() or None))
+            out.append(MatchStats(
+                row["HomeTeam"],
+                row["AwayTeam"],
+                stats,
+                (row.get("Referee") or "").strip() or None,
+                _parse_date(row.get("Date"), row.get("Time")),
+            ))
         return out
 
 
