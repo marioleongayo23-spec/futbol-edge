@@ -1,3 +1,5 @@
+import math
+
 import pytest
 
 from futbol_pred.backtest.ensemble import (
@@ -17,13 +19,31 @@ def test_challenger_debe_superar_dc_y_elo():
     assert candidate_beats_all_baselines(candidate, baselines) is False
 
 
-def test_challenger_pasa_si_no_empeora_ningun_baseline():
+def test_challenger_pasa_si_mejora_ambas_metricas_frente_a_todos():
     candidate = {"log_loss": 0.97, "rps": 0.18}
     baselines = {
         "dixon_coles": {"log_loss": 1.01, "rps": 0.21},
         "elo": {"log_loss": 0.98, "rps": 0.19},
     }
     assert candidate_beats_all_baselines(candidate, baselines) is True
+
+
+def test_challenger_no_pasa_si_empata_una_metrica():
+    candidate = {"log_loss": 0.98, "rps": 0.18}
+    baselines = {
+        "dixon_coles": {"log_loss": 1.01, "rps": 0.21},
+        "elo": {"log_loss": 0.98, "rps": 0.19},
+    }
+    assert candidate_beats_all_baselines(candidate, baselines) is False
+
+
+def test_challenger_falla_cerrado_si_un_baseline_no_es_finito():
+    candidate = {"log_loss": 0.97, "rps": 0.18}
+    baselines = {
+        "dixon_coles": {"log_loss": 1.01, "rps": 0.21},
+        "elo": {"log_loss": math.nan, "rps": 0.19},
+    }
+    assert candidate_beats_all_baselines(candidate, baselines) is False
 
 
 def test_ensemble_suma_uno_y_respeta_extremos():
@@ -57,4 +77,5 @@ def test_ajuste_ensemble_reserva_validacion_temporal():
     assert result["validation"]["n"] == result["n_validation"]
     assert isinstance(result["accepted"], bool)
     assert result["validation_baselines"]["dixon_coles"]["n"] == result["n_validation"]
+    assert result["acceptance_gate"]["rule"] == "strictly_better_than_every_baseline"
     assert 0.05 <= result["production"]["dc_weight"] <= 0.95
