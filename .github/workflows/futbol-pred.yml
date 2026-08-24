@@ -60,9 +60,26 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
           python - <<'PY'
-          import os
+          import os, requests
           k = os.getenv("AI_API_KEY") or os.getenv("GEMINI_API_KEY") or ""
-          print(f"[diag] clave IA detectada: {'SÍ, longitud '+str(len(k)) if k else 'NO — define el secret AI_API_KEY o GEMINI_API_KEY'}")
+          print(f"[diag] clave IA detectada: {'SÍ, longitud '+str(len(k)) if k else 'NO'}")
+          if k:
+              m = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
+              # ListModels NO consume cuota de generación: confirma si el modelo existe.
+              try:
+                  lm = requests.get("https://generativelanguage.googleapis.com/v1beta/models",
+                                    params={"key": k, "pageSize": 100}, timeout=20)
+                  names = [x.get("name", "") for x in (lm.json().get("models") or [])]
+                  print(f"[gemini-diag] listmodels status={lm.status_code} tiene_{m}={'models/'+m in names}")
+              except Exception as e:  # noqa: BLE001
+                  print(f"[gemini-diag] listmodels error {type(e).__name__}")
+              # Una generación mínima para ver 200 vs 429 (cuota).
+              try:
+                  g = requests.post(f"https://generativelanguage.googleapis.com/v1beta/models/{m}:generateContent",
+                                    params={"key": k}, json={"contents":[{"parts":[{"text":"hola"}]}]}, timeout=30)
+                  print(f"[gemini-diag] generate modelo={m} status={g.status_code} body={g.text[:200]}")
+              except Exception as e:  # noqa: BLE001
+                  print(f"[gemini-diag] generate error {type(e).__name__}")
           PY
           python -m futbol_pred.dashboard
           python - <<'PY'
