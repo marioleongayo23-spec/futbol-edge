@@ -1,5 +1,4 @@
 """Control operativo: onces oficiales, completitud y alertas del feed."""
-
 from __future__ import annotations
 
 from datetime import datetime
@@ -8,6 +7,7 @@ import unicodedata
 from zoneinfo import ZoneInfo
 
 from .ingest.api_football import ApiFootballClient
+from .ingest.api_football_players import fetch_team_player_rates, props_for_official_starters
 from .ingest.lineups_ai import _best_props, _fallback_props, _formation
 from .model.state_simulator import simulate_match_states
 
@@ -41,11 +41,41 @@ def _side_for(team: str, home: str, away: str) -> str | None:
     return None
 
 
-def attach_official_context(
-    matches: list[dict], now: datetime, client: ApiFootballClient | None = None, limit: int = 8
-) -> int:
-    """Actualiza cada 15 min los partidos cercanos al inicio con el once oficial."""
+def _league_id(match: dict) -> int | None:
+    label = str(match.get("league") or "").casefold()
+    if "hypermotion" in label or "segunda" in label:
+        return 141
+    if "champions" in label or "ucl" in label:
+        return 2
+    if "laliga" in label or "primera" in label:
+        return 140
+    return None
 
+
+def _season_for(match: dict, kickoff: datetime) -> int:
+    try:
+        value = int(match.get("season"))
+        if 2000 <= value <= 2100:
+            return value
+    except (TypeError, ValueError):
+        pass
+    local = _aware(kickoff).astimezone(MADRID)
+    return local.year if local.month >= 7 else local.year - 1
+
+
+def _real_starter_props(client, match, team_name, starters, kickoff):
+    try:
+        rates = fetch_team_player_rates(
+            client, team_name, _season_for(match, kickoff), _league_id(match), max_pages=2
+        )
+        props = props_for_official_starters(starters, rates, limit=5)
+    except Exception:
+        return None
+    return props if len(props) >= 3 else None
+
+
+def attach_official_context(matches: list[dict], now: datetime, client: ApiFootballClient | None = None, limit: int = 8) -> int:
+    """Actualiza cada 15 min los partidos cercanos al inicio con el once oficial."""
     client = client or ApiFootballClient()
     if client.offline:
         return 0
@@ -74,11 +104,7 @@ def attach_official_context(
     updated = 0
     for kickoff, match, fixture_id, fixture in resolved:
         detail = details.get(fixture_id) or fixture
-        official = (
-            client.lineup_from_fixture(detail)
-            if hasattr(client, "lineup_from_fixture") and details
-            else client.get_official_lineup(fixture_id)
-        )
+        official = client.lineup_from_fixture(detail) if hasattr(client, "lineup_from_fixture") and details else client.get_official_lineup(fixture_id)
         absences = client.get_absences(fixture_id)
         old = match.get("alineacion") or {}
         old["official_poll_at"] = now_local.isoformat()
@@ -89,7 +115,6 @@ def attach_official_context(
                 official_context["source_updated_at"] = now_local.isoformat()
                 match["official_context"] = official_context
         if not official:
-            # Aunque el once aún no exista, las bajas oficiales mejoran el contexto.
             _merge_absences(match.get("alineacion") or {}, match, absences, now_local)
             continue
         by_side = {}
@@ -104,8 +129,12 @@ def attach_official_context(
         visitor = [row["name"] for row in by_side["visitante"]["starters"]]
         positions_local = [row["position"] for row in by_side["local"]["starters"]]
         positions_visitor = [row["position"] for row in by_side["visitante"]["starters"]]
-        key_local = _starter_props(old.get("clave_local"), local, "home", match)
-        key_visitor = _starter_props(old.get("clave_visitante"), visitor, "away", match)
+        real_local = _real_starter_props(client, match, match.get("home", ""), local, kickoff)
+        real_visitor = _real_starter_props(client, match, match.get("away", ""), visitor, kickoff)
+        key_local = real_local or _starter_props(old.get("clave_local"), local, "home", match)
+        key_visitor = real_visitor or _starter_props(old.get("clave_visitante"), visitor, "away", match)
+        real_count = (len(real_local) if real_local else 0) + (len(real_visitor) if real_visitor else 0)
+        props_source = "API-Football · players" if real_local and real_visitor else "mixta: API-Football + fallback" if real_local or real_visitor else "fallback estadístico/IA"
         stamp = now_local.isoformat()
         lineup = {
             **old,
@@ -123,14 +152,20 @@ def attach_official_context(
             "provider": "API-Football",
             "model": "alineación oficial",
             "fuente": "API-Football · fixtures/lineups",
+            "player_props_source": props_source,
             "source_updated_at": stamp,
             "generated_at": stamp,
             "ts": stamp,
             "official_fixture_id": fixture_id,
             "quality": {
-                "complete": True, "lineup_players": 22, "positions_players": 22,
-                "props_players": len(key_local) + len(key_visitor), "score": 1.0,
+                "complete": True,
+                "lineup_players": 22,
+                "positions_players": 22,
+                "props_players": len(key_local) + len(key_visitor),
+                "score": 1.0,
                 "official": True,
+                "real_player_props": real_count,
+                "player_props_source": props_source,
             },
         }
         _merge_absences(lineup, match, absences, now_local)
@@ -158,8 +193,6 @@ def _merge_absences(lineup: dict, match: dict, absences: list[dict], now: dateti
 
 
 def content_audit(matches: list[dict], players: dict | None, now: datetime) -> dict:
-    """Comprueba solo los partidos del día y explica exactamente cada hueco."""
-
     today = _aware(now).astimezone(MADRID).date()
     team_players = set()
     for bucket in (players or {}).values():
@@ -197,12 +230,8 @@ def content_audit(matches: list[dict], players: dict | None, now: datetime) -> d
 
 
 def _lineup_side_impact(lineup: dict, side: str) -> dict:
-    """Resume disponibilidad y minutos; no convierte props estimadas en goles."""
-
     props = [row for row in lineup.get(f"clave_{side}") or [] if isinstance(row, dict)]
-    availability = [
-        row for row in lineup.get(f"disponibilidad_{side}") or [] if isinstance(row, dict)
-    ]
+    availability = [row for row in lineup.get(f"disponibilidad_{side}") or [] if isinstance(row, dict)]
     minutes = [float(row.get("min")) for row in props if row.get("min") is not None]
     starts = [float(row.get("tit")) for row in props if row.get("tit") is not None]
     attack_scores = []
@@ -210,14 +239,10 @@ def _lineup_side_impact(lineup: dict, side: str) -> dict:
         try:
             minutes_weight = min(1.0, max(0.0, float(row.get("min", 0))) / 90)
             start_weight = min(1.0, max(0.0, float(row.get("tit", 0))))
-            production = (
-                3 * float(row.get("g", 0)) + 2 * float(row.get("a", 0))
-                + float(row.get("r", 0)) + 1.5 * float(row.get("rp", 0))
-            )
+            production = 3 * float(row.get("g", 0)) + 2 * float(row.get("a", 0)) + float(row.get("r", 0)) + 1.5 * float(row.get("rp", 0))
             attack_scores.append(production * minutes_weight * start_weight)
         except (TypeError, ValueError):
             continue
-
     absence_penalty = 0.0
     official_absences = 0
     for row in availability:
@@ -232,7 +257,6 @@ def _lineup_side_impact(lineup: dict, side: str) -> dict:
         elif "rota" in state:
             weight = 1.0
         absence_penalty += weight if official else weight * 0.35
-
     return {
         "key_players": len(props),
         "expected_minutes_avg": round(sum(minutes) / len(minutes), 1) if minutes else None,
@@ -245,17 +269,12 @@ def _lineup_side_impact(lineup: dict, side: str) -> dict:
 
 
 def lineup_impact(lineup: dict) -> dict:
-    """Impacto cuantitativo, conservador y auditable del once disponible."""
-
     home = _lineup_side_impact(lineup, "local")
     away = _lineup_side_impact(lineup, "visitante")
     status = lineup.get("status") or "estimado"
     status_penalty = {"confirmado": 0, "probable": 2, "estimado": 5}.get(status, 5)
     evidence = "alta" if status == "confirmado" else "media" if status == "probable" else "baja"
-    total_penalty = min(
-        20.0,
-        status_penalty + home["confidence_penalty_pp"] + away["confidence_penalty_pp"],
-    )
+    total_penalty = min(20.0, status_penalty + home["confidence_penalty_pp"] + away["confidence_penalty_pp"])
     attack_edge = None
     if home["attack_presence_index"] is not None and away["attack_presence_index"] is not None:
         attack_edge = round(home["attack_presence_index"] - away["attack_presence_index"], 2)
@@ -267,15 +286,11 @@ def lineup_impact(lineup: dict) -> dict:
         "attack_presence_edge": attack_edge,
         "confidence_penalty_pp": round(total_penalty, 1),
         "probability_adjustment": "not_applied",
-        "method": (
-            "minutos × probabilidad de titularidad × producción observada; "
-            "las bajas oficiales penalizan confianza. No altera el 1X2 sin validación histórica."
-        ),
+        "method": "minutos × probabilidad de titularidad × producción observada; las bajas oficiales penalizan confianza. No altera el 1X2 sin validación histórica.",
     }
 
 
 def attach_state_simulations(matches: list[dict]) -> int:
-    """Adjunta escenarios reproducibles a próximos partidos con xG válido."""
     attached = 0
     for match in matches:
         xg = match.get("xg")
@@ -296,12 +311,6 @@ def attach_state_simulations(matches: list[dict]) -> int:
 
 
 def annotate_prediction_context(matches: list[dict]) -> None:
-    """Explica la confianza con factores observables, incluidas las bajas.
-
-    Las bajas reducen la confianza si no hay una valoración fiable del impacto;
-    no se falsea una corrección direccional de goles sin datos del jugador.
-    """
-
     for match in matches:
         probs = match.get("probs")
         if not isinstance(probs, list) or len(probs) != 3:
@@ -320,8 +329,7 @@ def annotate_prediction_context(matches: list[dict]) -> None:
             factors.append({
                 "factor": "ataque vs defensa",
                 "impact": "incluido como contexto",
-                "detail": "; ".join(tactical.get("notes") or [])
-                + f" · fiabilidad {tactical_reliability or 'sin clasificar'}",
+                "detail": "; ".join(tactical.get("notes") or []) + f" · fiabilidad {tactical_reliability or 'sin clasificar'}",
             })
         weather = match.get("weather") or {}
         heat = weather.get("heat_stress") or {}
@@ -329,41 +337,35 @@ def annotate_prediction_context(matches: list[dict]) -> None:
             factors.append({
                 "factor": "clima",
                 "impact": "reduce confianza" if heat.get("level") == "alto" else "monitorizado",
-                "detail": (
-                    f"{weather.get('temperature_c')} °C, sensación {weather.get('apparent_temperature_c')} °C, "
-                    f"viento {weather.get('wind_kmh')} km/h · estrés térmico {heat.get('level')}"
-                ),
+                "detail": f"{weather.get('temperature_c')} °C, sensación {weather.get('apparent_temperature_c')} °C, viento {weather.get('wind_kmh')} km/h · estrés térmico {heat.get('level')}",
             })
         else:
-            factors.append({
-                "factor": "clima", "impact": "pendiente",
-                "detail": "se captura en las revisiones 00:15 y 10:15 para partidos del día",
-            })
+            factors.append({"factor": "clima", "impact": "pendiente", "detail": "se captura en las revisiones 00:15 y 10:15 para partidos del día"})
         lineup = match.get("alineacion") or {}
         availability = (lineup.get("disponibilidad_local") or []) + (lineup.get("disponibilidad_visitante") or [])
         official_absences = sum(bool(row.get("official")) for row in availability if isinstance(row, dict))
         impact = lineup_impact(lineup) if lineup else None
         if impact:
             match["lineup_impact"] = impact
+        if lineup.get("player_props_source"):
+            real_n = (lineup.get("quality") or {}).get("real_player_props", 0)
+            factors.append({
+                "factor": "props de jugadores",
+                "impact": "datos reales" if real_n else "provisional",
+                "detail": f"{lineup['player_props_source']} · {real_n} jugadores con histórico individual real",
+            })
         if availability:
             factors.append({
                 "factor": "bajas y sanciones",
                 "impact": "reduce confianza" if official_absences else "provisional",
-                "detail": (
-                    f"{len(availability)} incidencias; {official_absences} confirmadas por fuente oficial · "
-                    f"penalización cuantificada {impact['confidence_penalty_pp']:.1f} pp"
-                ),
+                "detail": f"{len(availability)} incidencias; {official_absences} confirmadas por fuente oficial · penalización cuantificada {impact['confidence_penalty_pp']:.1f} pp",
             })
         else:
             factors.append({"factor": "bajas y sanciones", "impact": "sin incidencias verificadas", "detail": "se actualizará cuando la fuente publique cambios"})
         components = (match.get("model_meta") or {}).get("components") or {}
         dc, elo = components.get("dixon_coles") or {}, components.get("elo") or {}
         disagreement = max((abs(float(dc.get(key, 0)) - float(elo.get(key, 0))) for key in ("1", "X", "2")), default=0)
-        penalty = min(
-            20,
-            (impact.get("confidence_penalty_pp", 5) if impact else 5)
-            + (4 if heat.get("level") == "alto" else 0),
-        )
+        penalty = min(20, (impact.get("confidence_penalty_pp", 5) if impact else 5) + (4 if heat.get("level") == "alto" else 0))
         score = max(0, min(100, round(max(probs) + 35 - disagreement * 100 - penalty)))
         evidence = {
             "probabilities": True,
@@ -375,12 +377,15 @@ def annotate_prediction_context(matches: list[dict]) -> None:
             "weather": bool(weather),
             "market_odds": isinstance(match.get("odds"), dict),
         }
-        # Clima/cuotas/on-lineup son señales de refinamiento, no requisitos
-        # duros. El núcleo pesa más para no castigar partidos lejanos.
         weights = {
-            "probabilities": 25, "model_agreement": 20, "form_and_splits": 15,
-            "tactical_profile": 15, "lineup": 10, "official_lineup": 5,
-            "weather": 5, "market_odds": 5,
+            "probabilities": 25,
+            "model_agreement": 20,
+            "form_and_splits": 15,
+            "tactical_profile": 15,
+            "lineup": 10,
+            "official_lineup": 5,
+            "weather": 5,
+            "market_odds": 5,
         }
         completeness = sum(weights[key] for key, present in evidence.items() if present)
         match["prediction_confidence"] = {
@@ -412,25 +417,18 @@ def build_alerts(previous: dict | None, audit: dict, ai_events: list[dict], now:
     stamp = _aware(now).astimezone(MADRID).isoformat()
     if audit.get("incomplete"):
         alerts.append({
-            "severity": "critical", "code": "today_content_incomplete",
+            "severity": "critical",
+            "code": "today_content_incomplete",
             "message": f"{len(audit['incomplete'])} partido(s) del día siguen incompletos",
-            "match_ids": [item["id"] for item in audit["incomplete"]], "at": stamp,
+            "match_ids": [item["id"] for item in audit["incomplete"]],
+            "at": stamp,
         })
     configured_failed = {event.get("provider") for event in ai_events if event.get("status") == "failed"}
     if {"Gemini", "Groq"}.issubset(configured_failed):
-        alerts.append({
-            "severity": "critical", "code": "all_ai_providers_failed",
-            "message": "Fallaron Gemini y Groq; se conserva caché o cálculo local", "at": stamp,
-        })
+        alerts.append({"severity": "critical", "code": "all_ai_providers_failed", "message": "Fallaron Gemini y Groq; se conserva caché o cálculo local", "at": stamp})
     elif configured_failed:
-        alerts.append({
-            "severity": "warning", "code": "ai_provider_failed",
-            "message": f"Falló {', '.join(sorted(configured_failed))}; el fallback siguió activo", "at": stamp,
-        })
+        alerts.append({"severity": "warning", "code": "ai_provider_failed", "message": f"Falló {', '.join(sorted(configured_failed))}; el fallback siguió activo", "at": stamp})
     old_time = _parse((previous or {}).get("generated_at"))
     if old_time and (_aware(now).astimezone(MADRID) - old_time).total_seconds() > 2 * 3600:
-        alerts.append({
-            "severity": "warning", "code": "previous_feed_stale",
-            "message": "El feed anterior tenía más de 2 horas de antigüedad", "at": stamp,
-        })
+        alerts.append({"severity": "warning", "code": "previous_feed_stale", "message": "El feed anterior tenía más de 2 horas de antigüedad", "at": stamp})
     return alerts
