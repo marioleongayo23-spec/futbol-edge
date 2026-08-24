@@ -61,24 +61,35 @@ def test_auditoria_y_alerta_identifican_solo_huecos_del_dia():
     assert {item["code"] for item in alerts} == {"today_content_incomplete", "all_ai_providers_failed"}
 
 
-def test_rendimiento_desglosa_roi_y_compara_10_15():
+def test_rendimiento_desglosa_roi_compara_capas_y_10_15():
+    latest = {
+        "generated_at": "2026-08-24T10:15:00+02:00", "window": "10:15",
+        "probs": [60, 25, 15],
+        "model_probs": [50, 30, 20],
+        "odds": {"1x2": {"fair": {"1": 0.55, "X": 0.28, "2": 0.17}}},
+        "value": [{"market": "1x2", "selection": "1", "odds": 2.0, "edge": 0.2}],
+    }
     match = {
         "id": "m1", "league": "LaLiga", "home": "A", "away": "B",
         "kickoff": "2026-08-24T21:00:00+02:00", "finished": True, "result": [2, 0],
-        "prediction_snapshot": {
-            "generated_at": "2026-08-24T10:15:00+02:00", "window": "10:15",
-            "probs": [60, 25, 15],
-            "value": [{"market": "1x2", "selection": "1", "odds": 2.0, "edge": 0.2}],
-        },
+        "prediction_snapshot": latest,
         "prediction_history": [
             {"generated_at": "2026-08-23T12:00:00+02:00", "window": "initial", "probs": [45, 30, 25]},
-            {"generated_at": "2026-08-24T10:15:00+02:00", "window": "10:15", "probs": [60, 25, 15], "value": [{"market": "1x2", "selection": "1", "odds": 2.0, "edge": 0.2}]},
+            latest,
         ],
     }
     report = build_performance([match])
     assert report["overall"]["roi"] == 100.0
     assert report["by_market"][0]["label"] == "1X2"
     assert report["initial_vs_10_15"]["improved"] is True
+
+    quality = report["probability_quality"]
+    assert quality["published"]["n"] == quality["model_only"]["n"] == 1
+    assert quality["market"]["n"] == 1
+    assert quality["published"]["log_loss"] < quality["model_only"]["log_loss"]
+    assert quality["published_vs_model"]["n"] == 1
+    assert quality["published_vs_model"]["improved_both"] is True
+    assert quality["published_vs_model"]["log_loss_delta"] < 0
 
 
 def test_jugadores_del_once_rellenan_indice_global_sin_huecos():
