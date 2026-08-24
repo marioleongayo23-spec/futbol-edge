@@ -194,7 +194,7 @@ def fetch_team_player_rates(
 def props_for_official_starters(
     starters: list[str],
     rates: list[dict],
-    limit: int = 5,
+    limit: int = 11,
 ) -> list[dict]:
     """Convierte tasas históricas en expectativas del partido para titulares oficiales."""
 
@@ -229,5 +229,10 @@ def props_for_official_starters(
         )
         candidates.append(prop)
 
+    max_rows = max(0, int(limit))
+    if max_rows >= len(candidates):
+        # Para cobertura completa respetamos el orden del once oficial. El ranking
+        # de oportunidades se hace después en ``_best_props``.
+        return candidates
     candidates.sort(key=lambda row: row["evidence_score"], reverse=True)
-    return candidates[: max(0, int(limit))]
+    return candidates[:max_rows]
