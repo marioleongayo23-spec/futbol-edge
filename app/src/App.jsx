@@ -5,6 +5,7 @@ import { leaguesIn, projectedTable } from "./standings";
 import { teamProfile, teamSquad } from "./teams";
 import { bestValue, countdown, getFavs, modelAccuracy, recentForm, toggleFav, topValueBets } from "./insights";
 import MatchDetail from "./MatchDetail";
+import ProbabilityQualityPanel from "./ProbabilityQualityPanel";
 import { authEnabled, signOut, useSession } from "./supabase";
 
 function savedLightTheme() {
@@ -733,6 +734,7 @@ function Datos({ data }) {
         {(perf.weak_segments || []).length > 0 && <div className="note value-no">Segmentos a vigilar: {perf.weak_segments.map((row) => `${row.segment} (${row.roi}% ROI, n=${row.n})`).join(" · ")}</div>}
         {perf.overall?.n ? <div className="mut" style={{ marginTop: 8 }}>{perf.method}</div> : <div className="note" style={{ marginTop: 8 }}>Aún sin muestra válida: el panel se activará cuando terminen partidos que ya tengan snapshot prepartido, sin reconstruir predicciones a posteriori.</div>}
       </div>
+      <ProbabilityQualityPanel quality={perf.probability_quality} />
       <AccuracyPanel acc={data.accuracy} />
       <ModelReport model={data.model} />
       <div className="card">
