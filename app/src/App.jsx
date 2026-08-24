@@ -1061,7 +1061,9 @@ export default function App() {
             onChange={(e) => { const v = e.target.value; setQ(v); if (v.trim()) { setSel(null); setTeamSel(null); setView("partidos"); } }} /></div>
           <div className="top-right">
             <span className="badge-cal"><span className="dot d-ucl" /> {data ? "Calendario verificado" : "Cargando…"}</span>
-            <button type="button" className="theme-btn" onClick={toggleTheme} title="Cambiar tema" aria-label={`Cambiar a tema ${theme === "dark" ? "claro" : "oscuro"}`}>{theme === "dark" ? "☀️" : "🌙"}</button>
+            <button type="button" className="theme-btn" onPointerDown={toggleTheme}
+              onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") toggleTheme(); }}
+              title="Cambiar tema" aria-label={`Cambiar a tema ${theme === "dark" ? "claro" : "oscuro"}`}>{theme === "dark" ? "☀️" : "🌙"}</button>
           </div>
         </header>
 
