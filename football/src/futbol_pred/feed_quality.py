@@ -117,6 +117,13 @@ def _ai_complete(match: dict, issues: list[str]) -> None:
         return
     if len(lineup.get("local") or []) != 11 or len(lineup.get("visitante") or []) != 11:
         issues.append(f"once_incompleto:{match.get('id')}")
+    if (
+        len(lineup.get("posiciones_local") or []) != 11
+        or len(lineup.get("posiciones_visitante") or []) != 11
+        or not lineup.get("formacion_local")
+        or not lineup.get("formacion_visitante")
+    ):
+        issues.append(f"posiciones_incompletas:{match.get('id')}")
     if len(lineup.get("clave_local") or []) < 3 or len(lineup.get("clave_visitante") or []) < 3:
         issues.append(f"props_incompletas:{match.get('id')}")
     if not lineup.get("provider"):

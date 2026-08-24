@@ -59,20 +59,35 @@ function Heat({ M }) {
   );
 }
 
-/* Reparte 11 nombres en líneas tipo formación: GK, DEF, MID, DEL. */
-function _lines(xi) {
-  const list = (xi || []).slice(0, 11);
-  if (!list.length) return [];
-  const gk = [list[0]];
-  const rest = list.slice(1);
-  const n = rest.length;
-  const d = Math.min(n, Math.ceil(n * 0.4));
-  const mrow = Math.max(0, Math.round((n - d) * 0.55));
-  const f = Math.max(0, n - d - mrow);
-  const out = [gk];
-  let i = 0;
-  [d, mrow, f].forEach((sz) => { if (sz > 0) { out.push(rest.slice(i, i + sz)); i += sz; } });
-  return out;
+const FALLBACK_POSITIONS = ["POR", "LI", "DFC", "DFC", "LD", "MC", "MCD", "MC", "EI", "DC", "ED"];
+const POSITION_LINE = {
+  POR: 0,
+  LI: 1, DFC: 1, LD: 1, CAI: 1, CAD: 1,
+  MCD: 2, MC: 2, MI: 2, MD: 2, MP: 2,
+  EI: 3, DC: 3, ED: 3,
+};
+const POSITION_ORDER = {
+  POR: 3,
+  LI: 1, CAI: 1, DFC: 3, CAD: 5, LD: 5,
+  MI: 1, MCD: 3, MC: 3, MP: 3, MD: 5,
+  EI: 1, DC: 3, ED: 5,
+};
+
+/* Respeta línea y lateralidad real; los feeds antiguos caen a un 4-3-3 seguro. */
+function _lines(xi, positions) {
+  const players = (xi || []).slice(0, 11).map((name, index) => {
+    const supplied = positions?.[index];
+    return {
+      name,
+      position: POSITION_LINE[supplied] != null ? supplied : FALLBACK_POSITIONS[index],
+      index,
+    };
+  });
+  if (!players.length) return [];
+  const lines = [0, 1, 2, 3].map((line) => players
+    .filter((player) => (POSITION_LINE[player.position] ?? Math.min(3, Math.floor(player.index / 3))) === line)
+    .sort((a, b) => (POSITION_ORDER[a.position] ?? 3) - (POSITION_ORDER[b.position] ?? 3) || a.index - b.index));
+  return lines.filter((line) => line.length);
 }
 
 function _short(name) {
@@ -80,8 +95,8 @@ function _short(name) {
   return parts.length > 1 ? parts[parts.length - 1] : parts[0];
 }
 
-function TeamHalf({ xi, side, color }) {
-  const lines = _lines(xi);
+function TeamHalf({ xi, positions, side, color }) {
+  const lines = _lines(xi, positions);
   // Local: portero arriba (su portería) → delanteros hacia el centro.
   // Visitante: se invierte para que ataque hacia el centro también.
   const ordered = side === "home" ? lines : lines.slice().reverse();
@@ -90,10 +105,11 @@ function TeamHalf({ xi, side, color }) {
     <div className={"pitch-half " + side}>
       {ordered.map((line, li) => (
         <div className="pitch-line" key={li}>
-          {line.map((p, pi) => (
-            <div className="player" key={pi} title={p}>
+          {(side === "away" ? line.slice().reverse() : line).map((p) => (
+            <div className="player" key={p.name} title={`${p.name} · ${p.position}`}>
               <span className="dot" style={{ background: color }} />
-              <span className="pn">{_short(p)}</span>
+              <span className="pn">{_short(p.name)}</span>
+              <span className="pp">{p.position}</span>
             </div>
           ))}
         </div>
@@ -130,12 +146,15 @@ function Alineacion({ m, a }) {
     <div className="card">
       <div className="lbl">👥 Once probable</div>
       <div className="pitch">
-        <div className="pitch-names"><span>{m.home}</span><span>{m.away}</span></div>
+        <div className="pitch-names">
+          <span>{m.home}{a.formacion_local ? ` · ${a.formacion_local}` : ""}</span>
+          <span>{m.away}{a.formacion_visitante ? ` · ${a.formacion_visitante}` : ""}</span>
+        </div>
         <div className="pitch-grass">
           <div className="pitch-mid" />
           <div className="pitch-circle" />
-          <TeamHalf xi={a.local} side="home" color="var(--green)" />
-          <TeamHalf xi={a.visitante} side="away" color="var(--blue)" />
+          <TeamHalf xi={a.local} positions={a.posiciones_local} side="home" color="var(--green)" />
+          <TeamHalf xi={a.visitante} positions={a.posiciones_visitante} side="away" color="var(--blue)" />
         </div>
       </div>
       {((a.bajas_local || []).length > 0 || (a.bajas_visitante || []).length > 0) && (
