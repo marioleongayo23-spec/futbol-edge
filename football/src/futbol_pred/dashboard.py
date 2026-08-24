@@ -517,9 +517,15 @@ def _attach_lineups(
 
     try:
         from .ingest.ai_client import available
-        from .ingest.lineups_ai import build_statistical_lineup, fetch_lineups
+        from .ingest.lineups_ai import build_statistical_lineup, ensure_position_metadata, fetch_lineups
     except Exception:
         return
+
+    # Migra onces cacheados del formato anterior. Se muestran completos desde ya,
+    # pero se refrescan con posiciones reales en la siguiente pasada IA.
+    for match in matches:
+        if match.get("alineacion"):
+            ensure_position_metadata(match["alineacion"])
 
     stale = []
     stamp = ensure_aware(now).isoformat()
@@ -531,7 +537,14 @@ def _attach_lineups(
             generated_at = lineup.get("generated_at") or lineup.get("ts")
             age = _age_hours(now, generated_at)
             is_local_fallback = lineup.get("provider") == "Motor estadístico local"
-            fresh = bool(lineup) and not is_local_fallback and age is not None and age < ttl_hours
+            has_positions = (
+                len(lineup.get("posiciones_local") or []) == 11
+                and len(lineup.get("posiciones_visitante") or []) == 11
+            )
+            fresh = (
+                bool(lineup) and has_positions and not lineup.get("positions_inferred")
+                and not is_local_fallback and age is not None and age < ttl_hours
+            )
             if fresh and not _force_ai():
                 continue
             if _can_attempt(match, "lineup", now):

@@ -14,11 +14,19 @@ def _props(prefix):
     ]
 
 
-def _item(n_local=11):
+POSITIONS = ["POR", "LI", "DFC", "DFC", "LD", "MC", "MCD", "MC", "EI", "DC", "ED"]
+
+
+def _item(n_local=11, structured=True):
+    local = [f"Local {i}" for i in range(n_local)]
+    visitor = [f"Visitante {i}" for i in range(11)]
+    if structured:
+        local = [{"j": name, "pos": POSITIONS[i]} for i, name in enumerate(local)]
+        visitor = [{"j": name, "pos": POSITIONS[i]} for i, name in enumerate(visitor)]
     return {
         "partido": "A vs B",
-        "local": [f"Local {i}" for i in range(n_local)],
-        "visitante": [f"Visitante {i}" for i in range(11)],
+        "local": local,
+        "visitante": visitor,
         "bajas_local": [],
         "bajas_visitante": ["Jugador lesionado"],
         "clave_local": _props("Clave local"),
@@ -43,6 +51,25 @@ def test_fetch_parsea_props_ampliadas_y_provider(monkeypatch):
     assert result["clave_local"][0]["fc"] == 1.2
     assert result["clave_local"][0]["fr"] == 1.4
     assert result["quality"]["complete"] is True
+    assert result["posiciones_local"] == POSITIONS
+    assert result["formacion_local"] == "4-3-3"
+    assert result["quality"]["positions_players"] == 22
+
+
+def test_formato_legado_infiere_posiciones_sin_dejar_huecos(monkeypatch):
+    monkeypatch.setattr(L, "chat", lambda *_args, **_kwargs: AIResponse(
+        json.dumps([_item(structured=False)]), "Gemini", "gemini-test"
+    ))
+    result = L.fetch_lineups([{"partido": "A vs B"}])["A vs B"]
+    assert result["posiciones_local"] == POSITIONS
+    assert result["formacion_visitante"] == "4-3-3"
+
+
+def test_normaliza_demarcaciones_en_espanol_e_ingles():
+    assert L._position("Goalkeeper") == "POR"
+    assert L._position("lateral izquierdo") == "LI"
+    assert L._position("centre-back") == "DFC"
+    assert L._position("extremo derecho") == "ED"
 
 
 def test_fetch_rechaza_once_parcial(monkeypatch):
@@ -55,3 +82,15 @@ def test_fetch_rechaza_once_parcial(monkeypatch):
 def test_fetch_lista_vacia_no_llama_ia(monkeypatch):
     monkeypatch.setattr(L, "chat", lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError()))
     assert L.fetch_lineups([]) == {}
+
+
+def test_motor_local_publica_posiciones_y_formacion():
+    squad = [
+        {"name": f"Jugador {i}", "position": "Goalkeeper" if i == 0 else
+         "Defence" if i < 5 else "Midfield" if i < 8 else "Offence"}
+        for i in range(15)
+    ]
+    result = L.build_statistical_lineup({"xg": [1.2, 0.8]}, squad, squad)
+    assert result["posiciones_local"] == POSITIONS
+    assert result["formacion_local"] == "4-3-3"
+    assert result["quality"]["positions_players"] == 22
