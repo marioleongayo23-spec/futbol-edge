@@ -2,7 +2,10 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "git": {
     "deploymentEnabled": {
-      "main": true
+      "main": true,
+      "chatgpt/*": false,
+      "codex/*": false,
+      "claude/*": false
     }
   },
   "buildCommand": "cp football/data/dashboard.json app/public/dashboard.json && cd app && npm install && npm run build",
