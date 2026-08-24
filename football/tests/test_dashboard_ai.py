@@ -18,10 +18,11 @@ def _match(now):
     }
 
 
-def test_ia_solo_manana_y_noche(monkeypatch):
+def test_ia_solo_a_las_00_y_10(monkeypatch):
     monkeypatch.delenv("FORCE_AI", raising=False)
-    assert _ai_window(datetime(2026, 8, 24, 7, tzinfo=MADRID)) is True
-    assert _ai_window(datetime(2026, 8, 24, 21, tzinfo=MADRID)) is True
+    assert _ai_window(datetime(2026, 8, 24, 0, 15, tzinfo=MADRID)) is True
+    assert _ai_window(datetime(2026, 8, 24, 10, 15, tzinfo=MADRID)) is True
+    assert _ai_window(datetime(2026, 8, 24, 7, tzinfo=MADRID)) is False
     assert _ai_window(datetime(2026, 8, 24, 15, tzinfo=MADRID)) is False
 
 
@@ -31,7 +32,7 @@ def test_force_ai_manual_salva_ventana(monkeypatch):
 
 
 def test_preview_publica_provider_real(monkeypatch):
-    now = datetime(2026, 8, 24, 21, tzinfo=MADRID)
+    now = datetime(2026, 8, 24, 10, tzinfo=MADRID)
     match = _match(now)
     monkeypatch.delenv("FORCE_AI", raising=False)
     monkeypatch.setattr(client, "available", lambda: True)
@@ -44,7 +45,7 @@ def test_preview_publica_provider_real(monkeypatch):
 
 
 def test_fallo_lineups_solo_intenta_una_vez_por_ventana(monkeypatch):
-    now = datetime(2026, 8, 24, 21, tzinfo=MADRID)
+    now = datetime(2026, 8, 24, 10, tzinfo=MADRID)
     match = _match(now)
     calls = []
     monkeypatch.delenv("FORCE_AI", raising=False)

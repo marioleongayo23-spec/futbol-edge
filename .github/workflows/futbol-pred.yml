@@ -68,7 +68,8 @@ jobs:
           ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           # IA: Gemini primero y Groq de fallback. El cron de resultados sigue
-          # cada 15 min, pero estas APIs solo se usan mañana/noche y con caché.
+          # cada 15 min; la IA solo refresca partidos del día a las 00:00 y
+          # 10:00 de Madrid, con caché entre ambas pasadas.
           AI_API_KEY: ${{ secrets.AI_API_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GEMINI_MODEL: ${{ secrets.GEMINI_MODEL }}

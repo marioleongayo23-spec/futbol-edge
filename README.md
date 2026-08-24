@@ -38,9 +38,9 @@ mercados (over/under, hándicap, value), quiniela y detalle por partido.
 - **Secrets del repo** (Settings → Secrets) para el cron:
   `FOOTBALL_DATA_API_KEY`, `API_FOOTBALL_KEY`, `ODDS_API_KEY`,
   `AI_API_KEY`/`GEMINI_API_KEY` y `GROQ_API_KEY`. Gemini es el proveedor
-  primario y Groq el fallback. La IA solo se intenta de 06:00–10:00 y
-  20:00–23:00 (Madrid), con caché/LKG; el refresco de resultados sigue cada
-  15 minutos sin consumir IA. Desde **Run workflow** se puede marcar
+  primario y Groq el fallback. La IA refresca solo los partidos del mismo día
+  en dos pasadas, a las 00:00 y 10:00 (Madrid), con caché/LKG; los resultados
+  siguen refrescando cada 15 minutos sin consumir IA. Desde **Run workflow** se puede marcar
   `force_ai` para una regeneración manual.
 
 ## Desarrollo local

@@ -169,11 +169,18 @@ def evaluate_feed(candidate: dict, previous: dict | None = None) -> dict:
         lineup_count += int(bool(match.get("alineacion")))
         _ai_complete(match, issues)
         if candidate.get("schema_version", 0) >= 4 and generated_at and probs and not match.get("finished"):
-            required_ai_count += 1
-            if not match.get("preview"):
-                issues.append(f"preview_vacia_proximo:{match_id}")
-            if not match.get("alineacion"):
-                issues.append(f"once_vacio_proximo:{match_id}")
+            try:
+                delta = datetime.fromisoformat(str(match.get("kickoff"))) - generated_at
+            except (TypeError, ValueError):
+                delta = None
+            # Alguna fuente deja partidos pasados como SCHEDULED. No se les
+            # genera contenido retrospectivo; sí se exige desde 3 h antes de ahora.
+            if delta is not None and delta.total_seconds() >= -3 * 3600:
+                required_ai_count += 1
+                if not match.get("preview"):
+                    issues.append(f"preview_vacia_proximo:{match_id}")
+                if not match.get("alineacion"):
+                    issues.append(f"once_vacio_proximo:{match_id}")
 
     counts = candidate.get("counts") or {}
     if counts.get("total") != len(matches):

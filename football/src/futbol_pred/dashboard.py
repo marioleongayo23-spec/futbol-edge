@@ -301,12 +301,20 @@ def _force_ai() -> bool:
 
 
 def _ai_window(now: datetime) -> bool:
-    """IA únicamente por la mañana (06-10) o noche (20-23), hora de Madrid."""
+    """Dos pasadas diarias: hora 00 y hora 10 de Madrid."""
 
     if _force_ai():
         return True
     hour = ensure_aware(now).astimezone(MADRID).hour
-    return 6 <= hour < 10 or 20 <= hour < 23
+    return hour in {0, 10}
+
+
+def _same_match_day(match: dict, now: datetime) -> bool:
+    try:
+        kickoff = ensure_aware(datetime.fromisoformat(match["kickoff"])).astimezone(MADRID)
+    except (KeyError, TypeError, ValueError):
+        return False
+    return kickoff.date() == ensure_aware(now).astimezone(MADRID).date()
 
 
 def _age_hours(now: datetime, value: str | None) -> float | None:
@@ -344,7 +352,7 @@ def _attach_previews(
     now: datetime,
     horizon_days: int = 2,
     limit: int = 5,
-    ttl_hours: int = 10,
+    ttl_hours: int = 8,
 ) -> None:
     """Actualiza con IA en ventana y rellena gratis cualquier hueco restante."""
 
@@ -357,7 +365,7 @@ def _attach_previews(
     candidates = []
     if available() and _ai_window(now):
         for match in matches:
-            if match.get("finished") or not match.get("probs") or not _within_horizon(match, now, horizon_days):
+            if match.get("finished") or not match.get("probs") or not _same_match_day(match, now):
                 continue
             meta = match.get("preview_meta") or {}
             age = _age_hours(now, meta.get("generated_at"))
@@ -409,7 +417,7 @@ def _attach_lineups(
     squads: dict[str, list[dict]] | None = None,
     horizon_days: int = 2,
     limit: int = 10,
-    ttl_hours: int = 10,
+    ttl_hours: int = 8,
 ) -> None:
     """Actualiza onces con IA y cae a plantillas reales + motor local gratis."""
 
@@ -423,7 +431,7 @@ def _attach_lineups(
     stamp = ensure_aware(now).isoformat()
     if available() and _ai_window(now):
         for match in matches:
-            if match.get("finished") or not match.get("probs") or not _within_horizon(match, now, horizon_days):
+            if match.get("finished") or not match.get("probs") or not _same_match_day(match, now):
                 continue
             lineup = match.get("alineacion") or {}
             generated_at = lineup.get("generated_at") or lineup.get("ts")
@@ -468,14 +476,14 @@ def _attach_lineups(
                 "fuente": data.get("provider"),
             }
 
-    # Excepción de seguridad: fuera de ventana, la IA no refresca contenido ya
-    # existente, pero sí completa una sola vez los huecos de toda la temporada
-    # que las plantillas gratuitas no cubren. Al quedar cacheados no se repite.
+    # Excepción de seguridad para la carga inicial: fuera de ventana completa
+    # una sola vez los huecos sin ninguna alternativa gratuita. Al quedar
+    # cacheados no vuelve a regenerarlos; los refrescos normales son 00:00/10:00.
     if available() and not _ai_window(now):
         emergency = sorted([
             match for match in matches
             if not match.get("finished") and match.get("probs") and not match.get("alineacion")
-            and _can_attempt(match, "lineup", now)
+            and _within_horizon(match, now, 400) and _can_attempt(match, "lineup", now)
         ], key=lambda match: match.get("kickoff") or "")[:10]
         for match in emergency:
             _mark_attempt(match, "lineup", now)
@@ -690,7 +698,7 @@ def build_dashboard(
             "stats": "football-data.co.uk (remates, córners, faltas, tarjetas — reales y esperadas)",
             "players": "football-data.org (plantillas, goleadores y asistencias)",
             "odds": "football-data.co.uk (media de mercado: 1X2 y over/under 2.5)",
-            "ai": "Gemini dinámico → Groq → motor local gratuito; refresco IA 06-10 y 20-23 Europe/Madrid, con backfill solo si un próximo partido sigue vacío",
+            "ai": "Gemini dinámico → Groq → motor local gratuito; solo partidos del día a las 00:00 y 10:00 Europe/Madrid, con backfill inicial anti-huecos",
         },
         "disclaimer": "Probabilidades y ventaja estadística, no certezas. "
                       "Las plantillas gratuitas y los onces del motor local son provisionales; "
