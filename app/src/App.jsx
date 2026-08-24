@@ -7,23 +7,8 @@ import { bestValue, countdown, getFavs, modelAccuracy, recentForm, toggleFav, to
 import MatchDetail from "./MatchDetail";
 import { authEnabled, signOut, useSession } from "./supabase";
 
-/* ---------- Tema claro/oscuro ---------- */
-function useTheme() {
-  const [theme, setTheme] = useState(() => {
-    try { return localStorage.getItem("theme") || "dark"; } catch { return "dark"; }
-  });
-  useEffect(() => {
-    document.documentElement.dataset.theme = theme;
-    try { localStorage.setItem("theme", theme); } catch { /* ignore */ }
-  }, [theme]);
-  const toggle = () => {
-    const current = document.documentElement.dataset.theme || theme;
-    const next = current === "dark" ? "light" : "dark";
-    document.documentElement.dataset.theme = next;
-    try { localStorage.setItem("theme", next); } catch { /* ignore */ }
-    setTheme(next);
-  };
-  return [theme, toggle];
+function savedLightTheme() {
+  try { return localStorage.getItem("theme") === "light"; } catch { return false; }
 }
 
 /* ---------- Iconos de la barra lateral ---------- */
@@ -1005,7 +990,6 @@ const NAV = [
 
 export default function App() {
   const { session } = useSession();
-  const [theme, toggleTheme] = useTheme();
   const [data, setData] = useState(null);
   const [err, setErr] = useState("");
   const [view, setView] = useState("resumen");
@@ -1061,12 +1045,13 @@ export default function App() {
             onChange={(e) => { const v = e.target.value; setQ(v); if (v.trim()) { setSel(null); setTeamSel(null); setView("partidos"); } }} /></div>
           <div className="top-right">
             <span className="badge-cal"><span className="dot d-ucl" /> {data ? "Calendario verificado" : "Cargando…"}</span>
-            <button type="button" className="theme-btn" onClick={toggleTheme} title="Cambiar tema" aria-label={`Cambiar a tema ${theme === "dark" ? "claro" : "oscuro"}`}>{theme === "dark" ? "☀️" : "🌙"}</button>
+            <input type="checkbox" className="theme-btn theme-toggle"
+              defaultChecked={savedLightTheme()} title="Cambiar tema" aria-label="Alternar tema claro u oscuro" />
           </div>
         </header>
 
         <main className="content">
-          {data && isStale(data) && <div className="banner warn">⚠️ El feed puede estar desactualizado (hace {Math.round(feedAgeHours(data))} h). El cron lo refresca cada 15 min.</div>}
+          {data && isStale(data) && <div className="banner warn">⚠️ El feed puede estar desactualizado (hace {Math.round(feedAgeHours(data))} h). Se revisa a las 00:15 y 10:15, con control adicional cuando hay onces oficiales.</div>}
           {data?.alerts?.some((item) => item.severity === "critical") && <div className="banner warn">⚠️ {data.alerts.filter((item) => item.severity === "critical").map((item) => item.message).join(" · ")}</div>}
           {data?._fromFallback && <div className="banner">Mostrando copia local del feed (no se pudo cargar el remoto).</div>}
           {err && <div className="state">No se pudo cargar el feed.<br />{err}</div>}
