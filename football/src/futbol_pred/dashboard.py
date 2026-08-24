@@ -385,7 +385,7 @@ def _attach_lineups(matches: list[dict], now: datetime, horizon_days: int = 7,
         data = got.get(f"{m['home']} vs {m['away']}")
         if not data:
             continue
-        m["alineacion"] = {**data, "ts": ts, "fuente": "IA + búsqueda web"}
+        m["alineacion"] = {**data, "ts": ts, "fuente": "IA (Gemini)"}
 
 
 def build_dashboard(

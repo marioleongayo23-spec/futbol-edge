@@ -42,6 +42,9 @@ def test_poco_descanso_sube_tarjetas():
     assert "descanso" in t["yellows"]["reason"]
 
 
-def test_sin_datos_no_tendencia():
+def test_sin_datos_siempre_neutro():
+    # Sin muestra, cada métrica debe salir igualmente como 'flat' (neutro).
     tm = TrendModel().fit([], [], _id)
-    assert tm.trend("X", "Y", kickoff=datetime(2026, 8, 1, tzinfo=timezone.utc)) == {}
+    t = tm.trend("X", "Y", kickoff=datetime(2026, 8, 1, tzinfo=timezone.utc))
+    assert set(t) == {"goals", "corners", "yellows", "shots"}
+    assert all(v["dir"] == "flat" for v in t.values())

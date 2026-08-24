@@ -94,6 +94,9 @@ class TrendModel:
             dh, da = self._delta(home, metric), self._delta(away, metric)
             deltas = [d for d, _ in (x for x in (dh, da) if x)]
             if not deltas:
+                # Siempre devolvemos algo: neutro cuando no hay muestra fiable.
+                out[metric] = {"dir": "flat", "pct": 0, "label": cfg["label"],
+                               "reason": "sin muestra suficiente todavía"}
                 continue
             signal = sum(deltas) / len(deltas)
 

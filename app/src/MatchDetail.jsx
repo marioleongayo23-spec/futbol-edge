@@ -81,7 +81,61 @@ function Alineacion({ m, a }) {
         {col(m.away, a.visitante, a.bajas_visitante)}
       </div>
       <p className="note" style={{ color: "var(--muted)", marginTop: 6 }}>
-        Alineaciones PROBABLES redactadas por IA con búsqueda web ({a.fuente || "IA"}). No son datos oficiales; verifica antes de apostar.
+        Once PROBABLE estimado por IA ({a.fuente || "Gemini"}). No son datos oficiales; verifica antes de apostar.
+      </p>
+    </div>
+  );
+}
+
+/* Post-partido: tabla de stats esperadas vs reales con % de acierto. */
+function PostMatchStats({ m }) {
+  const sr = m.statsReal || {};
+  const acc = (pred, real) => {
+    const base = Math.max(Math.abs(real), Math.abs(pred), 1);
+    return Math.max(0, Math.round(100 * (1 - Math.abs(real - pred) / base)));
+  };
+  const rows = [];
+  // Goles: previsto = xG total; real = marcador.
+  if (m.result && m.xg) {
+    rows.push({ k: "goals", lab: "Goles", pred: +(m.xg[0] + m.xg[1]).toFixed(1), real: m.result[0] + m.result[1] });
+  }
+  [["shots", "Remates"], ["sot", "Tiros a puerta"], ["corners", "Córners"],
+   ["fouls", "Faltas"], ["yellows", "Amarillas"], ["reds", "Rojas"]].forEach(([k, lab]) => {
+    if (sr[k] && m.stats?.[k]) {
+      rows.push({ k, lab, pred: +Number(m.stats[k].total).toFixed(1), real: +Number(sr[k].total).toFixed(1) });
+    }
+  });
+  const scored = rows.filter((r) => Number.isFinite(r.pred) && Number.isFinite(r.real));
+  const avg = scored.length ? Math.round(scored.reduce((s, r) => s + acc(r.pred, r.real), 0) / scored.length) : null;
+  return (
+    <div className="card">
+      <div className="row-between">
+        <div className="lbl">Predicho vs real</div>
+        {avg != null && <span className="pill y">Acierto medio {avg}%</span>}
+      </div>
+      <div className="tbl-wrap">
+        <table className="tbl-mk cmp-tbl">
+          <thead><tr><th className="tl">Métrica</th><th>Previsto</th><th>Real</th><th>Dif.</th><th>Acierto</th></tr></thead>
+          <tbody>
+            {scored.map((r) => {
+              const dif = +(r.real - r.pred).toFixed(1);
+              const a = acc(r.pred, r.real);
+              return (
+                <tr key={r.k}>
+                  <td className="tl">{r.lab}</td>
+                  <td>{r.pred}</td>
+                  <td><b>{r.real}</b></td>
+                  <td className={dif > 0 ? "value-yes" : dif < 0 ? "value-no" : "dim"}>{dif > 0 ? "+" : ""}{dif}</td>
+                  <td><span className="acc-badge" style={{ "--acc": a + "%" }}>{a}%</span></td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      <p className="note" style={{ color: "var(--muted)", marginTop: 6 }}>
+        Reales (co.uk, ~1 día de retraso) frente a lo que estimó el modelo. Diferencia = real − previsto.
+        {!m.statsReal && " (Stats detalladas aún no disponibles; se completan tras el partido.)"}
       </p>
     </div>
   );
@@ -89,12 +143,14 @@ function Alineacion({ m, a }) {
 
 /* Flecha de tendencia de una métrica esperada (↑/→/↓ + % y motivo). */
 function TrendArrow({ t }) {
-  if (!t) return <span className="dim">—</span>;
-  const sym = t.dir === "up" ? "↑" : t.dir === "down" ? "↓" : "→";
-  const cls = t.dir === "up" ? "trend-up" : t.dir === "down" ? "trend-down" : "trend-flat";
+  // Siempre muestra algo: neutro (→) por defecto.
+  const dir = t?.dir || "flat";
+  const sym = dir === "up" ? "↑" : dir === "down" ? "↓" : "→";
+  const cls = dir === "up" ? "trend-up" : dir === "down" ? "trend-down" : "trend-flat";
+  const title = t?.reason || "neutro";
   return (
-    <span className={"trend " + cls} title={t.reason}>
-      {sym}{t.dir !== "flat" ? ` ${t.pct > 0 ? "+" : ""}${t.pct}%` : ""}
+    <span className={"trend " + cls} title={title}>
+      {sym}{dir !== "flat" ? ` ${t.pct > 0 ? "+" : ""}${t.pct}%` : ""}
     </span>
   );
 }
@@ -334,25 +390,8 @@ export default function MatchDetail({ m, bankroll, onBack, onTeam, players }) {
           </div>
           </>)}
 
-          {m.statsReal ? (
-            <div className="card">
-              <div className="lbl">Estadísticas: real vs esperado</div>
-              <table>
-                <thead><tr><th>Métrica</th><th>Local</th><th>Visit.</th></tr></thead>
-                <tbody>
-                  {[["goals", "Goles"], ["shots", "Remates"], ["sot", "Tiros a puerta"], ["corners", "Córners"],
-                    ["fouls", "Faltas"], ["yellows", "Amarillas"], ["reds", "Rojas"]]
-                    .filter(([k]) => m.statsReal[k]).map(([k, lab]) => (
-                      <tr key={k}>
-                        <td>{lab}</td>
-                        <td>{m.statsReal[k].home}{m.stats?.[k] && Math.abs(m.stats[k].home - m.statsReal[k].home) >= 0.5 ? <span className="dim"> · esp {m.stats[k].home}</span> : null}</td>
-                        <td>{m.statsReal[k].away}{m.stats?.[k] && Math.abs(m.stats[k].away - m.statsReal[k].away) >= 0.5 ? <span className="dim"> · esp {m.stats[k].away}</span> : null}</td>
-                      </tr>
-                    ))}
-                </tbody>
-              </table>
-              <p className="note" style={{ color: "var(--muted)" }}>Reales (co.uk) frente a lo que esperaba el modelo. Fuente de stats con ~1 día de retraso.</p>
-            </div>
+          {(m.statsReal || (m.finished && m.result)) ? (
+            <PostMatchStats m={m} />
           ) : m.stats && (
             <div className="card">
               <div className="lbl">Estadísticas esperadas</div>

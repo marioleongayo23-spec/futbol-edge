@@ -1,13 +1,13 @@
-"""Alineaciones probables + bajas (lesiones/sanciones) con Gemini + búsqueda web.
+"""Alineaciones probables + bajas (lesiones/sanciones) con Gemini (API normal).
 
-Hace UNA sola llamada en bloque (grounding de Google Search) para TODOS los
-partidos de los próximos días, así se queda en 1-2 consultas/día (margen gratis)
-aunque el feed se regenere cada 15 min. El cacheo temporal (12 h) lo controla
+Hace UNA sola llamada en bloque para TODOS los partidos de los próximos días
+(consulta normal a la API de Gemini, sin grounding), así consume pocos tokens y
+se queda de sobra en la capa gratuita. El cacheo temporal (12 h) lo controla
 quien llama (dashboard._attach_lineups). Sin clave o ante cualquier fallo,
 devuelve {} y el feed sigue igual.
 
-Honestidad: son alineaciones PROBABLES redactadas por IA con búsqueda web; se
-marcan como tal en la app. No son datos oficiales.
+Honestidad: son alineaciones PROBABLES según el conocimiento del modelo; se
+marcan como tal en la app. No son datos oficiales — conviene verificarlas.
 
 Diagnóstico:  python -m futbol_pred.ingest.lineups_ai
 """
@@ -22,20 +22,20 @@ import time
 import requests
 
 API_KEY = os.getenv("AI_API_KEY") or os.getenv("GEMINI_API_KEY")
-# El grounding necesita un modelo que soporte la tool google_search.
-MODEL = os.getenv("GEMINI_GROUND_MODEL", "gemini-2.5-flash")
+# Consulta normal a la API (sin grounding): flash-lite, gratis y estable.
+MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash-lite")
 _URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 
 _INSTR = (
-    "Eres analista de fútbol. Usando BÚSQUEDA WEB actual, para CADA partido de la "
-    "lista (LaLiga o Segunda de España, temporada 2026-27) da el ONCE PROBABLE de "
-    "cada equipo (11 jugadores) y las BAJAS confirmadas por lesión o sanción. "
+    "Eres analista de fútbol experto en LaLiga y Segunda de España. Para CADA "
+    "partido de la lista da el ONCE PROBABLE de cada equipo (11 jugadores, con tu "
+    "mejor criterio) y las posibles BAJAS por lesión o sanción que conozcas. "
     "Devuelve EXCLUSIVAMENTE un JSON válido, sin texto alrededor, con esta forma:\n"
     '[{"partido":"<tal cual te lo doy>","local":["11 nombres"],'
     '"visitante":["11 nombres"],"bajas_local":["nombre (motivo)"],'
     '"bajas_visitante":["nombre (motivo)"]}]\n'
-    "Si de un partido no encuentras información fiable, OMÍTELO del JSON. "
-    "No inventes: si dudas de un jugador, es preferible omitir ese partido."
+    "Da SIEMPRE tu mejor estimación de los onces (aunque no sea segura). Si de "
+    "algún equipo no tienes ni idea, deja su lista vacía, pero incluye el partido."
 )
 
 
@@ -61,8 +61,7 @@ def fetch_lineups(matches: list[dict], timeout: int = 60, retries: int = 2) -> d
     prompt = _INSTR + "\n\nPartidos:\n" + lista + "\n\nJSON:"
     body = {
         "contents": [{"parts": [{"text": prompt}]}],
-        "tools": [{"google_search": {}}],
-        "generationConfig": {"temperature": 0.2, "maxOutputTokens": 8000},
+        "generationConfig": {"temperature": 0.3, "maxOutputTokens": 8000},
     }
     for attempt in range(retries):
         try:
