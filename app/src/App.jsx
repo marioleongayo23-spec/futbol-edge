@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { crestFor, feedAgeHours, fmtKick, hasPrediction, isStale, loadFeed } from "./feed";
 import { entropy, fairProbs, kelly, overround, plenoSign } from "./poisson";
 import { leaguesIn, projectedTable } from "./standings";
@@ -1017,8 +1017,15 @@ export default function App() {
   const [tri, setTri] = useState(2);
   const [dob, setDob] = useState(4);
   const [menuOpen, setMenuOpen] = useState(false);
+  const themeButtonRef = useRef(null);
 
   useEffect(() => { loadFeed().then(setData).catch((e) => setErr(e.message)); }, []);
+  useEffect(() => {
+    const button = themeButtonRef.current;
+    if (!button) return undefined;
+    button.addEventListener("click", toggleTheme);
+    return () => button.removeEventListener("click", toggleTheme);
+  }, [theme, toggleTheme]);
   const matches = useMemo(() => data?.matches || [], [data]);
 
   const open = (m) => { setSel(m); window.scrollTo(0, 0); };
@@ -1061,8 +1068,7 @@ export default function App() {
             onChange={(e) => { const v = e.target.value; setQ(v); if (v.trim()) { setSel(null); setTeamSel(null); setView("partidos"); } }} /></div>
           <div className="top-right">
             <span className="badge-cal"><span className="dot d-ucl" /> {data ? "Calendario verificado" : "Cargando…"}</span>
-            <button type="button" className="theme-btn" onPointerDown={toggleTheme}
-              onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") toggleTheme(); }}
+            <button ref={themeButtonRef} type="button" className="theme-btn"
               title="Cambiar tema" aria-label={`Cambiar a tema ${theme === "dark" ? "claro" : "oscuro"}`}>{theme === "dark" ? "☀️" : "🌙"}</button>
           </div>
         </header>
