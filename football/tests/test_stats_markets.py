@@ -29,6 +29,14 @@ def test_parse_csv_minimo():
     assert r.stats["goals"] == (3.0, 0.0)
 
 
+def test_parsea_arbitro_y_fueras_de_juego_gratuitos():
+    rows = FootballDataUKClient.parse(
+        "HomeTeam,AwayTeam,HO,AO,Referee\nBarcelona,Sevilla,3,1,M. Ortiz\n"
+    )
+    assert rows[0].stats["offsides"] == (3.0, 1.0)
+    assert rows[0].referee == "M. Ortiz"
+
+
 def test_parse_ignora_filas_vacias():
     csv_text = (
         "HomeTeam,AwayTeam,HC,AC\n"

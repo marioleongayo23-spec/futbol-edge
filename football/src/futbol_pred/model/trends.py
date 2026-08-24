@@ -153,5 +153,64 @@ class TrendModel:
                 "pct": round(signal * 100),
                 "label": cfg["label"],
                 "reason": "; ".join(reasons) or "equilibrado para estos equipos",
+                "model_total": round(float(predicted[metric]), 2) if predicted and metric in predicted else None,
             }
         return out
+
+    def matchup_profile(self, home, away) -> dict:
+        """Vector táctico empírico a partir de acciones, sin inventar formaciones."""
+
+        def side(team, venue: str) -> dict:
+            fav = "hf" if venue == "home" else "af"
+            against = "ha" if venue == "home" else "aa"
+            samples = len(self.stat.get(team, {}).get("shots", {}).get(fav, []))
+            values = {}
+            for metric in ("shots", "corners", "fouls", "yellows", "goals"):
+                values[metric] = {
+                    "for": self._avg(team, metric, fav),
+                    "against": self._avg(team, metric, against),
+                }
+            shots = values["shots"]["for"]
+            goals = values["goals"]["for"]
+            return {
+                "samples": samples,
+                "venue_split": "casa" if venue == "home" else "fuera",
+                "actions": values,
+                "attack_efficiency_goals_per_shot": (
+                    round(goals / shots, 3) if shots and goals is not None else None
+                ),
+            }
+
+        hp, ap = side(home, "home"), side(away, "away")
+        hs = hp["actions"]["shots"]["for"]
+        ac = ap["actions"]["shots"]["against"]
+        ass = ap["actions"]["shots"]["for"]
+        hc = hp["actions"]["shots"]["against"]
+        home_pressure = _mean([value for value in (hs, ac) if value is not None])
+        away_pressure = _mean([value for value in (ass, hc) if value is not None])
+        evidence = min(hp["samples"], ap["samples"])
+        notes = []
+        if home_pressure is not None and away_pressure is not None:
+            if home_pressure >= away_pressure * 1.2:
+                notes.append(f"{home} proyecta más volumen de remate por generación propia y concesión rival")
+            elif away_pressure >= home_pressure * 1.2:
+                notes.append(f"{away} proyecta más volumen de remate pese a jugar fuera")
+            else:
+                notes.append("volumen de ataque equilibrado entre ambos perfiles")
+        fouls = [
+            hp["actions"]["fouls"]["for"], ap["actions"]["fouls"]["for"],
+        ]
+        if all(value is not None for value in fouls) and sum(fouls) >= 27:
+            notes.append("emparejamiento de contacto alto por faltas cometidas")
+        return {
+            "method": "splits observados casa/fuera; no infiere una formación",
+            "home": hp,
+            "away": ap,
+            "expected_shot_pressure": {
+                "home": round(home_pressure, 1) if home_pressure is not None else None,
+                "away": round(away_pressure, 1) if away_pressure is not None else None,
+            },
+            "reliability": "alta" if evidence >= 10 else "media" if evidence >= 5 else "baja",
+            "minimum_samples": evidence,
+            "notes": notes or ["muestra insuficiente para caracterizar el emparejamiento"],
+        }

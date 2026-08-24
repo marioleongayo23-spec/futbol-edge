@@ -22,7 +22,7 @@ from scipy.stats import nbinom
 from ..ingest.football_data_uk import MatchStats
 from ..normalize import canonical_team
 
-STAT_NAMES = ("shots", "sot", "corners", "fouls", "yellows", "reds", "goals")
+STAT_NAMES = ("shots", "sot", "corners", "fouls", "yellows", "reds", "offsides", "goals")
 
 
 @dataclass

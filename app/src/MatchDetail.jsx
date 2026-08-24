@@ -5,18 +5,16 @@ import { confidence, countdown, isSurprise } from "./insights";
 import { teamSquad } from "./teams";
 
 function Teams({ m, onTeam }) {
-  const nameStyle = onTeam ? { cursor: "pointer" } : null;
   return (
     <div className="teams">
-      <div className="team">
+      <button type="button" className="team team-button" onClick={() => onTeam && onTeam(m.home)} disabled={!onTeam} aria-label={`Ver perfil de ${m.home}`}>
         <img className="crest" src={crestFor(m.home, m.homeColors, m.homeCrest)}
-          onError={(e) => (e.target.src = crestFor(m.home, m.homeColors, null))}
-          onClick={() => onTeam && onTeam(m.home)} style={nameStyle} />
+          alt="" onError={(e) => (e.target.src = crestFor(m.home, m.homeColors, null))} />
         <div style={{ minWidth: 0 }}>
-          <div className="tn" style={nameStyle} onClick={() => onTeam && onTeam(m.home)}>{m.home}</div>
+          <div className="tn">{m.home}</div>
           <div className="cbar" style={{ background: accent(m.homeColors) }} />
         </div>
-      </div>
+      </button>
       <div className="mid">
         {m.finished && m.result
           ? <><div className="score">{m.result[0]}–{m.result[1]}</div><div className="kick">final</div></>
@@ -24,15 +22,14 @@ function Teams({ m, onTeam }) {
             ? <><div className="pred">{m.markets.marcador}</div><div className="kick">previsto</div></>
             : <div className="kick">{fmtKick(m.kickoff)}</div>}
       </div>
-      <div className="team away">
+      <button type="button" className="team away team-button" onClick={() => onTeam && onTeam(m.away)} disabled={!onTeam} aria-label={`Ver perfil de ${m.away}`}>
         <img className="crest" src={crestFor(m.away, m.awayColors, m.awayCrest)}
-          onError={(e) => (e.target.src = crestFor(m.away, m.awayColors, null))}
-          onClick={() => onTeam && onTeam(m.away)} style={nameStyle} />
+          alt="" onError={(e) => (e.target.src = crestFor(m.away, m.awayColors, null))} />
         <div style={{ minWidth: 0 }}>
-          <div className="tn" style={nameStyle} onClick={() => onTeam && onTeam(m.away)}>{m.away}</div>
+          <div className="tn">{m.away}</div>
           <div className="cbar" style={{ background: accent(m.awayColors) }} />
         </div>
-      </div>
+      </button>
     </div>
   );
 }
@@ -225,7 +222,7 @@ function PostMatchStats({ m }) {
   }
   // Todas las métricas: se muestran aunque falte la real (queda pendiente).
   [["shots", "Remates"], ["sot", "Tiros a puerta"], ["corners", "Córners"],
-   ["fouls", "Faltas"], ["yellows", "Amarillas"], ["reds", "Rojas"]].forEach(([k, lab]) => {
+   ["fouls", "Faltas"], ["yellows", "Amarillas"], ["reds", "Rojas"], ["offsides", "Fueras de juego"]].forEach(([k, lab]) => {
     const pred = num(m.stats?.[k]?.total);
     const real = num(sr[k]?.total);
     if (pred != null || real != null) rows.push({ k, lab, pred, real });
@@ -262,6 +259,7 @@ function PostMatchStats({ m }) {
       </div>
       <p className="note" style={{ color: "var(--muted)", marginTop: 6 }}>
         Reales (co.uk, ~1 día de retraso) frente a lo que estimó el modelo. Diferencia = real − previsto.
+        {sr.meta?.referee && ` Árbitro: ${sr.meta.referee}.`}
         {!anyReal && " Las stats detalladas de este partido aún no están publicadas; se completan en la siguiente actualización."}
       </p>
     </div>
@@ -314,6 +312,8 @@ export default function MatchDetail({ m, bankroll, onBack, onTeam, players }) {
 
   const md = m.matchday ? "J" + m.matchday : (m.stage || "");
   const bank = Number(bankroll) || 1000;
+  const abstain = m.recommendation?.decision === "no_pick";
+  const jump = (section) => document.getElementById(`match-${section}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
 
   let vProb = 0;
   if (M) {
@@ -325,12 +325,12 @@ export default function MatchDetail({ m, bankroll, onBack, onTeam, players }) {
     else vProb = btts(M);
   }
   const edge = vProb * Number(vOdds) - 1;
-  const stake = Math.min(bank * kelly(vProb, Number(vOdds)) * 0.25, bank * 0.05);
+  const stake = abstain ? 0 : Math.min(bank * kelly(vProb, Number(vOdds)) * 0.25, bank * 0.05);
 
   return (
     <div>
-      <button className="back" onClick={onBack}>← Volver a la lista</button>
-      <div className="card">
+      <button type="button" className="back" onClick={onBack}>← Volver a la lista</button>
+      <div className="card match-hero">
         <div className="ctop"><span>{m.league} · {md}</span><span>{fmtKick(m.kickoff)}</span></div>
         <Teams m={m} onTeam={onTeam} />
         <div className="chips" style={{ justifyContent: "center" }}>
@@ -342,9 +342,21 @@ export default function MatchDetail({ m, bankroll, onBack, onTeam, players }) {
           )}
           {snapshot?.generated_at && <span className="chip" title="Snapshot inmutable utilizado para evaluar el modelo">Predicción <b>{snapshot.window || new Date(snapshot.generated_at).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}</b></span>}
           {surprise && !m.finished && <span className="pill y" title="El favorito del modelo no coincide con el del mercado">⚡ Sorpresa</span>}
-          <button className="mini" onClick={share}>{copied ? "✓ Copiado" : "🔗 Compartir"}</button>
+          <button type="button" className="mini" onClick={share}>{copied ? "✓ Copiado" : "🔗 Compartir"}</button>
         </div>
       </div>
+
+      <nav className="match-nav" aria-label="Secciones del partido">
+        {[['analysis', 'Previa'], ['lineup', 'Onces'], ['prediction', 'Pronóstico'], ['stats', 'Datos']].map(([key, label]) => (
+          <button type="button" key={key} onClick={() => jump(key)}>{label}</button>
+        ))}
+      </nav>
+
+      {abstain && (
+        <div className="banner warn" role="status">
+          <b>Sin apuesta recomendada.</b> {(m.recommendation?.reasons || []).join(" · ")}. Las probabilidades se muestran para análisis, no como pick.
+        </div>
+      )}
 
       {Array.isArray(m.h2h) && m.h2h.length > 0 && (
         <div className="card" style={{ padding: "6px 10px", overflowX: "auto" }}>
@@ -363,7 +375,7 @@ export default function MatchDetail({ m, bankroll, onBack, onTeam, players }) {
       )}
 
       {m.preview && (
-        <div className="card">
+        <div className="card section-anchor" id="match-analysis">
           <div className="lbl">📝 Análisis previo</div>
           {m.preview.split(/\n+/).filter(Boolean).map((par, i) => (
             <p key={i} style={{ margin: "0 0 8px", lineHeight: 1.55, color: "var(--text)" }}>{par}</p>
@@ -382,7 +394,26 @@ export default function MatchDetail({ m, bankroll, onBack, onTeam, players }) {
         </div>
       )}
 
-      {m.alineacion && <Alineacion m={m} a={m.alineacion} />}
+      {(m.weather || m.tactical_matchup || m.venue_meta) && (
+        <div className="card">
+          <div className="lbl">Contexto del partido</div>
+          {m.venue_meta && <div className="kv"><span>Estadio</span><b>{m.venue_meta.name} · {m.venue_meta.city}</b></div>}
+          {m.official_context?.referee && <div className="kv"><span>Árbitro</span><b>{m.official_context.referee} · API-Football</b></div>}
+          {m.weather && <>
+            <div className="kv"><span>Tiempo al saque inicial</span><b>{m.weather.temperature_c} °C · sensación {m.weather.apparent_temperature_c} °C</b></div>
+            <div className="kv"><span>Lluvia / viento</span><b>{m.weather.precipitation_probability_pct}% · {m.weather.wind_kmh} km/h</b></div>
+            <div className="kv"><span>Estrés térmico</span><b>{m.weather.heat_stress?.level || "—"}</b></div>
+          </>}
+          {m.tactical_matchup && <>
+            <div className="kv"><span>Volumen de remate proyectado</span><b>{m.tactical_matchup.expected_shot_pressure?.home ?? "—"} – {m.tactical_matchup.expected_shot_pressure?.away ?? "—"}</b></div>
+            <div className="kv"><span>Fiabilidad del perfil</span><b>{m.tactical_matchup.reliability} · {m.tactical_matchup.minimum_samples} partidos por split</b></div>
+            {(m.tactical_matchup.notes || []).map((note) => <p className="mut" key={note}>• {note}</p>)}
+          </>}
+          <p className="note source-note">{m.weather ? `Open-Meteo · ${m.weather.license}${m.weather.source_updated_at ? ` · actualizada ${new Date(m.weather.source_updated_at).toLocaleString("es-ES")}` : ""}. ` : ""}El clima y el perfil táctico ajustan explicación/confianza; no alteran el marcador hasta superar validación histórica.</p>
+        </div>
+      )}
+
+      {m.alineacion && <div className="section-anchor" id="match-lineup"><Alineacion m={m} a={m.alineacion} /></div>}
 
       {(players || m.alineacion) && (() => {
         const fromLineup = (names, keys) => (names || []).map((name) => {
@@ -472,7 +503,7 @@ export default function MatchDetail({ m, bankroll, onBack, onTeam, players }) {
           {m.provisional && (
             <div className="card"><div className="note">⚠️ {m.nota || "Predicción provisional: algún equipo aún sin histórico (recién ascendido). Se afina según juegue."}</div></div>
           )}
-          <div className="card">
+          <div className="card section-anchor" id="match-prediction">
             <div className="lbl">{m.finished ? "1X2 que daba el modelo" : "Resultado 1X2"}{m.calibrated && <span className="dim" title="Probabilidad del modelo mezclada con la del mercado (calibrada)"> · calibrado</span>}</div>
             {probabilityDelta && probabilityDelta.some((value) => value !== 0) && (
               <div className="mut" style={{ marginBottom: 8 }}>
@@ -495,6 +526,7 @@ export default function MatchDetail({ m, bankroll, onBack, onTeam, players }) {
               <span className="chip" title="Marcador exacto más probable según el modelo">Marcador <b>{m.markets.marcador}</b></span>
               <span className="chip help" title="Goles esperados (xG): calidad y cantidad de ocasiones que se esperan por equipo">xG <b>{m.xg[0]}–{m.xg[1]}</b></span>
               <span className="chip help" title="BTTS = ambos equipos marcan (Both Teams To Score)">BTTS <b>{Math.round(m.markets.btts * 100)}%</b></span>
+              {m.score_distribution?.total_goals_p10_p50_p90 && <span className="chip" title="Percentiles 10, 50 y 90 de la distribución de goles">Rango goles P10–P90 <b>{m.score_distribution.total_goals_p10_p50_p90[0]}–{m.score_distribution.total_goals_p10_p50_p90[2]}</b></span>}
             </div>
             <div className="lbl">Mapa de marcadores (local ↓ / visitante →)</div>
             <Heat M={M} />
@@ -542,20 +574,20 @@ export default function MatchDetail({ m, bankroll, onBack, onTeam, players }) {
             <div className="kv"><span>Cuota justa</span><b>{(1 / vProb).toFixed(2)}</b></div>
             <div className="kv"><span>Edge</span><b className={edge > 0 ? "value-yes" : "value-no"}>{(edge * 100).toFixed(1)}%</b></div>
             <div className="kv"><span>Recomendación</span>
-              {edge > 0.02 ? <span className="pill y">APOSTAR · {stake.toFixed(2)}€</span> : <span className="value-no">Sin value</span>}</div>
+              {abstain ? <span className="value-no">NO APOSTAR · confianza insuficiente</span> : edge > 0.02 ? <span className="pill y">APOSTAR · {stake.toFixed(2)}€</span> : <span className="value-no">Sin value</span>}</div>
           </div>
           </>)}
 
           {(m.statsReal || (m.finished && m.result)) ? (
             <PostMatchStats m={m} />
           ) : m.stats && (
-            <div className="card">
+            <div className="card section-anchor" id="match-stats">
               <div className="lbl">Estadísticas esperadas</div>
               <table>
                 <thead><tr><th>Métrica</th><th>Local</th><th>Visit.</th><th>Total</th><th>Tend.</th></tr></thead>
                 <tbody>
                   {[["goals", "Goles"], ["shots", "Remates"], ["sot", "Tiros a puerta"], ["corners", "Córners"],
-                    ["fouls", "Faltas"], ["yellows", "Amarillas"], ["reds", "Rojas"]]
+                    ["fouls", "Faltas"], ["yellows", "Amarillas"], ["reds", "Rojas"], ["offsides", "Fueras de juego"]]
                     .filter(([k]) => m.stats[k]).map(([k, lab]) => (
                       <tr key={k}><td>{lab}</td><td>{m.stats[k].home}</td><td>{m.stats[k].away}</td><td><b>{m.stats[k].total}</b></td>
                         <td><TrendArrow t={m.tendencias?.[k]} /></td></tr>

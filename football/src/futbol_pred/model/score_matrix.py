@@ -137,6 +137,26 @@ class ScoreMatrix:
         flat.sort(key=lambda t: t[2], reverse=True)
         return flat[:n]
 
+    def distribution_summary(self) -> dict:
+        """Rangos exactos de la distribución; evita vender un marcador puntual como certeza."""
+
+        total = self.total_goals_dist()
+        cumulative = np.cumsum(total)
+
+        def quantile(probability: float) -> int:
+            return int(np.searchsorted(cumulative, probability, side="left"))
+
+        scores = self.top_correct_scores(6)
+        return {
+            "total_goals_p10_p50_p90": [quantile(0.10), quantile(0.50), quantile(0.90)],
+            "top_scores": [
+                {"score": f"{home}-{away}", "probability": round(probability, 4)}
+                for home, away, probability in scores
+            ],
+            "top_six_probability": round(sum(row[2] for row in scores), 4),
+            "method": "distribución Dixon-Coles completa; sin muestreo Monte Carlo",
+        }
+
     # ---- Goles esperados (para sanity checks) ----------------------------
     def expected_goals(self) -> tuple[float, float]:
         xs = np.arange(self.matrix.shape[0])

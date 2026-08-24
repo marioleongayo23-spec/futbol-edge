@@ -1,10 +1,29 @@
 import pytest
 
 from futbol_pred.backtest.ensemble import (
+    candidate_beats_all_baselines,
     ensemble_probabilities,
     fit_walk_forward_ensemble,
     temperature_scale,
 )
+
+
+def test_challenger_debe_superar_dc_y_elo():
+    candidate = {"log_loss": 0.99, "rps": 0.20}
+    baselines = {
+        "dixon_coles": {"log_loss": 1.01, "rps": 0.21},
+        "elo": {"log_loss": 0.98, "rps": 0.19},
+    }
+    assert candidate_beats_all_baselines(candidate, baselines) is False
+
+
+def test_challenger_pasa_si_no_empeora_ningun_baseline():
+    candidate = {"log_loss": 0.97, "rps": 0.18}
+    baselines = {
+        "dixon_coles": {"log_loss": 1.01, "rps": 0.21},
+        "elo": {"log_loss": 0.98, "rps": 0.19},
+    }
+    assert candidate_beats_all_baselines(candidate, baselines) is True
 
 
 def test_ensemble_suma_uno_y_respeta_extremos():

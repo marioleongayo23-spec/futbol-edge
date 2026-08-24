@@ -56,15 +56,37 @@ def attach_official_context(
             continue
         delta = (kickoff - now_local).total_seconds()
         if -3 * 3600 <= delta <= 2 * 3600:
+            lineup = match.get("alineacion") or {}
+            if lineup.get("status") == "confirmado":
+                continue
+            polled = _parse(lineup.get("official_poll_at"))
+            if polled and (now_local - polled).total_seconds() < 45 * 60:
+                continue
             candidates.append((kickoff, match))
-    updated = 0
+    resolved = []
     for kickoff, match in sorted(candidates, key=lambda item: item[0])[:limit]:
         fixture = client.find_fixture(match.get("home", ""), match.get("away", ""), kickoff)
         fixture_id = ((fixture or {}).get("fixture") or {}).get("id")
-        if not fixture_id:
-            continue
-        official = client.get_official_lineup(fixture_id)
+        if fixture_id:
+            resolved.append((kickoff, match, int(fixture_id), fixture))
+    details = client.get_fixture_details([item[2] for item in resolved]) if hasattr(client, "get_fixture_details") else {}
+    updated = 0
+    for kickoff, match, fixture_id, fixture in resolved:
+        detail = details.get(fixture_id) or fixture
+        official = (
+            client.lineup_from_fixture(detail)
+            if hasattr(client, "lineup_from_fixture") and details
+            else client.get_official_lineup(fixture_id)
+        )
         absences = client.get_absences(fixture_id)
+        old = match.get("alineacion") or {}
+        old["official_poll_at"] = now_local.isoformat()
+        match["alineacion"] = old
+        if hasattr(client, "fixture_context"):
+            official_context = client.fixture_context(detail)
+            if official_context:
+                official_context["source_updated_at"] = now_local.isoformat()
+                match["official_context"] = official_context
         if not official:
             # Aunque el once aún no exista, las bajas oficiales mejoran el contexto.
             _merge_absences(match.get("alineacion") or {}, match, absences, now_local)
@@ -192,6 +214,31 @@ def annotate_prediction_context(matches: list[dict]) -> None:
         reasons = [row.get("reason") for row in trends.values() if isinstance(row, dict) and row.get("reason")]
         if reasons:
             factors.append({"factor": "forma y descanso", "impact": "incluido", "detail": reasons[0]})
+        tactical = match.get("tactical_matchup") or {}
+        tactical_reliability = tactical.get("reliability")
+        if tactical:
+            factors.append({
+                "factor": "ataque vs defensa",
+                "impact": "incluido como contexto",
+                "detail": "; ".join(tactical.get("notes") or [])
+                + f" · fiabilidad {tactical_reliability or 'sin clasificar'}",
+            })
+        weather = match.get("weather") or {}
+        heat = weather.get("heat_stress") or {}
+        if weather:
+            factors.append({
+                "factor": "clima",
+                "impact": "reduce confianza" if heat.get("level") == "alto" else "monitorizado",
+                "detail": (
+                    f"{weather.get('temperature_c')} °C, sensación {weather.get('apparent_temperature_c')} °C, "
+                    f"viento {weather.get('wind_kmh')} km/h · estrés térmico {heat.get('level')}"
+                ),
+            })
+        else:
+            factors.append({
+                "factor": "clima", "impact": "pendiente",
+                "detail": "se captura en las revisiones 00:15 y 10:15 para partidos del día",
+            })
         lineup = match.get("alineacion") or {}
         availability = (lineup.get("disponibilidad_local") or []) + (lineup.get("disponibilidad_visitante") or [])
         official_absences = sum(bool(row.get("official")) for row in availability if isinstance(row, dict))
@@ -206,15 +253,53 @@ def annotate_prediction_context(matches: list[dict]) -> None:
         components = (match.get("model_meta") or {}).get("components") or {}
         dc, elo = components.get("dixon_coles") or {}, components.get("elo") or {}
         disagreement = max((abs(float(dc.get(key, 0)) - float(elo.get(key, 0))) for key in ("1", "X", "2")), default=0)
-        penalty = min(15, official_absences * 3 + (0 if lineup.get("status") == "confirmado" else 5))
+        penalty = min(
+            20,
+            official_absences * 3
+            + (0 if lineup.get("status") == "confirmado" else 5)
+            + (4 if heat.get("level") == "alto" else 0),
+        )
         score = max(0, min(100, round(max(probs) + 35 - disagreement * 100 - penalty)))
+        evidence = {
+            "probabilities": True,
+            "model_agreement": bool(components),
+            "form_and_splits": bool(trends),
+            "tactical_profile": bool(tactical),
+            "lineup": bool(lineup),
+            "official_lineup": lineup.get("status") == "confirmado",
+            "weather": bool(weather),
+            "market_odds": isinstance(match.get("odds"), dict),
+        }
+        # Clima/cuotas/on-lineup son señales de refinamiento, no requisitos
+        # duros. El núcleo pesa más para no castigar partidos lejanos.
+        weights = {
+            "probabilities": 25, "model_agreement": 20, "form_and_splits": 15,
+            "tactical_profile": 15, "lineup": 10, "official_lineup": 5,
+            "weather": 5, "market_odds": 5,
+        }
+        completeness = sum(weights[key] for key, present in evidence.items() if present)
         match["prediction_confidence"] = {
             "score": score,
             "level": "alta" if score >= 72 else "media" if score >= 55 else "baja",
             "model_disagreement_pp": round(disagreement * 100, 1),
             "availability_penalty_pp": penalty,
+            "data_completeness_pct": completeness,
+            "evidence": evidence,
         }
         match["prediction_factors"] = factors
+        no_pick_reasons = []
+        if score < 48:
+            no_pick_reasons.append("confianza insuficiente")
+        if disagreement >= 0.18:
+            no_pick_reasons.append("desacuerdo alto entre modelos")
+        if completeness < 55:
+            no_pick_reasons.append("datos incompletos")
+        match["recommendation"] = {
+            "decision": "no_pick" if no_pick_reasons else "eligible",
+            "label": "Sin apuesta recomendada" if no_pick_reasons else "Pronóstico publicable",
+            "reasons": no_pick_reasons,
+            "policy": "abstención automática por incertidumbre o falta de evidencia",
+        }
 
 
 def build_alerts(previous: dict | None, audit: dict, ai_events: list[dict], now: datetime) -> list[dict]:

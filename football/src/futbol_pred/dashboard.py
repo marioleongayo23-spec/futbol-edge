@@ -15,6 +15,7 @@ from zoneinfo import ZoneInfo
 from .config import DATA_DIR
 from .backtest import ensemble_probabilities
 from .backtest.ensemble import temperature_scale
+from .context import WeatherClient, venue_for
 from .elo import EloRatings
 from .feed_quality import load_feed, preserve_last_known_good, write_feed_safely
 from .ingest.api_football import ApiFootballClient, Fixture
@@ -258,6 +259,7 @@ def fixture_payload(
             "btts": round(matrix.btts()["yes"], 3),
             "marcador": f"{top[0]}-{top[1]}",
         },
+        "score_distribution": matrix.distribution_summary(),
     })
     if not finished_with_result:
         payload["engine"] = "ensemble" if ensemble_active else "dixon-coles"
@@ -307,6 +309,9 @@ def fixture_payload(
             t = trends.trend(home_id, away_id, kickoff=fixture.kickoff, predicted=predicted)
             if t:
                 payload["tendencias"] = t
+            tactical = trends.matchup_profile(home_id, away_id)
+            if tactical:
+                payload["tactical_matchup"] = tactical
         except Exception:  # noqa: BLE001 - la tendencia nunca tumba el feed
             pass
 
@@ -380,6 +385,8 @@ def _attach_odds_value(payload: dict, market_odds: dict, one_x_two: dict, matrix
                 })
 
     if block:
+        if isinstance(market_odds.get("_meta"), dict):
+            block["meta"] = market_odds["_meta"]
         payload["odds"] = block
         value.sort(key=lambda v: v["edge"], reverse=True)
         payload["value"] = value
@@ -418,6 +425,32 @@ def _same_match_day(match: dict, now: datetime) -> bool:
     except (KeyError, TypeError, ValueError):
         return False
     return kickoff.date() == ensure_aware(now).astimezone(MADRID).date()
+
+
+def _attach_venue_weather(matches: list[dict], now: datetime, client: WeatherClient | None = None) -> int:
+    """Geolocaliza todos los partidos y refresca el tiempo solo en las dos ventanas."""
+
+    refresh = _ai_window(now)
+    weather = client or WeatherClient()
+    updated = 0
+    for match in matches:
+        venue = venue_for(match.get("home", ""))
+        if not venue:
+            continue
+        match["venue"] = venue["name"]
+        match["venue_meta"] = venue
+        if not refresh or match.get("finished") or not _same_match_day(match, now):
+            continue
+        try:
+            kickoff = ensure_aware(datetime.fromisoformat(match["kickoff"])).astimezone(MADRID)
+        except (KeyError, TypeError, ValueError):
+            continue
+        forecast = weather.forecast(venue, kickoff)
+        if forecast:
+            forecast["source_updated_at"] = ensure_aware(now).astimezone(MADRID).isoformat()
+            match["weather"] = forecast
+            updated += 1
+    return updated
 
 
 def _age_hours(now: datetime, value: str | None) -> float | None:
@@ -886,6 +919,7 @@ def build_dashboard(
             })
 
     matches.sort(key=lambda item: item["kickoff"])
+    weather_updates = _attach_venue_weather(matches, now)
     apply_prediction_snapshots(
         matches,
         (previous or {}).get("matches"),
@@ -897,7 +931,7 @@ def build_dashboard(
     # convierte una tarjeta que funcionaba en un hueco en blanco.
     if previous:
         preserve_last_known_good(
-            {"schema_version": 6, "matches": matches},
+            {"schema_version": 7, "matches": matches},
             {"schema_version": previous.get("schema_version"), "matches": previous.get("matches", [])},
         )
     base_players = _merge_squad_players(
@@ -925,9 +959,10 @@ def build_dashboard(
     audit = content_audit(matches, players, now)
     audit["selective_retries"] = retried
     audit["official_lineup_updates"] = official_updates
+    audit["weather_updates"] = weather_updates
     ai_events = diagnostics()
     payload = {
-        "schema_version": 6,
+        "schema_version": 7,
         "generated_at": generated_at,
         "season": season,
         "quiniela": _load_quiniela_oficial(),
@@ -952,6 +987,8 @@ def build_dashboard(
             "odds": "football-data.co.uk (media de mercado: 1X2 y over/under 2.5)",
             "lineups": "API-Football para onces oficiales y bajas cerca del partido; football-data.org para plantillas",
             "ai": "Gemini dinámico → Groq → motor estadístico local gratuito; control del día a las 00:15 y 10:15 Europe/Madrid, con presupuesto y caché",
+            "weather": "Open-Meteo (CC BY 4.0), previsión horaria del estadio; refresco 00:15/10:15",
+            "tactics": "football-data.co.uk, perfiles observados casa/fuera de remates, córners, faltas, tarjetas y goles",
         },
         "disclaimer": "Probabilidades y ventaja estadística, no certezas. "
                       "Las plantillas gratuitas y los onces del motor local son provisionales; "
@@ -1242,6 +1279,8 @@ def _real_stats_map(league: str, season: int) -> dict:
             k: {"home": v[0], "away": v[1], "total": v[0] + v[1]}
             for k, v in ms.stats.items()
         }
+        if ms.referee:
+            out[key]["meta"] = {"referee": ms.referee, "source": "football-data.co.uk"}
     return out
 
 

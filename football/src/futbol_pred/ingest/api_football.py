@@ -184,6 +184,62 @@ class ApiFootballClient:
             response = self._get("fixtures/lineups", {"fixture": fixture_id}).get("response") or []
         except Exception:
             return []
+        return self._parse_lineups(response)
+
+    def get_fixture_details(self, fixture_ids: list[int]) -> dict[int, dict]:
+        """Agrupa hasta 20 fixtures detallados en una sola llamada de cuota."""
+
+        ids = [int(value) for value in dict.fromkeys(fixture_ids) if value][:20]
+        if self.offline or not ids:
+            return {}
+        try:
+            response = self._get("fixtures", {"ids": "-".join(map(str, ids))}).get("response") or []
+        except Exception:
+            return {}
+        return {
+            int((item.get("fixture") or {}).get("id")): item
+            for item in response if (item.get("fixture") or {}).get("id")
+        }
+
+    def lineup_from_fixture(self, item: dict | None) -> list[dict]:
+        return self._parse_lineups((item or {}).get("lineups") or [])
+
+    @staticmethod
+    def fixture_context(item: dict | None) -> dict:
+        """Normaliza metadatos avanzados sin mezclarlos con el snapshot prepartido."""
+
+        item = item or {}
+        fixture = item.get("fixture") or {}
+        venue = fixture.get("venue") or {}
+        context = {
+            "provider": "API-Football",
+            "referee": fixture.get("referee"),
+            "venue": venue.get("name"),
+            "city": venue.get("city"),
+        }
+        statistics = {}
+        aliases = {
+            "Ball Possession": "possession", "Total passes": "passes",
+            "Passes accurate": "passes_accurate", "Passes %": "pass_accuracy",
+            "Shots insidebox": "shots_inside_box", "Shots outsidebox": "shots_outside_box",
+            "Blocked Shots": "shots_blocked", "Goalkeeper Saves": "saves",
+            "Offsides": "offsides",
+        }
+        for team in item.get("statistics") or []:
+            name = str((team.get("team") or {}).get("name") or "")
+            values = {}
+            for row in team.get("statistics") or []:
+                key = aliases.get(row.get("type"))
+                if key and row.get("value") is not None:
+                    values[key] = row["value"]
+            if name and values:
+                statistics[name] = values
+        if statistics:
+            context["live_or_post_stats"] = statistics
+        return {key: value for key, value in context.items() if value is not None and value != "" and value != {}}
+
+    @staticmethod
+    def _parse_lineups(response: list[dict]) -> list[dict]:
         out = []
         for team in response:
             starters = []

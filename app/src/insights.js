@@ -42,6 +42,7 @@ export function confidence(m) {
 
 // Mejor value bet del partido (edge máximo) si supera el umbral.
 export function bestValue(m, min = 0.03) {
+  if (m.recommendation?.decision === "no_pick") return null;
   if (!Array.isArray(m.value) || !m.value.length) return null;
   const b = m.value[0]; // ya viene ordenado por edge desc
   return b.edge > min ? b : null;
