@@ -33,6 +33,7 @@ _MATCH_LKG = (
     "prediction_history",
     "venue_meta",
     "weather",
+    "weather_actual",
     "tactical_matchup",
     "prediction_confidence",
     "prediction_factors",
