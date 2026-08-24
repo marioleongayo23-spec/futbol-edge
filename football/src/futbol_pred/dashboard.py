@@ -468,6 +468,33 @@ def _attach_lineups(
                 "fuente": data.get("provider"),
             }
 
+    # Excepción de seguridad: fuera de ventana, la IA no refresca contenido ya
+    # existente, pero sí puede completar hasta 3 partidos inminentes que sigan
+    # totalmente sin once porque las fuentes gratuitas no cubren ese club.
+    if available() and not _ai_window(now):
+        emergency = [
+            match for match in matches
+            if not match.get("finished") and match.get("probs") and not match.get("alineacion")
+            and _within_horizon(match, now, 3) and _can_attempt(match, "lineup", now)
+        ][:3]
+        for match in emergency:
+            _mark_attempt(match, "lineup", now)
+        query = [{"partido": f"{match['home']} vs {match['away']}"} for match in emergency]
+        try:
+            generated = fetch_lineups(query) if query else {}
+        except Exception:
+            generated = {}
+        for match in emergency:
+            data = generated.get(f"{match['home']} vs {match['away']}")
+            if data:
+                match["alineacion"] = {
+                    **data,
+                    "generated_at": stamp,
+                    "ts": stamp,
+                    "fuente": data.get("provider"),
+                    "emergency_backfill": True,
+                }
+
 
 def _squad_for(squads: dict[str, list[dict]], team: str | None) -> list[dict]:
     if not team:
@@ -663,7 +690,7 @@ def build_dashboard(
             "stats": "football-data.co.uk (remates, córners, faltas, tarjetas — reales y esperadas)",
             "players": "football-data.org (plantillas, goleadores y asistencias)",
             "odds": "football-data.co.uk (media de mercado: 1X2 y over/under 2.5)",
-            "ai": "Gemini dinámico → Groq → motor local gratuito; IA solo 06-10 y 20-23 Europe/Madrid",
+            "ai": "Gemini dinámico → Groq → motor local gratuito; refresco IA 06-10 y 20-23 Europe/Madrid, con backfill solo si un próximo partido sigue vacío",
         },
         "disclaimer": "Probabilidades y ventaja estadística, no certezas. "
                       "Las plantillas gratuitas y los onces del motor local son provisionales; "

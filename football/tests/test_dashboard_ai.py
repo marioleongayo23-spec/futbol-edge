@@ -86,3 +86,25 @@ def test_fuera_de_ventana_rellena_once_con_plantilla_gratuita(monkeypatch):
     assert len(match["alineacion"]["visitante"]) == 11
     assert match["alineacion"]["provider"] == "Motor estadístico local"
     assert set(match["alineacion"]["clave_local"][0]) >= {"jugador", "g", "a", "r", "rp", "fc", "fr", "t"}
+
+
+def test_backfill_ia_fuera_de_ventana_solo_si_once_sigue_vacio(monkeypatch):
+    now = datetime(2026, 8, 24, 15, tzinfo=MADRID)
+    match = _match(now)
+    props = [{"jugador": f"Clave {i}", "g": .2, "a": .1, "r": 2, "rp": 1,
+              "fc": 1, "fr": 1, "t": .1} for i in range(3)]
+    generated = {
+        "A vs B": {
+            "local": [f"A {i}" for i in range(11)],
+            "visitante": [f"B {i}" for i in range(11)],
+            "bajas_local": [], "bajas_visitante": [],
+            "clave_local": props, "clave_visitante": props,
+            "provider": "Groq", "model": "llama-test", "quality": {"score": 1.0},
+        }
+    }
+    monkeypatch.delenv("FORCE_AI", raising=False)
+    monkeypatch.setattr(client, "available", lambda: True)
+    monkeypatch.setattr(lineups, "fetch_lineups", lambda _query: generated)
+    _attach_lineups([match], now, squads={})
+    assert match["alineacion"]["provider"] == "Groq"
+    assert match["alineacion"]["emergency_backfill"] is True
