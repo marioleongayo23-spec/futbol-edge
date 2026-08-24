@@ -1,0 +1,90 @@
+name: Apply full official starter props on PR
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: chatgpt/all-official-starter-props
+          fetch-depth: 0
+      - name: Expand real props to all official starters
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          # API-Football: cobertura completa preservando orden oficial cuando cabe.
+          path = Path('football/src/futbol_pred/ingest/api_football_players.py')
+          text = path.read_text(encoding='utf-8')
+          text = text.replace(
+              '    limit: int = 5,\n) -> list[dict]:',
+              '    limit: int = 11,\n) -> list[dict]:',
+              1,
+          )
+          old = '''    candidates.sort(key=lambda row: row["evidence_score"], reverse=True)\n    return candidates[: max(0, int(limit))]\n'''
+          new = '''    max_rows = max(0, int(limit))\n    if max_rows >= len(candidates):\n        # Para cobertura completa respetamos el orden del once oficial. El ranking\n        # de oportunidades se hace después en ``_best_props``.\n        return candidates\n    candidates.sort(key=lambda row: row["evidence_score"], reverse=True)\n    return candidates[:max_rows]\n'''
+          if old in text:
+              text = text.replace(old, new, 1)
+          elif 'if max_rows >= len(candidates):' not in text:
+              raise SystemExit('props return block not found')
+          path.write_text(text, encoding='utf-8')
+
+          # Operational: pedir 11, no 5.
+          path = Path('football/src/futbol_pred/operational.py')
+          text = path.read_text(encoding='utf-8')
+          old = '        props = props_for_official_starters(starters, rates, limit=5)'
+          new = '        props = props_for_official_starters(starters, rates, limit=11)'
+          if old in text:
+              text = text.replace(old, new, 1)
+          elif new not in text:
+              raise SystemExit('operational props limit not found')
+          path.write_text(text, encoding='utf-8')
+
+          # Backend tests: 22 reales y 11 por lado.
+          path = Path('football/tests/test_api_football_players.py')
+          text = path.read_text(encoding='utf-8')
+          old = '    assert lineup["quality"]["real_player_props"] == 10\n'
+          new = '''    assert lineup["quality"]["real_player_props"] == 22\n    assert lineup["quality"]["props_players"] == 22\n    assert len(lineup["clave_local"]) == 11\n    assert len(lineup["clave_visitante"]) == 11\n    assert [row["jugador"] for row in lineup["clave_local"]] == [f"Local {i}" for i in range(11)]\n    assert [row["jugador"] for row in lineup["clave_visitante"]] == [f"Visitante {i}" for i in range(11)]\n'''
+          if old in text:
+              text = text.replace(old, new, 1)
+          elif 'real_player_props"] == 22' not in text:
+              raise SystemExit('backend expectation not found')
+          path.write_text(text, encoding='utf-8')
+
+          # UI: distinguir cobertura real de shortlist/fallback.
+          path = Path('app/src/MatchDetail.jsx')
+          text = path.read_text(encoding='utf-8')
+          old = '''function PropsTable({ title, clave, best }) {\n  if (!(clave || []).length) return null;\n  const highlighted = new Set((best || []).map((item) => item.jugador));\n  return (\n    <div className="xi-props">\n      <div className="xi-props-h">{title} · jugadores clave</div>\n'''
+          new = '''function PropsTable({ title, clave, best }) {\n  if (!(clave || []).length) return null;\n  const highlighted = new Set((best || []).map((item) => item.jugador));\n  const realRows = clave.filter((row) => row?.source === "API-Football · players").length;\n  const coverageLabel = realRows === clave.length\n    ? `titulares con muestra real ${realRows}/11`\n    : "jugadores clave";\n  return (\n    <div className="xi-props">\n      <div className="xi-props-h">{title} · {coverageLabel}</div>\n'''
+          if old in text:
+              text = text.replace(old, new, 1)
+          elif 'titulares con muestra real ${realRows}/11' not in text:
+              raise SystemExit('PropsTable header block not found')
+          old_cell = '<td className="tl">{highlighted.has(p.jugador) ? "★ " : ""}{p.jugador}</td>'
+          new_cell = '<td className="tl" title={p.source ? `${p.source}${p.sample_minutes ? ` · ${p.sample_minutes} min de muestra` : ""}` : undefined}>{highlighted.has(p.jugador) ? "★ " : ""}{p.jugador}</td>'
+          if old_cell in text:
+              text = text.replace(old_cell, new_cell, 1)
+          elif 'min de muestra' not in text:
+              raise SystemExit('PropsTable player cell not found')
+          path.write_text(text, encoding='utf-8')
+          PY
+      - name: Validate and commit
+        run: |
+          git diff --check
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add football/src/futbol_pred/ingest/api_football_players.py football/src/futbol_pred/operational.py football/tests/test_api_football_players.py app/src/MatchDetail.jsx
+          if git diff --cached --quiet; then
+            echo "Nothing to commit"
+            exit 0
+          fi
+          git commit -m "Expose real props for all official starters"
+          git push origin HEAD:chatgpt/all-official-starter-props
