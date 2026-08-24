@@ -1,0 +1,88 @@
+name: One-shot archived weather wiring
+
+on:
+  push:
+    branches: [chatgpt/archived-weather-data]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: chatgpt/archived-weather-data
+          fetch-depth: 0
+      - name: Wire archived weather cache and dashboard
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          # 1) Persist weather_actual through last-known-good.
+          fq = Path('football/src/futbol_pred/feed_quality.py')
+          text = fq.read_text(encoding='utf-8')
+          marker = '    "weather",\n    "tactical_matchup",'
+          replacement = '    "weather",\n    "weather_actual",\n    "tactical_matchup",'
+          if '    "weather_actual",\n' not in text:
+              if text.count(marker) != 1:
+                  raise SystemExit(f'feed_quality marker count={text.count(marker)}')
+              text = text.replace(marker, replacement, 1)
+          elif text.count('    "weather_actual",\n') != 1:
+              raise SystemExit('duplicate weather_actual LKG field')
+          fq.write_text(text, encoding='utf-8')
+
+          # 2) Add incremental historical weather helper.
+          dash = Path('football/src/futbol_pred/dashboard.py')
+          text = dash.read_text(encoding='utf-8')
+          helper_name = 'def _attach_archived_weather('
+          if helper_name not in text:
+              anchor = '''    return updated\n\n\ndef _age_hours(now: datetime, value: str | None) -> float | None:\n'''
+              helper = '''    return updated\n\n\ndef _attach_archived_weather(\n    matches: list[dict],\n    now: datetime,\n    client: WeatherClient | None = None,\n    limit: int = 6,\n) -> int:\n    \"\"\"Backfill incremental de tiempo pasado sin modificar predicciones.\n\n    Solo consulta partidos terminados hace al menos 12 horas y sin caché. Se\n    procesan primero los más antiguos para que un dato reciente aún no archivado\n    no bloquee el relleno del resto de la temporada.\n    \"\"\"\n\n    weather = client or WeatherClient()\n    cutoff = ensure_aware(now) - timedelta(hours=12)\n    candidates: list[tuple[datetime, dict, dict]] = []\n    for match in matches:\n        if not match.get(\"finished\") or match.get(\"weather_actual\"):\n            continue\n        venue = match.get(\"venue_meta\") or venue_for(match.get(\"home\", \"\"))\n        if not venue:\n            continue\n        try:\n            kickoff = ensure_aware(datetime.fromisoformat(match[\"kickoff\"])).astimezone(MADRID)\n        except (KeyError, TypeError, ValueError):\n            continue\n        if kickoff > cutoff:\n            continue\n        candidates.append((kickoff, match, venue))\n\n    candidates.sort(key=lambda row: row[0])\n    updated = 0\n    for kickoff, match, venue in candidates[:max(0, limit)]:\n        historical = weather.historical(venue, kickoff)\n        if not historical:\n            continue\n        historical[\"source_updated_at\"] = ensure_aware(now).astimezone(MADRID).isoformat()\n        match[\"weather_actual\"] = historical\n        updated += 1\n    return updated\n\n\ndef _age_hours(now: datetime, value: str | None) -> float | None:\n'''
+              if text.count(anchor) != 1:
+                  raise SystemExit(f'dashboard helper anchor count={text.count(anchor)}')
+              text = text.replace(anchor, helper, 1)
+          elif text.count(helper_name) != 1:
+              raise SystemExit('duplicate archived weather helper')
+
+          # 3) Run after LKG restoration so cached observations are not re-fetched.
+          call = '    archived_weather_updates = _attach_archived_weather(matches, now)\n'
+          if call not in text:
+              anchor = '''        preserve_last_known_good(\n            {\"schema_version\": 7, \"matches\": matches},\n            {\"schema_version\": previous.get(\"schema_version\"), \"matches\": previous.get(\"matches\", [])},\n        )\n    base_players = _merge_squad_players(\n'''
+              replacement = '''        preserve_last_known_good(\n            {\"schema_version\": 7, \"matches\": matches},\n            {\"schema_version\": previous.get(\"schema_version\"), \"matches\": previous.get(\"matches\", [])},\n        )\n    archived_weather_updates = _attach_archived_weather(matches, now)\n    base_players = _merge_squad_players(\n'''
+              if text.count(anchor) != 1:
+                  raise SystemExit(f'dashboard call anchor count={text.count(anchor)}')
+              text = text.replace(anchor, replacement, 1)
+
+          # 4) Expose operational count.
+          audit_line = '    audit[\"archived_weather_updates\"] = archived_weather_updates\n'
+          if audit_line not in text:
+              anchor = '    audit[\"weather_updates\"] = weather_updates\n'
+              if text.count(anchor) != 1:
+                  raise SystemExit(f'audit anchor count={text.count(anchor)}')
+              text = text.replace(anchor, anchor + audit_line, 1)
+
+          # 5) Describe forecast + historical source honestly.
+          old_source = '            \"weather\": \"Open-Meteo (CC BY 4.0), previsión horaria del estadio; refresco 00:15/10:15\",\n'
+          new_source = '            \"weather\": \"Open-Meteo (CC BY 4.0): previsión horaria + Historical Forecast archivado por estadio; el histórico es solo para validación hasta superar gate\",\n'
+          if new_source not in text:
+              if text.count(old_source) != 1:
+                  raise SystemExit(f'weather source anchor count={text.count(old_source)}')
+              text = text.replace(old_source, new_source, 1)
+
+          dash.write_text(text, encoding='utf-8')
+          PY
+      - name: Validate and commit
+        run: |
+          git diff --check
+          if git diff --quiet; then
+            echo "Already wired"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add football/src/futbol_pred/dashboard.py football/src/futbol_pred/feed_quality.py
+          git commit -m "Persist archived weather incrementally"
+          git push origin HEAD:chatgpt/archived-weather-data
