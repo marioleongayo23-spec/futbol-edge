@@ -1018,13 +1018,20 @@ export default function App() {
   const [dob, setDob] = useState(4);
   const [menuOpen, setMenuOpen] = useState(false);
   const themeButtonRef = useRef(null);
+  const lastThemeToggleRef = useRef(0);
 
   useEffect(() => { loadFeed().then(setData).catch((e) => setErr(e.message)); }, []);
   useEffect(() => {
     const button = themeButtonRef.current;
     if (!button) return undefined;
-    button.addEventListener("click", toggleTheme);
-    return () => button.removeEventListener("click", toggleTheme);
+    const activate = () => {
+      const now = Date.now();
+      if (now - lastThemeToggleRef.current < 400) return;
+      lastThemeToggleRef.current = now;
+      toggleTheme();
+    };
+    button.addEventListener("click", activate);
+    return () => button.removeEventListener("click", activate);
   }, [theme, toggleTheme]);
   const matches = useMemo(() => data?.matches || [], [data]);
 
