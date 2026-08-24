@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 
-from futbol_pred.dashboard import MADRID
+from futbol_pred.dashboard import MADRID, _merge_lineup_players
 from futbol_pred.ingest.lineups_ai import build_statistical_lineup
 from futbol_pred.operational import attach_official_context, build_alerts, content_audit
 from futbol_pred.performance import build_performance
@@ -77,3 +77,15 @@ def test_rendimiento_desglosa_roi_y_compara_10_15():
     assert report["overall"]["roi"] == 100.0
     assert report["by_market"][0]["label"] == "1X2"
     assert report["initial_vs_10_15"]["improved"] is True
+
+
+def test_jugadores_del_once_rellenan_indice_global_sin_huecos():
+    match = {
+        "home": "Celta B", "away": "Andorra", "league": "LaLiga Hypermotion",
+        "alineacion": build_statistical_lineup({"xg": [1.2, 0.9]}, _squad("C"), _squad("A")),
+    }
+    players = _merge_lineup_players(None, [match])
+    rows = players["segunda"]["players"]
+    assert len(rows) == 22
+    assert {row["team"] for row in rows} == {"Celta B", "Andorra"}
+    assert all(row["source"] == "Motor estadístico local" for row in rows)
