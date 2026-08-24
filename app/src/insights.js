@@ -7,8 +7,9 @@ const SIGN = (hg, ag) => (hg > ag ? "1" : hg < ag ? "2" : "X");
 export function modelAccuracy(matches) {
   let hits = 0, total = 0;
   for (const m of matches) {
-    if (!m.finished || !Array.isArray(m.result) || !Array.isArray(m.probs)) continue;
-    const fav = ["1", "X", "2"][m.probs.indexOf(Math.max(...m.probs))];
+    const probs = m.prediction_snapshot?.probs;
+    if (!m.finished || !Array.isArray(m.result) || !Array.isArray(probs)) continue;
+    const fav = ["1", "X", "2"][probs.indexOf(Math.max(...probs))];
     const real = SIGN(m.result[0], m.result[1]);
     total++; if (fav === real) hits++;
   }
@@ -19,9 +20,14 @@ export function modelAccuracy(matches) {
 export function confidence(m) {
   if (!Array.isArray(m.probs)) return null;
   const mx = Math.max(...m.probs);
-  if (mx >= 55) return { stars: 3, label: "Alta", mx };
-  if (mx >= 45) return { stars: 2, label: "Media", mx };
-  return { stars: 1, label: "Baja", mx };
+  const components = m.model_meta?.components;
+  const dc = components?.dixon_coles, elo = components?.elo;
+  const disagreement = dc && elo
+    ? Math.max(...["1", "X", "2"].map((key) => Math.abs((dc[key] || 0) - (elo[key] || 0))))
+    : 0;
+  if (mx >= 55 && disagreement <= 0.08) return { stars: 3, label: "Alta", mx, disagreement };
+  if (mx >= 45 && disagreement <= 0.15) return { stars: 2, label: "Media", mx, disagreement };
+  return { stars: 1, label: "Baja", mx, disagreement };
 }
 
 // Mejor value bet del partido (edge máximo) si supera el umbral.

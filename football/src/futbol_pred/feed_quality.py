@@ -10,9 +10,12 @@ import os
 from pathlib import Path
 import tempfile
 
-_TOP_LEVEL_LKG = ("quiniela", "players", "model", "accuracy")
+_TOP_LEVEL_LKG = ("quiniela", "players", "model", "market_calibration", "accuracy")
 _MATCH_LKG = (
     "probs",
+    "model_probs",
+    "model_meta",
+    "market_calibration",
     "xg",
     "markets",
     "stats",
@@ -24,6 +27,8 @@ _MATCH_LKG = (
     "preview_meta",
     "alineacion",
     "ai_attempts",
+    "prediction_snapshot",
+    "prediction_history",
 )
 _REQUIRED_MATCH = ("id", "home", "away", "league", "kickoff", "status")
 
@@ -71,6 +76,13 @@ def preserve_last_known_good(candidate: dict, previous: dict | None) -> dict:
         if not old:
             continue
         for field in _MATCH_LKG:
+            if (
+                candidate.get("schema_version", 0) >= 5
+                and match.get("prediction_unavailable_reason") == "sin_snapshot_prepartido"
+                and not match.get("prediction_snapshot")
+                and field in {"probs", "model_probs", "model_meta", "market_calibration", "xg", "markets", "stats", "tendencias", "odds", "value"}
+            ):
+                continue
             if _missing(match.get(field)) and not _missing(old.get(field)):
                 match[field] = deepcopy(old[field])
         # Los feeds previos no guardaban el proveedor real. Se conservan como
@@ -160,6 +172,18 @@ def evaluate_feed(candidate: dict, previous: dict | None = None) -> dict:
                 issues.append(f"probs_invalidas:{match_id}")
             elif not 98 <= sum(probs) <= 102:
                 issues.append(f"probs_no_suman_100:{match_id}")
+        if candidate.get("schema_version", 0) >= 5 and probs is not None:
+            snapshot = match.get("prediction_snapshot")
+            if not isinstance(snapshot, dict):
+                issues.append(f"snapshot_prediccion_ausente:{match_id}")
+            else:
+                try:
+                    captured = datetime.fromisoformat(str(snapshot.get("generated_at")))
+                    kickoff = datetime.fromisoformat(str(match.get("kickoff")))
+                    if captured >= kickoff:
+                        issues.append(f"snapshot_posterior_kickoff:{match_id}")
+                except (TypeError, ValueError):
+                    issues.append(f"snapshot_fecha_invalida:{match_id}")
         xg = match.get("xg")
         if xg is not None and not (
             isinstance(xg, list) and len(xg) == 2 and all(_finite(x) and 0 <= x <= 6 for x in xg)
@@ -204,6 +228,12 @@ def evaluate_feed(candidate: dict, previous: dict | None = None) -> dict:
             if not old:
                 continue
             for field in ("probs", "preview", "alineacion"):
+                if (
+                    field == "probs"
+                    and candidate.get("schema_version", 0) >= 5
+                    and match.get("prediction_unavailable_reason") == "sin_snapshot_prepartido"
+                ):
+                    continue
                 if not _missing(old.get(field)) and _missing(match.get(field)):
                     issues.append(f"regresion_{field}:{match.get('id')}")
 

@@ -78,3 +78,22 @@ def test_schema4_bloquea_proximos_sin_previa_ni_once():
     assert report["valid"] is False
     assert any(issue.startswith("preview_vacia_proximo") for issue in report["issues"])
     assert any(issue.startswith("once_vacio_proximo") for issue in report["issues"])
+
+
+def test_schema5_exige_snapshot_prepartido():
+    feed = _feed()
+    feed["schema_version"] = 5
+    report = evaluate_feed(feed)
+    assert report["valid"] is False
+    assert any(issue.startswith("snapshot_prediccion_ausente") for issue in report["issues"])
+
+
+def test_schema5_no_restaura_prediccion_retroactiva_de_terminado():
+    previous = _feed()
+    previous["matches"][0].update({"finished": True, "status": "FINISHED", "result": [2, 0]})
+    candidate = deepcopy(previous)
+    candidate["schema_version"] = 5
+    candidate["matches"][0].pop("probs")
+    candidate["matches"][0]["prediction_unavailable_reason"] = "sin_snapshot_prepartido"
+    preserve_last_known_good(candidate, previous)
+    assert "probs" not in candidate["matches"][0]
