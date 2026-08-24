@@ -1263,7 +1263,11 @@ def _team_meta(league: str, season: int) -> dict:
 
 
 def _fit_stats(league: str, season: int):
-    """Ajusta props y pseudo-xG con hasta tres temporadas gratuitas."""
+    """Ajusta props con liga objetivo + memoria de equipos que cambiaron de división.
+
+    La otra división nunca entra en medias, dispersión, pseudo-xG ni gate
+    temporal: solo aporta acumuladores por equipo al StatsPredictor.
+    """
     if league not in ("laliga", "segunda"):
         return None
     try:
@@ -1277,7 +1281,15 @@ def _fit_stats(league: str, season: int):
                 rows.extend(client.get_stats(league, season - back))
             except Exception:
                 continue
-        return StatsPredictor().fit(rows)
+
+        other = "segunda" if league == "laliga" else "laliga"
+        auxiliary = []
+        for back in (2, 1):
+            try:
+                auxiliary.extend(client.get_stats(other, season - back))
+            except Exception:
+                continue
+        return StatsPredictor().fit(rows, auxiliary_matches=auxiliary)
     except Exception:
         return None
 

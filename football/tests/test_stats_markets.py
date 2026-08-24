@@ -67,7 +67,6 @@ def test_offline_da_ejemplo():
 
 
 def _sample_fit():
-    # Barcelona dispara mucho en casa; Sevilla concede mucho fuera.
     matches = [
         MatchStats("Barcelona", "Getafe", {"corners": (10, 3), "yellows": (1, 4)}),
         MatchStats("Barcelona", "Cadiz", {"corners": (12, 2), "yellows": (2, 3)}),
@@ -87,13 +86,11 @@ def test_predict_fixture_estructura():
 
 def test_local_disparador_predice_mas_corners():
     pred = _sample_fit().predict_fixture("Barcelona", "Sevilla")
-    # Barça (muchos córners en casa) vs Sevilla (concede fuera) => local alto.
     assert pred["corners"]["home"] > pred["corners"]["away"]
 
 
 def test_prob_over_coherente():
     sp = _sample_fit()
-    # Prob over baja con línea alta.
     p_baja = sp.prob_over(10.0, 8.5)
     p_alta = sp.prob_over(10.0, 12.5)
     assert p_baja > p_alta
@@ -106,7 +103,6 @@ def test_market_over_under_suman_uno():
 
 
 def test_equipo_desconocido_usa_media_liga():
-    # Un equipo sin historial cae a la media de liga, no rompe.
     pred = _sample_fit().predict_fixture("EquipoNuevo", "Sevilla")
     assert "corners" in pred and pred["corners"]["home"] > 0
 
@@ -116,11 +112,7 @@ def test_pseudo_xg_aprende_de_remates_y_tiros_a_puerta():
     for i in range(30):
         rows.append(MatchStats(
             "Barcelona", "Sevilla",
-            {
-                "shots": (16 + i % 3, 8 + i % 2),
-                "sot": (7 + i % 2, 3),
-                "goals": (2 + i % 2, 1),
-            },
+            {"shots": (16 + i % 3, 8 + i % 2), "sot": (7 + i % 2, 3), "goals": (2 + i % 2, 1)},
         ))
     predictor = StatsPredictor().fit(rows)
     proxy = predictor.pseudo_xg("Barcelona", "Sevilla")
@@ -130,10 +122,7 @@ def test_pseudo_xg_aprende_de_remates_y_tiros_a_puerta():
 
 
 def test_negative_binomial_se_activa_con_sobredispersion():
-    rows = [
-        MatchStats("A", "B", {"corners": (value, 1)})
-        for value in ([0, 1, 2, 18, 20] * 5)
-    ]
+    rows = [MatchStats("A", "B", {"corners": (value, 1)}) for value in ([0, 1, 2, 18, 20] * 5)]
     predictor = StatsPredictor().fit(rows)
     market = predictor.market("A", "B", "corners", "total", 9.5)
     assert market["distribution"] == "negative-binomial"
@@ -144,7 +133,6 @@ def _dated_regime_rows(changing: bool) -> list[MatchStats]:
     start = datetime(2024, 1, 1, tzinfo=timezone.utc)
     rows = []
     for i in range(120):
-        # Cambio de estilo reciente: el challenger debe dar más peso al tramo nuevo.
         home_corners = 3 if changing and i < 70 else 11 if changing else 6
         rows.append(MatchStats(
             "A", "B", {"corners": (home_corners, 2)},
@@ -174,3 +162,64 @@ def test_temporal_challenger_no_promociona_empates():
     assert corners["temporal_mae"] == pytest.approx(corners["baseline_mae"])
     assert corners["accepted"] is False
     assert "corners" not in report["accepted_stats"]
+
+
+def _primary_league_rows() -> list[MatchStats]:
+    rows = []
+    for i in range(30):
+        rows.append(MatchStats(
+            "Primera A", "Primera B",
+            {"shots": (12 + i % 2, 10), "sot": (4, 3), "goals": (1, 1), "corners": (5, 4)},
+            kickoff=datetime(2026, 1, 1, tzinfo=timezone.utc) + timedelta(days=7 * i),
+        ))
+    return rows
+
+
+def _segunda_promoted_rows() -> list[MatchStats]:
+    start = datetime(2025, 1, 1, tzinfo=timezone.utc)
+    return [
+        MatchStats(
+            "Ascendido", f"Rival {i}",
+            {"shots": (19, 8), "sot": (7, 2), "goals": (2, 1), "corners": (9, 3)},
+            kickoff=start + timedelta(days=7 * i),
+        )
+        for i in range(20)
+    ]
+
+
+def test_historico_auxiliar_da_memoria_al_ascendido_sin_contaminar_media_liga():
+    primary = _primary_league_rows()
+    auxiliary = _segunda_promoted_rows()
+    baseline = StatsPredictor().fit(primary, auto_temporal=False)
+    promoted = StatsPredictor().fit(primary, auxiliary_matches=auxiliary, auto_temporal=False)
+
+    neutral = baseline.predict_fixture("Ascendido", "Primera B")["corners"]["home"]
+    inherited = promoted.predict_fixture("Ascendido", "Primera B")["corners"]["home"]
+    assert inherited > neutral
+    assert promoted.auxiliary_rows == len(auxiliary)
+    assert "Ascendido" in promoted.auxiliary_teams
+
+    assert promoted.league_home["corners"].for_avg == pytest.approx(baseline.league_home["corners"].for_avg)
+    assert promoted.league_away["corners"].for_avg == pytest.approx(baseline.league_away["corners"].for_avg)
+    assert promoted.dispersion("corners") == pytest.approx(baseline.dispersion("corners"))
+
+
+def test_auxiliar_no_entra_en_pseudo_xg_ni_gate_temporal():
+    primary = _dated_regime_rows(changing=True)
+    auxiliary = _segunda_promoted_rows()
+    baseline = StatsPredictor().fit(primary)
+    enriched = StatsPredictor().fit(primary, auxiliary_matches=auxiliary)
+
+    assert enriched.temporal_validation == baseline.temporal_validation
+    assert enriched.temporal_stats == baseline.temporal_stats
+    assert enriched.xg_rows == baseline.xg_rows
+    assert enriched.xg_coefficients == baseline.xg_coefficients
+
+
+def test_auxiliar_no_cambia_fallback_de_equipo_sin_historial():
+    primary = _primary_league_rows()
+    auxiliary = _segunda_promoted_rows()
+    baseline = StatsPredictor().fit(primary, auto_temporal=False)
+    enriched = StatsPredictor().fit(primary, auxiliary_matches=auxiliary, auto_temporal=False)
+
+    assert enriched.predict_fixture("Otro equipo", "Primera B") == baseline.predict_fixture("Otro equipo", "Primera B")

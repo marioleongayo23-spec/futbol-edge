@@ -7,6 +7,12 @@ muestra fechada suficiente, un challenger con decaimiento temporal se valida en
 una cola cronológica y solo se activa, estadística a estadística, si reduce el
 MAE fuera de muestra. Los conteos usan Poisson o Negative Binomial según la
 sobredispersión observada.
+
+El histórico de otra división puede entrar como ``auxiliary_matches``. Ese
+histórico SOLO alimenta los acumuladores de cada equipo: nunca las medias de la
+liga objetivo, la dispersión, el pseudo-xG ni el gate de recencia. Así un recién
+ascendido conserva su identidad estadística sin contaminar el baseline de la
+categoría a la que llega.
 """
 
 from __future__ import annotations
@@ -64,7 +70,6 @@ def _time_weight(kickoff: datetime | None, reference: datetime | None, half_life
     try:
         age_days = max(0.0, (reference - kickoff).total_seconds() / 86400.0)
     except TypeError:
-        # Tolera mezclas aware/naive de fixtures antiguos sin inventar orden.
         age_days = max(
             0.0,
             (reference.replace(tzinfo=None) - kickoff.replace(tzinfo=None)).total_seconds() / 86400.0,
@@ -167,7 +172,6 @@ def validate_temporal_decay(
 class StatsPredictor:
     """Ajusta tasas por equipo (local/visitante) y predice estadísticas."""
 
-    # team -> stat -> _Accum, separando condición de local y visitante.
     home: dict = field(default_factory=lambda: defaultdict(lambda: defaultdict(_Accum)))
     away: dict = field(default_factory=lambda: defaultdict(lambda: defaultdict(_Accum)))
     league_home: dict = field(default_factory=lambda: defaultdict(_Accum))
@@ -177,6 +181,8 @@ class StatsPredictor:
     xg_coefficients: tuple[float, float, float] = (0.12, 0.025, 0.16)
     temporal_stats: set[str] = field(default_factory=set)
     temporal_validation: dict | None = None
+    auxiliary_rows: int = 0
+    auxiliary_teams: set[str] = field(default_factory=set)
 
     def fit(
         self,
@@ -185,7 +191,15 @@ class StatsPredictor:
         half_life_days: float = DEFAULT_HALF_LIFE_DAYS,
         auto_temporal: bool = True,
         fit_pseudo_xg: bool = True,
+        auxiliary_matches: list[MatchStats] | None = None,
     ) -> "StatsPredictor":
+        """Ajusta el predictor con una liga primaria y, opcionalmente, memoria auxiliar.
+
+        ``matches`` es la única muestra que define el entorno de la liga objetivo.
+        ``auxiliary_matches`` únicamente añade historia a los equipos que aparecen
+        allí; jamás entra en medias de liga, dispersión, pseudo-xG ni validación
+        temporal.
+        """
         if temporal_stats is None and auto_temporal:
             self.temporal_validation = validate_temporal_decay(matches, half_life_days)
             chosen = set(self.temporal_validation.get("accepted_stats") or [])
@@ -201,8 +215,8 @@ class StatsPredictor:
             recency_weight = _time_weight(m.kickoff, reference, half_life_days)
             for stat, (hv, av) in m.stats.items():
                 weight = recency_weight if stat in chosen else 1.0
-                self.home[h][stat].add(hv, av, weight)   # local: hace hv, concede av
-                self.away[a][stat].add(av, hv, weight)   # visitante: hace av, concede hv
+                self.home[h][stat].add(hv, av, weight)
+                self.away[a][stat].add(av, hv, weight)
                 self.league_home[stat].add(hv, av, weight)
                 self.league_away[stat].add(av, hv, weight)
                 self.observations[stat].extend((float(hv), float(av)))
@@ -214,20 +228,51 @@ class StatsPredictor:
                     (float(shots[0]), float(sot[0]), float(goals[0])),
                     (float(shots[1]), float(sot[1]), float(goals[1])),
                 ])
+
+        if auxiliary_matches:
+            self.add_auxiliary_team_history(
+                auxiliary_matches,
+                reference=reference,
+                half_life_days=half_life_days,
+            )
         if fit_pseudo_xg:
             self._fit_pseudo_xg()
         return self
 
-    def _fit_pseudo_xg(self) -> None:
-        """Aprende una conversión regularizada remates/SOT → goles esperados."""
+    def add_auxiliary_team_history(
+        self,
+        matches: list[MatchStats],
+        *,
+        reference: datetime | None = None,
+        half_life_days: float = DEFAULT_HALF_LIFE_DAYS,
+    ) -> "StatsPredictor":
+        """Añade memoria de equipo sin modificar el entorno estadístico de la liga."""
+        if reference is None:
+            dated = _dated_rows(matches)
+            reference = dated[-1].kickoff if dated else None
+        count = 0
+        for m in matches:
+            h = canonical_team(m.home_team)
+            a = canonical_team(m.away_team)
+            recency_weight = _time_weight(m.kickoff, reference, half_life_days)
+            used = False
+            for stat, (hv, av) in m.stats.items():
+                weight = recency_weight if stat in self.temporal_stats else 1.0
+                self.home[h][stat].add(hv, av, weight)
+                self.away[a][stat].add(av, hv, weight)
+                used = True
+            if used:
+                count += 1
+                self.auxiliary_teams.update((h, a))
+        self.auxiliary_rows += count
+        return self
 
+    def _fit_pseudo_xg(self) -> None:
         if len(self.xg_rows) < 40:
             return
         x = np.asarray([[1.0, shots, sot] for shots, sot, _ in self.xg_rows], dtype=float)
         y = np.asarray([goals for _, _, goals in self.xg_rows], dtype=float)
         prior = np.asarray(self.xg_coefficients, dtype=float)
-        # Ridge hacia una conversión futbolística conservadora. Evita que una
-        # temporada corta convierta un puñado de goles en coeficientes extremos.
         ridge = 35.0
         design = np.vstack((x, np.sqrt(ridge) * np.eye(3)))
         target = np.concatenate((y, np.sqrt(ridge) * prior))
@@ -244,7 +289,6 @@ class StatsPredictor:
         la = self.league_away[stat].for_avg
         if lh is None or la is None:
             return None
-        # Producción del equipo y concesión del rival; si falta, cae a media liga.
         h_for = self.home[home][stat].for_avg if self.home[home][stat].n else lh
         a_against = self.away[away][stat].against_avg if self.away[away][stat].n else lh
         a_for = self.away[away][stat].for_avg if self.away[away][stat].n else la
@@ -254,7 +298,6 @@ class StatsPredictor:
         return exp_home, exp_away
 
     def predict_fixture(self, home: str, away: str) -> dict[str, dict]:
-        """Devuelve por estadística: media local/visitante/total y desviación."""
         home = canonical_team(home)
         away = canonical_team(away)
         out: dict[str, dict] = {}
@@ -274,15 +317,12 @@ class StatsPredictor:
         return out
 
     def pseudo_xg(self, home: str, away: str) -> dict | None:
-        """xG proxy gratuito basado en volumen y calidad básica de tiro."""
-
         pred = self.predict_fixture(home, away)
         if "shots" not in pred or "sot" not in pred:
             return None
         intercept, shot_coef, sot_coef = self.xg_coefficients
         home_xg = intercept + shot_coef * pred["shots"]["home"] + sot_coef * pred["sot"]["home"]
         away_xg = intercept + shot_coef * pred["shots"]["away"] + sot_coef * pred["sot"]["away"]
-        # Máximo 25% de influencia aun con tres temporadas completas.
         weight = min(0.25, len(self.xg_rows) / 1600.0)
         return {
             "home": round(max(0.15, min(4.0, home_xg)), 3),
@@ -302,10 +342,7 @@ class StatsPredictor:
 
     @staticmethod
     def prob_over(mean: float, line: float, dispersion: float = 1.0) -> float:
-        """P(conteo > línea), Poisson o Negative Binomial si hay dispersión."""
-        # P(X > line) = 1 - CDF(floor(line))
         import math
-
         if dispersion <= 1.05 or mean <= 0:
             return float(1.0 - poisson.cdf(math.floor(line), mean))
         variance = dispersion * mean
@@ -314,10 +351,6 @@ class StatsPredictor:
         return float(1.0 - nbinom.cdf(math.floor(line), size, success))
 
     def market(self, home: str, away: str, stat: str, side: str, line: float) -> dict:
-        """Probabilidad over/under de una línea para una estadística/lado.
-
-        side: 'home' | 'away' | 'total'.
-        """
         pred = self.predict_fixture(home, away)
         if stat not in pred:
             raise KeyError(f"Estadística no disponible: {stat}")
