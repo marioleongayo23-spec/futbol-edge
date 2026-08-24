@@ -54,9 +54,15 @@ test("muestra modelo puro, publicada y mercado con cautela por tamaño de muestr
 
   await expect(panel.getByText("Publicada vs modelo puro", { exact: true })).toBeVisible();
   await expect(panel.getByText("-0.0800", { exact: true })).toBeVisible();
-  await expect(panel.getByText(/mejora simultáneamente LogLoss y RPS/)).toBeVisible();
+  await expect(panel.getByText(
+    "La publicada mejora simultáneamente LogLoss y RPS en esta muestra pareada.",
+    { exact: true },
+  )).toBeVisible();
 
   await expect(panel.getByText("Publicada vs mercado", { exact: true })).toBeVisible();
   await expect(panel.getByText("+0.0300", { exact: true })).toBeVisible();
-  await expect(panel.getByText(/todavía no mejora simultáneamente/)).toBeVisible();
+  await expect(panel.getByText(
+    "La publicada todavía no mejora simultáneamente LogLoss y RPS frente a esta referencia.",
+    { exact: true },
+  )).toBeVisible();
 });
