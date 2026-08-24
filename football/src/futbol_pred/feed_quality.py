@@ -11,7 +11,7 @@ from pathlib import Path
 import tempfile
 
 _TOP_LEVEL_LKG = (
-    "quiniela", "players", "model", "market_calibration", "accuracy", "performance",
+    "quiniela", "players", "model", "market_calibration",
 )
 _MATCH_LKG = (
     "probs",
@@ -31,6 +31,14 @@ _MATCH_LKG = (
     "ai_attempts",
     "prediction_snapshot",
     "prediction_history",
+    "venue_meta",
+    "weather",
+    "tactical_matchup",
+    "prediction_confidence",
+    "prediction_factors",
+    "recommendation",
+    "score_distribution",
+    "official_context",
 )
 _REQUIRED_MATCH = ("id", "home", "away", "league", "kickoff", "status")
 
@@ -109,6 +117,28 @@ def preserve_last_known_good(candidate: dict, previous: dict | None) -> dict:
 
 def _finite(value) -> bool:
     return isinstance(value, (int, float)) and math.isfinite(value)
+
+
+def _has_pre_match_snapshot(match: dict) -> bool:
+    """Comprueba la evidencia que permite puntuar una predicción histórica."""
+
+    try:
+        kickoff = datetime.fromisoformat(str(match.get("kickoff")))
+    except (TypeError, ValueError):
+        return False
+    snapshots = list(match.get("prediction_history") or [])
+    if isinstance(match.get("prediction_snapshot"), dict):
+        snapshots.append(match["prediction_snapshot"])
+    for snapshot in snapshots:
+        if not isinstance(snapshot, dict) or not isinstance(snapshot.get("probs"), list):
+            continue
+        try:
+            captured = datetime.fromisoformat(str(snapshot.get("generated_at")))
+            if captured < kickoff:
+                return True
+        except (TypeError, ValueError):
+            continue
+    return False
 
 
 def _ai_complete(match: dict, issues: list[str], schema_version: int = 5) -> None:
@@ -234,6 +264,22 @@ def evaluate_feed(candidate: dict, previous: dict | None = None) -> dict:
     except (TypeError, ValueError):
         issues.append("generated_at_invalido")
 
+    evaluable = sum(
+        1 for match in matches
+        if isinstance(match, dict)
+        and match.get("finished")
+        and isinstance(match.get("result"), list)
+        and _has_pre_match_snapshot(match)
+    )
+    accuracy = candidate.get("accuracy")
+    if accuracy is not None:
+        reported = accuracy.get("n_partidos") if isinstance(accuracy, dict) else None
+        if not isinstance(reported, int) or reported < 1 or reported > evaluable:
+            issues.append(f"accuracy_sin_evidencia:{reported}->{evaluable}")
+    performance = candidate.get("performance")
+    if performance is not None and evaluable == 0:
+        issues.append("performance_sin_evidencia")
+
     if previous and previous.get("season") == candidate.get("season"):
         old_matches = previous.get("matches") or []
         if old_matches and len(matches) < max(20, math.floor(len(old_matches) * 0.85)):
@@ -264,6 +310,7 @@ def evaluate_feed(candidate: dict, previous: dict | None = None) -> dict:
         "upcoming_content_required": required_ai_count,
         "blank_matches": blank_matches,
         "leagues": sorted(str(league) for league in leagues if league),
+        "evaluable_predictions": evaluable,
     }
     return {
         "valid": not issues,

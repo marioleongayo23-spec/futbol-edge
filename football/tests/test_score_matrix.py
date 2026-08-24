@@ -74,6 +74,14 @@ def test_expected_goals_positivos(sm):
     assert eh > ea > 0
 
 
+def test_resumen_distribucion_da_rango_y_masa_auditable(sm):
+    summary = sm.distribution_summary()
+    low, median, high = summary["total_goals_p10_p50_p90"]
+    assert low <= median <= high
+    assert len(summary["top_scores"]) == 6
+    assert 0 < summary["top_six_probability"] < 1
+
+
 def test_matriz_invalida():
     with pytest.raises(ValueError):
         ScoreMatrix(np.zeros((3, 3)))

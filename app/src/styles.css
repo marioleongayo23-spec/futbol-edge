@@ -19,7 +19,7 @@ a{color:var(--blue)}
 header{background:var(--grad);padding:18px 0 14px;position:relative;overflow:hidden}
 header::after{content:"";position:absolute;inset:0;background:radial-gradient(1200px 200px at 80% -40%,rgba(255,255,255,.18),transparent)}
 .h-in{position:relative;z-index:1}
-h1{margin:0;font-size:1.4rem;font-weight:800;letter-spacing:-.02em;cursor:pointer}
+h1{margin:0;font-size:1.4rem;font-weight:800;letter-spacing:-.02em}
 .h-sub{color:rgba(255,255,255,.85);font-size:.8rem;margin-top:3px}
 .counts{display:flex;gap:12px;flex-wrap:wrap;margin-top:9px}
 .kpi{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.15);border-radius:12px;padding:6px 11px}
@@ -32,7 +32,7 @@ nav .wrap{display:flex;gap:4px}
 main{padding:14px 0 70px}
 .controls{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
 select,input,button{background:var(--card2);color:var(--tx);border:1px solid var(--line);border-radius:10px;padding:9px 11px;font-size:.85rem;font-family:inherit}
-select:focus,input:focus{outline:none;border-color:var(--blue)}
+select:focus-visible,input:focus-visible,button:focus-visible,[role="button"]:focus-visible{outline:3px solid color-mix(in srgb,var(--blue) 55%,transparent);outline-offset:2px;border-color:var(--blue)}
 .grow{flex:1;min-width:120px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;margin:12px 0;box-shadow:0 8px 24px rgba(0,0,0,.25);cursor:default}
 .card.click{cursor:pointer;transition:border-color .15s,transform .1s}
@@ -87,6 +87,12 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 /* Cabecera: título + botón de tema */
 .h-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .theme-btn{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);border-radius:10px;padding:6px 10px;cursor:pointer;font-size:1rem;line-height:1}
+.text-button,.link-button{border:0;background:none;color:inherit;padding:0;font:inherit}
+.link-button{color:var(--blue);cursor:pointer;text-decoration:underline}
+.row-button{width:100%;color:inherit;text-align:left;font:inherit}
+.team-button{border:0;background:none;padding:0;color:inherit;text-align:inherit;cursor:pointer}
+.team-button:disabled{opacity:1;cursor:default}
+.inline-status{margin-top:10px;padding:9px 11px;border-radius:10px;background:var(--card2);color:var(--muted);font-size:.8rem}
 
 /* Banners de estado del feed */
 .banner{background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:12px 0;font-size:.8rem;color:var(--muted)}
@@ -232,6 +238,13 @@ code{background:var(--card2);border:1px solid var(--line);border-radius:5px;padd
 .qlink:hover{border-color:var(--green);color:var(--green)}
 .qlink svg{color:var(--green)}
 
+.match-hero{box-shadow:0 12px 32px rgba(0,0,0,.32)}
+.match-nav{position:sticky;top:58px;z-index:8;display:flex;gap:6px;overflow-x:auto;background:var(--navbg);backdrop-filter:blur(10px);padding:8px 0;border-bottom:1px solid var(--line)}
+.match-nav button{flex:1;min-width:88px;cursor:pointer;font-weight:700}
+.section-anchor{scroll-margin-top:125px}
+.source-note{line-height:1.55}
+.bottom-nav{display:none}
+
 .seg-toggle{display:inline-flex;background:var(--card2);border:1px solid var(--line);border-radius:10px;overflow:hidden}
 .seg-toggle button{background:none;border:none;color:var(--muted);padding:7px 14px;font-size:.8rem;font-weight:700;cursor:pointer}
 .seg-toggle button.on{background:var(--green);color:#04110b}
@@ -274,13 +287,18 @@ code{background:var(--card2);border:1px solid var(--line);border-radius:5px;padd
   .side{position:fixed;left:0;top:0;width:250px;z-index:40;transform:translateX(-100%);transition:transform .2s}
   .layout.open .side{transform:translateX(0)}
   .burger{display:block}
-  .scrim{display:block;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:30}
+  .scrim{display:block;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:30;border:0;border-radius:0;padding:0}
   .grid-kpi{grid-template-columns:repeat(2,1fr)}
   .two-col{grid-template-columns:1fr}
   .badge-cal span:not(.dot){display:none}
-  .content{padding:16px 14px 60px}
+  .content{padding:16px 14px 96px}
   .stat-tiles{grid-template-columns:repeat(2,1fr)}
   .quick-links{grid-template-columns:repeat(2,1fr)}
+  .bottom-nav{position:fixed;display:grid;grid-template-columns:repeat(4,1fr);left:10px;right:10px;bottom:max(8px,env(safe-area-inset-bottom));z-index:25;background:var(--navbg);border:1px solid var(--line);border-radius:18px;padding:5px;box-shadow:0 10px 28px rgba(0,0,0,.4);backdrop-filter:blur(14px)}
+  .bottom-nav button{min-height:48px;border:0;background:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;color:var(--muted);font-size:.62rem;padding:4px}
+  .bottom-nav button span{font-size:1rem;line-height:1.1}
+  .bottom-nav button.on{color:var(--green);background:rgba(34,201,138,.1)}
+  .match-nav{top:61px}
 }
 
 /* --- Mejoras UX/visuales --- */

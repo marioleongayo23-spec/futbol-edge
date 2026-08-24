@@ -15,6 +15,7 @@ from scipy.optimize import minimize_scalar
 from .metrics import aggregate
 
 SIGNS = ("1", "X", "2")
+GATE_METRICS = ("log_loss", "rps")
 
 
 def _normalise(values: dict[str, float]) -> dict[str, float]:
@@ -111,6 +112,22 @@ def _fit_params(rows: list[tuple[dict, dict, str]]) -> tuple[float, float]:
     return weight, temp
 
 
+def candidate_beats_all_baselines(candidate: dict, baselines: dict[str, dict]) -> bool:
+    """Un challenger solo pasa si no empeora ninguna métrica clave de ningún campeón."""
+
+    if not baselines:
+        return False
+    for metric in GATE_METRICS:
+        value = candidate.get(metric)
+        if not isinstance(value, (int, float)) or not math.isfinite(value):
+            return False
+        for baseline in baselines.values():
+            reference = baseline.get(metric)
+            if not isinstance(reference, (int, float)) or value > reference:
+                return False
+    return True
+
+
 def fit_walk_forward_ensemble(
     dc_records: list[dict],
     elo_records: list[dict],
@@ -138,10 +155,8 @@ def fit_walk_forward_ensemble(
     validation_metrics = aggregate(validation_predictions)
     dc_metrics = aggregate(validation_dc)
     elo_metrics = aggregate(validation_elo)
-    accepted = (
-        validation_metrics.get("log_loss", float("inf")) <= dc_metrics.get("log_loss", float("inf"))
-        and validation_metrics.get("rps", float("inf")) <= dc_metrics.get("rps", float("inf"))
-    )
+    baselines = {"dixon_coles": dc_metrics, "elo": elo_metrics}
+    accepted = candidate_beats_all_baselines(validation_metrics, baselines)
     prod_weight, prod_temp = _fit_params(rows)
     return {
         "method": "walk-forward-geometric-temperature",
@@ -149,9 +164,11 @@ def fit_walk_forward_ensemble(
         "n_validation": len(validation),
         "accepted": accepted,
         "validation": validation_metrics,
-        "validation_baselines": {
-            "dixon_coles": dc_metrics,
-            "elo": elo_metrics,
+        "validation_baselines": baselines,
+        "acceptance_gate": {
+            "rule": "no_worse_than_every_baseline",
+            "metrics": list(GATE_METRICS),
+            "baselines": list(baselines),
         },
         "production": {
             "dc_weight": round(prod_weight, 4),

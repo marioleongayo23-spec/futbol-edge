@@ -16,7 +16,13 @@ function useTheme() {
     document.documentElement.dataset.theme = theme;
     try { localStorage.setItem("theme", theme); } catch { /* ignore */ }
   }, [theme]);
-  return [theme, () => setTheme((t) => (t === "dark" ? "light" : "dark"))];
+  const toggle = () => setTheme((current) => {
+    const next = current === "dark" ? "light" : "dark";
+    document.documentElement.dataset.theme = next;
+    try { localStorage.setItem("theme", next); } catch { /* ignore */ }
+    return next;
+  });
+  return [theme, toggle];
 }
 
 /* ---------- Iconos de la barra lateral ---------- */
@@ -155,14 +161,14 @@ function Resumen({ matches, onOpen, goto, favs, onTeam }) {
         <div className="card">
           <div className="lbl">◆ Value del día <span className="dim">(modelo vs mercado)</span></div>
           {dayValue.map(({ m, selection, edge, odds }) => (
-            <div key={m.id} className="vd-row click" onClick={() => onOpen(m)}>
+            <button type="button" key={m.id} className="vd-row click row-button" onClick={() => onOpen(m)}>
               <span className="vd-team">{m.home} <span className="dim">vs</span> {m.away}</span>
               <span className="chips">
                 <span className="chip">Apuesta <b>{selection}</b></span>
                 <span className="chip">Cuota <b>{odds}</b></span>
                 <span className="pill y">+{(edge * 100).toFixed(1)}%</span>
               </span>
-            </div>
+            </button>
           ))}
         </div>
       )}
@@ -198,9 +204,9 @@ function Resumen({ matches, onOpen, goto, favs, onTeam }) {
           <div className="lbl">★ Tus equipos</div>
           {favList.map(({ team, m }) => (
             <div key={team} className="vd-row">
-              <span className="vd-team click" onClick={() => onTeam && onTeam(team)}>{team}</span>
+              <button type="button" className="vd-team click text-button" onClick={() => onTeam && onTeam(team)}>{team}</button>
               <span className="chips">
-                <span className="chip click" onClick={() => onOpen(m)}>{m.finished && m.result ? `${m.result[0]}-${m.result[1]}` : (m.markets?.marcador || "·")} · {m.home === team ? "vs " + m.away : "@ " + m.home}</span>
+                <button type="button" className="chip click" onClick={() => onOpen(m)}>{m.finished && m.result ? `${m.result[0]}-${m.result[1]}` : (m.markets?.marcador || "·")} · {m.home === team ? "vs " + m.away : "@ " + m.home}</button>
                 <span className="dim" style={{ fontSize: ".72rem" }}>{m.finished ? "FT" : (countdown(m.kickoff) || fmtKick(m.kickoff))}</span>
               </span>
             </div>
@@ -260,7 +266,7 @@ function Clasificacion({ matches, onTeam }) {
               return (
                 <tr key={t.name} className={i < 4 ? "row-ucl" : i < 6 ? "row-eur" : i >= table.length - 3 ? "row-desc" : ""}>
                   <td>{i + 1}</td>
-                  <td className="tl"><div className="cls-team click" onClick={() => onTeam && onTeam(t.name)} style={{ cursor: "pointer" }}><img className="crest sm" alt="" loading="lazy" src={crestFor(t.name, t.colors, t.crest)} onError={(e) => (e.target.src = crestFor(t.name, t.colors, null))} /><span className="tn">{t.name}</span></div></td>
+                  <td className="tl"><button type="button" className="cls-team click text-button" onClick={() => onTeam && onTeam(t.name)}><img className="crest sm" alt="" loading="lazy" src={crestFor(t.name, t.colors, t.crest)} onError={(e) => (e.target.src = crestFor(t.name, t.colors, null))} /><span className="tn">{t.name}</span></button></td>
                   <td>{t.pj}</td><td>{t.w}</td><td>{t.d}</td><td>{t.l}</td><td>{t.gf}</td><td>{t.ga}</td>
                   <td className={gd >= 0 ? "value-yes" : "value-no"}>{gd > 0 ? "+" : ""}{gd}</td>
                   <td><b>{mode === "real" ? t.ptsReal : t.ptsProy}</b></td>
@@ -312,7 +318,7 @@ function Mercados({ matches, q, onOpen }) {
             const o25 = m.markets?.over_2_5 ?? null;
             const val = bestValue(m);
             return (
-              <tr key={m.id} className="click" onClick={() => onOpen(m)}>
+              <tr key={m.id} className="click" role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onOpen(m); }} onClick={() => onOpen(m)}>
                 <td className="tl"><div className="mk-team"><b>{m.home}</b> <span className="dim">vs</span> {m.away}<div className="mk-sub">{m.league} · J{m.matchday || ""} · {fmtKick(m.kickoff)}</div></div></td>
                 <td><span className={"q-" + sign(m)} style={{ fontWeight: 800 }}>{sign(m)}</span></td>
                 <td>{m.markets?.marcador || "—"}</td>
@@ -710,6 +716,7 @@ function Datos({ data }) {
           <span className="chip">Completos <b>{audit?.complete ?? 0}</b></span>
           <span className="chip">Reintentos selectivos <b>{audit?.selective_retries ?? 0}</b></span>
           <span className="chip">Onces oficiales nuevos <b>{audit?.official_lineup_updates ?? 0}</b></span>
+          <span className="chip">Clima actualizado <b>{audit?.weather_updates ?? 0}</b></span>
           {usage && <span className="chip">IA diaria <b>{usage.requests}/{usage.budget}</b></span>}
         </div>
         {(audit?.incomplete || []).map((item) => <div className="note value-no" key={item.id}>{item.partido}: falta {item.missing.join(", ")}</div>)}
@@ -741,7 +748,9 @@ function Datos({ data }) {
           <span className="chip">Temporada <b>{data.season}</b></span>
           <span className="chip">Generado <b>{new Date(data.generated_at).toLocaleString("es-ES")}</b></span>
           {ageH != null && <span className={"chip"}>Antigüedad <b className={isStale(data) ? "value-no" : "value-yes"}>{Math.round(ageH)} h</b></span>}
+          <span className="chip">Calidad feed <b className={data.feed_quality?.valid ? "value-yes" : "value-no"}>{Math.round((data.feed_quality?.score ?? 0) * 100)}%</b></span>
         </div>
+        {(data.feed_quality?.issues || []).length > 0 && <div className="note value-no">Incidencias: {data.feed_quality.issues.join(" · ")}</div>}
       </div>
       <div className="card">
         <div className="lbl">Fuentes de datos</div>
@@ -759,6 +768,9 @@ function Datos({ data }) {
           <li><b>Snapshots 00:15 y 10:15</b>: cada predicción queda congelada antes del partido para medirla sin leakage.</li>
           <li><b>Calibración con el mercado</b>: con pocas jornadas jugadas la probabilidad se mezcla con la del mercado (sin margen) y va pesando más el modelo según avanza la liga. Evita edges inflados.</li>
           <li><b>Cara a cara (h2h)</b>: enfrentamientos directos pasados en el detalle del partido.</li>
+          <li><b>Perfil ataque–defensa</b>: splits reales casa/fuera de volumen, concesión, córners, faltas y tarjetas; declara tamaño de muestra.</li>
+          <li><b>Clima del estadio</b>: previsión Open-Meteo a la hora del saque inicial. Por ahora ajusta confianza y explicación, no goles.</li>
+          <li><b>Abstención</b>: bloquea el pick si la confianza, la completitud o el acuerdo entre modelos no alcanzan el mínimo.</li>
           <li><b>Value</b>: edge = prob·cuota − 1 (con la prob. calibrada), staking con Kelly fraccionado.</li>
         </ul>
       </div>
@@ -793,6 +805,7 @@ function Cartera({ matches }) {
   const [bets, setBets] = useState(() => loadLS(LS_BETS, []));
   const [bank0, setBank0] = useState(() => loadLS(LS_BANK0, 1000));
   const [f, setF] = useState({ match: "", sel: "1", odds: "", stake: "" });
+  const [message, setMessage] = useState("");
   useEffect(() => saveLS(LS_BETS, bets), [bets]);
   useEffect(() => saveLS(LS_BANK0, bank0), [bank0]);
 
@@ -814,12 +827,18 @@ function Cartera({ matches }) {
 
   const add = () => {
     const odds = Number(f.odds), stake = Number(f.stake);
-    if (!(odds > 1) || !(stake > 0) || !f.match.trim()) return;
+    if (!(odds > 1) || !(stake > 0) || !f.match.trim()) {
+      setMessage("Completa partido, cuota mayor que 1 y stake positivo.");
+      return;
+    }
     setBets([{ id: Date.now(), date: new Date().toISOString().slice(0, 10), match: f.match.trim(), sel: f.sel, odds, stake, result: "open" }, ...bets]);
     setF({ match: "", sel: "1", odds: "", stake: "" });
+    setMessage("Apuesta añadida.");
   };
   const settle = (id, result) => setBets(bets.map((b) => b.id === id ? { ...b, result } : b));
-  const del = (id) => setBets(bets.filter((b) => b.id !== id));
+  const del = (id) => {
+    if (window.confirm("¿Eliminar esta apuesta?")) setBets(bets.filter((b) => b.id !== id));
+  };
 
   return (
     <>
@@ -846,8 +865,9 @@ function Cartera({ matches }) {
           </select>
           <input type="number" step="0.01" placeholder="Cuota" style={{ width: 90 }} value={f.odds} onChange={(e) => setF({ ...f, odds: e.target.value })} />
           <input type="number" step="1" placeholder="Stake €" style={{ width: 90 }} value={f.stake} onChange={(e) => setF({ ...f, stake: e.target.value })} />
-          <button className="add-btn" onClick={add}>Añadir</button>
+          <button type="button" className="add-btn" onClick={add}>Añadir</button>
         </div>
+        {message && <div className="inline-status" role="status">{message}</div>}
         <div className="row" style={{ marginTop: 8 }}>
           <span className="lbl" style={{ margin: 0 }}>Bankroll inicial</span>
           <input type="number" style={{ width: 110 }} value={bank0} onChange={(e) => setBank0(e.target.value)} />
@@ -868,13 +888,13 @@ function Cartera({ matches }) {
                   <td>
                     {b.result === "open" ? (
                       <span className="settle">
-                        <button className="s-won" onClick={() => settle(b.id, "won")}>✓</button>
-                        <button className="s-lost" onClick={() => settle(b.id, "lost")}>✗</button>
-                        <button className="s-void" onClick={() => settle(b.id, "void")}>N</button>
+                        <button type="button" className="s-won" onClick={() => settle(b.id, "won")} aria-label={`Marcar ${b.match} como ganada`}>✓</button>
+                        <button type="button" className="s-lost" onClick={() => settle(b.id, "lost")} aria-label={`Marcar ${b.match} como perdida`}>✗</button>
+                        <button type="button" className="s-void" onClick={() => settle(b.id, "void")} aria-label={`Marcar ${b.match} como nula`}>N</button>
                       </span>
                     ) : <span className={"pill " + (b.result === "won" ? "y" : "")}>{b.result === "won" ? "Ganada" : b.result === "lost" ? "Perdida" : "Nula"}</span>}
                   </td>
-                  <td><button className="s-del" onClick={() => del(b.id)}>🗑</button></td>
+                  <td><button type="button" className="s-del" onClick={() => del(b.id)} aria-label={`Eliminar apuesta ${b.match}`}>🗑</button></td>
                 </tr>
               ))}
             </tbody>
@@ -910,7 +930,7 @@ function TeamPage({ team, matches, players, onBack, onOpen, isFav, onFav }) {
         <div className="row" style={{ alignItems: "center", gap: 12 }}>
           <img className="crest" alt="" src={crestFor(p.name, p.colors, p.crest)} onError={(e) => (e.target.src = crestFor(p.name, p.colors, null))} />
           <div style={{ flex: 1 }}><div className="tn" style={{ fontSize: 20, fontWeight: 800 }}>{p.name}</div><div className="kick">{p.league}</div></div>
-          <button className={"fav-btn" + (isFav ? " on" : "")} onClick={() => onFav && onFav(p.name)} title={isFav ? "Quitar de favoritos" : "Añadir a favoritos"}>{isFav ? "★" : "☆"}</button>
+          <button type="button" className={"fav-btn" + (isFav ? " on" : "")} onClick={() => onFav && onFav(p.name)} aria-label={isFav ? `Quitar ${p.name} de favoritos` : `Añadir ${p.name} a favoritos`} title={isFav ? "Quitar de favoritos" : "Añadir a favoritos"}>{isFav ? "★" : "☆"}</button>
         </div>
         {p.form.length > 0 && (
           <div className="chips" style={{ marginTop: 10 }}>
@@ -963,7 +983,7 @@ function TeamPage({ team, matches, players, onBack, onOpen, isFav, onFav }) {
         <table className="tbl-mk">
           <tbody>
             {p.fixtures.map((m) => (
-              <tr key={m.id} className="click" onClick={() => onOpen(m)}>
+              <tr key={m.id} className="click" role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onOpen(m); }} onClick={() => onOpen(m)}>
                 <td className="tl"><div className="mk-team"><b>{m.home}</b> <span className="dim">vs</span> {m.away}<div className="mk-sub">{m.league} · {fmtKick(m.kickoff)}</div></div></td>
                 <td style={{ fontWeight: 700 }}>{m.finished && m.result ? `${m.result[0]}-${m.result[1]}` : (m.markets?.marcador || "—")}</td>
                 <td className="dim">›</td>
@@ -1028,19 +1048,19 @@ export default function App() {
           </div>
           <div className="user">
             <div className="avatar">{userName.slice(0, 2).toUpperCase()}</div>
-            <div><div className="uname">{userName}</div><div className="usub">Acceso {authEnabled ? "privado" : "abierto"} · {authEnabled ? <a onClick={signOut} style={{ cursor: "pointer" }}>salir</a> : "demo"}</div></div>
+            <div><div className="uname">{userName}</div><div className="usub">Acceso {authEnabled ? "privado" : "abierto"} · {authEnabled ? <button type="button" className="link-button" onClick={signOut}>salir</button> : "demo"}</div></div>
           </div>
         </div>
       </aside>
 
       <div className="main-col">
         <header className="topbar">
-          <button className="burger" onClick={() => setMenuOpen((v) => !v)} aria-label="Menú">☰</button>
+          <button type="button" className="burger" onClick={() => setMenuOpen((v) => !v)} aria-label="Abrir menú" aria-expanded={menuOpen}>☰</button>
           <div className="search"><Icon name="search" /><input placeholder="Buscar equipo o competición…" value={q}
             onChange={(e) => { const v = e.target.value; setQ(v); if (v.trim()) { setSel(null); setTeamSel(null); setView("partidos"); } }} /></div>
           <div className="top-right">
             <span className="badge-cal"><span className="dot d-ucl" /> {data ? "Calendario verificado" : "Cargando…"}</span>
-            <button className="theme-btn" onClick={toggleTheme} title="Cambiar tema" aria-label="Cambiar tema">{theme === "dark" ? "☀️" : "🌙"}</button>
+            <button type="button" className="theme-btn" onClick={toggleTheme} title="Cambiar tema" aria-label={`Cambiar a tema ${theme === "dark" ? "claro" : "oscuro"}`}>{theme === "dark" ? "☀️" : "🌙"}</button>
           </div>
         </header>
 
@@ -1070,7 +1090,12 @@ export default function App() {
           )}
         </main>
       </div>
-      {menuOpen && <div className="scrim" onClick={() => setMenuOpen(false)} />}
+      <nav className="bottom-nav" aria-label="Navegación móvil">
+        {[["resumen", "⌂", "Inicio"], ["partidos", "⚽", "Partidos"], ["value", "◆", "Value"], ["cartera", "▣", "Cartera"]].map(([key, icon, label]) => (
+          <button type="button" key={key} className={view === key && !sel ? "on" : ""} onClick={() => goto(key)}><span>{icon}</span>{label}</button>
+        ))}
+      </nav>
+      {menuOpen && <button type="button" className="scrim" onClick={() => setMenuOpen(false)} aria-label="Cerrar menú" />}
     </div>
   );
 }

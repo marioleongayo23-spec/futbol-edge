@@ -97,3 +97,23 @@ def test_schema5_no_restaura_prediccion_retroactiva_de_terminado():
     candidate["matches"][0]["prediction_unavailable_reason"] = "sin_snapshot_prepartido"
     preserve_last_known_good(candidate, previous)
     assert "probs" not in candidate["matches"][0]
+
+
+def test_no_restaura_metricas_historicas_sin_snapshots():
+    previous = _feed()
+    previous["accuracy"] = {"n_partidos": 20, "pct_1x2": 65}
+    previous["performance"] = {"overall": {"n": 20, "roi": 12}}
+    candidate = deepcopy(previous)
+    candidate["accuracy"] = None
+    candidate["performance"] = None
+    preserve_last_known_good(candidate, previous)
+    assert candidate["accuracy"] is None
+    assert candidate["performance"] is None
+
+
+def test_rechaza_accuracy_sin_snapshot_prepartido():
+    feed = _feed()
+    feed["accuracy"] = {"n_partidos": 20, "pct_1x2": 65}
+    report = evaluate_feed(feed)
+    assert report["valid"] is False
+    assert "accuracy_sin_evidencia:20->0" in report["issues"]

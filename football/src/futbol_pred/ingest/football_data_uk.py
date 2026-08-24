@@ -36,6 +36,7 @@ STAT_COLS = {
     "fouls": ("HF", "AF"),
     "yellows": ("HY", "AY"),
     "reds": ("HR", "AR"),
+    "offsides": ("HO", "AO"),
     "goals": ("FTHG", "FTAG"),
 }
 
@@ -45,6 +46,7 @@ class MatchStats:
     home_team: str
     away_team: str
     stats: dict[str, tuple[float, float]]  # nombre -> (local, visitante)
+    referee: str | None = None
 
 
 def season_code(season: int) -> str:
@@ -118,17 +120,26 @@ class FootballDataUKClient:
             home, away = row.get("HomeTeam"), row.get("AwayTeam")
             if not home or not away:
                 continue
-            h = _num(row.get("AvgH")) or _num(row.get("B365H"))
-            d = _num(row.get("AvgD")) or _num(row.get("B365D"))
-            a = _num(row.get("AvgA")) or _num(row.get("B365A"))
-            over = _num(row.get("Avg>2.5")) or _num(row.get("B365>2.5"))
-            under = _num(row.get("Avg<2.5")) or _num(row.get("B365<2.5"))
+            h = _num(row.get("AvgCH")) or _num(row.get("AvgH")) or _num(row.get("B365CH")) or _num(row.get("B365H"))
+            d = _num(row.get("AvgCD")) or _num(row.get("AvgD")) or _num(row.get("B365CD")) or _num(row.get("B365D"))
+            a = _num(row.get("AvgCA")) or _num(row.get("AvgA")) or _num(row.get("B365CA")) or _num(row.get("B365A"))
+            over = _num(row.get("AvgC>2.5")) or _num(row.get("Avg>2.5")) or _num(row.get("B365C>2.5")) or _num(row.get("B365>2.5"))
+            under = _num(row.get("AvgC<2.5")) or _num(row.get("Avg<2.5")) or _num(row.get("B365C<2.5")) or _num(row.get("B365<2.5"))
             odds: dict = {}
             if h and d and a:
                 odds["1x2"] = {"1": h, "X": d, "2": a}
             if over and under:
                 odds["ou25"] = {"over": over, "under": under}
             if odds:
+                opening = {"1": _num(row.get("B365H")), "X": _num(row.get("B365D")), "2": _num(row.get("B365A"))}
+                closing = {"1": _num(row.get("B365CH")), "X": _num(row.get("B365CD")), "2": _num(row.get("B365CA"))}
+                if all(opening.values()) and all(closing.values()):
+                    odds["_meta"] = {
+                        "source": "football-data.co.uk",
+                        "opening_1x2": opening,
+                        "closing_1x2": closing,
+                        "movement_pct": {key: round(100 * (closing[key] - opening[key]) / opening[key], 1) for key in opening},
+                    }
                 out.append({"div": div, "home": home, "away": away, "odds": odds})
         return out
 
@@ -144,7 +155,7 @@ class FootballDataUKClient:
                 h, a = _num(row.get(hc)), _num(row.get(ac))
                 if h is not None and a is not None:
                     stats[name] = (h, a)
-            out.append(MatchStats(row["HomeTeam"], row["AwayTeam"], stats))
+            out.append(MatchStats(row["HomeTeam"], row["AwayTeam"], stats, (row.get("Referee") or "").strip() or None))
         return out
 
 

@@ -21,6 +21,13 @@ _SNAPSHOT_FIELDS = (
     "calibrated",
     "market_calibration",
     "model_meta",
+    "venue_meta",
+    "weather",
+    "tactical_matchup",
+    "prediction_confidence",
+    "prediction_factors",
+    "recommendation",
+    "score_distribution",
 )
 
 
