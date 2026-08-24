@@ -687,14 +687,25 @@ def _fit_stats(league: str, season: int):
 
 
 def _fit_trends(league: str, season: int, fixtures):
-    """Modelo de tendencias (↑/↓) por forma reciente + descanso. None si no aplica."""
+    """Modelo de tendencias por ESTILO de cada equipo (local/visitante) con
+    histórico de varias temporadas. None si no aplica.
+
+    `fixtures` ya incluye el sembrado multi-temporada (goles). Para las stats
+    con split (córners, remates, faltas, tarjetas) juntamos co.uk de la temporada
+    actual y las dos anteriores."""
     if league not in ("laliga", "segunda"):
         return None
     try:
         from .ingest.football_data_uk import FootballDataUKClient
         from .model.trends import TrendModel
 
-        rows = FootballDataUKClient().get_stats(league, season)
+        client = FootballDataUKClient()
+        rows = []
+        for back in (0, 1, 2):
+            try:
+                rows += client.get_stats(league, season - back)
+            except Exception:
+                continue
         return TrendModel().fit(fixtures, rows, _canon)
     except Exception:
         return None

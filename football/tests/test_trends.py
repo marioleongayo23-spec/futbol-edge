@@ -1,4 +1,4 @@
-"""Tendencias ↑/↓ de las estadísticas esperadas."""
+"""Tendencias por estilo local/visitante (histórico multi-temporada)."""
 
 from datetime import datetime, timedelta, timezone
 
@@ -13,38 +13,46 @@ class _Fx:
         self.kickoff = kickoff
 
 
-def _id(x):  # canon identidad
+def _id(x):
     return x
 
 
-def test_tendencia_al_alza_en_goles():
-    base = datetime(2026, 8, 1, tzinfo=timezone.utc)
-    # A empieza flojo en goles y termina goleando: forma reciente > media -> ↑.
-    fixtures = []
-    for i, tot in enumerate([0, 1, 1, 4, 5, 5]):
-        fixtures.append(_Fx("A", "Rival%d" % i, tot, 0, base + timedelta(days=7 * i)))
-    tm = TrendModel().fit(fixtures, [], _id)
-    t = tm.trend("A", "A", kickoff=base + timedelta(days=60))
-    assert t["goals"]["dir"] == "up"
-    assert t["goals"]["pct"] > 0
+def test_estilo_local_dominador_sube_y_reparte():
+    base = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    rows = []
+    # ATLETI genera muchos córners EN CASA (10 a favor, 2 en contra).
+    for i in range(6):
+        rows.append(MatchStats("Atleti", f"X{i}", {"corners": (10, 2)}))
+    # ELCHE concede muchos córners FUERA (rival 9, Elche 2).
+    for i in range(6):
+        rows.append(MatchStats(f"Y{i}", "Elche", {"corners": (9, 2)}))
+    # Muestra "normal" para fijar la referencia propia de cada equipo.
+    for i in range(4):
+        rows.append(MatchStats(f"Z{i}", "Atleti", {"corners": (5, 4)}))
+        rows.append(MatchStats("Elche", f"W{i}", {"corners": (5, 4)}))
+
+    tm = TrendModel().fit([], rows, _id)
+    t = tm.trend("Atleti", "Elche", kickoff=base)
+    assert "corners" in t
+    # Con local dominador y visitante que concede fuera, la señal es al alza
+    # y el reparto favorece al local.
+    assert t["corners"]["dir"] == "up"
+    assert "Atleti" in t["corners"]["reason"]
 
 
-def test_poco_descanso_sube_tarjetas():
-    base = datetime(2026, 8, 1, tzinfo=timezone.utc)
-    rows = [MatchStats("A", "B", {"yellows": (3, 3)}) for _ in range(5)]
-    fixtures = [_Fx("A", "B", 1, 1, base + timedelta(days=3))]
-    tm = TrendModel().fit(fixtures, rows, _id)
-    # Fija el último partido y pide uno 2 días después (poco descanso).
-    tm.last_played["A"] = base + timedelta(days=3)
-    tm.last_played["B"] = base + timedelta(days=3)
-    t = tm.trend("A", "B", kickoff=base + timedelta(days=5))
-    assert "yellows" in t
-    assert "descanso" in t["yellows"]["reason"]
-
-
-def test_sin_datos_siempre_neutro():
-    # Sin muestra, cada métrica debe salir igualmente como 'flat' (neutro).
+def test_siempre_devuelve_las_metricas():
     tm = TrendModel().fit([], [], _id)
-    t = tm.trend("X", "Y", kickoff=datetime(2026, 8, 1, tzinfo=timezone.utc))
-    assert set(t) == {"goals", "corners", "yellows", "shots"}
+    t = tm.trend("X", "Y", kickoff=datetime(2026, 1, 1, tzinfo=timezone.utc))
+    assert set(t) == {"goals", "shots", "corners", "fouls", "yellows"}
     assert all(v["dir"] == "flat" for v in t.values())
+
+
+def test_poco_descanso_empuja_tarjetas():
+    base = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    rows = [MatchStats("A", "B", {"yellows": (3, 3)}) for _ in range(5)]
+    rows += [MatchStats("B", "A", {"yellows": (3, 3)}) for _ in range(5)]
+    tm = TrendModel().fit([], rows, _id)
+    tm.last_played["A"] = base
+    tm.last_played["B"] = base
+    t = tm.trend("A", "B", kickoff=base + timedelta(days=2))
+    assert "descanso" in t["yellows"]["reason"]
