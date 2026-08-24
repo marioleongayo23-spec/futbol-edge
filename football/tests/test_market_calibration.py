@@ -1,8 +1,30 @@
-from futbol_pred.market_calibration import learn_market_calibration
+import math
+
+from futbol_pred.market_calibration import (
+    learn_market_calibration,
+    market_candidate_beats_model,
+)
 
 
 def test_calibracion_mercado_necesita_muestra_minima():
     assert learn_market_calibration([], "LaLiga") is None
+
+
+def test_gate_mercado_exige_mejora_estricta():
+    champion = {"log_loss": 0.98, "rps": 0.19}
+    assert market_candidate_beats_model(
+        {"log_loss": 0.97, "rps": 0.18}, champion
+    ) is True
+    assert market_candidate_beats_model(
+        {"log_loss": 0.98, "rps": 0.18}, champion
+    ) is False
+
+
+def test_gate_mercado_falla_cerrado_con_metricas_no_finitas():
+    champion = {"log_loss": math.nan, "rps": 0.19}
+    assert market_candidate_beats_model(
+        {"log_loss": 0.97, "rps": 0.18}, champion
+    ) is False
 
 
 def test_calibracion_mercado_usa_solo_snapshots_prepartido():
@@ -24,4 +46,5 @@ def test_calibracion_mercado_usa_solo_snapshots_prepartido():
     result = learn_market_calibration(matches, "LaLiga")
     assert result is not None and result["n"] == 45
     assert isinstance(result["accepted"], bool)
+    assert result["acceptance_gate"]["rule"] == "strictly_better_than_published_model"
     assert 0.05 <= result["production"]["model_weight"] <= 0.95
