@@ -9,6 +9,7 @@ from zoneinfo import ZoneInfo
 
 from .ingest.api_football import ApiFootballClient
 from .ingest.lineups_ai import _best_props, _fallback_props, _formation
+from .model.state_simulator import simulate_match_states
 
 MADRID = ZoneInfo("Europe/Madrid")
 
@@ -195,6 +196,105 @@ def content_audit(matches: list[dict], players: dict | None, now: datetime) -> d
     }
 
 
+def _lineup_side_impact(lineup: dict, side: str) -> dict:
+    """Resume disponibilidad y minutos; no convierte props estimadas en goles."""
+
+    props = [row for row in lineup.get(f"clave_{side}") or [] if isinstance(row, dict)]
+    availability = [
+        row for row in lineup.get(f"disponibilidad_{side}") or [] if isinstance(row, dict)
+    ]
+    minutes = [float(row.get("min")) for row in props if row.get("min") is not None]
+    starts = [float(row.get("tit")) for row in props if row.get("tit") is not None]
+    attack_scores = []
+    for row in props:
+        try:
+            minutes_weight = min(1.0, max(0.0, float(row.get("min", 0))) / 90)
+            start_weight = min(1.0, max(0.0, float(row.get("tit", 0))))
+            production = (
+                3 * float(row.get("g", 0)) + 2 * float(row.get("a", 0))
+                + float(row.get("r", 0)) + 1.5 * float(row.get("rp", 0))
+            )
+            attack_scores.append(production * minutes_weight * start_weight)
+        except (TypeError, ValueError):
+            continue
+
+    absence_penalty = 0.0
+    official_absences = 0
+    for row in availability:
+        state = str(row.get("estado") or "").casefold()
+        official = bool(row.get("official"))
+        official_absences += int(official)
+        weight = 1.5 if "duda" in state or "doubt" in state else 2.0
+        if "sanc" in state or "susp" in state:
+            weight = 3.0
+        elif "les" in state or "injur" in state:
+            weight = 3.0
+        elif "rota" in state:
+            weight = 1.0
+        absence_penalty += weight if official else weight * 0.35
+
+    return {
+        "key_players": len(props),
+        "expected_minutes_avg": round(sum(minutes) / len(minutes), 1) if minutes else None,
+        "starter_probability_avg_pct": round(100 * sum(starts) / len(starts)) if starts else None,
+        "attack_presence_index": round(sum(attack_scores), 2) if attack_scores else None,
+        "listed_absences": len(availability),
+        "official_absences": official_absences,
+        "confidence_penalty_pp": round(min(12.0, absence_penalty), 1),
+    }
+
+
+def lineup_impact(lineup: dict) -> dict:
+    """Impacto cuantitativo, conservador y auditable del once disponible."""
+
+    home = _lineup_side_impact(lineup, "local")
+    away = _lineup_side_impact(lineup, "visitante")
+    status = lineup.get("status") or "estimado"
+    status_penalty = {"confirmado": 0, "probable": 2, "estimado": 5}.get(status, 5)
+    evidence = "alta" if status == "confirmado" else "media" if status == "probable" else "baja"
+    total_penalty = min(
+        20.0,
+        status_penalty + home["confidence_penalty_pp"] + away["confidence_penalty_pp"],
+    )
+    attack_edge = None
+    if home["attack_presence_index"] is not None and away["attack_presence_index"] is not None:
+        attack_edge = round(home["attack_presence_index"] - away["attack_presence_index"], 2)
+    return {
+        "status": status,
+        "evidence": evidence,
+        "home": home,
+        "away": away,
+        "attack_presence_edge": attack_edge,
+        "confidence_penalty_pp": round(total_penalty, 1),
+        "probability_adjustment": "not_applied",
+        "method": (
+            "minutos × probabilidad de titularidad × producción observada; "
+            "las bajas oficiales penalizan confianza. No altera el 1X2 sin validación histórica."
+        ),
+    }
+
+
+def attach_state_simulations(matches: list[dict]) -> int:
+    """Adjunta escenarios reproducibles a próximos partidos con xG válido."""
+    attached = 0
+    for match in matches:
+        xg = match.get("xg")
+        if match.get("finished") or not isinstance(xg, list) or len(xg) != 2:
+            continue
+        try:
+            temperature = (match.get("weather") or {}).get("temperature_c")
+            yellows = ((match.get("stats") or {}).get("yellows") or {}).get("total")
+            match["state_simulation"] = simulate_match_states(
+                float(xg[0]), float(xg[1]), seed=match.get("id") or match.get("kickoff") or "match",
+                temperature_c=float(temperature) if temperature is not None else None,
+                expected_yellows=float(yellows) if yellows is not None else None,
+            )
+            attached += 1
+        except (TypeError, ValueError):
+            continue
+    return attached
+
+
 def annotate_prediction_context(matches: list[dict]) -> None:
     """Explica la confianza con factores observables, incluidas las bajas.
 
@@ -242,11 +342,17 @@ def annotate_prediction_context(matches: list[dict]) -> None:
         lineup = match.get("alineacion") or {}
         availability = (lineup.get("disponibilidad_local") or []) + (lineup.get("disponibilidad_visitante") or [])
         official_absences = sum(bool(row.get("official")) for row in availability if isinstance(row, dict))
+        impact = lineup_impact(lineup) if lineup else None
+        if impact:
+            match["lineup_impact"] = impact
         if availability:
             factors.append({
                 "factor": "bajas y sanciones",
                 "impact": "reduce confianza" if official_absences else "provisional",
-                "detail": f"{len(availability)} incidencias; {official_absences} confirmadas por fuente oficial",
+                "detail": (
+                    f"{len(availability)} incidencias; {official_absences} confirmadas por fuente oficial · "
+                    f"penalización cuantificada {impact['confidence_penalty_pp']:.1f} pp"
+                ),
             })
         else:
             factors.append({"factor": "bajas y sanciones", "impact": "sin incidencias verificadas", "detail": "se actualizará cuando la fuente publique cambios"})
@@ -255,8 +361,7 @@ def annotate_prediction_context(matches: list[dict]) -> None:
         disagreement = max((abs(float(dc.get(key, 0)) - float(elo.get(key, 0))) for key in ("1", "X", "2")), default=0)
         penalty = min(
             20,
-            official_absences * 3
-            + (0 if lineup.get("status") == "confirmado" else 5)
+            (impact.get("confidence_penalty_pp", 5) if impact else 5)
             + (4 if heat.get("level") == "alto" else 0),
         )
         score = max(0, min(100, round(max(probs) + 35 - disagreement * 100 - penalty)))

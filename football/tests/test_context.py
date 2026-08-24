@@ -38,6 +38,18 @@ def test_registro_estadio_resuelve_alias_sin_acentos():
     assert venue_for("Celta B")["name"] == "Abanca Balaídos"
 
 
+def test_registro_cubre_nombres_oficiales_largos_del_feed():
+    expected = {
+        "Deportivo Alavés": "Mendizorrotza",
+        "RCD Espanyol de Barcelona": "RCDE Stadium",
+        "Rayo Vallecano de Madrid": "Vallecas",
+        "Real Betis Balompié": "Benito Villamarín",
+        "Real Racing Club de Santander": "El Sardinero",
+        "Real Sociedad de Fútbol": "Reale Arena",
+    }
+    assert {team: venue_for(team)["name"] for team in expected} == expected
+
+
 def test_weather_elige_hora_y_etiqueta_calor_sin_modificar_modelo():
     weather = WeatherClient(session=_Session()).forecast(
         venue_for("Real Madrid"), datetime.fromisoformat("2026-08-24T17:30:00+02:00")
@@ -59,6 +71,33 @@ def test_matchup_tactico_declara_muestra_y_no_inventa_formacion():
     assert profile["reliability"] == "media"
     assert profile["minimum_samples"] == 6
     assert "no infiere una formación" in profile["method"]
+    assert set(profile["home"]["style_vector"]) == {
+        "attack_volume", "territorial_pressure", "defensive_exposure",
+        "finishing_efficiency", "contact_intensity",
+    }
+    assert all(
+        dimension["score"] is None or 0 <= dimension["score"] <= 100
+        for dimension in profile["home"]["style_vector"].values()
+    )
+
+
+def test_matchup_tactico_detecta_choque_de_volumen_y_exposicion():
+    model = TrendModel()
+    for _ in range(8):
+        model._add("Dominante", "Fragil", "shots", 20, 7)
+        model._add("Dominante", "Fragil", "corners", 9, 2)
+        model._add("Dominante", "Fragil", "goals", 2, 1)
+        model._add("Dominante", "Fragil", "fouls", 12, 10)
+        model._add("Dominante", "Fragil", "yellows", 2, 2)
+        model._add("Control", "Solido", "shots", 9, 8)
+        model._add("Control", "Solido", "corners", 3, 3)
+        model._add("Control", "Solido", "goals", 1, 1)
+        model._add("Control", "Solido", "fouls", 10, 9)
+        model._add("Control", "Solido", "yellows", 1, 1)
+    profile = model.matchup_profile("Dominante", "Fragil")
+    assert profile["home"]["style_vector"]["attack_volume"]["score"] >= 65
+    assert profile["away"]["style_vector"]["defensive_exposure"]["score"] >= 65
+    assert profile["style_clashes"][0]["edge"] == "home_attack"
 
 
 def test_api_football_agrupa_ids_y_normaliza_contexto_avanzado(monkeypatch):
@@ -77,3 +116,31 @@ def test_api_football_agrupa_ids_y_normaliza_contexto_avanzado(monkeypatch):
     context = client.fixture_context(details[7])
     assert context["referee"] == "A. Árbitro"
     assert context["live_or_post_stats"]["Local"]["passes"] == 520
+
+
+def test_api_football_parsea_onces_agrupados_con_posicion_original():
+    positions = [
+        ("1:1", "G"), ("2:1", "D"), ("2:2", "D"), ("2:3", "D"), ("2:4", "D"),
+        ("3:1", "M"), ("3:2", "M"), ("3:4", "M"),
+        ("4:1", "F"), ("5:2", "F"), ("4:4", "F"),
+    ]
+    response = []
+    for team in ("Local FC", "Visitante CF"):
+        response.append({
+            "team": {"name": team},
+            "formation": "4-3-3",
+            "coach": {"name": f"Entrenador {team}"},
+            "startXI": [
+                {"player": {"name": f"{team} {index}", "grid": grid, "pos": raw}}
+                for index, (grid, raw) in enumerate(positions)
+            ],
+        })
+
+    parsed = ApiFootballClient._parse_lineups(response)
+
+    assert len(parsed) == 2
+    assert all(len(team["starters"]) == 11 for team in parsed)
+    assert parsed[0]["formation"] == "4-3-3"
+    assert [row["position"] for row in parsed[0]["starters"]] == [
+        "POR", "LI", "DFC", "DFC", "LD", "MI", "MCD", "MD", "EI", "DC", "ED",
+    ]

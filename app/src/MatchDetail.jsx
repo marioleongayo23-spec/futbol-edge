@@ -2,6 +2,7 @@ import { Fragment, useMemo, useState } from "react";
 import { accent, crestFor, fmtKick } from "./feed";
 import { ah, btts, kelly, matrix, oneXtwo, over, topScores } from "./poisson";
 import { confidence, countdown, isSurprise } from "./insights";
+import { marketMovementRows } from "./markets";
 import { teamSquad } from "./teams";
 
 function Teams({ m, onTeam }) {
@@ -54,6 +55,98 @@ function Heat({ M }) {
       ))}
     </div>
   );
+}
+
+function MarketMovement({ odds }) {
+  const rows = marketMovementRows(odds);
+  if (!rows.length) return null;
+  return (
+    <div className="market-movement" aria-label="Movimiento de cuotas 1X2">
+      <div className="lbl">Movimiento del mercado 1X2</div>
+      <div className="market-movement-grid">
+        {rows.map((row) => (
+          <div className={`market-move ${row.direction}`} key={row.selection}>
+            <b>{row.selection}</b>
+            <span>{row.opening.toFixed(2)} → {row.latest.toFixed(2)}</span>
+            <small>{row.movementPct > 0 ? "+" : ""}{row.movementPct.toFixed(1)}%</small>
+          </div>
+        ))}
+      </div>
+      <p className="note source-note">Apertura → última cuota B365 · football-data.co.uk. Una bajada indica mayor apoyo del mercado; una subida, menor apoyo.</p>
+    </div>
+  );
+}
+
+function TacticalProfile({ matchup, home, away }) {
+  if (!matchup) return null;
+  const dimensions = [
+    ["attack_volume", "Volumen ofensivo"],
+    ["territorial_pressure", "Presión territorial"],
+    ["defensive_exposure", "Exposición defensiva"],
+    ["finishing_efficiency", "Eficacia de remate"],
+    ["contact_intensity", "Contacto"],
+  ];
+  const column = (label, side, color) => (
+    <div className="style-column">
+      <div className="tn">{label}</div>
+      {dimensions.map(([key, fallback]) => {
+        const row = side?.style_vector?.[key] || {};
+        const score = Number.isFinite(row.score) ? row.score : 0;
+        return <div className="style-row" key={key}>
+          <div><span>{row.label || fallback}</span><b>{row.score ?? "—"}</b></div>
+          <div className="style-track" aria-label={`${row.label || fallback}: percentil ${row.score ?? "sin datos"}`}><i style={{ width: `${score}%`, background: color }} /></div>
+          <small>{row.observed ?? "—"} {row.unit || ""}</small>
+        </div>;
+      })}
+    </div>
+  );
+  return <div className="tactical-profile">
+    <div className="style-grid">
+      {column(home, matchup.home, "var(--green)")}
+      {column(away, matchup.away, "var(--blue)")}
+    </div>
+    {(matchup.style_clashes || []).length > 0 && <div className="clash-list">
+      {(matchup.style_clashes || []).map((clash) => <span className="chip" key={clash.edge}>⚔ {clash.label} · <b>{clash.strength}/100</b></span>)}
+    </div>}
+  </div>;
+}
+
+function LineupImpact({ impact, home, away }) {
+  if (!impact) return null;
+  const side = (label, row) => <div className="impact-side">
+    <div className="tn">{label}</div>
+    <div className="impact-kpis">
+      <span><b>{row.expected_minutes_avg ?? "—"}</b><small>min previstos</small></span>
+      <span><b>{row.starter_probability_avg_pct ?? "—"}%</b><small>prob. titular</small></span>
+      <span><b>{row.attack_presence_index ?? "—"}</b><small>presencia ataque</small></span>
+      <span><b>{row.official_absences ?? 0}</b><small>bajas oficiales</small></span>
+    </div>
+  </div>;
+  return <div className="card">
+    <div className="row-between"><div className="lbl">Impacto del once</div><span className="pill">evidencia {impact.evidence}</span></div>
+    <div className="impact-grid">{side(home, impact.home || {})}{side(away, impact.away || {})}</div>
+    <div className="kv"><span>Penalización de confianza</span><b>{impact.confidence_penalty_pp ?? 0} pp</b></div>
+    <p className="note source-note">{impact.method}</p>
+  </div>;
+}
+
+function StateSimulation({ simulation }) {
+  if (!simulation?.probabilities) return null;
+  const probs = simulation.probabilities;
+  const assumptions = simulation.assumptions || {};
+  return <div className="card scenario-card">
+    <div className="row-between"><div className="lbl">Simulador de estados</div><span className="pill">escenario, no pick</span></div>
+    <div className="scenario-probs">
+      {[['1', probs['1']], ['X', probs.X], ['2', probs['2']]].map(([sign, value]) => <span key={sign}><b>{Math.round((value || 0) * 100)}%</b><small>{sign}</small></span>)}
+    </div>
+    <div className="chips">
+      <span className="chip">Goles medios <b>{simulation.expected_total_goals}</b></span>
+      <span className="chip">Rango 80% <b>{simulation.total_goals_range_80?.join("–")}</b></span>
+      <span className="chip">Over 2.5 <b>{Math.round((simulation.over_2_5 || 0) * 100)}%</b></span>
+      <span className="chip">BTTS <b>{Math.round((simulation.btts || 0) * 100)}%</b></span>
+    </div>
+    <p className="note source-note">{simulation.simulations?.toLocaleString("es-ES")} simulaciones · ritmo climático ×{assumptions.pace_multiplier ?? 1}{assumptions.estimated_goal_delta_vs_neutral ? ` · ${assumptions.estimated_goal_delta_vs_neutral} goles vs clima neutro` : ""}. {assumptions.state_effects}</p>
+  </div>;
 }
 
 const FALLBACK_POSITIONS = ["POR", "LI", "DFC", "DFC", "LD", "MC", "MCD", "MC", "EI", "DC", "ED"];
@@ -407,6 +500,7 @@ export default function MatchDetail({ m, bankroll, onBack, onTeam, players }) {
           {m.tactical_matchup && <>
             <div className="kv"><span>Volumen de remate proyectado</span><b>{m.tactical_matchup.expected_shot_pressure?.home ?? "—"} – {m.tactical_matchup.expected_shot_pressure?.away ?? "—"}</b></div>
             <div className="kv"><span>Fiabilidad del perfil</span><b>{m.tactical_matchup.reliability} · {m.tactical_matchup.minimum_samples} partidos por split</b></div>
+            <TacticalProfile matchup={m.tactical_matchup} home={m.home} away={m.away} />
             {(m.tactical_matchup.notes || []).map((note) => <p className="mut" key={note}>• {note}</p>)}
           </>}
           <p className="note source-note">{m.weather ? `Open-Meteo · ${m.weather.license}${m.weather.source_updated_at ? ` · actualizada ${new Date(m.weather.source_updated_at).toLocaleString("es-ES")}` : ""}. ` : ""}El clima y el perfil táctico ajustan explicación/confianza; no alteran el marcador hasta superar validación histórica.</p>
@@ -414,6 +508,7 @@ export default function MatchDetail({ m, bankroll, onBack, onTeam, players }) {
       )}
 
       {m.alineacion && <div className="section-anchor" id="match-lineup"><Alineacion m={m} a={m.alineacion} /></div>}
+      <LineupImpact impact={m.lineup_impact} home={m.home} away={m.away} />
 
       {(players || m.alineacion) && (() => {
         const fromLineup = (names, keys) => (names || []).map((name) => {
@@ -504,10 +599,15 @@ export default function MatchDetail({ m, bankroll, onBack, onTeam, players }) {
             <div className="card"><div className="note">⚠️ {m.nota || "Predicción provisional: algún equipo aún sin histórico (recién ascendido). Se afina según juegue."}</div></div>
           )}
           <div className="card section-anchor" id="match-prediction">
-            <div className="lbl">{m.finished ? "1X2 que daba el modelo" : "Resultado 1X2"}{m.calibrated && <span className="dim" title="Probabilidad del modelo mezclada con la del mercado (calibrada)"> · calibrado</span>}</div>
+            <div className="row-between">
+              <div className="lbl">{m.finished ? "1X2 que daba el modelo" : "Resultado 1X2"}{m.calibrated && <span className="dim" title="Probabilidad del modelo mezclada con la del mercado (calibrada)"> · calibrado</span>}</div>
+              <span className="chip">Motor <b>{m.model_meta?.provider || m.engine}</b></span>
+            </div>
             {probabilityDelta && probabilityDelta.some((value) => value !== 0) && (
-              <div className="mut" style={{ marginBottom: 8 }}>
-                Cambio desde la revisión anterior: 1 {probabilityDelta[0] > 0 ? "+" : ""}{probabilityDelta[0]} pp · X {probabilityDelta[1] > 0 ? "+" : ""}{probabilityDelta[1]} pp · 2 {probabilityDelta[2] > 0 ? "+" : ""}{probabilityDelta[2]} pp.
+              <div className="change-explanation">
+                <b>Qué cambió desde {previousSnapshot?.window || "la revisión anterior"}</b>
+                <span>1 {probabilityDelta[0] > 0 ? "+" : ""}{probabilityDelta[0]} pp · X {probabilityDelta[1] > 0 ? "+" : ""}{probabilityDelta[1]} pp · 2 {probabilityDelta[2] > 0 ? "+" : ""}{probabilityDelta[2]} pp</span>
+                <small>{snapshot?.prediction_factors?.filter((factor) => factor.impact !== "pendiente").slice(0, 2).map((factor) => factor.factor).join(" · ") || "cambio de parámetros y datos disponibles"}</small>
               </div>
             )}
             {(() => {
@@ -528,15 +628,19 @@ export default function MatchDetail({ m, bankroll, onBack, onTeam, players }) {
               <span className="chip help" title="BTTS = ambos equipos marcan (Both Teams To Score)">BTTS <b>{Math.round(m.markets.btts * 100)}%</b></span>
               {m.score_distribution?.total_goals_p10_p50_p90 && <span className="chip" title="Percentiles 10, 50 y 90 de la distribución de goles">Rango goles P10–P90 <b>{m.score_distribution.total_goals_p10_p50_p90[0]}–{m.score_distribution.total_goals_p10_p50_p90[2]}</b></span>}
             </div>
+            <MarketMovement odds={m.odds} />
             <div className="lbl">Mapa de marcadores (local ↓ / visitante →)</div>
             <Heat M={M} />
           </div>
+
+          <StateSimulation simulation={m.state_simulation} />
 
           {!m.finished && (<>
           <div className="card">
             <div className="lbl">Over / Under goles</div>
             <div className="row">
               <input type="range" min="0.5" max="6.5" step="0.5" value={ouL} className="grow"
+                aria-label="Línea de goles"
                 onChange={(e) => setOuL(Number(e.target.value))} />
               <span className="pill y">{ouL}</span>
             </div>
@@ -548,6 +652,7 @@ export default function MatchDetail({ m, bankroll, onBack, onTeam, players }) {
             <div className="lbl">Hándicap asiático (local)</div>
             <div className="row">
               <input type="range" min="-3" max="3" step="0.25" value={hcL} className="grow"
+                aria-label="Línea de hándicap asiático local"
                 onChange={(e) => setHcL(Number(e.target.value))} />
               <span className="pill y">{hcL > 0 ? "+" + hcL : hcL}</span>
             </div>
@@ -561,13 +666,13 @@ export default function MatchDetail({ m, bankroll, onBack, onTeam, players }) {
           <div className="card">
             <div className="lbl">Calculadora de value</div>
             <div className="row">
-              <select value={vSel} onChange={(e) => setVSel(e.target.value)}>
+              <select aria-label="Mercado de la calculadora de value" value={vSel} onChange={(e) => setVSel(e.target.value)}>
                 <option value="1">1</option><option value="X">X</option><option value="2">2</option>
                 <option value="ov">Over (línea de arriba)</option>
                 <option value="un">Under (línea de arriba)</option>
                 <option value="btts">BTTS Sí</option>
               </select>
-              <input type="number" step="0.01" value={vOdds} style={{ width: 120 }}
+              <input aria-label="Cuota de la calculadora de value" type="number" step="0.01" value={vOdds} style={{ width: 120 }}
                 onChange={(e) => setVOdds(e.target.value)} />
             </div>
             <div className="kv"><span>Prob. modelo</span><b>{(vProb * 100).toFixed(1)}%</b></div>

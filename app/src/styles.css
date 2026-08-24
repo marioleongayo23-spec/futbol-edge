@@ -298,7 +298,7 @@ code{background:var(--card2);border:1px solid var(--line);border-radius:5px;padd
   .content{padding:16px 14px 96px}
   .stat-tiles{grid-template-columns:repeat(2,1fr)}
   .quick-links{grid-template-columns:repeat(2,1fr)}
-  .bottom-nav{position:fixed;display:grid;grid-template-columns:repeat(4,1fr);left:10px;right:10px;bottom:max(8px,env(safe-area-inset-bottom));z-index:25;background:var(--navbg);border:1px solid var(--line);border-radius:18px;padding:5px;box-shadow:0 10px 28px rgba(0,0,0,.4);backdrop-filter:blur(14px)}
+  .bottom-nav{position:fixed;display:grid;grid-template-columns:repeat(4,1fr);left:10px;right:10px;top:auto;bottom:max(8px,env(safe-area-inset-bottom));z-index:25;background:var(--navbg);border:1px solid var(--line);border-radius:18px;padding:5px;box-shadow:0 10px 28px rgba(0,0,0,.4);backdrop-filter:blur(14px)}
   .bottom-nav button{min-height:48px;border:0;background:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;color:var(--muted);font-size:.62rem;padding:4px}
   .bottom-nav button span{font-size:1rem;line-height:1.1}
   .bottom-nav button.on{color:var(--green);background:rgba(34,201,138,.1)}
@@ -321,6 +321,48 @@ code{background:var(--card2);border:1px solid var(--line);border-radius:5px;padd
 /* Barra 1X2 con animación de entrada */
 .pbar .seg{animation:segIn .5s cubic-bezier(.2,.8,.2,1) both}
 @keyframes segIn{from{flex-basis:0;opacity:.3}to{opacity:1}}
+/* Apertura y última cuota disponibles en football-data.co.uk */
+.market-movement{margin-top:14px;padding:11px;border:1px solid var(--line);border-radius:12px;background:var(--card2)}
+.market-movement .lbl{margin:0 0 8px}
+.market-movement-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.market-move{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:7px;padding:8px;border-radius:9px;background:var(--card);font-size:.78rem}
+.market-move span{text-align:center;color:var(--muted)}
+.market-move small{font-weight:800}
+.market-move.shortening small{color:var(--green)}
+.market-move.drifting small{color:var(--amber)}
+.market-move.flat small{color:var(--dim)}
+@media(max-width:480px){.market-movement-grid{grid-template-columns:1fr}}
+
+/* Perfil táctico: percentiles observados, no etiquetas inventadas */
+.tactical-profile{margin:12px 0;padding:12px;border:1px solid var(--line);border-radius:13px;background:var(--card2)}
+.style-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.style-column>.tn{margin-bottom:8px}
+.style-row{margin:8px 0}
+.style-row>div:first-child{display:flex;justify-content:space-between;gap:8px;font-size:.72rem;color:var(--muted)}
+.style-row>div:first-child b{color:var(--tx);font-variant-numeric:tabular-nums}
+.style-track{height:6px;margin:3px 0;border-radius:999px;background:var(--line);overflow:hidden}
+.style-track i{display:block;height:100%;border-radius:inherit}
+.style-row small{display:block;color:var(--dim);font-size:.62rem}
+.clash-list{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}
+
+/* Impacto de once y simulador de estados */
+.impact-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:10px 0}
+.impact-side{padding:10px;border:1px solid var(--line);border-radius:12px;background:var(--card2)}
+.impact-kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:8px}
+.impact-kpis span,.scenario-probs span{display:flex;flex-direction:column;padding:8px;border-radius:9px;background:var(--card);text-align:center}
+.impact-kpis b,.scenario-probs b{font-size:1.05rem;font-variant-numeric:tabular-nums}
+.impact-kpis small,.scenario-probs small{font-size:.6rem;color:var(--muted);text-transform:uppercase}
+.scenario-card{border-color:rgba(90,162,255,.35)}
+.scenario-probs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0}
+.scenario-probs b{font-size:1.35rem;color:var(--blue)}
+.change-explanation{display:grid;gap:3px;margin:8px 0 12px;padding:10px 12px;border-left:3px solid var(--blue);border-radius:6px;background:rgba(90,162,255,.08);font-size:.78rem}
+.change-explanation span{font-variant-numeric:tabular-nums}
+.change-explanation small{color:var(--muted)}
+@media(max-width:600px){
+  .style-grid,.impact-grid{grid-template-columns:1fr}
+  .tactical-profile{padding:10px}
+  .scenario-probs b{font-size:1.15rem}
+}
 /* Estrellas de confianza */
 .conf-stars{letter-spacing:1px}
 .conf-stars .on{color:var(--amber)}

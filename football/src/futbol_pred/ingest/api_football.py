@@ -238,8 +238,8 @@ class ApiFootballClient:
             context["live_or_post_stats"] = statistics
         return {key: value for key, value in context.items() if value is not None and value != "" and value != {}}
 
-    @staticmethod
-    def _parse_lineups(response: list[dict]) -> list[dict]:
+    @classmethod
+    def _parse_lineups(cls, response: list[dict]) -> list[dict]:
         out = []
         for team in response:
             starters = []
@@ -249,7 +249,7 @@ class ApiFootballClient:
                 if name:
                     starters.append({
                         "name": name,
-                        "position": self._grid_position(player.get("grid"), player.get("pos")),
+                        "position": cls._grid_position(player.get("grid"), player.get("pos")),
                         "grid": player.get("grid"),
                     })
             if len(starters) == 11:

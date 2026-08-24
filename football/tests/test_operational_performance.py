@@ -2,7 +2,9 @@ from datetime import datetime, timedelta
 
 from futbol_pred.dashboard import MADRID, _merge_lineup_players
 from futbol_pred.ingest.lineups_ai import build_statistical_lineup
-from futbol_pred.operational import attach_official_context, build_alerts, content_audit
+from futbol_pred.operational import (
+    annotate_prediction_context, attach_official_context, build_alerts, content_audit, lineup_impact,
+)
 from futbol_pred.performance import build_performance
 
 
@@ -89,3 +91,26 @@ def test_jugadores_del_once_rellenan_indice_global_sin_huecos():
     assert len(rows) == 22
     assert {row["team"] for row in rows} == {"Celta B", "Andorra"}
     assert all(row["source"] == "Motor estadístico local" for row in rows)
+
+
+def test_impacto_once_cuantifica_minutos_bajas_y_no_altera_1x2():
+    lineup = build_statistical_lineup({"xg": [1.4, 1.0]}, _squad("L"), _squad("V"))
+    lineup["status"] = "confirmado"
+    lineup["disponibilidad_local"] = [{
+        "jugador": "Titular lesionado", "estado": "injury", "official": True,
+        "source": "API-Football", "detalle": "Lesión",
+    }]
+    impact = lineup_impact(lineup)
+    assert impact["home"]["expected_minutes_avg"] >= 55
+    assert impact["home"]["official_absences"] == 1
+    assert impact["confidence_penalty_pp"] == 3.0
+    assert impact["probability_adjustment"] == "not_applied"
+
+    match = {
+        "probs": [52, 28, 20], "model_meta": {"components": {}},
+        "alineacion": lineup,
+    }
+    annotate_prediction_context([match])
+    assert match["probs"] == [52, 28, 20]
+    assert match["lineup_impact"]["home"]["attack_presence_index"] is not None
+    assert match["prediction_confidence"]["availability_penalty_pp"] == 3.0
