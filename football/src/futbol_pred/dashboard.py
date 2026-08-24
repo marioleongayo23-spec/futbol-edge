@@ -287,7 +287,21 @@ def _attach_odds_value(payload: dict, market_odds: dict, one_x_two: dict, matrix
         payload["value"] = value
 
 
-def _attach_previews(matches: list[dict], now: datetime, horizon_days: int = 2, limit: int = 8) -> None:
+def _gemini_window(now: datetime) -> bool:
+    """La capa gratuita de Gemini es MUY limitada (p. ej. 20 req/día), así que
+    solo llamamos en una ventana matinal (06-11 h Madrid): una carga al día para
+    los partidos del día. El resto de pasadas reutilizan la caché sin llamar.
+    FORCE_GEMINI=1 fuerza la llamada (para pruebas manuales)."""
+    import os
+    if os.environ.get("FORCE_GEMINI"):
+        return True
+    try:
+        return 6 <= ensure_aware(now).astimezone(MADRID).hour < 11
+    except Exception:
+        return True
+
+
+def _attach_previews(matches: list[dict], now: datetime, horizon_days: int = 2, limit: int = 5) -> None:
     """Añade una previa narrativa (Gemini) a los próximos partidos con predicción.
 
     Reutiliza las previas del feed anterior (por id) para no re-llamar a Gemini
@@ -319,7 +333,7 @@ def _attach_previews(matches: list[dict], now: datetime, horizon_days: int = 2, 
         if cached:
             m["preview"] = cached
             continue
-        if made >= limit:
+        if made >= limit or not _gemini_window(now):
             continue
         try:
             days = (datetime.fromisoformat(m["kickoff"]) - now).days
@@ -375,10 +389,13 @@ def _attach_lineups(matches: list[dict], now: datetime, horizon_days: int = 2,
         cached = prev.get(m.get("id"))
         if cached and fresh(cached):
             m["alineacion"] = cached  # aún válida
+        elif cached and not _gemini_window(now):
+            m["alineacion"] = cached  # fuera de ventana: mejor la vieja que nada
         else:
             stale.append(m)
 
-    if not stale:
+    # Solo se hacen llamadas nuevas en la ventana matinal (cuota gratuita).
+    if not stale or not _gemini_window(now):
         return
     stale.sort(key=lambda m: m.get("kickoff") or "")
     stale = stale[:limit]

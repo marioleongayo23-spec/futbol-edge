@@ -23,7 +23,7 @@ import requests
 
 API_KEY = os.getenv("AI_API_KEY") or os.getenv("GEMINI_API_KEY")
 # Consulta normal a la API (sin grounding): flash-lite, gratis y estable.
-MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash-lite")
+MODEL = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
 _URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 
 _INSTR = (
@@ -91,7 +91,9 @@ def fetch_lineups(matches: list[dict], timeout: int = 60, retries: int = 2) -> d
         except requests.RequestException:
             time.sleep(3 * (attempt + 1))
             continue
-        if r.status_code in (429, 500, 503):
+        if r.status_code == 429:  # cuota diaria agotada: no reintentar
+            return {}
+        if r.status_code in (500, 503):
             time.sleep(5 * (attempt + 1))
             continue
         if not r.ok:

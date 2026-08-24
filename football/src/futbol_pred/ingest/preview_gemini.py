@@ -20,7 +20,7 @@ import requests
 API_KEY = os.getenv("AI_API_KEY") or os.getenv("GEMINI_API_KEY")
 # gemini-2.5-flash-lite: gratis y MUY estable (gemini-flash-latest daba 503s
 # intermitentes y respuestas vacías por 'thinking'). Cambiable por env.
-MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash-lite")
+MODEL = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
 _URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 
 _SYSTEM = (
@@ -86,7 +86,9 @@ def generate_preview(m: dict, timeout: int = 30, retries: int = 2) -> str | None
         except requests.RequestException:
             time.sleep(2 * (attempt + 1))
             continue
-        if r.status_code in (429, 500, 503):  # ratio/servidor: espera y reintenta
+        if r.status_code == 429:  # cuota diaria agotada: no reintentar (no se recupera hoy)
+            return None
+        if r.status_code in (500, 503):  # servidor: espera y reintenta
             time.sleep(4 * (attempt + 1))
             continue
         if not r.ok:
