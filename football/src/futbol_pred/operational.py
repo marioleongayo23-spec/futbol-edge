@@ -68,7 +68,7 @@ def _real_starter_props(client, match, team_name, starters, kickoff):
         rates = fetch_team_player_rates(
             client, team_name, _season_for(match, kickoff), _league_id(match), max_pages=2
         )
-        props = props_for_official_starters(starters, rates, limit=5)
+        props = props_for_official_starters(starters, rates, limit=11)
     except Exception:
         return None
     return props if len(props) >= 3 else None

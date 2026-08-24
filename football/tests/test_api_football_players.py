@@ -114,7 +114,12 @@ def test_once_oficial_sustituye_fallback_por_props_reales(monkeypatch):
     lineup = match["alineacion"]
     assert lineup["status"] == "confirmado"
     assert lineup["player_props_source"] == "API-Football · players"
-    assert lineup["quality"]["real_player_props"] == 10
+    assert lineup["quality"]["real_player_props"] == 22
+    assert lineup["quality"]["props_players"] == 22
+    assert len(lineup["clave_local"]) == 11
+    assert len(lineup["clave_visitante"]) == 11
+    assert [row["jugador"] for row in lineup["clave_local"]] == [f"Local {i}" for i in range(11)]
+    assert [row["jugador"] for row in lineup["clave_visitante"]] == [f"Visitante {i}" for i in range(11)]
     assert all(row["source"] == "API-Football · players" for row in lineup["clave_local"] + lineup["clave_visitante"])
     assert all(row["tit"] == 1.0 for row in lineup["clave_local"] + lineup["clave_visitante"])
 

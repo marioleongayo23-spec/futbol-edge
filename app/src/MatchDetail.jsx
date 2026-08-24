@@ -212,15 +212,19 @@ function TeamHalf({ xi, positions, side, color }) {
 function PropsTable({ title, clave, best }) {
   if (!(clave || []).length) return null;
   const highlighted = new Set((best || []).map((item) => item.jugador));
+  const realRows = clave.filter((row) => row?.source === "API-Football · players").length;
+  const coverageLabel = realRows === clave.length
+    ? `titulares con muestra real ${realRows}/11`
+    : "jugadores clave";
   return (
     <div className="xi-props">
-      <div className="xi-props-h">{title} · jugadores clave</div>
+      <div className="xi-props-h">{title} · {coverageLabel}</div>
       <table className="props-tbl">
         <thead><tr><th className="tl">Jugador</th><th title="Minutos previstos">MIN</th><th title="Probabilidad de ser titular">TIT</th><th title="Goles">G</th><th title="Asistencias">A</th><th title="Remates">R</th><th title="Remates a puerta">AP</th><th title="Faltas cometidas">FC</th><th title="Faltas recibidas">FR</th><th title="Tarjetas">T</th></tr></thead>
         <tbody>
           {clave.map((p, i) => (
             <tr key={i} className={highlighted.has(p.jugador) ? "best-prop" : ""}>
-              <td className="tl">{highlighted.has(p.jugador) ? "★ " : ""}{p.jugador}</td>
+              <td className="tl" title={p.source ? `${p.source}${p.sample_minutes ? ` · ${p.sample_minutes} min de muestra` : ""}` : undefined}>{highlighted.has(p.jugador) ? "★ " : ""}{p.jugador}</td>
               <td>{p.min ?? "–"}</td><td>{p.tit != null ? `${Math.round(p.tit * 100)}%` : "–"}</td>
               <td>{p.g ?? "–"}</td><td>{p.a ?? "–"}</td><td>{p.r ?? "–"}</td><td>{p.rp ?? "–"}</td><td>{p.fc ?? p.f ?? "–"}</td><td>{p.fr ?? "–"}</td><td>{p.t ?? "–"}</td>
             </tr>
