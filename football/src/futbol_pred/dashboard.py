@@ -287,7 +287,7 @@ def _attach_odds_value(payload: dict, market_odds: dict, one_x_two: dict, matrix
         payload["value"] = value
 
 
-def _attach_previews(matches: list[dict], now: datetime, horizon_days: int = 6, limit: int = 6) -> None:
+def _attach_previews(matches: list[dict], now: datetime, horizon_days: int = 2, limit: int = 8) -> None:
     """Añade una previa narrativa (Gemini) a los próximos partidos con predicción.
 
     Reutiliza las previas del feed anterior (por id) para no re-llamar a Gemini
@@ -333,8 +333,8 @@ def _attach_previews(matches: list[dict], now: datetime, horizon_days: int = 6, 
             made += 1
 
 
-def _attach_lineups(matches: list[dict], now: datetime, horizon_days: int = 7,
-                    limit: int = 8, ttl_hours: int = 12) -> None:
+def _attach_lineups(matches: list[dict], now: datetime, horizon_days: int = 2,
+                    limit: int = 10, ttl_hours: int = 12) -> None:
     """Alineaciones probables + bajas (IA con búsqueda web) en UNA llamada/bloque.
 
     Cachea por id con marca de tiempo: solo re-consulta lo que tenga más de
