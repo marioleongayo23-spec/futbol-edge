@@ -462,6 +462,8 @@ function ValueBets({ matches, bank, setBank }) {
   const bankN = Number(bank) || 1000;
   let rows = ms.map((m, i) => {
     const pr = [m.probs[0] / 100, m.probs[1] / 100, m.probs[2] / 100];
+    const blocked = m.recommendation?.decision === "no_pick";
+    const reasons = m.recommendation?.reasons || [];
     // Cuotas reales de mercado (media de casas, co.uk) cargadas del feed;
     // el usuario puede sobrescribirlas escribiendo en el input.
     const feedO = m.odds?.["1x2"]?.odds || null;
@@ -473,13 +475,15 @@ function ValueBets({ matches, bank, setBank }) {
     const fair = haveAll ? fairProbs(o) : null;
     const vig = haveAll ? overround(o) : null;
     let best = null;
-    o.forEach((oo, j) => { if (oo > 1) { const e = pr[j] * oo - 1; if (!best || e > best.e) best = { j, s: ["1", "X", "2"][j], o: oo, e }; } });
-    const stake = best ? Math.min(bankN * kelly(pr[best.j], best.o) * 0.25, bankN * 0.05) : 0;
-    return { m, i, pr, o, feedO, fair, vig, best, stake };
+    if (!blocked) {
+      o.forEach((oo, j) => { if (oo > 1) { const e = pr[j] * oo - 1; if (!best || e > best.e) best = { j, s: ["1", "X", "2"][j], o: oo, e }; } });
+    }
+    const stake = !blocked && best ? Math.min(bankN * kelly(pr[best.j], best.o) * 0.25, bankN * 0.05) : 0;
+    return { m, i, pr, o, feedO, fair, vig, best, stake, blocked, reasons, haveAll };
   });
-  rows = rows.sort((a, b) => (b.best?.e ?? -9) - (a.best?.e ?? -9));
-  const nValue = rows.filter((r) => r.best && r.best.e > 0.02).length;
-  const nWithOdds = rows.filter((r) => r.best).length;
+  rows = rows.sort((a, b) => Number(a.blocked) - Number(b.blocked) || (b.best?.e ?? -9) - (a.best?.e ?? -9));
+  const nValue = rows.filter((r) => !r.blocked && r.best && r.best.e > 0.02).length;
+  const nWithOdds = rows.filter((r) => r.haveAll).length;
   return (
     <>
       <div className="card">
@@ -487,21 +491,21 @@ function ValueBets({ matches, bank, setBank }) {
           <div><div className="lbl">Bankroll (€)</div><input aria-label="Bankroll para calcular stakes" type="number" value={bank} style={{ width: 130 }} onChange={(e) => setBank(e.target.value)} /></div>
           <div className="chips">
             <span className="chip">Con cuota <b>{nWithOdds}</b></span>
-            <span className="chip">Value (edge&gt;2%) <b className={nValue ? "value-yes" : ""}>{nValue}</b></span>
+            <span className="chip">Value elegible (edge&gt;2%) <b className={nValue ? "value-yes" : ""}>{nValue}</b></span>
           </div>
         </div>
-        <p className="note" style={{ color: "var(--muted)" }}>Cuotas de mercado (media de casas, co.uk) cargadas automáticamente; puedes sobrescribirlas. Se quita el margen y se compara con el modelo. Stake = Kelly ¼ (máx. 5%).</p>
+        <p className="note" style={{ color: "var(--muted)" }}>Cuotas de mercado (media de casas, co.uk) cargadas automáticamente; puedes sobrescribirlas. Se quita el margen y se compara con el modelo. Solo los partidos elegibles calculan edge y stake = Kelly ¼ (máx. 5%).</p>
       </div>
       {!ms.length && <div className="state">No hay partidos con predicción.</div>}
       {rows.map((r) => (
-        <div className="card" key={r.i}>
+        <div className="card" key={r.i} data-recommendation={r.blocked ? "no_pick" : "eligible"}>
           <div className="row" style={{ justifyContent: "space-between" }}>
             <div className="tn" style={{ flex: 1 }}>{r.m.home} vs {r.m.away}</div>
             <div className="chips">{["1", "X", "2"].map((s, j) => <span key={s} className="chip">{s} <b>{r.m.probs[j]}%</b>{r.fair ? <span className="dim"> / {(r.fair[j] * 100).toFixed(0)}%</span> : null}</span>)}</div>
           </div>
           <div className="row" style={{ marginTop: 8 }}>
             {["1", "X", "2"].map((s, j) => {
-              const e = r.o[j] > 1 ? r.pr[j] * r.o[j] - 1 : null;
+              const e = !r.blocked && r.o[j] > 1 ? r.pr[j] * r.o[j] - 1 : null;
               return (
                 <div key={s} className="odds-in">
                   <input type="number" step="0.01" placeholder={"Cuota " + s} style={{ width: 92 }} value={odds[r.i + s] ?? (r.feedO ? r.feedO[s] : "")} onChange={(ev) => setOdds({ ...odds, [r.i + s]: ev.target.value })} />
@@ -512,7 +516,8 @@ function ValueBets({ matches, bank, setBank }) {
           </div>
           <div className="row" style={{ marginTop: 6 }}>
             {r.vig != null && <span className="chip">Margen casa <b>{(r.vig * 100).toFixed(1)}%</b></span>}
-            {r.best && r.best.e > 0.02 ? <span className="pill y">VALUE {r.best.s}: edge {(r.best.e * 100).toFixed(1)}% · apostar {r.stake.toFixed(2)}€</span>
+            {r.blocked ? <span className="value-no">Sin apuesta recomendada{r.reasons.length ? ` · ${r.reasons.join(" · ")}` : ""}</span>
+              : r.best && r.best.e > 0.02 ? <span className="pill y">VALUE {r.best.s}: edge {(r.best.e * 100).toFixed(1)}% · apostar {r.stake.toFixed(2)}€</span>
               : r.best ? <span className="value-no">Sin value (mejor {r.best.s}: {(r.best.e * 100).toFixed(1)}%)</span> : null}
           </div>
         </div>
