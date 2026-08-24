@@ -100,20 +100,34 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/dashboard.json
-          if git diff --cached --quiet; then
-            echo "El feed no ha cambiado"
-          else
-            git commit -m "Actualizar feed automático de Fútbol Edge"
-            # Robusto ante pushes concurrentes (cron + manual): rebase y reintenta.
-            pushed=0
-            for i in 1 2 3 4 5; do
-              git pull --rebase --autostash origin "${GITHUB_REF_NAME}" || true
-              if git push origin "HEAD:${GITHUB_REF_NAME}"; then pushed=1; break; fi
-              echo "push rechazado, reintento $i…"; sleep $((i * 3))
-            done
-            [ "$pushed" = 1 ] || { echo "No se pudo publicar el feed tras varios intentos"; exit 1; }
-          fi
+          # Separa el JSON generado del checkout del job. Si otro cron publica
+          # mientras calculamos, reaplicamos este artefacto sobre la última main
+          # en un worktree limpio: no hay rebase del JSON ni falsos positivos.
+          generated="${RUNNER_TEMP}/dashboard.generated.json"
+          publish_root="${RUNNER_TEMP}/feed-publish"
+          cp data/dashboard.json "$generated"
+          git fetch origin "${GITHUB_REF_NAME}"
+          git worktree add --detach "$publish_root" "origin/${GITHUB_REF_NAME}"
+          pushed=0
+          for i in 1 2 3 4 5; do
+            git -C "$publish_root" fetch origin "${GITHUB_REF_NAME}"
+            git -C "$publish_root" checkout --detach "origin/${GITHUB_REF_NAME}"
+            cp "$generated" "$publish_root/football/data/dashboard.json"
+            git -C "$publish_root" add football/data/dashboard.json
+            if git -C "$publish_root" diff --cached --quiet; then
+              echo "El feed no ha cambiado"
+              pushed=1
+              break
+            fi
+            git -C "$publish_root" commit -m "Actualizar feed automático de Fútbol Edge"
+            if git -C "$publish_root" push origin "HEAD:${GITHUB_REF_NAME}"; then
+              pushed=1
+              break
+            fi
+            echo "push concurrente, reaplicando feed sobre main (intento $i)…"
+            sleep $((i * 3))
+          done
+          [ "$pushed" = 1 ] || { echo "No se pudo publicar el feed tras cinco intentos limpios"; exit 1; }
 
       - name: Subir informes como artefacto
         if: always()
