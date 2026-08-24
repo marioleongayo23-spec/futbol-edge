@@ -930,6 +930,7 @@ def build_dashboard(
     matches: list[dict] = []
     errors: list[dict] = []
     squads_by_league: dict[str, dict[str, list[dict]]] = {}
+    stats_models_by_league: dict[str, object] = {}
 
     for league in LEAGUES:
         try:
@@ -950,6 +951,8 @@ def build_dashboard(
             ensemble_params = _previous_ensemble_params(calibration_source, league)
             residual_params = _previous_residual_params(calibration_source, league)
             stats = _fit_stats(league, season)
+            if stats is not None:
+                stats_models_by_league[LEAGUES.get(league, league)] = stats
             meta = _team_meta(league, season)
             squads_by_league[league] = {
                 team: info.get("squad") or []
@@ -1025,7 +1028,7 @@ def build_dashboard(
     }
     _attach_previews(matches, now)
     _attach_lineups(matches, now, squads=all_squads)
-    official_updates = attach_official_context(matches, now)
+    official_updates = attach_official_context(matches, now, stats_models=stats_models_by_league)
     state_simulations = attach_state_simulations(matches)
     players = _merge_lineup_players(players, matches)
     annotate_prediction_context(matches)
@@ -1333,7 +1336,14 @@ def _fit_stats(league: str, season: int):
                 auxiliary.extend(client.get_stats(other, season - back))
             except Exception:
                 continue
-        return StatsPredictor().fit(rows, auxiliary_matches=auxiliary)
+        predictor = StatsPredictor().fit(rows, auxiliary_matches=auxiliary)
+        try:
+            from .model.referee_adjustment import RefereeAdjustmentModel
+
+            predictor.referee_model = RefereeAdjustmentModel().fit(rows)
+        except Exception:
+            predictor.referee_model = None
+        return predictor
     except Exception:
         return None
 

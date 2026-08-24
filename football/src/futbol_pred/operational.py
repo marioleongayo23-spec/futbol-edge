@@ -74,7 +74,7 @@ def _real_starter_props(client, match, team_name, starters, kickoff):
     return props if len(props) >= 3 else None
 
 
-def attach_official_context(matches: list[dict], now: datetime, client: ApiFootballClient | None = None, limit: int = 8) -> int:
+def attach_official_context(matches: list[dict], now: datetime, client: ApiFootballClient | None = None, limit: int = 8, stats_models: dict[str, object] | None = None) -> int:
     """Actualiza cada 15 min los partidos cercanos al inicio con el once oficial."""
     client = client or ApiFootballClient()
     if client.offline:
@@ -113,6 +113,20 @@ def attach_official_context(matches: list[dict], now: datetime, client: ApiFootb
             official_context = client.fixture_context(detail)
             if official_context:
                 official_context["source_updated_at"] = now_local.isoformat()
+                stats_model = (stats_models or {}).get(match.get("league"))
+                referee_model = getattr(stats_model, "referee_model", None)
+                referee = official_context.get("referee")
+                if referee_model is not None and referee:
+                    try:
+                        profile = referee_model.context(referee)
+                        if profile:
+                            official_context["referee_profile"] = profile
+                        adjusted, applied = referee_model.adjust_stats(match.get("stats"), referee)
+                        if applied:
+                            match["stats"] = adjusted
+                            official_context["referee_adjustment_applied"] = applied
+                    except Exception:
+                        pass
                 match["official_context"] = official_context
         if not official:
             _merge_absences(match.get("alineacion") or {}, match, absences, now_local)
