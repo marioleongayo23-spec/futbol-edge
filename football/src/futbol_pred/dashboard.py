@@ -12,11 +12,16 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from .config import DATA_DIR
+from .backtest import ensemble_probabilities
+from .backtest.ensemble import temperature_scale
+from .elo import EloRatings
 from .feed_quality import load_feed, preserve_last_known_good, write_feed_safely
 from .ingest.api_football import ApiFootballClient, Fixture
 from .ingest.football_data import FootballDataClient
 from .normalize import canonical_team
+from .market_calibration import learn_market_calibration
 from .pipeline import fit_model_from_fixtures, get_fixtures, predict_match, run_model_report
+from .prediction_snapshots import apply_prediction_snapshots, latest_pre_match_snapshot
 
 MADRID = ZoneInfo("Europe/Madrid")
 OUTPUT = Path(DATA_DIR) / "dashboard.json"
@@ -66,6 +71,44 @@ def ensure_aware(value: datetime) -> datetime:
     return value if value.tzinfo is not None else value.replace(tzinfo=timezone.utc)
 
 
+def _fit_elo_from_fixtures(fixtures: list[Fixture]) -> EloRatings:
+    """Elo actual usando solo resultados anteriores, en orden cronológico."""
+
+    elo = EloRatings()
+    played = sorted(
+        (fixture for fixture in fixtures if fixture.home_goals is not None and fixture.away_goals is not None),
+        key=lambda fixture: ensure_aware(fixture.kickoff),
+    )
+    for fixture in played:
+        elo.update(
+            _canon(fixture.home_team),
+            _canon(fixture.away_team),
+            int(fixture.home_goals),
+            int(fixture.away_goals),
+        )
+    return elo
+
+
+def _previous_ensemble_params(previous: dict | None, league: str) -> dict:
+    """Parámetros OOF del feed anterior; defaults conservadores si aún no hay muestra."""
+
+    try:
+        ensemble = previous["model"][league]["ensemble"]
+        if not ensemble.get("accepted"):
+            return {"dc_weight": 1.0, "temperature": 1.0, "accepted": False}
+        production = ensemble["production"]
+    except (KeyError, TypeError):
+        return {"dc_weight": 1.0, "temperature": 1.0, "accepted": False}
+    try:
+        return {
+            "dc_weight": max(0.05, min(0.95, float(production["dc_weight"]))),
+            "temperature": max(0.65, min(1.8, float(production["temperature"]))),
+            "accepted": True,
+        }
+    except (KeyError, TypeError, ValueError):
+        return {"dc_weight": 1.0, "temperature": 1.0, "accepted": False}
+
+
 def fixture_payload(
     fixture: Fixture,
     model,
@@ -77,6 +120,9 @@ def fixture_payload(
     model_weight: float = 0.6,
     h2h: dict | None = None,
     trends=None,
+    elo: EloRatings | None = None,
+    ensemble_params: dict | None = None,
+    market_temperature: float = 1.0,
 ) -> dict:
     kickoff = ensure_aware(fixture.kickoff).astimezone(MADRID)
     team_meta = team_meta or {}
@@ -135,8 +181,34 @@ def fixture_payload(
     except (KeyError, ValueError):
         return payload
 
-    probs = prediction.one_x_two
+    dc_probs = prediction.one_x_two
     eh, ea = prediction.expected_goals
+    pseudo_xg = None
+    if stats is not None:
+        try:
+            pseudo_xg = stats.pseudo_xg(fixture.home_team, fixture.away_team)
+        except (KeyError, TypeError, ValueError):
+            pseudo_xg = None
+    if pseudo_xg and pseudo_xg.get("weight", 0) > 0:
+        weight = float(pseudo_xg["weight"])
+        # El proxy nunca puede desplazar bruscamente al score model: primero se
+        # limita a ±35% y después entra con un peso máximo del 25%.
+        proxy_home = min(eh * 1.35, max(eh * 0.65, float(pseudo_xg["home"])))
+        proxy_away = min(ea * 1.35, max(ea * 0.65, float(pseudo_xg["away"])))
+        eh = (1.0 - weight) * eh + weight * proxy_home
+        ea = (1.0 - weight) * ea + weight * proxy_away
+        matrix = model.predict_matrix(home_id, away_id, lambdas=(eh, ea))
+        dc_probs = matrix.one_x_two()
+
+    params = ensemble_params or {}
+    dc_weight = float(params.get("dc_weight", 0.75))
+    temperature = float(params.get("temperature", 1.0))
+    elo_probs = elo.match_probabilities(home_id, away_id) if elo is not None else dc_probs
+    ensemble_active = bool(params.get("accepted")) and elo is not None
+    probs = (
+        ensemble_probabilities(dc_probs, elo_probs, dc_weight, temperature)
+        if ensemble_active else dc_probs
+    )
     # Guard de sanidad: descarta predicciones REALMENTE rotas (p. ej. un único
     # resultado al ~100%). El umbral inferior de goles es laxo a propósito: un
     # equipo muy flojo (recién ascendido) contra una gran defensa puede tener un
@@ -159,7 +231,23 @@ def fixture_payload(
     # (esperado vs real); NO tocamos engine, que sigue siendo 'resultado-real'.
     payload.update({
         "probs": [round(probs["1"] * 100), round(probs["X"] * 100), round(probs["2"] * 100)],
-        "xg": [round(value, 2) for value in prediction.expected_goals],
+        "model_probs": [round(probs["1"] * 100, 2), round(probs["X"] * 100, 2), round(probs["2"] * 100, 2)],
+        "xg": [round(eh, 2), round(ea, 2)],
+        "model_meta": {
+            "version": "edge-2.0",
+            "provider": "Dixon-Coles + Elo calibrado" if ensemble_active else "Dixon-Coles híbrido",
+            "components": {
+                "dixon_coles": {key: round(value, 4) for key, value in dc_probs.items()},
+                "elo": {key: round(value, 4) for key, value in elo_probs.items()},
+            },
+            "ensemble": {
+                "dc_weight": round(dc_weight, 4),
+                "elo_weight": round(1.0 - dc_weight, 4),
+                "temperature": round(temperature, 4),
+                "accepted": ensemble_active,
+            },
+            "pseudo_xg": pseudo_xg,
+        },
         "markets": {
             "over_2_5": round(matrix.over(2.5), 3),
             "over_1_5": round(matrix.over(1.5), 3),
@@ -169,7 +257,7 @@ def fixture_payload(
         },
     })
     if not finished_with_result:
-        payload["engine"] = "dixon-coles"
+        payload["engine"] = "ensemble" if ensemble_active else "dixon-coles"
 
     # Si algún equipo aún no tiene histórico (recién ascendido, sin datos de la
     # temporada), la predicción usa prior neutro: la marcamos como provisional.
@@ -223,12 +311,12 @@ def fixture_payload(
     if not finished_with_result and odds_map:
         mo = odds_map.get((_canon(fixture.home_team), _canon(fixture.away_team)))
         if mo:
-            _attach_odds_value(payload, mo, prediction.one_x_two, matrix, model_weight)
+            _attach_odds_value(payload, mo, probs, matrix, model_weight, market_temperature)
     return payload
 
 
 def _attach_odds_value(payload: dict, market_odds: dict, one_x_two: dict, matrix,
-                       model_weight: float = 0.6) -> None:
+                       model_weight: float = 0.6, market_temperature: float = 1.0) -> None:
     """Añade payload['odds'] (mercado + prob. justa sin vig) y payload['value'].
 
     CALIBRACIÓN: con pocas jornadas el modelo va sobreconfiado, así que las
@@ -250,12 +338,18 @@ def _attach_odds_value(payload: dict, market_odds: dict, one_x_two: dict, matrix
         cal = {s: w * one_x_two.get(s, 0.0) + (1 - w) * fair_probs[s] for s in ("1", "X", "2")}
         tot = sum(cal.values()) or 1.0
         cal = {s: cal[s] / tot for s in cal}
+        cal = temperature_scale(cal, market_temperature)
         block["1x2"] = {
             "odds": {k: round(o[k], 2) for k in ("1", "X", "2")},
             "fair": {k: round(fair_probs[k], 3) for k in ("1", "X", "2")},
         }
         payload["probs"] = [round(cal["1"] * 100), round(cal["X"] * 100), round(cal["2"] * 100)]
         payload["calibrated"] = True
+        payload["market_calibration"] = {
+            "model_weight": round(w, 4),
+            "market_weight": round(1.0 - w, 4),
+            "temperature": round(market_temperature, 4),
+        }
         for sel in ("1", "X", "2"):
             value.append({
                 "market": "1x2", "selection": sel, "odds": round(o[sel], 2),
@@ -610,6 +704,13 @@ def build_dashboard(
     season = current_season(now)
     generated_at = now.astimezone(MADRID).isoformat()
     previous = load_feed(OUTPUT)
+    model_report = _load_model_report(season)
+    calibration_source = {"model": model_report} if model_report else previous
+    market_calibration = {}
+    for league, label in (("laliga", "LaLiga"), ("segunda", "LaLiga Hypermotion")):
+        learned = learn_market_calibration((previous or {}).get("matches") or [], label)
+        if learned:
+            market_calibration[league] = learned
     matches: list[dict] = []
     errors: list[dict] = []
     squads_by_league: dict[str, dict[str, list[dict]]] = {}
@@ -629,6 +730,8 @@ def build_dashboard(
                 )
             except (ValueError, KeyError):
                 model = None
+            elo = _fit_elo_from_fixtures(train)
+            ensemble_params = _previous_ensemble_params(calibration_source, league)
             stats = _fit_stats(league, season)
             meta = _team_meta(league, season)
             squads_by_league[league] = {
@@ -646,12 +749,20 @@ def build_dashboard(
             teams_n = len({f.home_team for f in fixtures} | {f.away_team for f in fixtures})
             mpt = (2 * played_n / teams_n) if teams_n else 0
             model_w = max(0.2, min(0.9, mpt / 12))
+            market_temperature = 1.0
+            learned_market = market_calibration.get(league)
+            if learned_market and learned_market.get("accepted"):
+                production = learned_market["production"]
+                model_w = float(production["model_weight"])
+                market_temperature = float(production["temperature"])
             h2h = _h2h_map(train)  # incluye temporadas previas (sembrado)
             # TODOS los partidos de la temporada (resultados + próximos).
             matches.extend(
                 fixture_payload(fx, model, generated_at, stats=stats, team_meta=meta,
                                 real_stats=real_stats, odds_map=odds_map,
-                                model_weight=model_w, h2h=h2h, trends=trends)
+                                model_weight=model_w, h2h=h2h, trends=trends,
+                                elo=elo, ensemble_params=ensemble_params,
+                                market_temperature=market_temperature)
                 for fx in sorted(fixtures, key=lambda item: ensure_aware(item.kickoff))
             )
         except Exception as exc:  # una liga no debe tumbar el resto del feed
@@ -663,11 +774,20 @@ def build_dashboard(
             })
 
     matches.sort(key=lambda item: item["kickoff"])
+    apply_prediction_snapshots(
+        matches,
+        (previous or {}).get("matches"),
+        now,
+        force=_force_ai(),
+    )
     # Recupera predicciones/IA/odds anteriores antes de intentar refrescarlas.
     # De esta forma un timeout, una cuota agotada o una respuesta parcial jamás
     # convierte una tarjeta que funcionaba en un hueco en blanco.
     if previous:
-        preserve_last_known_good({"matches": matches}, {"matches": previous.get("matches", [])})
+        preserve_last_known_good(
+            {"schema_version": 5, "matches": matches},
+            {"schema_version": previous.get("schema_version"), "matches": previous.get("matches", [])},
+        )
     base_players = _merge_squad_players(
         _load_players(season), squads_by_league, (previous or {}).get("players")
     )
@@ -685,17 +805,22 @@ def build_dashboard(
     _attach_previews(matches, now)
     _attach_lineups(matches, now, squads=all_squads)
     payload = {
-        "schema_version": 4,
+        "schema_version": 5,
         "generated_at": generated_at,
         "season": season,
         "quiniela": _load_quiniela_oficial(),
         "players": players,
-        "model": _load_model_report(season),
+        "model": model_report,
+        "market_calibration": market_calibration or None,
         "accuracy": _aggregate_accuracy(matches),
-        "engine": "dixon-coles" if any(item["engine"] == "dixon-coles" for item in matches) else "calendar-only",
+        "engine": (
+            "ensemble" if any(item["engine"] == "ensemble" for item in matches)
+            else "dixon-coles" if any(item["engine"] == "dixon-coles" for item in matches)
+            else "calendar-only"
+        ),
         "data_sources": {
             "fixtures": "football-data.org (LaLiga) · football-data.co.uk (Segunda)",
-            "stats": "football-data.co.uk (remates, córners, faltas, tarjetas — reales y esperadas)",
+            "stats": "football-data.co.uk (3 temporadas; pseudo-xG, remates, córners, faltas y tarjetas)",
             "players": "football-data.org (plantillas, goleadores y asistencias)",
             "odds": "football-data.co.uk (media de mercado: 1X2 y over/under 2.5)",
             "ai": "Gemini dinámico → Groq → motor local gratuito; solo partidos del día a las 00:00 y 10:00 Europe/Madrid, con backfill inicial anti-huecos",
@@ -707,7 +832,7 @@ def build_dashboard(
             "total": len(matches),
             "jugados": sum(1 for m in matches if m.get("finished")),
             "proximos": sum(1 for m in matches if not m.get("finished")),
-            "con_prediccion": sum(1 for m in matches if m.get("engine") == "dixon-coles"),
+            "con_prediccion": sum(1 for m in matches if m.get("engine") in {"dixon-coles", "ensemble"}),
         },
         "matches": matches,
         "errors": errors,
@@ -722,21 +847,26 @@ def _aggregate_accuracy(matches: list[dict]) -> dict | None:
     ya lleva cada partido jugado (probs/result y stats/statsReal)."""
     labels = {"shots": "Remates", "sot": "Tiros a puerta", "corners": "Córners",
               "fouls": "Faltas", "yellows": "Amarillas"}
-    hits = n_sign = 0
+    hits = n_sign = evaluated = 0
     per: dict = {}
     for m in matches:
         res = m.get("result")
         if not m.get("finished") or not res:
             continue
+        snapshot = latest_pre_match_snapshot(m)
+        if not snapshot:
+            # Nunca puntuamos una predicción recalculada después del resultado.
+            continue
+        evaluated += 1
         # Acierto 1X2: favorito del modelo vs signo real.
-        probs = m.get("probs")
+        probs = snapshot.get("probs")
         if probs and len(probs) == 3:
             fav = ["1", "X", "2"][max(range(3), key=lambda i: probs[i])]
             real = _sign(res[0], res[1])
             n_sign += 1
             hits += int(fav == real)
         # Error por métrica: esperado (stats) vs real (statsReal).
-        pred, real_stats = m.get("stats"), m.get("statsReal")
+        pred, real_stats = snapshot.get("stats"), m.get("statsReal")
         if not pred or not real_stats:
             continue
         for key in labels:
@@ -766,11 +896,16 @@ def _aggregate_accuracy(matches: list[dict]) -> dict | None:
     ]
     metrics.sort(key=lambda x: x["mae"])
     return {
-        "n_partidos": sum(1 for m in matches if m.get("finished") and m.get("result")),
+        "n_partidos": evaluated,
         "aciertos_1x2": hits,
         "n_1x2": n_sign,
         "pct_1x2": round(100 * hits / n_sign) if n_sign else None,
         "metrics": metrics,
+        "source": "pre_match_snapshots",
+        "excluded_without_snapshot": max(
+            0,
+            sum(1 for m in matches if m.get("finished") and m.get("result")) - evaluated,
+        ),
     }
 
 
@@ -786,6 +921,17 @@ def _load_model_report(season: int) -> dict | None:
             rep = run_model_report(league=league, season=season)
         except Exception:
             rep = None
+        # En agosto la temporada actual aún no tiene muestra suficiente. Se usa
+        # la última temporada cerrada para aprender pesos y validar al challenger.
+        if not rep or not (rep.get("ensemble") or {}).get("production"):
+            try:
+                historic = run_model_report(league=league, season=season - 1)
+            except Exception:
+                historic = None
+            if historic:
+                historic["evaluation_season"] = season - 1
+                historic["current_season"] = season
+                rep = historic
         if rep:
             rep["label"] = label
             out[league] = rep
@@ -907,14 +1053,20 @@ def _team_meta(league: str, season: int) -> dict:
 
 
 def _fit_stats(league: str, season: int):
-    """Ajusta el modelo de estadísticas (córners, tarjetas...) para 1ª/2ª."""
+    """Ajusta props y pseudo-xG con hasta tres temporadas gratuitas."""
     if league not in ("laliga", "segunda"):
         return None
     try:
         from .ingest.football_data_uk import FootballDataUKClient
         from .model.stats_markets import StatsPredictor
 
-        rows = FootballDataUKClient().get_stats(league, season)
+        client = FootballDataUKClient()
+        rows = []
+        for back in (2, 1, 0):
+            try:
+                rows.extend(client.get_stats(league, season - back))
+            except Exception:
+                continue
         return StatsPredictor().fit(rows)
     except Exception:
         return None

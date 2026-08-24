@@ -239,6 +239,12 @@ export default function MatchDetail({ m, bankroll, onBack, onTeam, players }) {
   const conf = confidence(m);
   const cd = m.finished ? "" : countdown(m.kickoff);
   const surprise = isSurprise(m);
+  const snapshot = m.prediction_snapshot;
+  const history = Array.isArray(m.prediction_history) ? m.prediction_history : [];
+  const previousSnapshot = history.length > 1 ? history[history.length - 2] : null;
+  const probabilityDelta = previousSnapshot?.probs && snapshot?.probs
+    ? snapshot.probs.map((value, i) => +(value - previousSnapshot.probs[i]).toFixed(1))
+    : null;
   const share = async () => {
     const lines = [`${m.home} vs ${m.away} — ${m.league}${m.matchday ? " J" + m.matchday : ""}`];
     if (m.finished && m.result) lines.push(`Resultado: ${m.result[0]}-${m.result[1]}`);
@@ -258,9 +264,9 @@ export default function MatchDetail({ m, bankroll, onBack, onTeam, players }) {
 
   let vProb = 0;
   if (M) {
-    if (vSel === "1") vProb = p[1];
-    else if (vSel === "X") vProb = p.X;
-    else if (vSel === "2") vProb = p[2];
+    if (vSel === "1") vProb = Array.isArray(m.probs) ? m.probs[0] / 100 : p[1];
+    else if (vSel === "X") vProb = Array.isArray(m.probs) ? m.probs[1] / 100 : p.X;
+    else if (vSel === "2") vProb = Array.isArray(m.probs) ? m.probs[2] / 100 : p[2];
     else if (vSel === "ov") vProb = over(M, ouL);
     else if (vSel === "un") vProb = 1 - over(M, ouL);
     else vProb = btts(M);
@@ -277,10 +283,11 @@ export default function MatchDetail({ m, bankroll, onBack, onTeam, players }) {
         <div className="chips" style={{ justifyContent: "center" }}>
           {cd && <span className="countdown">⏱ {cd}</span>}
           {conf && !m.finished && (
-            <span className="chip" title={`Confianza ${conf.label} · favorito al ${conf.mx}%`}>
+            <span className="chip" title={`Confianza ${conf.label} · favorito al ${conf.mx}% · desacuerdo DC/Elo ${(conf.disagreement * 100).toFixed(1)} pp`}>
               Confianza <span className="conf-stars">{[1, 2, 3].map((i) => <span key={i} className={i <= conf.stars ? "on" : "off"}>★</span>)}</span>
             </span>
           )}
+          {snapshot?.generated_at && <span className="chip" title="Snapshot inmutable utilizado para evaluar el modelo">Predicción <b>{snapshot.window || new Date(snapshot.generated_at).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}</b></span>}
           {surprise && !m.finished && <span className="pill y" title="El favorito del modelo no coincide con el del mercado">⚡ Sorpresa</span>}
           <button className="mini" onClick={share}>{copied ? "✓ Copiado" : "🔗 Compartir"}</button>
         </div>
@@ -404,6 +411,11 @@ export default function MatchDetail({ m, bankroll, onBack, onTeam, players }) {
           )}
           <div className="card">
             <div className="lbl">{m.finished ? "1X2 que daba el modelo" : "Resultado 1X2"}{m.calibrated && <span className="dim" title="Probabilidad del modelo mezclada con la del mercado (calibrada)"> · calibrado</span>}</div>
+            {probabilityDelta && probabilityDelta.some((value) => value !== 0) && (
+              <div className="mut" style={{ marginBottom: 8 }}>
+                Cambio desde la revisión anterior: 1 {probabilityDelta[0] > 0 ? "+" : ""}{probabilityDelta[0]} pp · X {probabilityDelta[1] > 0 ? "+" : ""}{probabilityDelta[1]} pp · 2 {probabilityDelta[2] > 0 ? "+" : ""}{probabilityDelta[2]} pp.
+              </div>
+            )}
             {(() => {
               const hc = accent(m.homeColors), ac = accent(m.awayColors);
               const hs = hc && hc.startsWith("#") ? { background: hc, color: "#fff" } : {};

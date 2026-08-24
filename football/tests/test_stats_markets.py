@@ -87,3 +87,32 @@ def test_equipo_desconocido_usa_media_liga():
     # Un equipo sin historial cae a la media de liga, no rompe.
     pred = _sample_fit().predict_fixture("EquipoNuevo", "Sevilla")
     assert "corners" in pred and pred["corners"]["home"] > 0
+
+
+def test_pseudo_xg_aprende_de_remates_y_tiros_a_puerta():
+    rows = []
+    for i in range(30):
+        rows.append(MatchStats(
+            "Barcelona", "Sevilla",
+            {
+                "shots": (16 + i % 3, 8 + i % 2),
+                "sot": (7 + i % 2, 3),
+                "goals": (2 + i % 2, 1),
+            },
+        ))
+    predictor = StatsPredictor().fit(rows)
+    proxy = predictor.pseudo_xg("Barcelona", "Sevilla")
+    assert proxy is not None and proxy["n"] == 60
+    assert proxy["home"] > proxy["away"] > 0
+    assert 0 < proxy["weight"] <= 0.25
+
+
+def test_negative_binomial_se_activa_con_sobredispersion():
+    rows = [
+        MatchStats("A", "B", {"corners": (value, 1)})
+        for value in ([0, 1, 2, 18, 20] * 5)
+    ]
+    predictor = StatsPredictor().fit(rows)
+    market = predictor.market("A", "B", "corners", "total", 9.5)
+    assert market["distribution"] == "negative-binomial"
+    assert market["dispersion"] > 1.05

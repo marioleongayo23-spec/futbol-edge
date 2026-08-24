@@ -110,6 +110,7 @@ function Resumen({ matches, onOpen, goto, favs, onTeam }) {
     return i < 0 ? Math.max(0, days.length - 1) : i;
   }, [days]);
   const [idx, setIdx] = useState(startIdx);
+  const [renderedAt] = useState(() => Date.now());
 
   const day = days[idx];
   const dayMatches = useMemo(() => matches.filter((m) => m.date === day).sort((a, b) => (a.kickoff || "").localeCompare(b.kickoff || "")), [matches, day]);
@@ -128,13 +129,12 @@ function Resumen({ matches, onOpen, goto, favs, onTeam }) {
   const dayValue = useMemo(() => topValueBets(dayMatches, 3), [dayMatches]);
   const favList = useMemo(() => {
     if (!favs || !favs.size) return [];
-    const now = Date.now();
     return [...favs].map((t) => {
       const fx = matches.filter((m) => m.home === t || m.away === t).sort((a, b) => (a.kickoff || "").localeCompare(b.kickoff || ""));
-      const next = fx.find((m) => new Date(m.kickoff).getTime() >= now) || fx[fx.length - 1];
+      const next = fx.find((m) => new Date(m.kickoff).getTime() >= renderedAt) || fx[fx.length - 1];
       return { team: t, m: next };
     }).filter((x) => x.m);
-  }, [favs, matches]);
+  }, [favs, matches, renderedAt]);
 
   const win = 9;
   const start = Math.max(0, Math.min(idx - 4, Math.max(0, days.length - win)));
@@ -564,7 +564,7 @@ const METRIC_INFO = [
   ["log_loss", "LogLoss", "Pérdida logarítmica (menor = mejor)"],
   ["accuracy", "Acierto", "% de signos acertados (mayor = mejor)"],
 ];
-const PRED_LABEL = { baseline: "Base (tasas)", elo: "Elo", dixon_coles: "Dixon-Coles" };
+const PRED_LABEL = { baseline: "Base (tasas)", elo: "Elo", dixon_coles: "Dixon-Coles", ensemble: "Ensemble calibrado" };
 
 function ModelReport({ model }) {
   const ligas = model ? Object.keys(model) : [];
@@ -573,6 +573,7 @@ function ModelReport({ model }) {
   const rep = model[liga] || model[ligas[0]];
   const preds = rep.predictors || {};
   const names = Object.keys(preds);
+  const ensembleActive = Boolean(rep.ensemble?.accepted);
   // Mejor (menor) por métrica descendente-mala; para accuracy, mayor es mejor.
   const best = {};
   for (const [key] of METRIC_INFO) {
@@ -594,7 +595,7 @@ function ModelReport({ model }) {
         </div>
         <div className="mut" style={{ margin: "4px 0 10px" }}>
           Validación honesta: se entrena solo con el pasado y se predice cada jornada.
-          {" "}<b>{rep.n_predicciones}</b> predicciones evaluadas esta temporada.
+          {" "}<b>{rep.n_predicciones}</b> predicciones evaluadas{rep.evaluation_season ? ` en la temporada ${rep.evaluation_season}/${String(rep.evaluation_season + 1).slice(-2)}` : " esta temporada"}.
         </div>
         <div className="tbl-wrap">
           <table className="tbl-mk metrics-tbl">
@@ -606,8 +607,8 @@ function ModelReport({ model }) {
             </thead>
             <tbody>
               {names.map((n) => (
-                <tr key={n} className={n === "dixon_coles" ? "row-live" : ""}>
-                  <td className="tl">{PRED_LABEL[n] || n}{n === "dixon_coles" && <span className="tag-live">EN USO</span>}</td>
+                <tr key={n} className={n === "ensemble" && ensembleActive ? "row-live" : ""}>
+                  <td className="tl">{PRED_LABEL[n] || n}{n === "ensemble" && <span className="tag-live">{ensembleActive ? "EN USO" : "CANDIDATO"}</span>}</td>
                   {METRIC_INFO.map(([k]) => {
                     const v = preds[n][k];
                     const isBest = v != null && best[k] != null && v === best[k];
@@ -652,8 +653,8 @@ function AccuracyPanel({ acc }) {
     <div className="card">
       <div className="lbl">Precisión histórica (predicho vs real)</div>
       <div className="mut" style={{ margin: "2px 0 12px" }}>
-        Sobre <b>{acc.n_partidos}</b> partidos ya jugados. El error medio por métrica dice
-        en qué acierta el modelo y dónde se desvía — es lo que usamos para mejorar.
+        Sobre <b>{acc.n_partidos}</b> snapshots guardados antes del saque inicial. El error medio por métrica dice
+        en qué acierta el modelo y dónde se desvía — nunca se recalcula con el resultado conocido.
       </div>
       <div className="stat-tiles" style={{ marginBottom: 6 }}>
         <div className="stat">
@@ -701,7 +702,7 @@ function Datos({ data }) {
       <div className="card">
         <div className="lbl">Motor y estado</div>
         <div className="chips">
-          <span className="chip">Motor <b>{data.engine || "dixon-coles"} + Elo</b></span>
+          <span className="chip">Motor <b>{data.engine === "ensemble" ? "Dixon-Coles + Elo calibrado" : (data.engine || "Dixon-Coles")}</b></span>
           <span className="chip">Schema <b>v{data.schema_version}</b></span>
           <span className="chip">Temporada <b>{data.season}</b></span>
           <span className="chip">Generado <b>{new Date(data.generated_at).toLocaleString("es-ES")}</b></span>
@@ -718,9 +719,10 @@ function Datos({ data }) {
       <div className="card">
         <div className="lbl">Modelos activos</div>
         <ul className="mdl">
-          <li><b>Dixon-Coles</b> con ponderación temporal y corrección de resultados bajos.</li>
-          <li><b>Elo</b> dinámico para fuerza de equipos.</li>
-          <li><b>Matriz de goles Poisson</b> en cliente → cualquier mercado (over/under, hándicap, BTTS, marcador exacto).</li>
+          <li><b>Ensemble Dixon-Coles + Elo</b> con pesos y temperatura aprendidos sobre predicciones walk-forward.</li>
+          <li><b>Pseudo-xG gratuito</b> a partir de remates y tiros a puerta, regularizado y limitado para evitar saltos.</li>
+          <li><b>Poisson / Negative Binomial</b> según la dispersión real de cada mercado de córners, tarjetas y remates.</li>
+          <li><b>Snapshots 00:00 y 10:00</b>: cada predicción queda congelada antes del partido para medirla sin leakage.</li>
           <li><b>Calibración con el mercado</b>: con pocas jornadas jugadas la probabilidad se mezcla con la del mercado (sin margen) y va pesando más el modelo según avanza la liga. Evita edges inflados.</li>
           <li><b>Cara a cara (h2h)</b>: enfrentamientos directos pasados en el detalle del partido.</li>
           <li><b>Value</b>: edge = prob·cuota − 1 (con la prob. calibrada), staking con Kelly fraccionado.</li>
@@ -988,7 +990,7 @@ export default function App() {
           <div className="cal-card">
             <div className="cal-h">Calendario <b className="value-yes">conectado</b></div>
             <div className="cal-bar"><span /></div>
-            <div className="cal-sub">Fuente: {data?.data_sources?.fixtures || "Calendario verificado"}<br />Motor: {data?.engine || "Dixon-Coles"} + Elo</div>
+            <div className="cal-sub">Fuente: {data?.data_sources?.fixtures || "Calendario verificado"}<br />Motor: {data?.engine === "ensemble" ? "Dixon-Coles + Elo calibrado" : (data?.engine || "Dixon-Coles")}</div>
           </div>
           <div className="user">
             <div className="avatar">{userName.slice(0, 2).toUpperCase()}</div>
