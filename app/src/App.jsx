@@ -695,7 +695,7 @@ function AccuracyPanel({ acc }) {
 function Datos({ data }) {
   const ds = data.data_sources || {};
   const ageH = feedAgeHours(data);
-  const perf = data.performance;
+  const perf = data.performance || { overall: { n: 0 }, by_market: [], by_league: [], weak_segments: [] };
   const audit = data.content_audit;
   const usage = data.ai_usage;
   const metricRows = [
@@ -714,7 +714,7 @@ function Datos({ data }) {
         </div>
         {(audit?.incomplete || []).map((item) => <div className="note value-no" key={item.id}>{item.partido}: falta {item.missing.join(", ")}</div>)}
       </div>
-      {perf && <div className="card">
+      <div className="card">
         <div className="lbl">Rendimiento real del modelo</div>
         <div className="chips">
           <span className="chip">Muestra <b>{perf.overall?.n ?? 0}</b></span>
@@ -729,8 +729,8 @@ function Datos({ data }) {
           </table>
         </div>)}
         {(perf.weak_segments || []).length > 0 && <div className="note value-no">Segmentos a vigilar: {perf.weak_segments.map((row) => `${row.segment} (${row.roi}% ROI, n=${row.n})`).join(" · ")}</div>}
-        <div className="mut" style={{ marginTop: 8 }}>{perf.method}</div>
-      </div>}
+        {perf.overall?.n ? <div className="mut" style={{ marginTop: 8 }}>{perf.method}</div> : <div className="note" style={{ marginTop: 8 }}>Aún sin muestra válida: el panel se activará cuando terminen partidos que ya tengan snapshot prepartido, sin reconstruir predicciones a posteriori.</div>}
+      </div>
       <AccuracyPanel acc={data.accuracy} />
       <ModelReport model={data.model} />
       <div className="card">
