@@ -10,7 +10,9 @@ import os
 from pathlib import Path
 import tempfile
 
-_TOP_LEVEL_LKG = ("quiniela", "players", "model", "market_calibration", "accuracy")
+_TOP_LEVEL_LKG = (
+    "quiniela", "players", "model", "market_calibration", "accuracy", "performance",
+)
 _MATCH_LKG = (
     "probs",
     "model_probs",
@@ -75,6 +77,7 @@ def preserve_last_known_good(candidate: dict, previous: dict | None) -> dict:
         old = old_by_id.get(match.get("id")) or old_by_key.get(match_identity(match))
         if not old:
             continue
+        restored_fields = set()
         for field in _MATCH_LKG:
             if (
                 candidate.get("schema_version", 0) >= 5
@@ -85,6 +88,7 @@ def preserve_last_known_good(candidate: dict, previous: dict | None) -> dict:
                 continue
             if _missing(match.get(field)) and not _missing(old.get(field)):
                 match[field] = deepcopy(old[field])
+                restored_fields.add(field)
         # Los feeds previos no guardaban el proveedor real. Se conservan como
         # LKG, pero se etiquetan honestamente como caché anterior en vez de
         # atribuirlos a Gemini cuando quizá ya procedían del fallback.
@@ -92,6 +96,10 @@ def preserve_last_known_good(candidate: dict, previous: dict | None) -> dict:
             match["preview_meta"] = {"provider": "IA (caché anterior)", "legacy": True}
         if match.get("alineacion") and not match["alineacion"].get("provider"):
             match["alineacion"]["provider"] = "IA (caché anterior)"
+        if "alineacion" in restored_fields and match.get("alineacion"):
+            match["alineacion"]["cache_status"] = "recuperado_de_cache"
+        if "preview" in restored_fields and match.get("preview_meta"):
+            match["preview_meta"]["cache_status"] = "recuperado_de_cache"
         # Conserva el motor predictivo si acabamos de recuperar su predicción.
         if match.get("probs") and match.get("engine") in {None, "calendar-only", "datos-insuficientes"}:
             if old.get("engine") in {"dixon-coles", "resultado-real"}:
@@ -103,7 +111,7 @@ def _finite(value) -> bool:
     return isinstance(value, (int, float)) and math.isfinite(value)
 
 
-def _ai_complete(match: dict, issues: list[str]) -> None:
+def _ai_complete(match: dict, issues: list[str], schema_version: int = 5) -> None:
     preview = match.get("preview")
     if preview:
         if len(str(preview).split()) < 90:
@@ -130,9 +138,13 @@ def _ai_complete(match: dict, issues: list[str]) -> None:
         issues.append(f"once_sin_provider:{match.get('id')}")
     if lineup.get("provider") != "IA (caché anterior)":
         required_props = {"jugador", "g", "a", "r", "rp", "fc", "fr", "t"}
+        if schema_version >= 6:
+            required_props.update({"min", "tit"})
         rows = (lineup.get("clave_local") or []) + (lineup.get("clave_visitante") or [])
         if any(not isinstance(row, dict) or not required_props.issubset(row) for row in rows):
             issues.append(f"props_sin_campos_ampliados:{match.get('id')}")
+    if schema_version >= 6 and lineup.get("status") not in {"confirmado", "probable", "estimado"}:
+        issues.append(f"once_sin_estado:{match.get('id')}")
 
 
 def evaluate_feed(candidate: dict, previous: dict | None = None) -> dict:
@@ -198,7 +210,7 @@ def evaluate_feed(candidate: dict, previous: dict | None = None) -> dict:
             issues.append(f"xg_invalido:{match_id}")
         preview_count += int(bool(match.get("preview")))
         lineup_count += int(bool(match.get("alineacion")))
-        _ai_complete(match, issues)
+        _ai_complete(match, issues, int(candidate.get("schema_version") or 0))
         if candidate.get("schema_version", 0) >= 4 and generated_at and probs and not match.get("finished"):
             try:
                 delta = datetime.fromisoformat(str(match.get("kickoff"))) - generated_at

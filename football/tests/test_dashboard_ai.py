@@ -32,7 +32,7 @@ def test_force_ai_manual_salva_ventana(monkeypatch):
 
 
 def test_preview_publica_provider_real(monkeypatch):
-    now = datetime(2026, 8, 24, 10, tzinfo=MADRID)
+    now = datetime(2026, 8, 24, 10, 15, tzinfo=MADRID)
     match = _match(now)
     monkeypatch.delenv("FORCE_AI", raising=False)
     monkeypatch.setattr(client, "available", lambda: True)
@@ -45,7 +45,7 @@ def test_preview_publica_provider_real(monkeypatch):
 
 
 def test_fallo_lineups_solo_intenta_una_vez_por_ventana(monkeypatch):
-    now = datetime(2026, 8, 24, 10, tzinfo=MADRID)
+    now = datetime(2026, 8, 24, 10, 15, tzinfo=MADRID)
     match = _match(now)
     calls = []
     monkeypatch.delenv("FORCE_AI", raising=False)
@@ -89,7 +89,7 @@ def test_fuera_de_ventana_rellena_once_con_plantilla_gratuita(monkeypatch):
     assert set(match["alineacion"]["clave_local"][0]) >= {"jugador", "g", "a", "r", "rp", "fc", "fr", "t"}
 
 
-def test_backfill_ia_fuera_de_ventana_solo_si_once_sigue_vacio(monkeypatch):
+def test_fuera_de_ventana_no_consume_ia_si_falta_once(monkeypatch):
     now = datetime(2026, 8, 24, 15, tzinfo=MADRID)
     match = _match(now)
     props = [{"jugador": f"Clave {i}", "g": .2, "a": .1, "r": 2, "rp": 1,
@@ -105,7 +105,8 @@ def test_backfill_ia_fuera_de_ventana_solo_si_once_sigue_vacio(monkeypatch):
     }
     monkeypatch.delenv("FORCE_AI", raising=False)
     monkeypatch.setattr(client, "available", lambda: True)
-    monkeypatch.setattr(lineups, "fetch_lineups", lambda _query: generated)
+    calls = []
+    monkeypatch.setattr(lineups, "fetch_lineups", lambda query: calls.append(query) or generated)
     _attach_lineups([match], now, squads={})
-    assert match["alineacion"]["provider"] == "Groq"
-    assert match["alineacion"]["emergency_backfill"] is True
+    assert "alineacion" not in match
+    assert calls == []

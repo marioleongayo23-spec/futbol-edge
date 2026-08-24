@@ -695,8 +695,42 @@ function AccuracyPanel({ acc }) {
 function Datos({ data }) {
   const ds = data.data_sources || {};
   const ageH = feedAgeHours(data);
+  const perf = data.performance;
+  const audit = data.content_audit;
+  const usage = data.ai_usage;
+  const metricRows = [
+    ["Mercado", perf?.by_market], ["Competición", perf?.by_league],
+  ];
   return (
     <>
+      <div className="card">
+        <div className="row-between"><div className="lbl">Control de completitud</div><span className={"pill " + (audit?.status === "ok" ? "y" : "")}>{audit?.status === "ok" ? "completo" : "revisar"}</span></div>
+        <div className="chips">
+          <span className="chip">Partidos del día <b>{audit?.matches_today ?? 0}</b></span>
+          <span className="chip">Completos <b>{audit?.complete ?? 0}</b></span>
+          <span className="chip">Reintentos selectivos <b>{audit?.selective_retries ?? 0}</b></span>
+          <span className="chip">Onces oficiales nuevos <b>{audit?.official_lineup_updates ?? 0}</b></span>
+          {usage && <span className="chip">IA diaria <b>{usage.requests}/{usage.budget}</b></span>}
+        </div>
+        {(audit?.incomplete || []).map((item) => <div className="note value-no" key={item.id}>{item.partido}: falta {item.missing.join(", ")}</div>)}
+      </div>
+      {perf && <div className="card">
+        <div className="lbl">Rendimiento real del modelo</div>
+        <div className="chips">
+          <span className="chip">Muestra <b>{perf.overall?.n ?? 0}</b></span>
+          <span className="chip">Acierto <b>{perf.overall?.hit_rate ?? "—"}%</b></span>
+          <span className="chip">ROI <b className={(perf.overall?.roi ?? 0) >= 0 ? "value-yes" : "value-no"}>{perf.overall?.roi ?? "—"}%</b></span>
+          {perf.initial_vs_10_15 && <span className="chip">10:15 vs inicial <b className={perf.initial_vs_10_15.improved ? "value-yes" : "value-no"}>{perf.initial_vs_10_15.delta > 0 ? "+" : ""}{perf.initial_vs_10_15.delta} Brier</b></span>}
+        </div>
+        {metricRows.map(([title, rows]) => (rows || []).length > 0 && <div key={title} className="tbl-wrap" style={{ marginTop: 10 }}>
+          <div className="mut">Por {title.toLowerCase()}</div>
+          <table className="tbl-mk"><thead><tr><th className="tl">{title}</th><th>N</th><th>Acierto</th><th>ROI</th></tr></thead>
+            <tbody>{rows.map((row) => <tr key={row.label}><td className="tl">{row.label}</td><td>{row.n}</td><td>{row.hit_rate ?? "—"}%</td><td className={(row.roi ?? 0) >= 0 ? "value-yes" : "value-no"}>{row.roi ?? "—"}%</td></tr>)}</tbody>
+          </table>
+        </div>)}
+        {(perf.weak_segments || []).length > 0 && <div className="note value-no">Segmentos a vigilar: {perf.weak_segments.map((row) => `${row.segment} (${row.roi}% ROI, n=${row.n})`).join(" · ")}</div>}
+        <div className="mut" style={{ marginTop: 8 }}>{perf.method}</div>
+      </div>}
       <AccuracyPanel acc={data.accuracy} />
       <ModelReport model={data.model} />
       <div className="card">
@@ -722,7 +756,7 @@ function Datos({ data }) {
           <li><b>Ensemble Dixon-Coles + Elo</b> con pesos y temperatura aprendidos sobre predicciones walk-forward.</li>
           <li><b>Pseudo-xG gratuito</b> a partir de remates y tiros a puerta, regularizado y limitado para evitar saltos.</li>
           <li><b>Poisson / Negative Binomial</b> según la dispersión real de cada mercado de córners, tarjetas y remates.</li>
-          <li><b>Snapshots 00:00 y 10:00</b>: cada predicción queda congelada antes del partido para medirla sin leakage.</li>
+          <li><b>Snapshots 00:15 y 10:15</b>: cada predicción queda congelada antes del partido para medirla sin leakage.</li>
           <li><b>Calibración con el mercado</b>: con pocas jornadas jugadas la probabilidad se mezcla con la del mercado (sin margen) y va pesando más el modelo según avanza la liga. Evita edges inflados.</li>
           <li><b>Cara a cara (h2h)</b>: enfrentamientos directos pasados en el detalle del partido.</li>
           <li><b>Value</b>: edge = prob·cuota − 1 (con la prob. calibrada), staking con Kelly fraccionado.</li>
@@ -1012,6 +1046,7 @@ export default function App() {
 
         <main className="content">
           {data && isStale(data) && <div className="banner warn">⚠️ El feed puede estar desactualizado (hace {Math.round(feedAgeHours(data))} h). El cron lo refresca cada 15 min.</div>}
+          {data?.alerts?.some((item) => item.severity === "critical") && <div className="banner warn">⚠️ {data.alerts.filter((item) => item.severity === "critical").map((item) => item.message).join(" · ")}</div>}
           {data?._fromFallback && <div className="banner">Mostrando copia local del feed (no se pudo cargar el remoto).</div>}
           {err && <div className="state">No se pudo cargar el feed.<br />{err}</div>}
           {!data && !err && <Skeletons n={5} />}

@@ -118,17 +118,19 @@ function TeamHalf({ xi, positions, side, color }) {
   );
 }
 
-function PropsTable({ title, clave }) {
+function PropsTable({ title, clave, best }) {
   if (!(clave || []).length) return null;
+  const highlighted = new Set((best || []).map((item) => item.jugador));
   return (
     <div className="xi-props">
       <div className="xi-props-h">{title} · jugadores clave</div>
       <table className="props-tbl">
-        <thead><tr><th className="tl">Jugador</th><th title="Goles">G</th><th title="Asistencias">A</th><th title="Remates">R</th><th title="Remates a puerta">AP</th><th title="Faltas cometidas">FC</th><th title="Faltas recibidas">FR</th><th title="Tarjetas">T</th></tr></thead>
+        <thead><tr><th className="tl">Jugador</th><th title="Minutos previstos">MIN</th><th title="Probabilidad de ser titular">TIT</th><th title="Goles">G</th><th title="Asistencias">A</th><th title="Remates">R</th><th title="Remates a puerta">AP</th><th title="Faltas cometidas">FC</th><th title="Faltas recibidas">FR</th><th title="Tarjetas">T</th></tr></thead>
         <tbody>
           {clave.map((p, i) => (
-            <tr key={i}>
-              <td className="tl">{p.jugador}</td>
+            <tr key={i} className={highlighted.has(p.jugador) ? "best-prop" : ""}>
+              <td className="tl">{highlighted.has(p.jugador) ? "★ " : ""}{p.jugador}</td>
+              <td>{p.min ?? "–"}</td><td>{p.tit != null ? `${Math.round(p.tit * 100)}%` : "–"}</td>
               <td>{p.g ?? "–"}</td><td>{p.a ?? "–"}</td><td>{p.r ?? "–"}</td><td>{p.rp ?? "–"}</td><td>{p.fc ?? p.f ?? "–"}</td><td>{p.fr ?? "–"}</td><td>{p.t ?? "–"}</td>
             </tr>
           ))}
@@ -138,13 +140,40 @@ function PropsTable({ title, clave }) {
   );
 }
 
+function Availability({ title, rows, legacy }) {
+  const items = (rows || []).length ? rows : (legacy || []).map((detail) => ({ detail }));
+  if (!items.length) return null;
+  return (
+    <div className="xi-bajas">
+      <b>{title}:</b>
+      {items.map((item, index) => (
+        <div key={index} style={{ marginTop: 3 }}>
+          {item.detalle || item.jugador}
+          {item.estado && <span className="dim"> · {item.estado}</span>}
+          {item.source && <span className="dim"> · {item.source}</span>}
+          {item.source_updated_at && <span className="dim"> · {new Date(item.source_updated_at).toLocaleString("es-ES")}</span>}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /* Once probable sobre el campo + bajas + jugadores clave con props (IA). */
 function Alineacion({ m, a }) {
   const provider = a.provider || a.fuente || "IA";
   const completeness = a.quality?.score != null ? ` · completitud ${Math.round(a.quality.score * 100)}%` : "";
+  const status = a.status || (provider === "Motor estadístico local" ? "estimado" : "probable");
+  const updated = a.source_updated_at || a.generated_at || a.ts;
+  const isOfficial = status === "confirmado";
   return (
     <div className="card">
-      <div className="lbl">👥 Once probable</div>
+      <div className="row-between">
+        <div className="lbl">👥 Once {status}</div>
+        <div className="chips">
+          <span className={"pill " + (isOfficial ? "y" : "")}>{status}</span>
+          {a.cache_status && <span className="chip">recuperado de caché</span>}
+        </div>
+      </div>
       <div className="pitch">
         <div className="pitch-names">
           <span>{m.home}{a.formacion_local ? ` · ${a.formacion_local}` : ""}</span>
@@ -157,18 +186,23 @@ function Alineacion({ m, a }) {
           <TeamHalf xi={a.visitante} positions={a.posiciones_visitante} side="away" color="var(--blue)" />
         </div>
       </div>
-      {((a.bajas_local || []).length > 0 || (a.bajas_visitante || []).length > 0) && (
+      {((a.bajas_local || []).length > 0 || (a.bajas_visitante || []).length > 0 || (a.disponibilidad_local || []).length > 0 || (a.disponibilidad_visitante || []).length > 0) && (
         <div className="xi-grid" style={{ marginTop: 10 }}>
-          <div className="xi-bajas">{(a.bajas_local || []).length ? <><b>Bajas {m.home}:</b> {a.bajas_local.join(", ")}</> : null}</div>
-          <div className="xi-bajas">{(a.bajas_visitante || []).length ? <><b>Bajas {m.away}:</b> {a.bajas_visitante.join(", ")}</> : null}</div>
+          <Availability title={`Disponibilidad ${m.home}`} rows={a.disponibilidad_local} legacy={a.bajas_local} />
+          <Availability title={`Disponibilidad ${m.away}`} rows={a.disponibilidad_visitante} legacy={a.bajas_visitante} />
+        </div>
+      )}
+      {(a.best_props || []).length > 0 && (
+        <div className="chips" style={{ marginTop: 10 }}>
+          {(a.best_props || []).map((item) => <span className="chip" key={`${item.lado}-${item.jugador}`} title="Ventaja estadística interna; no incluye cuota de casa">★ {item.jugador} · {item.motivo}</span>)}
         </div>
       )}
       <div className="xi-grid" style={{ marginTop: 10 }}>
-        <PropsTable title={m.home} clave={a.clave_local} />
-        <PropsTable title={m.away} clave={a.clave_visitante} />
+        <PropsTable title={m.home} clave={a.clave_local} best={a.best_props} />
+        <PropsTable title={m.away} clave={a.clave_visitante} best={a.best_props} />
       </div>
       <p className="note" style={{ color: "var(--muted)", marginTop: 6 }}>
-        Estimación generada por {provider}{completeness} — G goles · A asist. · R remates · AP a puerta · FC faltas cometidas · FR recibidas · T tarjetas. No son datos oficiales; verifica antes de apostar.
+        {isOfficial ? "Once oficial" : "Estimación"} · fuente {provider}{updated ? ` · actualizada ${new Date(updated).toLocaleString("es-ES")}` : ""}{completeness}. Props: MIN minutos · TIT prob. de inicio · G goles · A asist. · R remates · AP a puerta · FC/FR faltas · T tarjetas. {!isOfficial && "La alineación todavía no es oficial; verifica antes de apostar."}
       </p>
     </div>
   );
@@ -303,7 +337,7 @@ export default function MatchDetail({ m, bankroll, onBack, onTeam, players }) {
           {cd && <span className="countdown">⏱ {cd}</span>}
           {conf && !m.finished && (
             <span className="chip" title={`Confianza ${conf.label} · favorito al ${conf.mx}% · desacuerdo DC/Elo ${(conf.disagreement * 100).toFixed(1)} pp`}>
-              Confianza <span className="conf-stars">{[1, 2, 3].map((i) => <span key={i} className={i <= conf.stars ? "on" : "off"}>★</span>)}</span>
+              Confianza {conf.score != null ? <b>{conf.score}/100 </b> : null}<span className="conf-stars">{[1, 2, 3].map((i) => <span key={i} className={i <= conf.stars ? "on" : "off"}>★</span>)}</span>
             </span>
           )}
           {snapshot?.generated_at && <span className="chip" title="Snapshot inmutable utilizado para evaluar el modelo">Predicción <b>{snapshot.window || new Date(snapshot.generated_at).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}</b></span>}
@@ -335,6 +369,16 @@ export default function MatchDetail({ m, bankroll, onBack, onTeam, players }) {
             <p key={i} style={{ margin: "0 0 8px", lineHeight: 1.55, color: "var(--text)" }}>{par}</p>
           ))}
           <p className="note" style={{ color: "var(--muted)", marginTop: 4 }}>Redactado por {m.preview_meta?.provider || "IA"} a partir de los números del modelo{m.preview_meta?.quality != null ? ` · calidad ${Math.round(m.preview_meta.quality * 100)}%` : ""}. No es información de fuentes; interpreta los datos.</p>
+        </div>
+      )}
+
+      {(m.prediction_factors || []).length > 0 && (
+        <div className="card">
+          <div className="lbl">Factores del pronóstico</div>
+          {(m.prediction_factors || []).map((factor) => (
+            <div className="kv" key={factor.factor}><span>{factor.factor} <span className="dim">· {factor.detail}</span></span><b>{factor.impact}</b></div>
+          ))}
+          <p className="note" style={{ color: "var(--muted)", marginTop: 6 }}>Las bajas verificadas reducen la confianza. No cambian artificialmente el marcador si falta una valoración fiable del impacto del jugador.</p>
         </div>
       )}
 

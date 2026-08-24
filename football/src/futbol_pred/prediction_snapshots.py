@@ -95,7 +95,7 @@ def apply_prediction_snapshots(
     force: bool = False,
     max_history: int = 8,
 ) -> None:
-    """Congela producción y solo crea revisiones 00:00/10:00 para el día.
+    """Congela producción y solo crea revisiones 00:15/10:15 para el día.
 
     En la primera ejecución se crea una referencia para todos los próximos
     partidos, de modo que nunca desaparezca una predicción. A partir de ahí solo
@@ -121,9 +121,9 @@ def apply_prediction_snapshots(
         kickoff = _parse(match.get("kickoff"))
         same_day = bool(kickoff and kickoff.astimezone(MADRID).date() == now.date())
         before_kickoff = kickoff is None or now < kickoff.astimezone(MADRID)
-        in_window = now.hour in {0, 10}
+        in_window = now.hour in {0, 10} and 15 <= now.minute < 45
         has_previous = bool(history or old_current)
-        window_label = f"{now.hour:02d}:00"
+        window_label = f"{now.hour:02d}:15"
         window_already_captured = any(
             isinstance(item, dict)
             and item.get("window") == window_label

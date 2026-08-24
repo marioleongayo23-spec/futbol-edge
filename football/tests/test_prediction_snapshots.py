@@ -43,8 +43,8 @@ def test_ventana_de_las_diez_crea_revision_del_partido_del_dia():
     old = _match([50, 30, 20])
     apply_prediction_snapshots([old], [], datetime(2026, 8, 23, 15, tzinfo=MADRID))
     current = _match([55, 27, 18])
-    apply_prediction_snapshots([current], [old], datetime(2026, 8, 24, 10, tzinfo=MADRID))
-    assert current["prediction_snapshot"]["window"] == "10:00"
+    apply_prediction_snapshots([current], [old], datetime(2026, 8, 24, 10, 15, tzinfo=MADRID))
+    assert current["prediction_snapshot"]["window"] == "10:15"
     assert current["probs"] == [55, 27, 18]
     assert len(current["prediction_history"]) == 2
 
@@ -53,9 +53,9 @@ def test_segundo_cron_de_la_misma_hora_no_reescribe_snapshot():
     old = _match([50, 30, 20])
     apply_prediction_snapshots([old], [], datetime(2026, 8, 23, 15, tzinfo=MADRID))
     ten = _match([55, 27, 18])
-    apply_prediction_snapshots([ten], [old], datetime(2026, 8, 24, 10, 0, tzinfo=MADRID))
+    apply_prediction_snapshots([ten], [old], datetime(2026, 8, 24, 10, 15, tzinfo=MADRID))
     repeated = _match([80, 10, 10])
-    apply_prediction_snapshots([repeated], [ten], datetime(2026, 8, 24, 10, 15, tzinfo=MADRID))
+    apply_prediction_snapshots([repeated], [ten], datetime(2026, 8, 24, 10, 30, tzinfo=MADRID))
     assert repeated["probs"] == [55, 27, 18]
     assert len(repeated["prediction_history"]) == 2
 

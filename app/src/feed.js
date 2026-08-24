@@ -1,4 +1,4 @@
-// Carga del feed real (mismo que genera el cron cada 12h) y utilidades.
+// Carga del feed real (resultados cada 15 min; IA/completitud dos veces al día).
 
 export const FEED_URL =
   import.meta.env.VITE_FEED_URL ||
@@ -55,10 +55,10 @@ export function feedAgeHours(data) {
   return (Date.now() - t) / 36e5;
 }
 
-// El cron corre cada 12h; a partir de ~30h lo consideramos potencialmente viejo.
+// El cron de resultados corre cada 15 min; dos horas sin feed ya merecen alerta.
 export function isStale(data) {
   const h = feedAgeHours(data);
-  return h != null && h > 30;
+  return h != null && h > 2;
 }
 
 export const CREST_FALLBACK =
