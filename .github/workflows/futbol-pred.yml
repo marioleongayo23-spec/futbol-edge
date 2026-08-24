@@ -60,9 +60,18 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
           python - <<'PY'
-          import os
+          import os, requests
           k = os.getenv("AI_API_KEY") or os.getenv("GEMINI_API_KEY") or ""
           print(f"[diag] clave IA detectada: {'SÍ, longitud '+str(len(k)) if k else 'NO — define el secret AI_API_KEY o GEMINI_API_KEY'}")
+          if k:
+              m = os.getenv("GEMINI_MODEL", "gemini-2.5-flash-lite")
+              url = f"https://generativelanguage.googleapis.com/v1beta/models/{m}:generateContent"
+              try:
+                  r = requests.post(url, params={"key": k},
+                                    json={"contents": [{"parts": [{"text": "Responde solo: hola"}]}]}, timeout=30)
+                  print(f"[gemini-diag] modelo={m} status={r.status_code} body={r.text[:400]}")
+              except Exception as e:  # noqa: BLE001
+                  print(f"[gemini-diag] error {type(e).__name__}: {e}")
           PY
           python -m futbol_pred.dashboard
           python - <<'PY'
