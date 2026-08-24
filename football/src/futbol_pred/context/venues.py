@@ -9,6 +9,7 @@ import unicodedata
 def _key(value: str) -> str:
     text = unicodedata.normalize("NFKD", str(value or ""))
     text = "".join(char for char in text if not unicodedata.combining(char)).casefold()
+    text = re.sub(r"\b(fc|cf|ca|rc|ud|cd|sd|club|de|la|el|b)\b", " ", text)
     return re.sub(r"[^a-z0-9]", "", text)
 
 
@@ -45,6 +46,7 @@ _VENUES = {
     "Mallorca": ("Son Moix", "Palma", 39.590, 2.630),
     "Malaga": ("La Rosaleda", "Málaga", 36.734, -4.426),
     "Oviedo": ("Carlos Tartiere", "Oviedo", 43.361, -5.870),
+    "Osasuna": ("El Sadar", "Pamplona", 42.796, -1.637),
     "Real Oviedo": ("Carlos Tartiere", "Oviedo", 43.361, -5.870),
     "Deportivo La Coruna": ("Abanca-Riazor", "A Coruña", 43.369, -8.417),
     "Dep La Coruna": ("Abanca-Riazor", "A Coruña", 43.369, -8.417),

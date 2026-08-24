@@ -33,6 +33,9 @@ def test_registro_estadio_resuelve_alias_sin_acentos():
     venue = venue_for("Atlético Madrid")
     assert venue["name"] == "Riyadh Air Metropolitano"
     assert venue["source"].startswith("registro")
+    assert venue_for("CA Osasuna")["name"] == "El Sadar"
+    assert venue_for("Málaga CF")["name"] == "La Rosaleda"
+    assert venue_for("Celta B")["name"] == "Abanca Balaídos"
 
 
 def test_weather_elige_hora_y_etiqueta_calor_sin_modificar_modelo():

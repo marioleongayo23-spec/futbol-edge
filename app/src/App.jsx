@@ -16,12 +16,13 @@ function useTheme() {
     document.documentElement.dataset.theme = theme;
     try { localStorage.setItem("theme", theme); } catch { /* ignore */ }
   }, [theme]);
-  const toggle = () => setTheme((current) => {
+  const toggle = () => {
+    const current = document.documentElement.dataset.theme || theme;
     const next = current === "dark" ? "light" : "dark";
     document.documentElement.dataset.theme = next;
     try { localStorage.setItem("theme", next); } catch { /* ignore */ }
-    return next;
-  });
+    setTheme(next);
+  };
   return [theme, toggle];
 }
 
