@@ -137,6 +137,7 @@ def fixture_payload(
     team_meta: dict | None = None,
     real_stats: dict | None = None,
     odds_map: dict | None = None,
+    closing_odds_map: dict | None = None,
     model_weight: float = 0.6,
     h2h: dict | None = None,
     trends=None,
@@ -192,6 +193,10 @@ def fixture_payload(
             sr = real_stats.get((_canon(fixture.home_team), _canon(fixture.away_team)))
             if sr:
                 payload["statsReal"] = sr
+        if closing_odds_map:
+            closing = closing_odds_map.get((_canon(fixture.home_team), _canon(fixture.away_team)))
+            if closing:
+                payload["closing_odds"] = closing
 
     if model is None:
         return payload
@@ -962,6 +967,7 @@ def build_dashboard(
             real_stats = _real_stats_map(league, season)
             trends = _fit_trends(league, season, train)
             odds_map = _odds_map(league)
+            closing_odds_map = _closing_odds_map(league, season)
             # Peso del modelo vs mercado para calibrar: con pocas jornadas jugadas
             # el modelo va sobreconfiado, así que pesa más el mercado; según avanza
             # la liga, el modelo gana peso. mpt = media de partidos por equipo.
@@ -980,6 +986,7 @@ def build_dashboard(
             matches.extend(
                 fixture_payload(fx, model, generated_at, stats=stats, team_meta=meta,
                                 real_stats=real_stats, odds_map=odds_map,
+                                closing_odds_map=closing_odds_map,
                                 model_weight=model_w, h2h=h2h, trends=trends,
                                 elo=elo, ensemble_params=ensemble_params,
                                 residual_params=residual_params,
@@ -1427,6 +1434,22 @@ def _odds_map(league: str) -> dict:
     except Exception:
         return {}
     return {(_canon(r["home"]), _canon(r["away"])): r["odds"] for r in rows}
+
+
+def _closing_odds_map(league: str, season: int) -> dict:
+    """Cierre histórico real de partidos jugados, separado de las cuotas live."""
+    if league not in ("laliga", "segunda"):
+        return {}
+    try:
+        from .ingest.football_data_uk import FootballDataUKClient
+
+        rows = FootballDataUKClient().get_historical_closing_odds(league, season)
+    except Exception:
+        return {}
+    return {
+        (_canon(row["home"]), _canon(row["away"])): row["closing_odds"]
+        for row in rows
+    }
 
 
 def main() -> int:
