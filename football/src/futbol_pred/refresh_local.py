@@ -28,6 +28,7 @@ from pathlib import Path
 
 from .config import DATA_DIR
 from .dashboard import current_season
+from .feed_quality import write_feed_safely
 
 PLAYERS_PATH = Path(DATA_DIR) / "players.json"
 QUINIELA_PATH = Path(DATA_DIR) / "quiniela.json"
@@ -109,10 +110,14 @@ def refresh_dashboard() -> bool:
     if not payload.get("matches"):
         print("[feed] las fuentes no devolvieron partidos; no se sobrescribe", file=sys.stderr)
         return False
-    _write_json(DASHBOARD_PATH, payload)
+    ok, quality = write_feed_safely(DASHBOARD_PATH, payload)
+    if not ok:
+        print("[feed] guard de calidad: se conserva el último feed bueno · "
+              + ", ".join(quality["issues"][:8]), file=sys.stderr)
+        return False
     c = payload.get("counts", {})
     print(f"[feed] escrito {DASHBOARD_PATH}: {c.get('total', '?')} partidos, "
-          f"{c.get('con_prediccion', '?')} con predicción")
+          f"{c.get('con_prediccion', '?')} con predicción · calidad {quality['score']}")
     return True
 
 

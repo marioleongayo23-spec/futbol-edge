@@ -12,7 +12,18 @@ const FALLBACK_URL = (import.meta.env.BASE_URL || "/") + "dashboard.json";
 async function fetchJson(url) {
   const r = await fetch(url + (url.includes("?") ? "&" : "?") + "t=" + Date.now());
   if (!r.ok) throw new Error("HTTP " + r.status);
-  return r.json();
+  const data = await r.json();
+  if (!isUsableFeed(data)) throw new Error("Feed incompleto o regresivo");
+  return data;
+}
+
+// Segunda barrera: aunque GitHub responda 200, nunca renderizamos un JSON vacío,
+// con campos críticos en blanco o rechazado por el guard del backend.
+export function isUsableFeed(data) {
+  if (!data || !Array.isArray(data.matches) || data.matches.length < 20) return false;
+  if (data.feed_quality && data.feed_quality.valid === false) return false;
+  if (data.counts?.total != null && data.counts.total !== data.matches.length) return false;
+  return data.matches.every((m) => m && m.id && m.home && m.away && m.league && m.kickoff);
 }
 
 export async function loadFeed() {

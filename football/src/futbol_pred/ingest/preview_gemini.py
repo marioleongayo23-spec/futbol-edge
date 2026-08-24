@@ -1,27 +1,16 @@
-"""Previa narrativa de partido (storytelling) con Google Gemini (gratis).
+"""Previa narrativa validada con Gemini → Groq.
 
-Redacta un análisis estilo prensa deportiva premium a partir de los NÚMEROS del
-modelo (probabilidades, xG, estadísticas esperadas, forma, h2h). No inventa
-datos ni da consejos de apuestas: interpreta lo que el modelo ya calculó.
-
-Clave: AI_API_KEY o GEMINI_API_KEY (la misma cuenta gratis de Google AI Studio).
-Si no hay clave o la API falla, devuelve None (el feed sigue sin previa).
-
-Diagnóstico:  python -m futbol_pred.ingest.preview_gemini
+El nombre del módulo se conserva por compatibilidad. La respuesta incluye el
+proveedor real y solo se acepta si cumple unos mínimos de calidad; el dashboard
+decide después si reemplaza o conserva el último resultado bueno.
 """
 
 from __future__ import annotations
 
-import os
-import time
+from dataclasses import dataclass
+import re
 
-import requests
-
-API_KEY = os.getenv("AI_API_KEY") or os.getenv("GEMINI_API_KEY")
-# gemini-2.5-flash-lite: gratis y MUY estable (gemini-flash-latest daba 503s
-# intermitentes y respuestas vacías por 'thinking'). Cambiable por env.
-MODEL = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
-_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+from .ai_client import chat
 
 _SYSTEM = (
     "Eres un redactor de prensa deportiva de primer nivel, en español de España. "
@@ -33,54 +22,81 @@ _SYSTEM = (
 )
 
 
+@dataclass(frozen=True)
+class GeneratedPreview:
+    text: str
+    provider: str
+    model: str
+    quality: float
+
+
 def _prompt(m: dict) -> str:
     probs = m.get("probs") or []
     xg = m.get("xg") or []
-    mk = m.get("markets") or {}
-    st = m.get("stats") or {}
-    def line(k, lab):
-        v = st.get(k)
-        return f"{lab}: {v['home']}-{v['away']}" if v else None
-    stats_txt = " · ".join(filter(None, [
-        line("shots", "remates"), line("corners", "córners"),
-        line("fouls", "faltas"), line("yellows", "amarillas")]))
-    partes = [
+    markets = m.get("markets") or {}
+    stats = m.get("stats") or {}
+
+    def line(key, label):
+        value = stats.get(key)
+        return f"{label}: {value['home']}-{value['away']}" if value else None
+
+    stats_text = " · ".join(filter(None, [
+        line("shots", "remates"),
+        line("sot", "remates a puerta"),
+        line("corners", "córners"),
+        line("fouls", "faltas"),
+        line("yellows", "amarillas"),
+    ]))
+    parts = [
         f"Partido: {m.get('home')} (local) vs {m.get('away')} (visitante).",
         f"Competición: {m.get('league')}, jornada {m.get('matchday')}.",
         f"Probabilidad del modelo — victoria local {probs[0] if probs else '?'}%, "
-        f"empate {probs[1] if len(probs)>1 else '?'}%, victoria visitante "
-        f"{probs[2] if len(probs)>2 else '?'}%.",
-        f"Goles esperados (xG): {xg[0] if xg else '?'} - {xg[1] if len(xg)>1 else '?'}.",
-        f"Marcador más probable: {mk.get('marcador','?')}. "
-        f"Prob. de más de 2.5 goles: {round((mk.get('over_2_5') or 0)*100)}%. "
-        f"Ambos marcan: {round((mk.get('btts') or 0)*100)}%.",
+        f"empate {probs[1] if len(probs) > 1 else '?'}%, victoria visitante "
+        f"{probs[2] if len(probs) > 2 else '?'}%.",
+        f"Goles esperados (xG): {xg[0] if xg else '?'} - {xg[1] if len(xg) > 1 else '?'}.",
+        f"Marcador más probable: {markets.get('marcador', '?')}. "
+        f"Prob. de más de 2.5 goles: {round((markets.get('over_2_5') or 0) * 100)}%. "
+        f"Ambos marcan: {round((markets.get('btts') or 0) * 100)}%.",
     ]
-    if stats_txt:
-        partes.append(f"Estadísticas esperadas (local-visitante): {stats_txt}.")
+    if stats_text:
+        parts.append(f"Estadísticas esperadas (local-visitante): {stats_text}.")
     if m.get("form"):
-        partes.append(f"Forma reciente: {m['form']}.")
+        parts.append(f"Forma reciente: {m['form']}.")
     if m.get("h2h"):
-        partes.append(f"Cara a cara reciente: {m['h2h']}.")
-    return _SYSTEM + "\n\nDatos:\n" + "\n".join(partes) + "\n\nEscribe la previa:"
+        parts.append(f"Cara a cara reciente: {m['h2h']}.")
+    return _SYSTEM + "\n\nDatos:\n" + "\n".join(parts) + "\n\nEscribe la previa:"
 
 
-def generate_preview(m: dict, timeout: int = 40, retries: int = 2) -> str | None:
-    """Genera la previa con la cadena de fallback (Gemini → OpenAI/compatible)."""
-    from .ai_client import chat
+def _validate_preview(text: str, home: str, away: str) -> tuple[str | None, float]:
+    """Limpia y puntúa una previa; nunca acepta texto vacío o de diagnóstico."""
 
-    return chat(_prompt(m), max_tokens=1200, temperature=0.85, timeout=timeout)
+    if not isinstance(text, str):
+        return None, 0.0
+    clean = re.sub(r"^```(?:markdown|text)?\s*|\s*```$", "", text.strip(), flags=re.I)
+    clean = re.sub(r"\n{3,}", "\n\n", clean).strip()
+    words = re.findall(r"\b[\wÁÉÍÓÚÜÑáéíóúüñ'-]+\b", clean)
+    lowered = clean.lower()
+    forbidden = ("no puedo", "como modelo de ia", "json", "```", "error", "undefined")
+    if len(words) < 90 or len(words) > 230 or any(token in lowered for token in forbidden):
+        return None, 0.0
+    if clean.count(".") < 3:
+        return None, 0.0
+    names_present = sum(name.lower() in lowered for name in (home, away) if name)
+    if names_present < 2:
+        return None, 0.0
+    target_score = max(0.0, 1.0 - abs(len(words) - 155) / 155)
+    paragraph_score = 1.0 if "\n\n" in clean else 0.8
+    return clean, round(0.7 * target_score + 0.3 * paragraph_score, 2)
 
 
-def _diagnose() -> None:
-    demo = {
-        "home": "Athletic Club", "away": "Sevilla FC", "league": "LaLiga", "matchday": 2,
-        "probs": [53, 24, 23], "xg": [1.61, 0.96],
-        "markets": {"marcador": "1-0", "over_2_5": 0.47, "btts": 0.49},
-        "stats": {"shots": {"home": 13.6, "away": 8.4}, "corners": {"home": 4.1, "away": 4.3}},
-    }
-    print("clave:", "sí" if API_KEY else "NO (define AI_API_KEY)")
-    print(generate_preview(demo) or "(sin previa)")
+def generate_preview(m: dict, timeout: int = 40, retries: int = 1) -> GeneratedPreview | None:
+    """Genera y valida la previa con la cadena Gemini → Groq."""
 
-
-if __name__ == "__main__":
-    _diagnose()
+    del retries  # una llamada por proveedor; el cron controla el siguiente intento.
+    response = chat(_prompt(m), max_tokens=1200, temperature=0.75, timeout=timeout)
+    if not response:
+        return None
+    text, quality = _validate_preview(response.text, str(m.get("home", "")), str(m.get("away", "")))
+    if not text:
+        return None
+    return GeneratedPreview(text, response.provider, response.model, quality)
