@@ -379,6 +379,7 @@ def build_dashboard(
         "quiniela": _load_quiniela_oficial(),
         "players": _load_players(season),
         "model": _load_model_report(season),
+        "accuracy": _aggregate_accuracy(matches),
         "engine": "dixon-coles" if any(item["engine"] == "dixon-coles" for item in matches) else "calendar-only",
         "data_sources": {
             "fixtures": "football-data.org (LaLiga) · football-data.co.uk (Segunda)",
@@ -398,6 +399,64 @@ def build_dashboard(
         "matches": matches,
         "errors": errors,
     }
+
+
+def _aggregate_accuracy(matches: list[dict]) -> dict | None:
+    """Bucle de mejora: acierto histórico del modelo comparando lo estimado con lo
+    realmente ocurrido en los partidos ya jugados. % de acierto 1X2 y error medio
+    (MAE) + sesgo por métrica (córners, remates, faltas...), leyendo los campos que
+    ya lleva cada partido jugado (probs/result y stats/statsReal)."""
+    labels = {"shots": "Remates", "sot": "Tiros a puerta", "corners": "Córners",
+              "fouls": "Faltas", "yellows": "Amarillas"}
+    hits = n_sign = 0
+    per: dict = {}
+    for m in matches:
+        res = m.get("result")
+        if not m.get("finished") or not res:
+            continue
+        # Acierto 1X2: favorito del modelo vs signo real.
+        probs = m.get("probs")
+        if probs and len(probs) == 3:
+            fav = ["1", "X", "2"][max(range(3), key=lambda i: probs[i])]
+            real = _sign(res[0], res[1])
+            n_sign += 1
+            hits += int(fav == real)
+        # Error por métrica: esperado (stats) vs real (statsReal).
+        pred, real_stats = m.get("stats"), m.get("statsReal")
+        if not pred or not real_stats:
+            continue
+        for key in labels:
+            if key not in pred or key not in real_stats:
+                continue
+            try:
+                pred_total = float(pred[key]["total"])
+                real_total = float(real_stats[key][0]) + float(real_stats[key][1])
+            except (KeyError, TypeError, ValueError, IndexError):
+                continue
+            d = per.setdefault(key, {"abs": 0.0, "signed": 0.0, "n": 0})
+            d["abs"] += abs(real_total - pred_total)
+            d["signed"] += real_total - pred_total
+            d["n"] += 1
+    if not n_sign and not per:
+        return None
+    metrics = [
+        {"key": k, "label": labels[k], "n": d["n"],
+         "mae": round(d["abs"] / d["n"], 2),
+         "sesgo": round(d["signed"] / d["n"], 2)}
+        for k, d in per.items() if d["n"]
+    ]
+    metrics.sort(key=lambda x: x["mae"])
+    return {
+        "n_partidos": sum(1 for m in matches if m.get("finished") and m.get("result")),
+        "aciertos_1x2": hits,
+        "n_1x2": n_sign,
+        "pct_1x2": round(100 * hits / n_sign) if n_sign else None,
+        "metrics": metrics,
+    }
+
+
+def _sign(h: int, a: int) -> str:
+    return "1" if h > a else ("X" if h == a else "2")
 
 
 def _load_model_report(season: int) -> dict | None:

@@ -644,11 +644,59 @@ function ModelReport({ model }) {
   );
 }
 
+/* Precisión histórica: acierto 1X2 y error medio por métrica (bucle de mejora). */
+function AccuracyPanel({ acc }) {
+  if (!acc || !acc.n_partidos) return null;
+  const metrics = acc.metrics || [];
+  return (
+    <div className="card">
+      <div className="lbl">Precisión histórica (predicho vs real)</div>
+      <div className="mut" style={{ margin: "2px 0 12px" }}>
+        Sobre <b>{acc.n_partidos}</b> partidos ya jugados. El error medio por métrica dice
+        en qué acierta el modelo y dónde se desvía — es lo que usamos para mejorar.
+      </div>
+      <div className="stat-tiles" style={{ marginBottom: 6 }}>
+        <div className="stat">
+          <span className="stat-k">Acierto 1X2</span>
+          <b className="stat-v accent">{acc.pct_1x2 != null ? acc.pct_1x2 + "%" : "—"}</b>
+          <span className="stat-s">{acc.aciertos_1x2}/{acc.n_1x2} partidos</span>
+        </div>
+        {metrics.slice(0, 3).map((mt) => (
+          <div className="stat" key={mt.key}>
+            <span className="stat-k">{mt.label} · error medio</span>
+            <b className="stat-v">±{mt.mae}</b>
+            <span className="stat-s">{mt.sesgo > 0 ? "se queda corto" : mt.sesgo < 0 ? "se pasa" : "centrado"} ({mt.sesgo > 0 ? "+" : ""}{mt.sesgo})</span>
+          </div>
+        ))}
+      </div>
+      {metrics.length > 0 && (
+        <div className="tbl-wrap">
+          <table className="tbl-mk">
+            <thead><tr><th className="tl">Métrica</th><th>Error medio (MAE)</th><th>Sesgo</th><th>N</th></tr></thead>
+            <tbody>
+              {metrics.map((mt) => (
+                <tr key={mt.key}>
+                  <td className="tl">{mt.label}</td>
+                  <td>±{mt.mae}</td>
+                  <td className={mt.sesgo > 0 ? "value-yes" : mt.sesgo < 0 ? "value-no" : "dim"}>{mt.sesgo > 0 ? "+" : ""}{mt.sesgo}</td>
+                  <td>{mt.n}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      <div className="mut" style={{ marginTop: 8 }}>Sesgo + = el modelo predice de menos (hubo más en la realidad); − = predice de más.</div>
+    </div>
+  );
+}
+
 function Datos({ data }) {
   const ds = data.data_sources || {};
   const ageH = feedAgeHours(data);
   return (
     <>
+      <AccuracyPanel acc={data.accuracy} />
       <ModelReport model={data.model} />
       <div className="card">
         <div className="lbl">Motor y estado</div>
