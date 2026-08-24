@@ -113,7 +113,7 @@ def _fit_params(rows: list[tuple[dict, dict, str]]) -> tuple[float, float]:
 
 
 def candidate_beats_all_baselines(candidate: dict, baselines: dict[str, dict]) -> bool:
-    """Un challenger solo pasa si no empeora ninguna métrica clave de ningún campeón."""
+    """Un challenger solo pasa si mejora estrictamente cada métrica de cada campeón."""
 
     if not baselines:
         return False
@@ -123,7 +123,11 @@ def candidate_beats_all_baselines(candidate: dict, baselines: dict[str, dict]) -
             return False
         for baseline in baselines.values():
             reference = baseline.get(metric)
-            if not isinstance(reference, (int, float)) or value > reference:
+            if (
+                not isinstance(reference, (int, float))
+                or not math.isfinite(reference)
+                or value >= reference
+            ):
                 return False
     return True
 
@@ -166,7 +170,7 @@ def fit_walk_forward_ensemble(
         "validation": validation_metrics,
         "validation_baselines": baselines,
         "acceptance_gate": {
-            "rule": "no_worse_than_every_baseline",
+            "rule": "strictly_better_than_every_baseline",
             "metrics": list(GATE_METRICS),
             "baselines": list(baselines),
         },
