@@ -1,0 +1,76 @@
+name: Apply referee gate integration on PR
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.head_ref == 'chatgpt/referee-gated-adjustment' && github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: chatgpt/referee-gated-adjustment
+          fetch-depth: 0
+      - name: Wire referee challenger into dashboard and official context
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          dashboard = Path('football/src/futbol_pred/dashboard.py')
+          text = dashboard.read_text(encoding='utf-8')
+
+          old = '    squads_by_league: dict[str, dict[str, list[dict]]] = {}\n'
+          new = old + '    stats_models_by_league: dict[str, object] = {}\n'
+          if text.count(old) != 1:
+              raise SystemExit(f'squads anchor count={text.count(old)}')
+          if 'stats_models_by_league: dict[str, object]' not in text:
+              text = text.replace(old, new, 1)
+
+          old = '            stats = _fit_stats(league, season)\n'
+          new = old + '            if stats is not None:\n                stats_models_by_league[LEAGUES.get(league, league)] = stats\n'
+          if text.count(old) != 1:
+              raise SystemExit(f'stats assignment count={text.count(old)}')
+          if 'stats_models_by_league[LEAGUES.get(league, league)]' not in text:
+              text = text.replace(old, new, 1)
+
+          old = '    official_updates = attach_official_context(matches, now)\n'
+          new = '    official_updates = attach_official_context(matches, now, stats_models=stats_models_by_league)\n'
+          if text.count(old) != 1:
+              raise SystemExit(f'official call count={text.count(old)}')
+          text = text.replace(old, new, 1)
+
+          old = '        return StatsPredictor().fit(rows, auxiliary_matches=auxiliary)\n'
+          new = '''        predictor = StatsPredictor().fit(rows, auxiliary_matches=auxiliary)\n        try:\n            from .model.referee_adjustment import RefereeAdjustmentModel\n\n            predictor.referee_model = RefereeAdjustmentModel().fit(rows)\n        except Exception:\n            predictor.referee_model = None\n        return predictor\n'''
+          if text.count(old) != 1:
+              raise SystemExit(f'_fit_stats return count={text.count(old)}')
+          text = text.replace(old, new, 1)
+          dashboard.write_text(text, encoding='utf-8')
+
+          operational = Path('football/src/futbol_pred/operational.py')
+          text = operational.read_text(encoding='utf-8')
+          old = 'def attach_official_context(matches: list[dict], now: datetime, client: ApiFootballClient | None = None, limit: int = 8) -> int:\n'
+          new = 'def attach_official_context(matches: list[dict], now: datetime, client: ApiFootballClient | None = None, limit: int = 8, stats_models: dict[str, object] | None = None) -> int:\n'
+          if text.count(old) != 1:
+              raise SystemExit(f'attach signature count={text.count(old)}')
+          text = text.replace(old, new, 1)
+
+          old = '''            if official_context:\n                official_context["source_updated_at"] = now_local.isoformat()\n                match["official_context"] = official_context\n'''
+          new = '''            if official_context:\n                official_context["source_updated_at"] = now_local.isoformat()\n                stats_model = (stats_models or {}).get(match.get("league"))\n                referee_model = getattr(stats_model, "referee_model", None)\n                referee = official_context.get("referee")\n                if referee_model is not None and referee:\n                    try:\n                        profile = referee_model.context(referee)\n                        if profile:\n                            official_context["referee_profile"] = profile\n                        adjusted, applied = referee_model.adjust_stats(match.get("stats"), referee)\n                        if applied:\n                            match["stats"] = adjusted\n                            official_context["referee_adjustment_applied"] = applied\n                    except Exception:\n                        pass\n                match["official_context"] = official_context\n'''
+          if text.count(old) != 1:
+              raise SystemExit(f'official context block count={text.count(old)}')
+          text = text.replace(old, new, 1)
+          operational.write_text(text, encoding='utf-8')
+          PY
+      - name: Validate and commit
+        run: |
+          git diff --check
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add football/src/futbol_pred/dashboard.py football/src/futbol_pred/operational.py
+          git commit -m "Wire gated referee adjustment into official context"
+          git push origin HEAD:chatgpt/referee-gated-adjustment
