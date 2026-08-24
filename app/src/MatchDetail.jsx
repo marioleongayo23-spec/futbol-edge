@@ -59,6 +59,18 @@ function Heat({ M }) {
   );
 }
 
+/* Flecha de tendencia de una métrica esperada (↑/→/↓ + % y motivo). */
+function TrendArrow({ t }) {
+  if (!t) return <span className="dim">—</span>;
+  const sym = t.dir === "up" ? "↑" : t.dir === "down" ? "↓" : "→";
+  const cls = t.dir === "up" ? "trend-up" : t.dir === "down" ? "trend-down" : "trend-flat";
+  return (
+    <span className={"trend " + cls} title={t.reason}>
+      {sym}{t.dir !== "flat" ? ` ${t.pct > 0 ? "+" : ""}${t.pct}%` : ""}
+    </span>
+  );
+}
+
 export default function MatchDetail({ m, bankroll, onBack, onTeam, players }) {
   const [ouL, setOuL] = useState(2.5);
   const [hcL, setHcL] = useState(-0.5);
@@ -315,15 +327,22 @@ export default function MatchDetail({ m, bankroll, onBack, onTeam, players }) {
             <div className="card">
               <div className="lbl">Estadísticas esperadas</div>
               <table>
-                <thead><tr><th>Métrica</th><th>Local</th><th>Visit.</th><th>Total</th></tr></thead>
+                <thead><tr><th>Métrica</th><th>Local</th><th>Visit.</th><th>Total</th><th>Tend.</th></tr></thead>
                 <tbody>
                   {[["goals", "Goles"], ["shots", "Remates"], ["sot", "Tiros a puerta"], ["corners", "Córners"],
                     ["fouls", "Faltas"], ["yellows", "Amarillas"], ["reds", "Rojas"]]
                     .filter(([k]) => m.stats[k]).map(([k, lab]) => (
-                      <tr key={k}><td>{lab}</td><td>{m.stats[k].home}</td><td>{m.stats[k].away}</td><td><b>{m.stats[k].total}</b></td></tr>
+                      <tr key={k}><td>{lab}</td><td>{m.stats[k].home}</td><td>{m.stats[k].away}</td><td><b>{m.stats[k].total}</b></td>
+                        <td><TrendArrow t={m.tendencias?.[k]} /></td></tr>
                     ))}
                 </tbody>
               </table>
+              {m.tendencias && Object.values(m.tendencias).some((t) => t.dir !== "flat") && (
+                <p className="mut" style={{ marginTop: 8 }}>
+                  ↑/↓ = se espera más/menos de lo habitual según la forma reciente y el descanso.
+                  {" "}{Object.values(m.tendencias).filter((t) => t.dir !== "flat").map((t) => `${t.label}: ${t.reason}`).join(" · ")}.
+                </p>
+              )}
             </div>
           )}
 

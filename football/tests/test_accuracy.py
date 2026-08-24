@@ -4,13 +4,15 @@ from futbol_pred.dashboard import _aggregate_accuracy
 
 
 def test_aggregate_acierto_y_mae():
+    # statsReal en el feed real viene como {home,away,total}.
     matches = [
         {"finished": True, "result": [2, 0], "probs": [60, 25, 15],
          "stats": {"corners": {"total": 9}, "shots": {"total": 22}},
-         "statsReal": {"corners": (6, 4), "shots": (12, 11)}},
+         "statsReal": {"corners": {"home": 6, "away": 4, "total": 10},
+                       "shots": {"home": 12, "away": 11, "total": 23}}},
         {"finished": True, "result": [1, 1], "probs": [30, 40, 30],
          "stats": {"corners": {"total": 10}},
-         "statsReal": {"corners": (5, 4)}},
+         "statsReal": {"corners": {"home": 5, "away": 4, "total": 9}}},
         {"finished": False},  # se ignora
     ]
     agg = _aggregate_accuracy(matches)

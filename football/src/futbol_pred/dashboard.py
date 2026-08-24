@@ -75,6 +75,7 @@ def fixture_payload(
     odds_map: dict | None = None,
     model_weight: float = 0.6,
     h2h: dict | None = None,
+    trends=None,
 ) -> dict:
     kickoff = ensure_aware(fixture.kickoff).astimezone(MADRID)
     team_meta = team_meta or {}
@@ -168,6 +169,14 @@ def fixture_payload(
     })
     if not finished_with_result:
         payload["engine"] = "dixon-coles"
+        # Tendencia (↑/→/↓) de las stats esperadas según forma y descanso.
+        if trends is not None:
+            try:
+                t = trends.trend(home_id, away_id, kickoff=fixture.kickoff)
+                if t:
+                    payload["tendencias"] = t
+            except Exception:  # noqa: BLE001 - la tendencia nunca tumba el feed
+                pass
 
     # Si algún equipo aún no tiene histórico (recién ascendido, sin datos de la
     # temporada), la predicción usa prior neutro: la marcamos como provisional.
@@ -346,6 +355,7 @@ def build_dashboard(
             stats = _fit_stats(league, season)
             meta = _team_meta(league, season)
             real_stats = _real_stats_map(league, season)
+            trends = _fit_trends(league, season, train)
             odds_map = _odds_map(league)
             # Peso del modelo vs mercado para calibrar: con pocas jornadas jugadas
             # el modelo va sobreconfiado, así que pesa más el mercado; según avanza
@@ -359,7 +369,7 @@ def build_dashboard(
             matches.extend(
                 fixture_payload(fx, model, generated_at, stats=stats, team_meta=meta,
                                 real_stats=real_stats, odds_map=odds_map,
-                                model_weight=model_w, h2h=h2h)
+                                model_weight=model_w, h2h=h2h, trends=trends)
                 for fx in sorted(fixtures, key=lambda item: ensure_aware(item.kickoff))
             )
         except Exception as exc:  # una liga no debe tumbar el resto del feed
@@ -430,7 +440,12 @@ def _aggregate_accuracy(matches: list[dict]) -> dict | None:
                 continue
             try:
                 pred_total = float(pred[key]["total"])
-                real_total = float(real_stats[key][0]) + float(real_stats[key][1])
+                rk = real_stats[key]
+                # statsReal puede venir como {home,away,total} o como (home, away).
+                if isinstance(rk, dict):
+                    real_total = float(rk.get("total", rk.get("home", 0) + rk.get("away", 0)))
+                else:
+                    real_total = float(rk[0]) + float(rk[1])
             except (KeyError, TypeError, ValueError, IndexError):
                 continue
             d = per.setdefault(key, {"abs": 0.0, "signed": 0.0, "n": 0})
@@ -597,6 +612,20 @@ def _fit_stats(league: str, season: int):
 
         rows = FootballDataUKClient().get_stats(league, season)
         return StatsPredictor().fit(rows)
+    except Exception:
+        return None
+
+
+def _fit_trends(league: str, season: int, fixtures):
+    """Modelo de tendencias (↑/↓) por forma reciente + descanso. None si no aplica."""
+    if league not in ("laliga", "segunda"):
+        return None
+    try:
+        from .ingest.football_data_uk import FootballDataUKClient
+        from .model.trends import TrendModel
+
+        rows = FootballDataUKClient().get_stats(league, season)
+        return TrendModel().fit(fixtures, rows, _canon)
     except Exception:
         return None
 
