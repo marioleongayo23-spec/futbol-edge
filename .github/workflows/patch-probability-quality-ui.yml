@@ -16,27 +16,39 @@ jobs:
         with:
           ref: chatgpt/probability-quality-ui
           fetch-depth: 0
-      - name: Wire panel into App
+      - name: Wire panel into App idempotently
         run: |
           python - <<'PY'
           from pathlib import Path
           path = Path('app/src/App.jsx')
           text = path.read_text(encoding='utf-8')
-          old_import = 'import MatchDetail from "./MatchDetail";\n'
-          new_import = old_import + 'import ProbabilityQualityPanel from "./ProbabilityQualityPanel";\n'
-          if text.count(old_import) != 1:
-              raise SystemExit(f'Expected one MatchDetail import, found {text.count(old_import)}')
-          text = text.replace(old_import, new_import, 1)
-          old_render = '      <AccuracyPanel acc={data.accuracy} />\n      <ModelReport model={data.model} />'
-          new_render = '      <ProbabilityQualityPanel quality={perf.probability_quality} />\n      <AccuracyPanel acc={data.accuracy} />\n      <ModelReport model={data.model} />'
-          if text.count(old_render) != 1:
-              raise SystemExit(f'Expected one Datos metrics anchor, found {text.count(old_render)}')
-          text = text.replace(old_render, new_render, 1)
+          panel_import = 'import ProbabilityQualityPanel from "./ProbabilityQualityPanel";\n'
+          if text.count(panel_import) > 1:
+              raise SystemExit('Duplicate ProbabilityQualityPanel imports detected')
+          if panel_import not in text:
+              anchor = 'import MatchDetail from "./MatchDetail";\n'
+              if text.count(anchor) != 1:
+                  raise SystemExit(f'Expected one MatchDetail import, found {text.count(anchor)}')
+              text = text.replace(anchor, anchor + panel_import, 1)
+
+          panel_render = '      <ProbabilityQualityPanel quality={perf.probability_quality} />\n'
+          if text.count(panel_render) > 1:
+              raise SystemExit('Duplicate ProbabilityQualityPanel renders detected')
+          if panel_render not in text:
+              anchor = '      <AccuracyPanel acc={data.accuracy} />\n      <ModelReport model={data.model} />'
+              if text.count(anchor) != 1:
+                  raise SystemExit(f'Expected one Datos metrics anchor, found {text.count(anchor)}')
+              text = text.replace(anchor, panel_render + anchor, 1)
+
           path.write_text(text, encoding='utf-8')
           PY
-      - name: Validate and commit
+      - name: Validate and commit if needed
         run: |
           git diff --check
+          if git diff --quiet; then
+            echo "App already wired; nothing to commit"
+            exit 0
+          fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add app/src/App.jsx
