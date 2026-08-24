@@ -159,6 +159,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 .main-col{display:flex;flex-direction:column;min-width:0}
 .topbar{position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:12px;
   background:var(--navbg);backdrop-filter:blur(10px);border-bottom:1px solid var(--line);padding:12px 20px}
+.topbar::after{display:none}
 .burger{display:none;background:var(--card2);border:1px solid var(--line);border-radius:9px;padding:6px 11px;cursor:pointer;color:var(--tx)}
 .search{flex:1;max-width:520px;display:flex;align-items:center;gap:8px;background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:0 12px}
 .search svg{color:var(--dim);flex:0 0 auto}
