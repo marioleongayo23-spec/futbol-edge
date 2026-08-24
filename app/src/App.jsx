@@ -16,14 +16,12 @@ function useTheme() {
     document.documentElement.dataset.theme = theme;
     try { localStorage.setItem("theme", theme); } catch { /* ignore */ }
   }, [theme]);
-  const toggle = () => {
-    const current = document.documentElement.dataset.theme || theme;
-    const next = current === "dark" ? "light" : "dark";
+  const apply = (next) => {
     document.documentElement.dataset.theme = next;
     try { localStorage.setItem("theme", next); } catch { /* ignore */ }
     setTheme(next);
   };
-  return [theme, toggle];
+  return [theme, apply];
 }
 
 /* ---------- Iconos de la barra lateral ---------- */
@@ -1005,7 +1003,7 @@ const NAV = [
 
 export default function App() {
   const { session } = useSession();
-  const [theme, toggleTheme] = useTheme();
+  const [theme, applyTheme] = useTheme();
   const [data, setData] = useState(null);
   const [err, setErr] = useState("");
   const [view, setView] = useState("resumen");
@@ -1017,22 +1015,18 @@ export default function App() {
   const [tri, setTri] = useState(2);
   const [dob, setDob] = useState(4);
   const [menuOpen, setMenuOpen] = useState(false);
-  const themeButtonRef = useRef(null);
-  const lastThemeToggleRef = useRef(0);
+  const themeToggleRef = useRef(null);
 
   useEffect(() => { loadFeed().then(setData).catch((e) => setErr(e.message)); }, []);
   useEffect(() => {
-    const button = themeButtonRef.current;
-    if (!button) return undefined;
-    const activate = () => {
-      const now = Date.now();
-      if (now - lastThemeToggleRef.current < 400) return;
-      lastThemeToggleRef.current = now;
-      toggleTheme();
+    const input = themeToggleRef.current;
+    if (!input) return undefined;
+    const change = () => {
+      applyTheme(input.checked ? "light" : "dark");
     };
-    button.addEventListener("click", activate);
-    return () => button.removeEventListener("click", activate);
-  }, [theme, toggleTheme]);
+    input.addEventListener("change", change);
+    return () => input.removeEventListener("change", change);
+  }, [theme, applyTheme]);
   const matches = useMemo(() => data?.matches || [], [data]);
 
   const open = (m) => { setSel(m); window.scrollTo(0, 0); };
@@ -1075,8 +1069,8 @@ export default function App() {
             onChange={(e) => { const v = e.target.value; setQ(v); if (v.trim()) { setSel(null); setTeamSel(null); setView("partidos"); } }} /></div>
           <div className="top-right">
             <span className="badge-cal"><span className="dot d-ucl" /> {data ? "Calendario verificado" : "Cargando…"}</span>
-            <button ref={themeButtonRef} type="button" className="theme-btn"
-              title="Cambiar tema" aria-label={`Cambiar a tema ${theme === "dark" ? "claro" : "oscuro"}`}>{theme === "dark" ? "☀️" : "🌙"}</button>
+            <input ref={themeToggleRef} type="checkbox" className="theme-btn theme-toggle"
+              defaultChecked={theme === "light"} title="Cambiar tema" aria-label="Alternar tema claro u oscuro" />
           </div>
         </header>
 
