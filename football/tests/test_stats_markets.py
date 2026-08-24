@@ -1,5 +1,7 @@
 """Tests del cliente co.uk y del modelo de mercados estadísticos."""
 
+from datetime import datetime, timedelta, timezone
+
 import pytest
 
 from futbol_pred.ingest.football_data_uk import (
@@ -7,7 +9,7 @@ from futbol_pred.ingest.football_data_uk import (
     MatchStats,
     season_code,
 )
-from futbol_pred.model.stats_markets import StatsPredictor
+from futbol_pred.model.stats_markets import StatsPredictor, validate_temporal_decay
 
 
 def test_season_code():
@@ -136,3 +138,39 @@ def test_negative_binomial_se_activa_con_sobredispersion():
     market = predictor.market("A", "B", "corners", "total", 9.5)
     assert market["distribution"] == "negative-binomial"
     assert market["dispersion"] > 1.05
+
+
+def _dated_regime_rows(changing: bool) -> list[MatchStats]:
+    start = datetime(2024, 1, 1, tzinfo=timezone.utc)
+    rows = []
+    for i in range(120):
+        # Cambio de estilo reciente: el challenger debe dar más peso al tramo nuevo.
+        home_corners = 3 if changing and i < 70 else 11 if changing else 6
+        rows.append(MatchStats(
+            "A", "B", {"corners": (home_corners, 2)},
+            kickoff=start + timedelta(days=7 * i),
+        ))
+    return rows
+
+
+def test_temporal_challenger_activa_solo_si_reduce_mae_fuera_de_muestra():
+    rows = _dated_regime_rows(changing=True)
+    report = validate_temporal_decay(rows)
+    corners = report["validation"]["corners"]
+    assert report["n_validation"] >= 20
+    assert corners["temporal_mae"] < corners["baseline_mae"]
+    assert corners["accepted"] is True
+    assert "corners" in report["accepted_stats"]
+
+    predictor = StatsPredictor().fit(rows)
+    assert "corners" in predictor.temporal_stats
+    assert predictor.temporal_validation["gate"] == "strictly_lower_mae_per_stat"
+
+
+def test_temporal_challenger_no_promociona_empates():
+    rows = _dated_regime_rows(changing=False)
+    report = validate_temporal_decay(rows)
+    corners = report["validation"]["corners"]
+    assert corners["temporal_mae"] == pytest.approx(corners["baseline_mae"])
+    assert corners["accepted"] is False
+    assert "corners" not in report["accepted_stats"]
