@@ -27,6 +27,7 @@ def test_parse_csv_minimo():
     assert r.stats["corners"] == (9.0, 3.0)
     assert r.stats["yellows"] == (1.0, 3.0)
     assert r.stats["goals"] == (3.0, 0.0)
+    assert r.kickoff is None
 
 
 def test_parsea_arbitro_y_fueras_de_juego_gratuitos():
@@ -35,6 +36,17 @@ def test_parsea_arbitro_y_fueras_de_juego_gratuitos():
     )
     assert rows[0].stats["offsides"] == (3.0, 1.0)
     assert rows[0].referee == "M. Ortiz"
+
+
+def test_parsea_fecha_y_hora_para_validacion_temporal():
+    rows = FootballDataUKClient.parse(
+        "Date,Time,HomeTeam,AwayTeam,HC,AC\n24/08/2026,21:30,Barcelona,Sevilla,8,4\n"
+    )
+    kickoff = rows[0].kickoff
+    assert kickoff is not None
+    assert (kickoff.year, kickoff.month, kickoff.day) == (2026, 8, 24)
+    assert (kickoff.hour, kickoff.minute) == (21, 30)
+    assert kickoff.tzinfo is not None
 
 
 def test_parse_ignora_filas_vacias():
