@@ -5,6 +5,12 @@ name: futbol-pred (cron)
 #   FOOTBALL_DATA_API_KEY, API_FOOTBALL_KEY, ODDS_API_KEY, DATABASE_URL (opcional)
 
 on:
+  # Valida y materializa el feed con el código recién fusionado. Se ignoran los
+  # commits automáticos que solo cambian el propio feed para evitar un bucle.
+  push:
+    branches: [main]
+    paths-ignore:
+      - "football/data/dashboard.json"
   schedule:
     # Cada 15 min: durante los partidos los resultados aparecen casi al momento.
     # El commit solo se hace si el feed cambió, así que fuera de horario de
