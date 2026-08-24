@@ -113,7 +113,7 @@ def fit_walk_forward_residual(
         "n_train": len(train), "n_validation": len(validation),
         "validation": metrics, "validation_baselines": baselines,
         "acceptance_gate": {
-            "rule": "strict_no_worse_than_dixon_coles_and_elo",
+            "rule": "strictly_better_than_dixon_coles_and_elo",
             "metrics": list(GATE_METRICS),
         },
         "production": _fit(rows),
