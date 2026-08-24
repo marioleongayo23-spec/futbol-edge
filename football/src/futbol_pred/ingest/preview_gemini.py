@@ -64,7 +64,7 @@ def _prompt(m: dict) -> str:
     return _SYSTEM + "\n\nDatos:\n" + "\n".join(partes) + "\n\nEscribe la previa:"
 
 
-def generate_preview(m: dict, timeout: int = 30, retries: int = 3) -> str | None:
+def generate_preview(m: dict, timeout: int = 30, retries: int = 2) -> str | None:
     """Genera la previa; reintenta ante límites de ratio (429) o respuestas
     vacías (los modelos 'thinking' a veces agotan los tokens razonando)."""
     if not API_KEY:
