@@ -59,6 +59,34 @@ function Heat({ M }) {
   );
 }
 
+/* Once probable + bajas (IA con búsqueda web). */
+function Alineacion({ m, a }) {
+  const col = (title, xi, bajas) => (
+    <div className="xi-col">
+      <div className="xi-team">{title}</div>
+      <ol className="xi-list">
+        {(xi || []).map((p, i) => <li key={i}>{p}</li>)}
+        {!(xi || []).length && <li className="dim">sin datos</li>}
+      </ol>
+      {(bajas || []).length > 0 && (
+        <div className="xi-bajas"><b>Bajas:</b> {bajas.join(", ")}</div>
+      )}
+    </div>
+  );
+  return (
+    <div className="card">
+      <div className="lbl">👥 Once probable y bajas</div>
+      <div className="xi-grid">
+        {col(m.home, a.local, a.bajas_local)}
+        {col(m.away, a.visitante, a.bajas_visitante)}
+      </div>
+      <p className="note" style={{ color: "var(--muted)", marginTop: 6 }}>
+        Alineaciones PROBABLES redactadas por IA con búsqueda web ({a.fuente || "IA"}). No son datos oficiales; verifica antes de apostar.
+      </p>
+    </div>
+  );
+}
+
 /* Flecha de tendencia de una métrica esperada (↑/→/↓ + % y motivo). */
 function TrendArrow({ t }) {
   if (!t) return <span className="dim">—</span>;
@@ -153,6 +181,8 @@ export default function MatchDetail({ m, bankroll, onBack, onTeam, players }) {
           <p className="note" style={{ color: "var(--muted)", marginTop: 4 }}>Redactado por IA (Gemini) a partir de los números del modelo. No es información de fuentes; interpreta los datos.</p>
         </div>
       )}
+
+      {m.alineacion && <Alineacion m={m} a={m.alineacion} />}
 
       {players && (() => {
         const hs = teamSquad(players, m.home), as = teamSquad(players, m.away);

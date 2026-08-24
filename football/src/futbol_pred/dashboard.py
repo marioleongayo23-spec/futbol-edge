@@ -326,6 +326,68 @@ def _attach_previews(matches: list[dict], now: datetime, horizon_days: int = 6, 
             made += 1
 
 
+def _attach_lineups(matches: list[dict], now: datetime, horizon_days: int = 7,
+                    limit: int = 20, ttl_hours: int = 12) -> None:
+    """Alineaciones probables + bajas (IA con búsqueda web) en UNA llamada/bloque.
+
+    Cachea por id con marca de tiempo: solo re-consulta lo que tenga más de
+    ttl_hours (por defecto 12 h) => ~2 llamadas/día aunque el feed corra cada
+    15 min. Sin clave o ante cualquier fallo, no hace nada."""
+    try:
+        from .ingest.lineups_ai import API_KEY, fetch_lineups
+    except Exception:
+        return
+    if not API_KEY:
+        return
+
+    now = ensure_aware(now)
+    prev: dict[str, dict] = {}
+    try:
+        old = json.loads(OUTPUT.read_text(encoding="utf-8"))
+        for m in old.get("matches", []):
+            if m.get("alineacion") and m.get("id"):
+                prev[m["id"]] = m["alineacion"]
+    except Exception:
+        pass
+
+    def fresh(al: dict) -> bool:
+        try:
+            return (now - datetime.fromisoformat(al["ts"])).total_seconds() < ttl_hours * 3600
+        except Exception:
+            return False
+
+    stale = []
+    for m in matches:
+        if m.get("finished") or not m.get("probs"):
+            continue
+        try:
+            if (datetime.fromisoformat(m["kickoff"]) - now).days > horizon_days:
+                continue
+        except Exception:
+            continue
+        cached = prev.get(m.get("id"))
+        if cached and fresh(cached):
+            m["alineacion"] = cached  # aún válida
+        else:
+            stale.append(m)
+
+    if not stale:
+        return
+    stale.sort(key=lambda m: m.get("kickoff") or "")
+    stale = stale[:limit]
+    query = [{"partido": f"{m['home']} vs {m['away']}"} for m in stale]
+    try:
+        got = fetch_lineups(query)
+    except Exception:
+        got = {}
+    ts = now.isoformat()
+    for m in stale:
+        data = got.get(f"{m['home']} vs {m['away']}")
+        if not data:
+            continue
+        m["alineacion"] = {**data, "ts": ts, "fuente": "IA + búsqueda web"}
+
+
 def build_dashboard(
     now: datetime | None = None,
     horizon_days: int = 10,  # sin uso: ahora incluimos TODA la temporada
@@ -382,6 +444,7 @@ def build_dashboard(
 
     matches.sort(key=lambda item: item["kickoff"])
     _attach_previews(matches, now)
+    _attach_lineups(matches, now)
     return {
         "schema_version": 2,
         "generated_at": generated_at,
