@@ -15,6 +15,7 @@ from zoneinfo import ZoneInfo
 from .config import DATA_DIR
 from .backtest import ensemble_probabilities
 from .backtest.ensemble import temperature_scale
+from .backtest.residual import residual_probabilities
 from .context import WeatherClient, venue_for
 from .elo import EloRatings
 from .feed_quality import load_feed, preserve_last_known_good, write_feed_safely
@@ -22,7 +23,10 @@ from .ingest.api_football import ApiFootballClient, Fixture
 from .ingest.football_data import FootballDataClient
 from .normalize import canonical_team
 from .market_calibration import learn_market_calibration
-from .operational import annotate_prediction_context, attach_official_context, build_alerts, content_audit
+from .operational import (
+    annotate_prediction_context, attach_official_context, attach_state_simulations,
+    build_alerts, content_audit,
+)
 from .performance import build_performance
 from .pipeline import fit_model_from_fixtures, get_fixtures, predict_match, run_model_report
 from .prediction_snapshots import apply_prediction_snapshots, latest_pre_match_snapshot
@@ -113,6 +117,18 @@ def _previous_ensemble_params(previous: dict | None, league: str) -> dict:
         return {"dc_weight": 1.0, "temperature": 1.0, "accepted": False}
 
 
+def _previous_residual_params(previous: dict | None, league: str) -> dict:
+    """Solo expone pesos residuales si el informe temporal aprobó el gate."""
+    try:
+        residual = previous["model"][league]["residual"]
+        production = residual["production"]
+        if not residual.get("accepted") or not production.get("converged"):
+            return {"accepted": False}
+        return {**production, "accepted": True}
+    except (KeyError, TypeError):
+        return {"accepted": False}
+
+
 def fixture_payload(
     fixture: Fixture,
     model,
@@ -126,6 +142,7 @@ def fixture_payload(
     trends=None,
     elo: EloRatings | None = None,
     ensemble_params: dict | None = None,
+    residual_params: dict | None = None,
     market_temperature: float = 1.0,
 ) -> dict:
     kickoff = ensure_aware(fixture.kickoff).astimezone(MADRID)
@@ -209,9 +226,14 @@ def fixture_payload(
     temperature = float(params.get("temperature", 1.0))
     elo_probs = elo.match_probabilities(home_id, away_id) if elo is not None else dc_probs
     ensemble_active = bool(params.get("accepted")) and elo is not None
-    probs = (
+    ensemble_probs = (
         ensemble_probabilities(dc_probs, elo_probs, dc_weight, temperature)
         if ensemble_active else dc_probs
+    )
+    residual_active = bool((residual_params or {}).get("accepted")) and elo is not None
+    probs = (
+        residual_probabilities(dc_probs, elo_probs, residual_params or {})
+        if residual_active else ensemble_probs
     )
     # Guard de sanidad: descarta predicciones REALMENTE rotas (p. ej. un único
     # resultado al ~100%). El umbral inferior de goles es laxo a propósito: un
@@ -239,7 +261,10 @@ def fixture_payload(
         "xg": [round(eh, 2), round(ea, 2)],
         "model_meta": {
             "version": "edge-2.0",
-            "provider": "Dixon-Coles + Elo calibrado" if ensemble_active else "Dixon-Coles híbrido",
+            "provider": (
+                "Residual validado (Dixon-Coles + Elo)" if residual_active
+                else "Dixon-Coles + Elo calibrado" if ensemble_active else "Dixon-Coles híbrido"
+            ),
             "components": {
                 "dixon_coles": {key: round(value, 4) for key, value in dc_probs.items()},
                 "elo": {key: round(value, 4) for key, value in elo_probs.items()},
@@ -249,6 +274,10 @@ def fixture_payload(
                 "elo_weight": round(1.0 - dc_weight, 4),
                 "temperature": round(temperature, 4),
                 "accepted": ensemble_active,
+            },
+            "residual": {
+                "accepted": residual_active,
+                "gate": "log_loss+rps_vs_dc_y_elo",
             },
             "pseudo_xg": pseudo_xg,
         },
@@ -262,7 +291,7 @@ def fixture_payload(
         "score_distribution": matrix.distribution_summary(),
     })
     if not finished_with_result:
-        payload["engine"] = "ensemble" if ensemble_active else "dixon-coles"
+        payload["engine"] = "residual" if residual_active else "ensemble" if ensemble_active else "dixon-coles"
 
     # Si algún equipo aún no tiene histórico (recién ascendido, sin datos de la
     # temporada), la predicción usa prior neutro: la marcamos como provisional.
@@ -877,6 +906,7 @@ def build_dashboard(
                 model = None
             elo = _fit_elo_from_fixtures(train)
             ensemble_params = _previous_ensemble_params(calibration_source, league)
+            residual_params = _previous_residual_params(calibration_source, league)
             stats = _fit_stats(league, season)
             meta = _team_meta(league, season)
             squads_by_league[league] = {
@@ -907,6 +937,7 @@ def build_dashboard(
                                 real_stats=real_stats, odds_map=odds_map,
                                 model_weight=model_w, h2h=h2h, trends=trends,
                                 elo=elo, ensemble_params=ensemble_params,
+                                residual_params=residual_params,
                                 market_temperature=market_temperature)
                 for fx in sorted(fixtures, key=lambda item: ensure_aware(item.kickoff))
             )
@@ -925,6 +956,7 @@ def build_dashboard(
         (previous or {}).get("matches"),
         now,
         force=_force_ai(),
+        capture=False,
     )
     # Recupera predicciones/IA/odds anteriores antes de intentar refrescarlas.
     # De esta forma un timeout, una cuota agotada o una respuesta parcial jamás
@@ -951,7 +983,18 @@ def build_dashboard(
     _attach_previews(matches, now)
     _attach_lineups(matches, now, squads=all_squads)
     official_updates = attach_official_context(matches, now)
+    state_simulations = attach_state_simulations(matches)
     players = _merge_lineup_players(players, matches)
+    annotate_prediction_context(matches)
+    # Segunda fase: la revisión se captura cuando contexto, once e impacto ya
+    # están completos. Después se vuelve a anotar para mantener vivo el estado
+    # oficial aunque fuera de las ventanas que congelan la probabilidad.
+    apply_prediction_snapshots(
+        matches,
+        (previous or {}).get("matches"),
+        now,
+        force=_force_ai(),
+    )
     annotate_prediction_context(matches)
     first_audit = content_audit(matches, players, now)
     retried = _retry_incomplete(matches, first_audit, now)
@@ -960,6 +1003,7 @@ def build_dashboard(
     audit["selective_retries"] = retried
     audit["official_lineup_updates"] = official_updates
     audit["weather_updates"] = weather_updates
+    audit["state_simulations"] = state_simulations
     ai_events = diagnostics()
     payload = {
         "schema_version": 7,
@@ -976,7 +1020,8 @@ def build_dashboard(
         "ai_health": {"events": ai_events[-30:]},
         "alerts": build_alerts(previous, audit, ai_events, now),
         "engine": (
-            "ensemble" if any(item["engine"] == "ensemble" for item in matches)
+            "residual" if any(item["engine"] == "residual" for item in matches)
+            else "ensemble" if any(item["engine"] == "ensemble" for item in matches)
             else "dixon-coles" if any(item["engine"] == "dixon-coles" for item in matches)
             else "calendar-only"
         ),
@@ -997,7 +1042,7 @@ def build_dashboard(
             "total": len(matches),
             "jugados": sum(1 for m in matches if m.get("finished")),
             "proximos": sum(1 for m in matches if not m.get("finished")),
-            "con_prediccion": sum(1 for m in matches if m.get("engine") in {"dixon-coles", "ensemble"}),
+            "con_prediccion": sum(1 for m in matches if m.get("engine") in {"dixon-coles", "ensemble", "residual"}),
         },
         "matches": matches,
         "errors": errors,

@@ -232,6 +232,7 @@ def run_model_report(league: str = "laliga", season: int | None = None) -> dict 
         DixonColesPredictor,
         EloPredictor,
         fit_walk_forward_ensemble,
+        fit_walk_forward_residual,
         walk_forward,
     )
     from .config import LEAGUE_META
@@ -269,12 +270,19 @@ def run_model_report(league: str = "laliga", season: int | None = None) -> dict 
             elo_result = res
 
     ensemble = None
+    residual = None
     if dc_result is not None and elo_result is not None:
         ensemble = fit_walk_forward_ensemble(dc_result.records, elo_result.records)
+        residual = fit_walk_forward_residual(dc_result.records, elo_result.records)
         if ensemble and ensemble.get("validation", {}).get("n"):
             metrics["ensemble"] = {
                 key: (round(value, 4) if isinstance(value, float) else value)
                 for key, value in ensemble["validation"].items()
+            }
+        if residual and residual.get("validation", {}).get("n"):
+            metrics["residual"] = {
+                key: (round(value, 4) if isinstance(value, float) else value)
+                for key, value in residual["validation"].items()
             }
 
     if not metrics:
@@ -295,6 +303,7 @@ def run_model_report(league: str = "laliga", season: int | None = None) -> dict 
         "predictors": metrics,
         "calibration": calibration,
         "ensemble": ensemble,
+        "residual": residual,
     }
 
 

@@ -110,7 +110,7 @@ def preserve_last_known_good(candidate: dict, previous: dict | None) -> dict:
             match["preview_meta"]["cache_status"] = "recuperado_de_cache"
         # Conserva el motor predictivo si acabamos de recuperar su predicción.
         if match.get("probs") and match.get("engine") in {None, "calendar-only", "datos-insuficientes"}:
-            if old.get("engine") in {"dixon-coles", "resultado-real"}:
+            if old.get("engine") in {"dixon-coles", "ensemble", "residual", "resultado-real"}:
                 match["engine"] = old["engine"]
     return candidate
 

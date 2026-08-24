@@ -60,6 +60,36 @@ def test_segundo_cron_de_la_misma_hora_no_reescribe_snapshot():
     assert len(repeated["prediction_history"]) == 2
 
 
+def test_clima_queda_archivado_en_la_revision_y_no_se_reescribe():
+    old = _match([50, 30, 20])
+    old["weather"] = {"temperature_c": 20, "source_updated_at": "2026-08-23T15:00:00+02:00"}
+    apply_prediction_snapshots([old], [], datetime(2026, 8, 23, 15, tzinfo=MADRID))
+
+    ten = _match([55, 27, 18])
+    ten["weather"] = {"temperature_c": 35, "source_updated_at": "2026-08-24T10:15:00+02:00"}
+    apply_prediction_snapshots([ten], [old], datetime(2026, 8, 24, 10, 15, tzinfo=MADRID))
+    assert ten["prediction_snapshot"]["weather"]["temperature_c"] == 35
+
+    repeated = _match([80, 10, 10])
+    repeated["weather"] = {"temperature_c": 99, "source_updated_at": "2026-08-24T10:30:00+02:00"}
+    apply_prediction_snapshots([repeated], [ten], datetime(2026, 8, 24, 10, 30, tzinfo=MADRID))
+    assert repeated["prediction_snapshot"]["weather"]["temperature_c"] == 35
+    assert repeated["weather"]["temperature_c"] == 35
+
+
+def test_fase_restore_no_captura_hasta_que_el_contexto_este_completo():
+    now = datetime(2026, 8, 24, 10, 15, tzinfo=MADRID)
+    match = _match([51, 28, 21])
+    match["id"] = "m-context"
+    apply_prediction_snapshots([match], [], now, capture=False)
+    assert "prediction_snapshot" not in match
+    match["lineup_impact"] = {"evidence": "alta", "confidence_penalty_pp": 0}
+    match["state_simulation"] = {"status": "scenario_only_not_in_1x2"}
+    apply_prediction_snapshots([match], [], now)
+    assert match["prediction_snapshot"]["lineup_impact"]["evidence"] == "alta"
+    assert match["prediction_snapshot"]["state_simulation"]["status"].startswith("scenario")
+
+
 def test_partido_terminado_no_captura_resultado_conocido():
     old = _match([50, 30, 20])
     apply_prediction_snapshots([old], [], datetime(2026, 8, 23, 15, tzinfo=MADRID))

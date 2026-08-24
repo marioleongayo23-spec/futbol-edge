@@ -24,6 +24,8 @@ _SNAPSHOT_FIELDS = (
     "venue_meta",
     "weather",
     "tactical_matchup",
+    "lineup_impact",
+    "state_simulation",
     "prediction_confidence",
     "prediction_factors",
     "recommendation",
@@ -91,8 +93,12 @@ def _restore(match: dict, snapshot: dict, *, finished: bool) -> None:
     match["prediction_snapshot"] = deepcopy(snapshot)
     # El estado real del partido manda sobre el motor histórico mostrado.
     if not finished:
+        residual = (snapshot.get("model_meta") or {}).get("residual") or {}
         ensemble = (snapshot.get("model_meta") or {}).get("ensemble") or {}
-        match["engine"] = "ensemble" if ensemble.get("accepted") else "dixon-coles"
+        match["engine"] = (
+            "residual" if residual.get("accepted")
+            else "ensemble" if ensemble.get("accepted") else "dixon-coles"
+        )
 
 
 def apply_prediction_snapshots(
@@ -101,6 +107,7 @@ def apply_prediction_snapshots(
     now: datetime,
     force: bool = False,
     max_history: int = 8,
+    capture: bool = True,
 ) -> None:
     """Congela producción y solo crea revisiones 00:15/10:15 para el día.
 
@@ -138,7 +145,8 @@ def apply_prediction_snapshots(
             for item in history
         )
         should_capture = (
-            before_kickoff
+            capture
+            and before_kickoff
             and not match.get("finished")
             and (
                 not has_previous
