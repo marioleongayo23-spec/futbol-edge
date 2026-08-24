@@ -169,16 +169,11 @@ def evaluate_feed(candidate: dict, previous: dict | None = None) -> dict:
         lineup_count += int(bool(match.get("alineacion")))
         _ai_complete(match, issues)
         if candidate.get("schema_version", 0) >= 4 and generated_at and probs and not match.get("finished"):
-            try:
-                delta = datetime.fromisoformat(str(match.get("kickoff"))) - generated_at
-            except (TypeError, ValueError):
-                delta = None
-            if delta is not None and -3 * 3600 <= delta.total_seconds() <= 72 * 3600:
-                required_ai_count += 1
-                if not match.get("preview"):
-                    issues.append(f"preview_vacia_proximo:{match_id}")
-                if not match.get("alineacion"):
-                    issues.append(f"once_vacio_proximo:{match_id}")
+            required_ai_count += 1
+            if not match.get("preview"):
+                issues.append(f"preview_vacia_proximo:{match_id}")
+            if not match.get("alineacion"):
+                issues.append(f"once_vacio_proximo:{match_id}")
 
     counts = candidate.get("counts") or {}
     if counts.get("total") != len(matches):

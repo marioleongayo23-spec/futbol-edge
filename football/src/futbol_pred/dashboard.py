@@ -469,14 +469,14 @@ def _attach_lineups(
             }
 
     # Excepción de seguridad: fuera de ventana, la IA no refresca contenido ya
-    # existente, pero sí puede completar hasta 3 partidos inminentes que sigan
-    # totalmente sin once porque las fuentes gratuitas no cubren ese club.
+    # existente, pero sí completa una sola vez los huecos de toda la temporada
+    # que las plantillas gratuitas no cubren. Al quedar cacheados no se repite.
     if available() and not _ai_window(now):
-        emergency = [
+        emergency = sorted([
             match for match in matches
             if not match.get("finished") and match.get("probs") and not match.get("alineacion")
-            and _within_horizon(match, now, 3) and _can_attempt(match, "lineup", now)
-        ][:3]
+            and _can_attempt(match, "lineup", now)
+        ], key=lambda match: match.get("kickoff") or "")[:10]
         for match in emergency:
             _mark_attempt(match, "lineup", now)
         query = [{"partido": f"{match['home']} vs {match['away']}"} for match in emergency]
