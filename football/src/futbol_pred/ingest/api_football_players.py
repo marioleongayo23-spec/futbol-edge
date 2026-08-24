@@ -33,11 +33,20 @@ def _number(value, default: float = 0.0) -> float:
 def _team_id(client: ApiFootballClient, team_name: str) -> int | None:
     if client.offline or not str(team_name).strip():
         return None
+    cache = getattr(client, "_player_team_id_cache", None)
+    if cache is None:
+        cache = {}
+        setattr(client, "_player_team_id_cache", cache)
+    cache_key = _key(team_name)
+    if cache_key in cache:
+        return cache[cache_key]
     try:
         rows = client._get("teams", {"search": team_name}).get("response") or []
     except Exception:
+        cache[cache_key] = None
         return None
     if not rows:
+        cache[cache_key] = None
         return None
     wanted = _key(team_name)
     chosen = min(
@@ -46,9 +55,11 @@ def _team_id(client: ApiFootballClient, team_name: str) -> int | None:
     )
     value = (chosen.get("team") or {}).get("id")
     try:
-        return int(value) if value is not None else None
+        result = int(value) if value is not None else None
     except (TypeError, ValueError):
-        return None
+        result = None
+    cache[cache_key] = result
+    return result
 
 
 def _choose_stat_block(blocks: list[dict], league_id: int | None) -> dict | None:
@@ -133,11 +144,21 @@ def fetch_team_player_rates(
 
     El límite de páginas mantiene controlado el consumo de cuota. Una plantilla
     estándar cabe en una o dos páginas. Cualquier error devuelve [] para dejar
-    actuar al fallback existente.
+    actuar al fallback existente. Los resultados se cachean dentro del cliente
+    durante la ejecución para que un mismo equipo no consuma cuota dos veces.
     """
+
+    cache = getattr(client, "_player_rates_cache", None)
+    if cache is None:
+        cache = {}
+        setattr(client, "_player_rates_cache", cache)
+    cache_key = (_key(team_name), int(season), int(league_id) if league_id is not None else None)
+    if cache_key in cache:
+        return cache[cache_key]
 
     team_id = _team_id(client, team_name)
     if team_id is None:
+        cache[cache_key] = []
         return []
 
     out: list[dict] = []
@@ -148,6 +169,7 @@ def fetch_team_player_rates(
         try:
             data = client._get("players", params)
         except Exception:
+            cache[cache_key] = out
             return out
         for item in data.get("response") or []:
             row = _normalise_player(item, league_id)
@@ -164,7 +186,9 @@ def fetch_team_player_rates(
     unique = {}
     for row in out:
         unique[_key(row["player"])] = row
-    return list(unique.values())
+    result = list(unique.values())
+    cache[cache_key] = result
+    return result
 
 
 def props_for_official_starters(
