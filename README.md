@@ -36,7 +36,12 @@ mercados (over/under, hándicap, value), quiniela y detalle por partido.
     `VITE_SUPABASE_ANON_KEY` / `VITE_ALLOWED_EMAIL` para activar login privado
     (si no se definen, la app corre en modo abierto).
 - **Secrets del repo** (Settings → Secrets) para el cron:
-  `FOOTBALL_DATA_API_KEY`, `API_FOOTBALL_KEY`, `ODDS_API_KEY`.
+  `FOOTBALL_DATA_API_KEY`, `API_FOOTBALL_KEY`, `ODDS_API_KEY`,
+  `AI_API_KEY`/`GEMINI_API_KEY` y `GROQ_API_KEY`. Gemini es el proveedor
+  primario y Groq el fallback. La IA solo se intenta de 06:00–10:00 y
+  20:00–23:00 (Madrid), con caché/LKG; el refresco de resultados sigue cada
+  15 minutos sin consumir IA. Desde **Run workflow** se puede marcar
+  `force_ai` para una regeneración manual.
 
 ## Desarrollo local
 

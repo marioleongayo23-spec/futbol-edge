@@ -12,6 +12,7 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from .config import DATA_DIR
+from .feed_quality import load_feed, preserve_last_known_good, write_feed_safely
 from .ingest.api_football import ApiFootballClient, Fixture
 from .ingest.football_data import FootballDataClient
 from .normalize import canonical_team
@@ -287,131 +288,156 @@ def _attach_odds_value(payload: dict, market_odds: dict, one_x_two: dict, matrix
         payload["value"] = value
 
 
-def _gemini_window(now: datetime) -> bool:
-    """La capa gratuita de Gemini es MUY limitada (p. ej. 20 req/día), así que
-    solo llamamos en una ventana matinal (06-11 h Madrid): una carga al día para
-    los partidos del día. El resto de pasadas reutilizan la caché sin llamar.
-    FORCE_GEMINI=1 fuerza la llamada (para pruebas manuales)."""
+def _env_true(name: str) -> bool:
     import os
-    if os.environ.get("FORCE_GEMINI"):
+
+    return os.environ.get(name, "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _force_ai() -> bool:
+    """Solo se activa de forma explícita (workflow_dispatch o ejecución local)."""
+
+    return _env_true("FORCE_AI")
+
+
+def _ai_window(now: datetime) -> bool:
+    """IA únicamente por la mañana (06-10) o noche (20-23), hora de Madrid."""
+
+    if _force_ai():
         return True
+    hour = ensure_aware(now).astimezone(MADRID).hour
+    return 6 <= hour < 10 or 20 <= hour < 23
+
+
+def _age_hours(now: datetime, value: str | None) -> float | None:
     try:
-        return 6 <= ensure_aware(now).astimezone(MADRID).hour < 11
-    except Exception:
+        stamp = ensure_aware(datetime.fromisoformat(str(value)))
+    except (TypeError, ValueError):
+        return None
+    return (ensure_aware(now) - stamp).total_seconds() / 3600
+
+
+def _within_horizon(match: dict, now: datetime, horizon_days: int) -> bool:
+    try:
+        delta = ensure_aware(datetime.fromisoformat(match["kickoff"])) - ensure_aware(now)
+    except (KeyError, TypeError, ValueError):
+        return False
+    return -3 * 3600 <= delta.total_seconds() <= horizon_days * 86400
+
+
+def _can_attempt(match: dict, kind: str, now: datetime, cooldown_hours: int = 6) -> bool:
+    if _force_ai():
         return True
+    attempted = (match.get("ai_attempts") or {}).get(kind)
+    age = _age_hours(now, attempted)
+    return age is None or age >= cooldown_hours
 
 
-def _attach_previews(matches: list[dict], now: datetime, horizon_days: int = 2, limit: int = 5) -> None:
-    """Añade una previa narrativa (Gemini) a los próximos partidos con predicción.
+def _mark_attempt(match: dict, kind: str, now: datetime) -> None:
+    attempts = dict(match.get("ai_attempts") or {})
+    attempts[kind] = ensure_aware(now).isoformat()
+    match["ai_attempts"] = attempts
 
-    Reutiliza las previas del feed anterior (por id) para no re-llamar a Gemini
-    cada hora, y limita por fecha y cantidad para respetar el plan gratuito.
-    Sin clave (AI_API_KEY) no hace nada. Cualquier fallo se ignora en silencio.
-    """
+
+def _attach_previews(
+    matches: list[dict],
+    now: datetime,
+    horizon_days: int = 2,
+    limit: int = 5,
+    ttl_hours: int = 10,
+) -> None:
+    """Actualiza previas válidas sin borrar nunca la última versión buena."""
+
     try:
         from .ingest.ai_client import available
         from .ingest.preview_gemini import generate_preview
     except Exception:
         return
-    if not available():
+    if not available() or not _ai_window(now):
         return
 
-    prev: dict[str, str] = {}
-    try:
-        old = json.loads(OUTPUT.read_text(encoding="utf-8"))
-        for m in old.get("matches", []):
-            if m.get("preview") and m.get("id"):
-                prev[m["id"]] = m["preview"]
-    except Exception:
-        pass
+    candidates = []
+    for match in matches:
+        if match.get("finished") or not match.get("probs") or not _within_horizon(match, now, horizon_days):
+            continue
+        generated = (match.get("preview_meta") or {}).get("generated_at")
+        age = _age_hours(now, generated)
+        fresh = bool(match.get("preview")) and age is not None and age < ttl_hours
+        if fresh and not _force_ai():
+            continue
+        if _can_attempt(match, "preview", now):
+            candidates.append(match)
+    candidates.sort(key=lambda match: match.get("kickoff") or "")
 
-    now = ensure_aware(now)
-    cands = [m for m in matches if not m.get("finished") and m.get("probs")]
-    cands.sort(key=lambda m: m.get("kickoff") or "")
-    made = 0
-    for m in cands:
-        cached = prev.get(m.get("id"))
-        if cached:
-            m["preview"] = cached
-            continue
-        if made >= limit or not _gemini_window(now):
-            continue
+    for match in candidates[:limit]:
+        _mark_attempt(match, "preview", now)
         try:
-            days = (datetime.fromisoformat(m["kickoff"]) - now).days
+            result = generate_preview(match)
         except Exception:
-            days = 0
-        if days > horizon_days:
+            result = None
+        if not result:
             continue
-        txt = generate_preview(m)
-        if txt:
-            m["preview"] = txt
-            made += 1
+        match["preview"] = result.text
+        match["preview_meta"] = {
+            "provider": result.provider,
+            "model": result.model,
+            "generated_at": ensure_aware(now).isoformat(),
+            "quality": result.quality,
+        }
 
 
-def _attach_lineups(matches: list[dict], now: datetime, horizon_days: int = 2,
-                    limit: int = 10, ttl_hours: int = 12) -> None:
-    """Alineaciones probables + bajas (IA con búsqueda web) en UNA llamada/bloque.
+def _attach_lineups(
+    matches: list[dict],
+    now: datetime,
+    horizon_days: int = 2,
+    limit: int = 10,
+    ttl_hours: int = 10,
+) -> None:
+    """Actualiza onces en bloque; un resultado parcial no sustituye al LKG."""
 
-    Cachea por id con marca de tiempo: solo re-consulta lo que tenga más de
-    ttl_hours (por defecto 12 h) => ~2 llamadas/día aunque el feed corra cada
-    15 min. Sin clave o ante cualquier fallo, no hace nada."""
     try:
         from .ingest.ai_client import available
         from .ingest.lineups_ai import fetch_lineups
     except Exception:
         return
-    if not available():
+    if not available() or not _ai_window(now):
         return
-
-    now = ensure_aware(now)
-    prev: dict[str, dict] = {}
-    try:
-        old = json.loads(OUTPUT.read_text(encoding="utf-8"))
-        for m in old.get("matches", []):
-            if m.get("alineacion") and m.get("id"):
-                prev[m["id"]] = m["alineacion"]
-    except Exception:
-        pass
-
-    def fresh(al: dict) -> bool:
-        try:
-            return (now - datetime.fromisoformat(al["ts"])).total_seconds() < ttl_hours * 3600
-        except Exception:
-            return False
 
     stale = []
-    for m in matches:
-        if m.get("finished") or not m.get("probs"):
+    for match in matches:
+        if match.get("finished") or not match.get("probs") or not _within_horizon(match, now, horizon_days):
             continue
-        try:
-            if (datetime.fromisoformat(m["kickoff"]) - now).days > horizon_days:
-                continue
-        except Exception:
+        lineup = match.get("alineacion") or {}
+        generated = lineup.get("generated_at") or lineup.get("ts")
+        age = _age_hours(now, generated)
+        fresh = bool(lineup) and age is not None and age < ttl_hours
+        if fresh and not _force_ai():
             continue
-        cached = prev.get(m.get("id"))
-        if cached and fresh(cached):
-            m["alineacion"] = cached  # aún válida
-        elif cached and not _gemini_window(now):
-            m["alineacion"] = cached  # fuera de ventana: mejor la vieja que nada
-        else:
-            stale.append(m)
-
-    # Solo se hacen llamadas nuevas en la ventana matinal (cuota gratuita).
-    if not stale or not _gemini_window(now):
-        return
-    stale.sort(key=lambda m: m.get("kickoff") or "")
+        if _can_attempt(match, "lineup", now):
+            stale.append(match)
+    stale.sort(key=lambda match: match.get("kickoff") or "")
     stale = stale[:limit]
-    query = [{"partido": f"{m['home']} vs {m['away']}"} for m in stale]
+    if not stale:
+        return
+
+    for match in stale:
+        _mark_attempt(match, "lineup", now)
+    query = [{"partido": f"{match['home']} vs {match['away']}"} for match in stale]
     try:
-        got = fetch_lineups(query)
+        generated = fetch_lineups(query)
     except Exception:
-        got = {}
-    ts = now.isoformat()
-    for m in stale:
-        data = got.get(f"{m['home']} vs {m['away']}")
+        generated = {}
+    stamp = ensure_aware(now).isoformat()
+    for match in stale:
+        data = generated.get(f"{match['home']} vs {match['away']}")
         if not data:
             continue
-        m["alineacion"] = {**data, "ts": ts, "fuente": "IA (Gemini)"}
+        match["alineacion"] = {
+            **data,
+            "generated_at": stamp,
+            "ts": stamp,
+            "fuente": data.get("provider"),
+        }
 
 
 def build_dashboard(
@@ -422,6 +448,7 @@ def build_dashboard(
     now = ensure_aware(now)
     season = current_season(now)
     generated_at = now.astimezone(MADRID).isoformat()
+    previous = load_feed(OUTPUT)
     matches: list[dict] = []
     errors: list[dict] = []
 
@@ -469,10 +496,15 @@ def build_dashboard(
             })
 
     matches.sort(key=lambda item: item["kickoff"])
+    # Recupera predicciones/IA/odds anteriores antes de intentar refrescarlas.
+    # De esta forma un timeout, una cuota agotada o una respuesta parcial jamás
+    # convierte una tarjeta que funcionaba en un hueco en blanco.
+    if previous:
+        preserve_last_known_good({"matches": matches}, {"matches": previous.get("matches", [])})
     _attach_previews(matches, now)
     _attach_lineups(matches, now)
-    return {
-        "schema_version": 2,
+    payload = {
+        "schema_version": 3,
         "generated_at": generated_at,
         "season": season,
         "quiniela": _load_quiniela_oficial(),
@@ -485,6 +517,7 @@ def build_dashboard(
             "stats": "football-data.co.uk (remates, córners, faltas, tarjetas — reales y esperadas)",
             "players": "football-data.org (/scorers: goleadores y asistencias)",
             "odds": "football-data.co.uk (media de mercado: 1X2 y over/under 2.5)",
+            "ai": "Gemini → Groq; solo ventanas 06-10 y 20-23 Europe/Madrid",
         },
         "disclaimer": "Probabilidades y ventaja estadística, no certezas. "
                       "Los datos de jugadores y cuotas se muestran como pendientes "
@@ -498,6 +531,7 @@ def build_dashboard(
         "matches": matches,
         "errors": errors,
     }
+    return preserve_last_known_good(payload, previous)
 
 
 def _aggregate_accuracy(matches: list[dict]) -> dict | None:
@@ -796,12 +830,15 @@ def main() -> int:
         print("Feed no actualizado: las fuentes no devolvieron próximos partidos")
         return 3
 
-    OUTPUT.parent.mkdir(parents=True, exist_ok=True)
-    OUTPUT.write_text(
-        json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
-        encoding="utf-8",
-    )
-    print(f"Feed actualizado: {len(payload['matches'])} partidos en {OUTPUT}")
+    ok, report = write_feed_safely(OUTPUT, payload)
+    if not ok:
+        print("Feed no actualizado: guard de calidad rechazó la regresión: "
+              + ", ".join(report["issues"][:8]))
+        return 4
+    metrics = report["metrics"]
+    print(f"Feed actualizado: {metrics['matches']} partidos en {OUTPUT} "
+          f"(predicciones={metrics['predictions']}, previas={metrics['previews']}, "
+          f"onces={metrics['lineups']}, calidad={report['score']})")
     return 0
 
 

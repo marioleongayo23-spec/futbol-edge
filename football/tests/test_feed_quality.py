@@ -1,0 +1,71 @@
+"""Contrato, last-known-good y escritura atómica del feed."""
+
+from copy import deepcopy
+from datetime import datetime, timezone
+import json
+
+from futbol_pred.feed_quality import evaluate_feed, preserve_last_known_good, write_feed_safely
+
+
+def _feed(n=20):
+    matches = [
+        {
+            "id": f"src-{i}",
+            "home": f"Local {i}",
+            "away": f"Visitante {i}",
+            "league": "LaLiga",
+            "date": "2026-08-25",
+            "kickoff": f"2026-08-25T{(i % 20):02d}:00:00+02:00",
+            "status": "SCHEDULED",
+            "finished": False,
+            "engine": "dixon-coles",
+            "probs": [50, 28, 22],
+            "xg": [1.5, 0.9],
+            "markets": {"marcador": "1-0"},
+        }
+        for i in range(n)
+    ]
+    return {
+        "schema_version": 3,
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "season": 2026,
+        "counts": {"total": n, "jugados": 0, "proximos": n, "con_prediccion": n},
+        "matches": matches,
+    }
+
+
+def test_feed_valido_sin_blanks():
+    report = evaluate_feed(_feed())
+    assert report["valid"] is True
+    assert report["metrics"]["blank_matches"] == 0
+
+
+def test_preserva_preview_y_prediccion_lkg():
+    previous = _feed()
+    previous["matches"][0]["preview"] = " ".join(["texto"] * 100)
+    previous["matches"][0]["preview_meta"] = {"provider": "Gemini"}
+    candidate = deepcopy(previous)
+    for field in ("preview", "preview_meta", "probs", "xg", "markets"):
+        candidate["matches"][0].pop(field, None)
+    preserve_last_known_good(candidate, previous)
+    assert candidate["matches"][0]["preview_meta"]["provider"] == "Gemini"
+    assert candidate["matches"][0]["probs"] == [50, 28, 22]
+
+
+def test_guard_rechaza_caida_masiva_y_no_pisa_archivo(tmp_path):
+    path = tmp_path / "dashboard.json"
+    previous = _feed()
+    path.write_text(json.dumps(previous), encoding="utf-8")
+    candidate = _feed(10)
+    ok, report = write_feed_safely(path, candidate, previous=previous)
+    assert ok is False
+    assert any(issue.startswith("muy_pocos_partidos") for issue in report["issues"])
+    assert len(json.loads(path.read_text(encoding="utf-8"))["matches"]) == 20
+
+
+def test_escritura_segura_anade_informe(tmp_path):
+    path = tmp_path / "dashboard.json"
+    ok, report = write_feed_safely(path, _feed())
+    assert ok is True and report["valid"] is True
+    saved = json.loads(path.read_text(encoding="utf-8"))
+    assert saved["feed_quality"]["valid"] is True

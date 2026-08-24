@@ -108,12 +108,12 @@ function PropsTable({ title, clave }) {
     <div className="xi-props">
       <div className="xi-props-h">{title} · jugadores clave</div>
       <table className="props-tbl">
-        <thead><tr><th className="tl">Jugador</th><th title="Goles">G</th><th title="Asistencias">A</th><th title="Remates">R</th><th title="Faltas">F</th><th title="Tarjetas">T</th></tr></thead>
+        <thead><tr><th className="tl">Jugador</th><th title="Goles">G</th><th title="Asistencias">A</th><th title="Remates">R</th><th title="Remates a puerta">AP</th><th title="Faltas cometidas">FC</th><th title="Faltas recibidas">FR</th><th title="Tarjetas">T</th></tr></thead>
         <tbody>
           {clave.map((p, i) => (
             <tr key={i}>
               <td className="tl">{p.jugador}</td>
-              <td>{p.g ?? "–"}</td><td>{p.a ?? "–"}</td><td>{p.r ?? "–"}</td><td>{p.f ?? "–"}</td><td>{p.t ?? "–"}</td>
+              <td>{p.g ?? "–"}</td><td>{p.a ?? "–"}</td><td>{p.r ?? "–"}</td><td>{p.rp ?? "–"}</td><td>{p.fc ?? p.f ?? "–"}</td><td>{p.fr ?? "–"}</td><td>{p.t ?? "–"}</td>
             </tr>
           ))}
         </tbody>
@@ -124,6 +124,8 @@ function PropsTable({ title, clave }) {
 
 /* Once probable sobre el campo + bajas + jugadores clave con props (IA). */
 function Alineacion({ m, a }) {
+  const provider = a.provider || a.fuente || "IA";
+  const completeness = a.quality?.score != null ? ` · completitud ${Math.round(a.quality.score * 100)}%` : "";
   return (
     <div className="card">
       <div className="lbl">👥 Once probable</div>
@@ -147,7 +149,7 @@ function Alineacion({ m, a }) {
         <PropsTable title={m.away} clave={a.clave_visitante} />
       </div>
       <p className="note" style={{ color: "var(--muted)", marginTop: 6 }}>
-        Estimación de IA ({a.fuente || "Gemini"}) — once, bajas y props por jugador (G goles · A asist. · R remates · F faltas · T tarjetas). No son datos oficiales; verifica antes de apostar.
+        Estimación generada por {provider}{completeness} — G goles · A asist. · R remates · AP a puerta · FC faltas cometidas · FR recibidas · T tarjetas. No son datos oficiales; verifica antes de apostar.
       </p>
     </div>
   );
@@ -306,7 +308,7 @@ export default function MatchDetail({ m, bankroll, onBack, onTeam, players }) {
           {m.preview.split(/\n+/).filter(Boolean).map((par, i) => (
             <p key={i} style={{ margin: "0 0 8px", lineHeight: 1.55, color: "var(--text)" }}>{par}</p>
           ))}
-          <p className="note" style={{ color: "var(--muted)", marginTop: 4 }}>Redactado por IA (Gemini) a partir de los números del modelo. No es información de fuentes; interpreta los datos.</p>
+          <p className="note" style={{ color: "var(--muted)", marginTop: 4 }}>Redactado por {m.preview_meta?.provider || "IA"} a partir de los números del modelo{m.preview_meta?.quality != null ? ` · calidad ${Math.round(m.preview_meta.quality * 100)}%` : ""}. No es información de fuentes; interpreta los datos.</p>
         </div>
       )}
 
