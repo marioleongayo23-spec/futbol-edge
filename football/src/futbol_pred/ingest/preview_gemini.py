@@ -100,3 +100,48 @@ def generate_preview(m: dict, timeout: int = 40, retries: int = 1) -> GeneratedP
     if not text:
         return None
     return GeneratedPreview(text, response.provider, response.model, quality)
+
+
+def generate_statistical_preview(m: dict) -> GeneratedPreview | None:
+    """Previa gratuita y determinista cuando los proveedores no responden.
+
+    No inventa noticias ni jugadores: convierte únicamente las métricas ya
+    calculadas por el modelo en una narración completa y reemplazable por IA.
+    """
+
+    home, away = str(m.get("home") or "").strip(), str(m.get("away") or "").strip()
+    probs, xg = m.get("probs") or [], m.get("xg") or []
+    stats, markets = m.get("stats") or {}, m.get("markets") or {}
+    if not home or not away or len(probs) != 3 or len(xg) != 2:
+        return None
+    labels = ("la victoria local", "el empate", "la victoria visitante")
+    fav_index = max(range(3), key=lambda index: probs[index])
+    shots = stats.get("shots") or {}
+    sot = stats.get("sot") or {}
+    corners = stats.get("corners") or {}
+    fouls = stats.get("fouls") or {}
+    yellows = stats.get("yellows") or {}
+    score = markets.get("marcador") or f"{round(xg[0])}-{round(xg[1])}"
+    over = round(float(markets.get("over_2_5") or 0) * 100)
+    btts = round(float(markets.get("btts") or 0) * 100)
+    first = (
+        f"{home} recibe a {away} en un partido que el modelo sitúa con un {probs[0]}% "
+        f"de triunfo local, un {probs[1]}% de empate y un {probs[2]}% de victoria visitante. "
+        f"El escenario con más peso es {labels[fav_index]}, aunque la distribución mantiene "
+        f"abierto el encuentro. La producción ofensiva esperada es de {xg[0]} xG para {home} "
+        f"y {xg[1]} para {away}; el marcador individual más probable es {score}."
+    )
+    second = (
+        f"En volumen, la previsión apunta a {shots.get('home', '—')} remates del conjunto local "
+        f"y {shots.get('away', '—')} del visitante, con {sot.get('home', '—')} y "
+        f"{sot.get('away', '—')} tiros a puerta. También se proyectan "
+        f"{corners.get('total', '—')} córners, {fouls.get('total', '—')} faltas y "
+        f"{yellows.get('total', '—')} amarillas en total. La probabilidad de superar los 2,5 "
+        f"goles es del {over}% y la de que marquen ambos equipos, del {btts}%. Son estimaciones "
+        f"estadísticas previas al partido y deben actualizarse cuando aparezcan datos oficiales de última hora."
+    )
+    text = first + "\n\n" + second
+    valid, quality = _validate_preview(text, home, away)
+    if not valid:
+        return None
+    return GeneratedPreview(valid, "Motor estadístico local", "template-v1", min(quality, 0.82))

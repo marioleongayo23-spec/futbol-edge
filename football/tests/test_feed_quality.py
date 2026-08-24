@@ -69,3 +69,12 @@ def test_escritura_segura_anade_informe(tmp_path):
     assert ok is True and report["valid"] is True
     saved = json.loads(path.read_text(encoding="utf-8"))
     assert saved["feed_quality"]["valid"] is True
+
+
+def test_schema4_bloquea_proximos_sin_previa_ni_once():
+    feed = _feed()
+    feed["schema_version"] = 4
+    report = evaluate_feed(feed)
+    assert report["valid"] is False
+    assert any(issue.startswith("preview_vacia_proximo") for issue in report["issues"])
+    assert any(issue.startswith("once_vacio_proximo") for issue in report["issues"])

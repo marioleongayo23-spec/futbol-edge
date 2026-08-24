@@ -129,8 +129,12 @@ def evaluate_feed(candidate: dict, previous: dict | None = None) -> dict:
 
     ids = set()
     blank_matches = 0
-    prediction_count = preview_count = lineup_count = 0
+    prediction_count = preview_count = lineup_count = required_ai_count = 0
     leagues = set()
+    try:
+        generated_at = datetime.fromisoformat(str(candidate.get("generated_at")))
+    except (TypeError, ValueError):
+        generated_at = None
     for index, match in enumerate(matches):
         if not isinstance(match, dict):
             issues.append(f"partido_no_objeto:{index}")
@@ -164,6 +168,17 @@ def evaluate_feed(candidate: dict, previous: dict | None = None) -> dict:
         preview_count += int(bool(match.get("preview")))
         lineup_count += int(bool(match.get("alineacion")))
         _ai_complete(match, issues)
+        if candidate.get("schema_version", 0) >= 4 and generated_at and probs and not match.get("finished"):
+            try:
+                delta = datetime.fromisoformat(str(match.get("kickoff"))) - generated_at
+            except (TypeError, ValueError):
+                delta = None
+            if delta is not None and -3 * 3600 <= delta.total_seconds() <= 72 * 3600:
+                required_ai_count += 1
+                if not match.get("preview"):
+                    issues.append(f"preview_vacia_proximo:{match_id}")
+                if not match.get("alineacion"):
+                    issues.append(f"once_vacio_proximo:{match_id}")
 
     counts = candidate.get("counts") or {}
     if counts.get("total") != len(matches):
@@ -195,6 +210,7 @@ def evaluate_feed(candidate: dict, previous: dict | None = None) -> dict:
         "predictions": prediction_count,
         "previews": preview_count,
         "lineups": lineup_count,
+        "upcoming_content_required": required_ai_count,
         "blank_matches": blank_matches,
         "leagues": sorted(str(league) for league in leagues if league),
     }

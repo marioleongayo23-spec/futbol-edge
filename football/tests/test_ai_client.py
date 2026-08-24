@@ -43,3 +43,31 @@ def test_compatibilidad_openai_solo_si_es_groq(monkeypatch):
     assert A._groq_key() is None
     monkeypatch.setenv("OPENAI_BASE_URL", "https://api.groq.com/openai/v1")
     assert A._groq_key() == "legacy"
+
+
+def test_gemini_descubre_modelo_activo_en_lugar_del_retirado(monkeypatch):
+    class Response:
+        ok = True
+
+        def __init__(self, data):
+            self._data = data
+
+        def json(self):
+            return self._data
+
+    monkeypatch.setenv("AI_API_KEY", "key")
+    monkeypatch.delenv("GEMINI_MODEL", raising=False)
+    monkeypatch.setattr(A, "_gemini_model_cache", None)
+    monkeypatch.setattr(A.requests, "get", lambda *_a, **_k: Response({
+        "models": [{"name": "models/gemini-3.6-flash", "supportedGenerationMethods": ["generateContent"]}]
+    }))
+    called = []
+
+    def post(url, **_kwargs):
+        called.append(url)
+        return Response({"candidates": [{"content": {"parts": [{"text": "respuesta"}]}}]})
+
+    monkeypatch.setattr(A.requests, "post", post)
+    result = A._gemini("hola", 100, 0.2, 10)
+    assert result.model == "gemini-3.6-flash"
+    assert "gemini-2.0-flash" not in called[0]

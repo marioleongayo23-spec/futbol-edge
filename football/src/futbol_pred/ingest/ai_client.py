@@ -23,7 +23,9 @@ from typing import Callable
 import requests
 
 _GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+_GEMINI_MODELS_URL = "https://generativelanguage.googleapis.com/v1beta/models"
 _GROQ_BASE_URL = "https://api.groq.com/openai/v1"
+_gemini_model_cache: list[str] | None = None
 
 
 @dataclass(frozen=True)
@@ -56,31 +58,67 @@ def _clean_text(value) -> str | None:
     return value or None
 
 
+def _gemini_models(key: str, timeout: int) -> list[str]:
+    """Descubre modelos activos y evita quedar atado a un modelo retirado."""
+
+    global _gemini_model_cache
+    configured = _clean_text(os.getenv("GEMINI_MODEL"))
+    if configured:
+        configured = configured.removeprefix("models/")
+    if _gemini_model_cache is None:
+        discovered: list[str] = []
+        try:
+            response = requests.get(_GEMINI_MODELS_URL, params={"key": key}, timeout=timeout)
+            if response.ok:
+                for item in response.json().get("models", []):
+                    methods = item.get("supportedGenerationMethods") or []
+                    name = str(item.get("name") or "").removeprefix("models/")
+                    if name and "generateContent" in methods:
+                        discovered.append(name)
+        except (requests.RequestException, AttributeError, TypeError, ValueError):
+            discovered = []
+        preferred = [
+            "gemini-3.6-flash",
+            "gemini-3-flash-preview",
+            "gemini-2.5-flash",
+            "gemini-2.5-flash-lite",
+        ]
+        ordered = [name for name in preferred if name in discovered]
+        ordered.extend(name for name in discovered if "flash" in name and name not in ordered)
+        ordered.extend(name for name in discovered if name not in ordered)
+        _gemini_model_cache = ordered or preferred
+    return ([configured] if configured else []) + [
+        name for name in _gemini_model_cache if name != configured
+    ]
+
+
 def _gemini(prompt: str, max_tokens: int, temperature: float, timeout: int) -> AIResponse | None:
     key = _gemini_key()
     if not key:
         return None
-    model = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
-    response = requests.post(
-        _GEMINI_URL.format(model=model),
-        params={"key": key},
-        json={
-            "contents": [{"parts": [{"text": prompt}]}],
-            "generationConfig": {
-                "temperature": temperature,
-                "maxOutputTokens": max_tokens,
+    for model in _gemini_models(key, min(timeout, 20)):
+        response = requests.post(
+            _GEMINI_URL.format(model=model),
+            params={"key": key},
+            json={
+                "contents": [{"parts": [{"text": prompt}]}],
+                "generationConfig": {
+                    "temperature": temperature,
+                    "maxOutputTokens": max_tokens,
+                },
             },
-        },
-        timeout=timeout,
-    )
-    if not response.ok:
-        return None
-    try:
-        parts = (response.json().get("candidates") or [{}])[0].get("content", {}).get("parts", [])
-        text = _clean_text("".join(part.get("text", "") for part in parts))
-    except (AttributeError, TypeError, ValueError, KeyError, IndexError):
-        return None
-    return AIResponse(text=text, provider="Gemini", model=model) if text else None
+            timeout=timeout,
+        )
+        if not response.ok:
+            continue
+        try:
+            parts = (response.json().get("candidates") or [{}])[0].get("content", {}).get("parts", [])
+            text = _clean_text("".join(part.get("text", "") for part in parts))
+        except (AttributeError, TypeError, ValueError, KeyError, IndexError):
+            text = None
+        if text:
+            return AIResponse(text=text, provider="Gemini", model=model)
+    return None
 
 
 def _groq(prompt: str, max_tokens: int, temperature: float, timeout: int) -> AIResponse | None:

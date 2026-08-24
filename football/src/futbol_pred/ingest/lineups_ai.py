@@ -174,3 +174,87 @@ def fetch_lineups(matches: list[dict], timeout: int = 60, retries: int = 1) -> d
             "model": response.model,
         }
     return out
+
+
+def _ordered_squad(squad: list[dict]) -> list[dict]:
+    order = {"goalkeeper": 0, "defence": 1, "defender": 1,
+             "midfield": 2, "midfielder": 2, "offence": 3, "attacker": 3}
+    unique = {}
+    for raw in squad or []:
+        if isinstance(raw, str):
+            raw = {"name": raw, "position": ""}
+        if not isinstance(raw, dict):
+            continue
+        name = _name(raw.get("name") or raw.get("player"))
+        if name:
+            unique.setdefault(name.casefold(), {"name": name, "position": raw.get("position") or ""})
+    return sorted(unique.values(), key=lambda player: order.get(str(player["position"]).casefold(), 4))
+
+
+def _probable_xi(squad: list[dict]) -> list[str] | None:
+    players = _ordered_squad(squad)
+    if len(players) < 11:
+        return None
+    groups = {index: [] for index in range(5)}
+    for player in players:
+        position = str(player["position"]).casefold()
+        group = (0 if "goal" in position else 1 if "def" in position else
+                 2 if "mid" in position else 3 if any(x in position for x in ("off", "attack", "forward")) else 4)
+        groups[group].append(player["name"])
+    selected = groups[0][:1] + groups[1][:4] + groups[2][:3] + groups[3][:3]
+    for player in players:
+        if len(selected) >= 11:
+            break
+        if player["name"] not in selected:
+            selected.append(player["name"])
+    return selected[:11] if len(selected) >= 11 else None
+
+
+def _fallback_props(names: list[str], side: str, match: dict) -> list[dict]:
+    stats, xg = match.get("stats") or {}, match.get("xg") or [1.0, 1.0]
+    idx = 0 if side == "home" else 1
+    side_key = "home" if side == "home" else "away"
+    shots = float((stats.get("shots") or {}).get(side_key) or 10)
+    sot = float((stats.get("sot") or {}).get(side_key) or shots * 0.34)
+    fouls = float((stats.get("fouls") or {}).get(side_key) or 12)
+    cards = float((stats.get("yellows") or {}).get(side_key) or 2)
+    goals = float(xg[idx]) if len(xg) > idx else 1.0
+    weights = (0.42, 0.30, 0.20)
+    out = []
+    for name, weight in zip(names[-3:][::-1], weights):
+        out.append({
+            "jugador": name,
+            "g": round(goals * weight, 1),
+            "a": round(goals * weight * 0.55, 1),
+            "r": round(shots * weight, 1),
+            "rp": round(sot * weight, 1),
+            "fc": round(fouls / 11, 1),
+            "fr": round(fouls / 11, 1),
+            "t": round(min(1.5, cards / 11), 1),
+        })
+    return out
+
+
+def build_statistical_lineup(match: dict, home_squad: list[dict], away_squad: list[dict]) -> dict | None:
+    """Once completo gratuito basado en la plantilla real de football-data.org."""
+
+    local, visitor = _probable_xi(home_squad), _probable_xi(away_squad)
+    if not local or not visitor:
+        return None
+    return {
+        "local": local,
+        "visitante": visitor,
+        "bajas_local": [],
+        "bajas_visitante": [],
+        "clave_local": _fallback_props(local, "home", match),
+        "clave_visitante": _fallback_props(visitor, "away", match),
+        "provider": "Motor estadístico local",
+        "model": "squad-stats-v1",
+        "quality": {
+            "complete": True,
+            "lineup_players": 22,
+            "props_players": 6,
+            "score": 0.78,
+            "provisional": True,
+        },
+    }

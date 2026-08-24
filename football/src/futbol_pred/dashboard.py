@@ -346,98 +346,224 @@ def _attach_previews(
     limit: int = 5,
     ttl_hours: int = 10,
 ) -> None:
-    """Actualiza previas válidas sin borrar nunca la última versión buena."""
+    """Actualiza con IA en ventana y rellena gratis cualquier hueco restante."""
 
     try:
         from .ingest.ai_client import available
-        from .ingest.preview_gemini import generate_preview
+        from .ingest.preview_gemini import generate_preview, generate_statistical_preview
     except Exception:
-        return
-    if not available() or not _ai_window(now):
         return
 
     candidates = []
-    for match in matches:
-        if match.get("finished") or not match.get("probs") or not _within_horizon(match, now, horizon_days):
-            continue
-        generated = (match.get("preview_meta") or {}).get("generated_at")
-        age = _age_hours(now, generated)
-        fresh = bool(match.get("preview")) and age is not None and age < ttl_hours
-        if fresh and not _force_ai():
-            continue
-        if _can_attempt(match, "preview", now):
-            candidates.append(match)
-    candidates.sort(key=lambda match: match.get("kickoff") or "")
+    if available() and _ai_window(now):
+        for match in matches:
+            if match.get("finished") or not match.get("probs") or not _within_horizon(match, now, horizon_days):
+                continue
+            meta = match.get("preview_meta") or {}
+            age = _age_hours(now, meta.get("generated_at"))
+            is_local_fallback = meta.get("provider") == "Motor estadístico local"
+            fresh = bool(match.get("preview")) and not is_local_fallback and age is not None and age < ttl_hours
+            if fresh and not _force_ai():
+                continue
+            if _can_attempt(match, "preview", now):
+                candidates.append(match)
+        candidates.sort(key=lambda match: match.get("kickoff") or "")
 
-    for match in candidates[:limit]:
-        _mark_attempt(match, "preview", now)
-        try:
-            result = generate_preview(match)
-        except Exception:
-            result = None
-        if not result:
+        for match in candidates[:limit]:
+            _mark_attempt(match, "preview", now)
+            try:
+                result = generate_preview(match)
+            except Exception:
+                result = None
+            if not result:
+                continue
+            match["preview"] = result.text
+            match["preview_meta"] = {
+                "provider": result.provider,
+                "model": result.model,
+                "generated_at": ensure_aware(now).isoformat(),
+                "quality": result.quality,
+            }
+
+    # Nunca se publica un próximo partido con predicción sin resumen. El texto
+    # local no consume cuota y la IA lo sustituye en la siguiente ventana.
+    stamp = ensure_aware(now).isoformat()
+    for match in matches:
+        if match.get("finished") or not match.get("probs") or match.get("preview"):
             continue
-        match["preview"] = result.text
-        match["preview_meta"] = {
-            "provider": result.provider,
-            "model": result.model,
-            "generated_at": ensure_aware(now).isoformat(),
-            "quality": result.quality,
-        }
+        result = generate_statistical_preview(match)
+        if result:
+            match["preview"] = result.text
+            match["preview_meta"] = {
+                "provider": result.provider,
+                "model": result.model,
+                "generated_at": stamp,
+                "quality": result.quality,
+                "provisional": True,
+            }
 
 
 def _attach_lineups(
     matches: list[dict],
     now: datetime,
+    squads: dict[str, list[dict]] | None = None,
     horizon_days: int = 2,
     limit: int = 10,
     ttl_hours: int = 10,
 ) -> None:
-    """Actualiza onces en bloque; un resultado parcial no sustituye al LKG."""
+    """Actualiza onces con IA y cae a plantillas reales + motor local gratis."""
 
     try:
         from .ingest.ai_client import available
-        from .ingest.lineups_ai import fetch_lineups
+        from .ingest.lineups_ai import build_statistical_lineup, fetch_lineups
     except Exception:
-        return
-    if not available() or not _ai_window(now):
         return
 
     stale = []
-    for match in matches:
-        if match.get("finished") or not match.get("probs") or not _within_horizon(match, now, horizon_days):
-            continue
-        lineup = match.get("alineacion") or {}
-        generated = lineup.get("generated_at") or lineup.get("ts")
-        age = _age_hours(now, generated)
-        fresh = bool(lineup) and age is not None and age < ttl_hours
-        if fresh and not _force_ai():
-            continue
-        if _can_attempt(match, "lineup", now):
-            stale.append(match)
-    stale.sort(key=lambda match: match.get("kickoff") or "")
-    stale = stale[:limit]
-    if not stale:
-        return
-
-    for match in stale:
-        _mark_attempt(match, "lineup", now)
-    query = [{"partido": f"{match['home']} vs {match['away']}"} for match in stale]
-    try:
-        generated = fetch_lineups(query)
-    except Exception:
-        generated = {}
     stamp = ensure_aware(now).isoformat()
-    for match in stale:
-        data = generated.get(f"{match['home']} vs {match['away']}")
-        if not data:
+    if available() and _ai_window(now):
+        for match in matches:
+            if match.get("finished") or not match.get("probs") or not _within_horizon(match, now, horizon_days):
+                continue
+            lineup = match.get("alineacion") or {}
+            generated_at = lineup.get("generated_at") or lineup.get("ts")
+            age = _age_hours(now, generated_at)
+            is_local_fallback = lineup.get("provider") == "Motor estadístico local"
+            fresh = bool(lineup) and not is_local_fallback and age is not None and age < ttl_hours
+            if fresh and not _force_ai():
+                continue
+            if _can_attempt(match, "lineup", now):
+                stale.append(match)
+        stale.sort(key=lambda match: match.get("kickoff") or "")
+        stale = stale[:limit]
+        for match in stale:
+            _mark_attempt(match, "lineup", now)
+        query = [{"partido": f"{match['home']} vs {match['away']}"} for match in stale]
+        try:
+            generated = fetch_lineups(query) if query else {}
+        except Exception:
+            generated = {}
+        for match in stale:
+            data = generated.get(f"{match['home']} vs {match['away']}")
+            if data:
+                match["alineacion"] = {
+                    **data,
+                    "generated_at": stamp,
+                    "ts": stamp,
+                    "fuente": data.get("provider"),
+                }
+
+    squads = squads or {}
+    for match in matches:
+        if match.get("finished") or not match.get("probs") or match.get("alineacion"):
             continue
-        match["alineacion"] = {
-            **data,
-            "generated_at": stamp,
-            "ts": stamp,
-            "fuente": data.get("provider"),
-        }
+        home_squad = _squad_for(squads, match.get("home"))
+        away_squad = _squad_for(squads, match.get("away"))
+        data = build_statistical_lineup(match, home_squad, away_squad)
+        if data:
+            match["alineacion"] = {
+                **data,
+                "generated_at": stamp,
+                "ts": stamp,
+                "fuente": data.get("provider"),
+            }
+
+
+def _squad_for(squads: dict[str, list[dict]], team: str | None) -> list[dict]:
+    if not team:
+        return []
+    if team in squads:
+        return squads[team]
+    wanted = _canon(team)
+    for name, squad in squads.items():
+        if _canon(name) == wanted:
+            return squad
+    return []
+
+
+def _merge_squad_players(
+    players: dict | None,
+    squads_by_league: dict[str, dict],
+    previous_players: dict | None = None,
+) -> dict | None:
+    """Completa el feed de jugadores con las plantillas gratuitas oficiales."""
+
+    out = json.loads(json.dumps(previous_players or {}))
+    for league, current in (players or {}).items():
+        bucket = out.setdefault(league, {"label": current.get("label", league), "rankings": {}, "players": []})
+        bucket["label"] = current.get("label") or bucket.get("label") or league
+        bucket.setdefault("rankings", {}).update(current.get("rankings") or {})
+        flat = bucket.setdefault("players", [])
+        positions = {(str(p.get("team")).casefold(), str(p.get("player")).casefold()): i for i, p in enumerate(flat)}
+        for player in current.get("players") or []:
+            key = (str(player.get("team")).casefold(), str(player.get("player")).casefold())
+            if key in positions:
+                flat[positions[key]] = player
+            else:
+                positions[key] = len(flat)
+                flat.append(player)
+    labels = {"laliga": "LaLiga", "segunda": "LaLiga Hypermotion", "champions": "Champions League"}
+    for league, teams in squads_by_league.items():
+        bucket = out.setdefault(league, {"label": labels.get(league, league), "rankings": {}, "players": []})
+        bucket.setdefault("rankings", {})
+        flat = bucket.setdefault("players", [])
+        existing = {(str(p.get("team")).casefold(), str(p.get("player")).casefold()) for p in flat}
+        for team, squad in teams.items():
+            for raw in squad:
+                name = str(raw.get("name") or "").strip()
+                key = (team.casefold(), name.casefold())
+                if not name or key in existing:
+                    continue
+                flat.append({
+                    "player": name, "team": team, "position": raw.get("position") or "",
+                    "goals": 0, "assists": 0, "shots": 0, "yc": 0, "min": 0,
+                    "source": "football-data.org squad",
+                })
+                existing.add(key)
+    return out or None
+
+
+def _squads_from_players(players: dict | None) -> dict[str, dict[str, list[dict]]]:
+    out: dict[str, dict[str, list[dict]]] = {}
+    for league, bucket in (players or {}).items():
+        teams: dict[str, list[dict]] = {}
+        for player in bucket.get("players") or []:
+            team = str(player.get("team") or "").strip()
+            name = str(player.get("player") or "").strip()
+            if team and name:
+                teams.setdefault(team, []).append({"name": name, "position": player.get("position") or ""})
+        out[league] = {team: squad for team, squad in teams.items() if len(squad) >= 11}
+    return out
+
+
+def _fill_missing_free_squads(
+    matches: list[dict],
+    now: datetime,
+    squads_by_league: dict[str, dict[str, list[dict]]],
+    max_teams: int = 12,
+) -> None:
+    """Consulta API-Football solo para próximos equipos sin plantilla cacheada."""
+
+    client = ApiFootballClient()
+    if client.offline:
+        return
+    league_keys = {"LaLiga": "laliga", "LaLiga Hypermotion": "segunda", "Champions League": "champions"}
+    pending: list[tuple[str, str]] = []
+    seen = set()
+    flat = {team: squad for teams in squads_by_league.values() for team, squad in teams.items()}
+    for match in matches:
+        if match.get("finished") or not match.get("probs") or not _within_horizon(match, now, 3):
+            continue
+        league = league_keys.get(match.get("league"), "laliga")
+        for team in (match.get("home"), match.get("away")):
+            if not team or _squad_for(flat, team) or _canon(team) in seen:
+                continue
+            seen.add(_canon(team))
+            pending.append((league, team))
+    for league, team in pending[:max_teams]:
+        squad = client.get_squad(team)
+        if len(squad) >= 11:
+            squads_by_league.setdefault(league, {})[team] = squad
 
 
 def build_dashboard(
@@ -451,6 +577,7 @@ def build_dashboard(
     previous = load_feed(OUTPUT)
     matches: list[dict] = []
     errors: list[dict] = []
+    squads_by_league: dict[str, dict[str, list[dict]]] = {}
 
     for league in LEAGUES:
         try:
@@ -469,6 +596,11 @@ def build_dashboard(
                 model = None
             stats = _fit_stats(league, season)
             meta = _team_meta(league, season)
+            squads_by_league[league] = {
+                team: info.get("squad") or []
+                for team, info in meta.items()
+                if len(info.get("squad") or []) >= 11
+            }
             real_stats = _real_stats_map(league, season)
             trends = _fit_trends(league, season, train)
             odds_map = _odds_map(league)
@@ -501,27 +633,41 @@ def build_dashboard(
     # convierte una tarjeta que funcionaba en un hueco en blanco.
     if previous:
         preserve_last_known_good({"matches": matches}, {"matches": previous.get("matches", [])})
+    base_players = _merge_squad_players(
+        _load_players(season), squads_by_league, (previous or {}).get("players")
+    )
+    for league, teams in _squads_from_players(base_players).items():
+        known = squads_by_league.setdefault(league, {})
+        for team, squad in teams.items():
+            known.setdefault(team, squad)
+    _fill_missing_free_squads(matches, now, squads_by_league)
+    players = _merge_squad_players(base_players, squads_by_league, (previous or {}).get("players"))
+    all_squads = {
+        team: squad
+        for league_squads in squads_by_league.values()
+        for team, squad in league_squads.items()
+    }
     _attach_previews(matches, now)
-    _attach_lineups(matches, now)
+    _attach_lineups(matches, now, squads=all_squads)
     payload = {
-        "schema_version": 3,
+        "schema_version": 4,
         "generated_at": generated_at,
         "season": season,
         "quiniela": _load_quiniela_oficial(),
-        "players": _load_players(season),
+        "players": players,
         "model": _load_model_report(season),
         "accuracy": _aggregate_accuracy(matches),
         "engine": "dixon-coles" if any(item["engine"] == "dixon-coles" for item in matches) else "calendar-only",
         "data_sources": {
             "fixtures": "football-data.org (LaLiga) · football-data.co.uk (Segunda)",
             "stats": "football-data.co.uk (remates, córners, faltas, tarjetas — reales y esperadas)",
-            "players": "football-data.org (/scorers: goleadores y asistencias)",
+            "players": "football-data.org (plantillas, goleadores y asistencias)",
             "odds": "football-data.co.uk (media de mercado: 1X2 y over/under 2.5)",
-            "ai": "Gemini → Groq; solo ventanas 06-10 y 20-23 Europe/Madrid",
+            "ai": "Gemini dinámico → Groq → motor local gratuito; IA solo 06-10 y 20-23 Europe/Madrid",
         },
         "disclaimer": "Probabilidades y ventaja estadística, no certezas. "
-                      "Los datos de jugadores y cuotas se muestran como pendientes "
-                      "hasta conectar una fuente real.",
+                      "Las plantillas gratuitas y los onces del motor local son provisionales; "
+                      "las cuotas se muestran como pendientes cuando no existe una fuente real.",
         "counts": {
             "total": len(matches),
             "jugados": sum(1 for m in matches if m.get("finished")),

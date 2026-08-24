@@ -54,3 +54,35 @@ def test_fallo_lineups_solo_intenta_una_vez_por_ventana(monkeypatch):
     _attach_lineups([match], now + timedelta(minutes=15))
     assert len(calls) == 1
     assert match["ai_attempts"]["lineup"]
+
+
+def test_fuera_de_ventana_nunca_deja_previa_vacia(monkeypatch):
+    now = datetime(2026, 8, 24, 15, tzinfo=MADRID)
+    match = _match(now)
+    match["stats"] = {
+        "shots": {"home": 12, "away": 9}, "sot": {"home": 4, "away": 3},
+        "corners": {"total": 9}, "fouls": {"total": 25}, "yellows": {"total": 4},
+    }
+    monkeypatch.delenv("FORCE_AI", raising=False)
+    _attach_previews([match], now)
+    assert len(match["preview"].split()) >= 90
+    assert match["preview_meta"]["provider"] == "Motor estadístico local"
+
+
+def test_fuera_de_ventana_rellena_once_con_plantilla_gratuita(monkeypatch):
+    now = datetime(2026, 8, 24, 15, tzinfo=MADRID)
+    match = _match(now)
+    match["stats"] = {
+        "shots": {"home": 12, "away": 9}, "sot": {"home": 4, "away": 3},
+        "fouls": {"home": 13, "away": 12}, "yellows": {"home": 2.2, "away": 2},
+    }
+    squad = [
+        {"name": f"Jugador {i}", "position": "Goalkeeper" if i == 0 else "Defence" if i < 5 else "Midfield" if i < 8 else "Offence"}
+        for i in range(15)
+    ]
+    monkeypatch.delenv("FORCE_AI", raising=False)
+    _attach_lineups([match], now, squads={"A": squad, "B": squad})
+    assert len(match["alineacion"]["local"]) == 11
+    assert len(match["alineacion"]["visitante"]) == 11
+    assert match["alineacion"]["provider"] == "Motor estadístico local"
+    assert set(match["alineacion"]["clave_local"][0]) >= {"jugador", "g", "a", "r", "rp", "fc", "fr", "t"}

@@ -89,6 +89,34 @@ class ApiFootballClient:
             )
         return out
 
+    def get_squad(self, team_name: str) -> list[dict]:
+        """Plantilla actual gratuita; se usa solo para rellenar equipos sin caché."""
+
+        if self.offline or not str(team_name).strip():
+            return []
+        try:
+            teams = self._get("teams", {"search": team_name}).get("response") or []
+            if not teams:
+                return []
+            wanted = str(team_name).casefold()
+            chosen = min(
+                teams,
+                key=lambda item: 0 if str((item.get("team") or {}).get("name") or "").casefold() == wanted else 1,
+            )
+            team_id = (chosen.get("team") or {}).get("id")
+            if not team_id:
+                return []
+            response = self._get("players/squads", {"team": team_id}).get("response") or []
+            players = (response[0].get("players") or []) if response else []
+        except Exception:
+            return []
+        out = []
+        for player in players:
+            name = str(player.get("name") or "").strip()
+            if name:
+                out.append({"name": name, "position": str(player.get("position") or "").strip()})
+        return out
+
 
 def _sample_fixtures(league: str, season: int) -> list[Fixture]:
     """Datos de ejemplo para desarrollo/tests offline."""

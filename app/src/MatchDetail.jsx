@@ -314,8 +314,15 @@ export default function MatchDetail({ m, bankroll, onBack, onTeam, players }) {
 
       {m.alineacion && <Alineacion m={m} a={m.alineacion} />}
 
-      {players && (() => {
-        const hs = teamSquad(players, m.home), as = teamSquad(players, m.away);
+      {(players || m.alineacion) && (() => {
+        const fromLineup = (names, keys) => (names || []).map((name) => {
+          const prop = (keys || []).find((item) => item.jugador === name) || {};
+          return { player: name, goals: prop.g || 0, assists: prop.a || 0,
+            shots: prop.r || 0, yc: prop.t || 0, min: 0 };
+        });
+        const realHome = teamSquad(players, m.home), realAway = teamSquad(players, m.away);
+        const hs = realHome.length ? realHome : fromLineup(m.alineacion?.local, m.alineacion?.clave_local);
+        const as = realAway.length ? realAway : fromLineup(m.alineacion?.visitante, m.alineacion?.clave_visitante);
         if (!hs.length && !as.length) return null;
         const catLine = (icon, label, sq, key) => {
           const rows = sq.filter((p) => p[key] > 0).sort((a, b) => b[key] - a[key]).slice(0, 2);
