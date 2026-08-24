@@ -64,6 +64,39 @@ def _decode(resp: requests.Response) -> str:
     return resp.content.decode("utf-8-sig", errors="replace")
 
 
+def _movement_meta(row: dict) -> dict | None:
+    """Movimiento 1X2 con una sola fuente emparejada de apertura a última.
+
+    Prioriza el consenso ``Avg*`` cuando existen los seis precios; si la pareja
+    está incompleta cae a Bet365. Nunca mezcla apertura de una fuente con última
+    de otra. ``closing_1x2`` se conserva como alias compatible con feeds antiguos.
+    """
+
+    candidates = (
+        ("market_average", ("AvgH", "AvgD", "AvgA"), ("AvgCH", "AvgCD", "AvgCA")),
+        ("Bet365", ("B365H", "B365D", "B365A"), ("B365CH", "B365CD", "B365CA")),
+    )
+    for source, opening_cols, latest_cols in candidates:
+        opening_values = [_num(row.get(column)) for column in opening_cols]
+        latest_values = [_num(row.get(column)) for column in latest_cols]
+        if not all(value and value > 1 for value in opening_values + latest_values):
+            continue
+        opening = dict(zip(("1", "X", "2"), opening_values))
+        latest = dict(zip(("1", "X", "2"), latest_values))
+        return {
+            "source": "football-data.co.uk",
+            "movement_source": source,
+            "opening_1x2": opening,
+            "latest_1x2": latest,
+            "closing_1x2": latest,
+            "movement_pct": {
+                key: round(100 * (latest[key] - opening[key]) / opening[key], 1)
+                for key in opening
+            },
+        }
+    return None
+
+
 class FootballDataUKClient:
     def __init__(self, timeout: int = 20):
         self.timeout = timeout
@@ -132,15 +165,9 @@ class FootballDataUKClient:
             if over and under:
                 odds["ou25"] = {"over": over, "under": under}
             if odds:
-                opening = {"1": _num(row.get("B365H")), "X": _num(row.get("B365D")), "2": _num(row.get("B365A"))}
-                closing = {"1": _num(row.get("B365CH")), "X": _num(row.get("B365CD")), "2": _num(row.get("B365CA"))}
-                if all(opening.values()) and all(closing.values()):
-                    odds["_meta"] = {
-                        "source": "football-data.co.uk",
-                        "opening_1x2": opening,
-                        "closing_1x2": closing,
-                        "movement_pct": {key: round(100 * (closing[key] - opening[key]) / opening[key], 1) for key in opening},
-                    }
+                movement = _movement_meta(row)
+                if movement:
+                    odds["_meta"] = movement
                 out.append({"div": div, "home": home, "away": away, "odds": odds})
         return out
 

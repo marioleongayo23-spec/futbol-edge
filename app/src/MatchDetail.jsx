@@ -2,7 +2,7 @@ import { Fragment, useMemo, useState } from "react";
 import { accent, crestFor, fmtKick } from "./feed";
 import { ah, btts, kelly, matrix, oneXtwo, over, topScores } from "./poisson";
 import { confidence, countdown, isSurprise } from "./insights";
-import { marketMovementRows } from "./markets";
+import { marketMovementRows, marketMovementSourceLabel } from "./markets";
 import OfficialStatsPanel from "./OfficialStatsPanel";
 import { teamSquad } from "./teams";
 
@@ -73,7 +73,7 @@ function MarketMovement({ odds }) {
           </div>
         ))}
       </div>
-      <p className="note source-note">Apertura → última cuota B365 · football-data.co.uk. Una bajada indica mayor apoyo del mercado; una subida, menor apoyo.</p>
+      <p className="note source-note">Apertura → última cuota {marketMovementSourceLabel(odds)} · football-data.co.uk. Una bajada indica mayor apoyo del mercado; una subida, menor apoyo.</p>
     </div>
   );
 }
