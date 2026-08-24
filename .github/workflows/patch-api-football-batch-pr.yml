@@ -1,0 +1,28 @@
+name: Apply API-Football batch patch on PR
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.head_ref == 'chatgpt/api-football-batch-stats' && github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: chatgpt/api-football-batch-stats
+          fetch-depth: 0
+      - name: Apply exact patch
+        run: python scripts/patch_api_football_batch.py
+      - name: Commit product change
+        run: |
+          git diff --check
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add football/src/futbol_pred/ingest/api_football.py
+          git commit -m "Expand grouped API-Football fixture statistics"
+          git push origin HEAD:chatgpt/api-football-batch-stats
