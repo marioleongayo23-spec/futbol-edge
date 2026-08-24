@@ -3,6 +3,7 @@ import { accent, crestFor, fmtKick } from "./feed";
 import { ah, btts, kelly, matrix, oneXtwo, over, topScores } from "./poisson";
 import { confidence, countdown, isSurprise } from "./insights";
 import { marketMovementRows } from "./markets";
+import OfficialStatsPanel from "./OfficialStatsPanel";
 import { teamSquad } from "./teams";
 
 function Teams({ m, onTeam }) {
@@ -506,6 +507,8 @@ export default function MatchDetail({ m, bankroll, onBack, onTeam, players }) {
           <p className="note source-note">{m.weather ? `Open-Meteo · ${m.weather.license}${m.weather.source_updated_at ? ` · actualizada ${new Date(m.weather.source_updated_at).toLocaleString("es-ES")}` : ""}. ` : ""}El clima y el perfil táctico ajustan explicación/confianza; no alteran el marcador hasta superar validación histórica.</p>
         </div>
       )}
+
+      <OfficialStatsPanel match={m} />
 
       {m.alineacion && <div className="section-anchor" id="match-lineup"><Alineacion m={m} a={m.alineacion} /></div>}
       <LineupImpact impact={m.lineup_impact} home={m.home} away={m.away} />
