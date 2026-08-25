@@ -3,6 +3,11 @@
 Se usa como fuente de evidencia para props cuando existe un once oficial. Si el
 endpoint no está cubierto por el plan, falla cerrado y el sistema conserva su
 fallback estadístico/IA anterior.
+
+Además de las props básicas, conservamos metadatos y métricas de rol que ya
+entrega API-Football. Esto permite construir perfiles visuales de jugador y,
+sobre todo, disponer de señales históricas para futuros challengers (creación,
+defensa, duelos, regate y portería) sin volver a consumir la API.
 """
 
 from __future__ import annotations
@@ -84,6 +89,21 @@ def _rate_per90(total, minutes: float) -> float:
     return round(90.0 * _number(total) / minutes, 3)
 
 
+def _profile(player: dict) -> dict:
+    """Metadatos seguros para UI; solo campos que vienen de la fuente."""
+    birth = player.get("birth") or {}
+    return {
+        "photo": player.get("photo"),
+        "age": player.get("age"),
+        "nationality": player.get("nationality"),
+        "height": player.get("height"),
+        "weight": player.get("weight"),
+        "birth_date": birth.get("date"),
+        "birth_place": birth.get("place"),
+        "birth_country": birth.get("country"),
+    }
+
+
 def _normalise_player(item: dict, league_id: int | None) -> dict | None:
     player = item.get("player") or {}
     block = _choose_stat_block(item.get("statistics") or [], league_id)
@@ -100,6 +120,11 @@ def _normalise_player(item: dict, league_id: int | None) -> dict | None:
     goals = block.get("goals") or {}
     fouls = block.get("fouls") or {}
     cards = block.get("cards") or {}
+    passes = block.get("passes") or {}
+    tackles = block.get("tackles") or {}
+    duels = block.get("duels") or {}
+    dribbles = block.get("dribbles") or {}
+    penalty = block.get("penalty") or {}
     name = str(player.get("name") or "").strip()
     if not name:
         return None
@@ -111,9 +136,16 @@ def _normalise_player(item: dict, league_id: int | None) -> dict | None:
     )
     expected_start_minutes = round(max(55.0, min(90.0, expected_start_minutes)), 1)
 
+    rating = _number(games.get("rating"), default=0.0)
+    pass_accuracy = _number(passes.get("accuracy"), default=0.0)
+
     return {
         "player": name,
         "player_id": player.get("id"),
+        "profile": _profile(player),
+        "position": games.get("position"),
+        "rating": round(rating, 2) if rating > 0 else None,
+        "pass_accuracy_pct": round(pass_accuracy, 1) if pass_accuracy > 0 else None,
         "minutes": int(round(minutes)),
         "appearances": appearances,
         "starts": starts,
@@ -127,6 +159,24 @@ def _normalise_player(item: dict, league_id: int | None) -> dict | None:
             "fc": _rate_per90(fouls.get("committed"), minutes),
             "fr": _rate_per90(fouls.get("drawn"), minutes),
             "t": _rate_per90(cards.get("yellow"), minutes),
+        },
+        "per90_extended": {
+            "passes": _rate_per90(passes.get("total"), minutes),
+            "key_passes": _rate_per90(passes.get("key"), minutes),
+            "tackles": _rate_per90(tackles.get("total"), minutes),
+            "blocks": _rate_per90(tackles.get("blocks"), minutes),
+            "interceptions": _rate_per90(tackles.get("interceptions"), minutes),
+            "duels": _rate_per90(duels.get("total"), minutes),
+            "duels_won": _rate_per90(duels.get("won"), minutes),
+            "dribbles_attempted": _rate_per90(dribbles.get("attempts"), minutes),
+            "dribbles_success": _rate_per90(dribbles.get("success"), minutes),
+            "offsides": _rate_per90(block.get("offsides"), minutes),
+            "penalties_won": _rate_per90(penalty.get("won"), minutes),
+            "penalties_committed": _rate_per90(penalty.get("commited"), minutes),
+            "penalties_scored": _rate_per90(penalty.get("scored"), minutes),
+            "penalties_missed": _rate_per90(penalty.get("missed"), minutes),
+            "penalties_saved": _rate_per90(penalty.get("saved"), minutes),
+            "saves": _rate_per90(goals.get("saves"), minutes),
         },
         "source": "API-Football · players",
         "league_id": (block.get("league") or {}).get("id"),
@@ -196,7 +246,12 @@ def props_for_official_starters(
     rates: list[dict],
     limit: int = 11,
 ) -> list[dict]:
-    """Convierte tasas históricas en expectativas del partido para titulares oficiales."""
+    """Convierte tasas históricas en expectativas del partido para titulares oficiales.
+
+    Las props básicas conservan el contrato actual. ``profile`` y ``extended``
+    añaden inteligencia para las fichas visuales y para challengers futuros;
+    estas señales NO modifican por sí solas el 1X2.
+    """
 
     by_name = {_key(row.get("player")): row for row in rates if row.get("player")}
     candidates = []
@@ -207,6 +262,10 @@ def props_for_official_starters(
         expected_minutes = float(history["expected_start_minutes"])
         factor = expected_minutes / 90.0
         per90 = history["per90"]
+        extended = {
+            key: round(float(value) * factor, 2)
+            for key, value in (history.get("per90_extended") or {}).items()
+        }
         prop = {
             "jugador": starter,
             "g": round(per90["g"] * factor, 2),
@@ -220,6 +279,12 @@ def props_for_official_starters(
             "tit": 1.0,
             "sample_minutes": history["minutes"],
             "source": history["source"],
+            "player_id": history.get("player_id"),
+            "profile": history.get("profile") or {},
+            "position": history.get("position"),
+            "rating": history.get("rating"),
+            "pass_accuracy_pct": history.get("pass_accuracy_pct"),
+            "extended": extended,
         }
         # Combina señal ofensiva y contacto para no sesgar el top solo a delanteros.
         prop["evidence_score"] = round(
