@@ -1,0 +1,95 @@
+name: Apply final stats accuracy integration on PR
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: chatgpt/final-stats-accuracy
+          fetch-depth: 0
+      - name: Wire post-match stats and accuracy detail
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('football/src/futbol_pred/dashboard.py')
+          text = path.read_text(encoding='utf-8')
+
+          import_marker = 'from .performance import build_performance\n'
+          import_new = (
+              'from .performance import build_performance\n'
+              'from .finished_stats import attach_finished_stats\n'
+              'from .accuracy_detail import enrich_accuracy\n'
+          )
+          if 'from .finished_stats import attach_finished_stats' not in text:
+              if text.count(import_marker) != 1:
+                  raise SystemExit('dashboard import marker not unique')
+              text = text.replace(import_marker, import_new, 1)
+
+          call_old = '''    official_updates = attach_official_context(matches, now, stats_models=stats_models_by_league)\n    state_simulations = attach_state_simulations(matches)\n'''
+          call_new = '''    official_updates = attach_official_context(matches, now, stats_models=stats_models_by_league)\n    finished_stats_updates = attach_finished_stats(\n        matches, now, previous_matches=(previous or {}).get("matches")\n    )\n    state_simulations = attach_state_simulations(matches)\n'''
+          if call_old in text:
+              text = text.replace(call_old, call_new, 1)
+          elif 'finished_stats_updates = attach_finished_stats(' not in text:
+              raise SystemExit('official context call marker not found')
+
+          accuracy_old = '        "accuracy": _aggregate_accuracy(matches),\n'
+          accuracy_new = '        "accuracy": enrich_accuracy(_aggregate_accuracy(matches), matches),\n'
+          if accuracy_old in text:
+              text = text.replace(accuracy_old, accuracy_new, 1)
+          elif accuracy_new not in text:
+              raise SystemExit('accuracy payload marker not found')
+
+          audit_old = '        "content_audit": audit,\n'
+          audit_new = '        "content_audit": audit,\n        "postmatch_stats_updates": finished_stats_updates,\n'
+          if '"postmatch_stats_updates"' not in text:
+              if text.count(audit_old) != 1:
+                  raise SystemExit('content audit marker not unique')
+              text = text.replace(audit_old, audit_new, 1)
+
+          labels_old = '''    labels = {"shots": "Remates", "sot": "Tiros a puerta", "corners": "Córners",\n              "fouls": "Faltas", "yellows": "Amarillas"}\n'''
+          labels_new = '''    labels = {"goals": "Goles", "shots": "Remates", "sot": "Tiros a puerta",\n              "corners": "Córners", "fouls": "Faltas", "yellows": "Amarillas",\n              "reds": "Rojas"}\n'''
+          if labels_old in text:
+              text = text.replace(labels_old, labels_new, 1)
+          elif '"reds": "Rojas"' not in text:
+              raise SystemExit('accuracy labels marker not found')
+          path.write_text(text, encoding='utf-8')
+
+          path = Path('app/src/App.jsx')
+          text = path.read_text(encoding='utf-8')
+          import_marker = 'import ClvPanel from "./ClvPanel";\n'
+          import_new = 'import ClvPanel from "./ClvPanel";\nimport AccuracyMatchDetails from "./AccuracyMatchDetails";\n'
+          if 'import AccuracyMatchDetails from "./AccuracyMatchDetails";' not in text:
+              if text.count(import_marker) != 1:
+                  raise SystemExit('App import marker not unique')
+              text = text.replace(import_marker, import_new, 1)
+
+          render_old = '''      <AccuracyPanel acc={data.accuracy} />\n      <ModelReport model={data.model} />\n'''
+          render_new = '''      <AccuracyPanel acc={data.accuracy} />\n      <AccuracyMatchDetails rows={data.accuracy?.matches} />\n      <ModelReport model={data.model} />\n'''
+          if '<AccuracyMatchDetails rows={data.accuracy?.matches} />' not in text:
+              if text.count(render_old) != 1:
+                  raise SystemExit('AccuracyPanel render marker not unique')
+              text = text.replace(render_old, render_new, 1)
+          path.write_text(text, encoding='utf-8')
+          PY
+      - name: Validate and commit
+        run: |
+          git diff --check
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add football/src/futbol_pred/dashboard.py app/src/App.jsx
+          if git diff --cached --quiet; then
+            echo "Nothing to commit"
+            exit 0
+          fi
+          git commit -m "Integrate final stats into accuracy reporting"
+          git push origin HEAD:chatgpt/final-stats-accuracy
