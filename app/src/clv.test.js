@@ -11,6 +11,8 @@ const matches = [{
   closing_odds: {
     source: "football-data.co.uk",
     market_source: "market_average",
+    is_real: true,
+    capture_kind: "historical_provider_close",
     "1x2": { "1": 2.2, X: 3.4, "2": 3.5 },
   },
 }];
@@ -20,12 +22,17 @@ test("resuelve apuestas nuevas por matchId y antiguas por texto normalizado", ()
   assert.equal(findBetMatch({ match: "Atletico Madrid - Sevilla" }, matches)?.id, "m1");
 });
 
-test("CLV positivo cuando la cuota tomada supera al cierre", () => {
+test("CLV positivo cuando la cuota tomada supera al cierre real", () => {
   const row = betClv({ matchId: "m1", sel: "1", odds: 2.5, stake: 20 }, matches);
   assert.equal(row.closingOdds, 2.2);
   assert.equal(row.priceClvPct, 13.64);
   assert.equal(row.source, "media de mercado");
   assert.ok(row.fairEdgePp > 0);
+});
+
+test("no calcula CLV con cuota no certificada como real", () => {
+  const fake = [{ ...matches[0], closing_odds: { "1x2": { "1": 2.2, X: 3.4, "2": 3.5 }, market_source: "sample" } }];
+  assert.equal(betClv({ matchId: "m1", sel: "1", odds: 2.5 }, fake), null);
 });
 
 test("no calcula CLV para props ni partidos no terminados", () => {
