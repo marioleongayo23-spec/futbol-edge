@@ -83,6 +83,15 @@ def _official_poll_window(minutes_to_kickoff: float, attempts: dict) -> str | No
     return None
 
 
+def _official_poll_window(minutes_to_kickoff: float, attempts: dict) -> str | None:
+    """Ventanas de publicación del XI: primero T-60 y fallback T-30."""
+    if 45 <= minutes_to_kickoff <= 75 and not attempts.get("T-60"):
+        return "T-60"
+    if 15 <= minutes_to_kickoff < 45 and not attempts.get("T-30"):
+        return "T-30"
+    return None
+
+
 def attach_official_context(matches: list[dict], now: datetime, client: ApiFootballClient | None = None, limit: int = 8, stats_models: dict[str, object] | None = None) -> int:
     """Busca el XI oficial en T-60 y, si aún no existe, reintenta en T-30."""
     client = client or ApiFootballClient()

@@ -112,6 +112,84 @@ def _group(rows: list[dict], key: str) -> list[dict]:
     return [dict(label=label, **_summary(items)) for label, items in sorted(buckets.items())]
 
 
+BETTING_STAGES = (
+    ("initial", "Inicial"),
+    ("T-24h", "T-24h"),
+    ("T-12h", "T-12h"),
+    ("T-6h", "T-6h"),
+    ("pre_final", "Pre-Final T-3h"),
+    ("final", "Final XI oficial"),
+)
+
+
+def _betting_stage(window: str | None) -> str | None:
+    mapping = {
+        "initial": "initial",
+        "T-24h": "T-24h",
+        "T-12h": "T-12h",
+        "T-6h": "T-6h",
+        "pre_final_T-3h": "pre_final",
+        "final_T-60_official": "final",
+        "final_T-30_official": "final",
+        "official_lineup": "final",  # compatibilidad con snapshots antiguos
+    }
+    return mapping.get(window)
+
+
+def _stage_snapshot_map(match: dict) -> dict[str, dict]:
+    source = [
+        *(item for item in (match.get("prediction_history") or []) if isinstance(item, dict)),
+        *([match["prediction_snapshot"]] if isinstance(match.get("prediction_snapshot"), dict) else []),
+    ]
+    out = {}
+    for item in sorted(source, key=lambda row: str(row.get("generated_at") or "")):
+        stage = _betting_stage(item.get("window"))
+        if stage and _probability_dict(item.get("probs")):
+            out[stage] = item
+    return out
+
+
+def _betting_window_quality(matches: list[dict]) -> dict | None:
+    """Mide cada momento de apuesta sobre datos que existían en ese instante."""
+    rows = defaultdict(list)
+    paired = defaultdict(lambda: {"candidate": [], "initial": []})
+    final_window_counts = defaultdict(int)
+    for match in matches:
+        result = match.get("result")
+        if not match.get("finished") or not isinstance(result, list) or len(result) != 2:
+            continue
+        outcome = _sign(result)
+        stages = _stage_snapshot_map(match)
+        initial = _probability_dict((stages.get("initial") or {}).get("probs"))
+        for stage, snapshot in stages.items():
+            probs = _probability_dict(snapshot.get("probs"))
+            if not probs:
+                continue
+            rows[stage].append((probs, outcome))
+            if stage == "final":
+                final_window_counts[str(snapshot.get("window") or "unknown")] += 1
+            if stage != "initial" and initial:
+                paired[stage]["candidate"].append((probs, outcome))
+                paired[stage]["initial"].append((initial, outcome))
+    stages_out = []
+    for key, label in BETTING_STAGES:
+        quality = _quality(rows.get(key, []))
+        if not quality:
+            continue
+        comparison = None
+        if key != "initial":
+            comparison = _paired_comparison(
+                paired[key]["candidate"], paired[key]["initial"], "initial_same_matches"
+            )
+        stages_out.append({"key": key, "label": label, "quality": quality, "vs_initial": comparison})
+    if not stages_out:
+        return None
+    return {
+        "method": "comparación leakage-safe por versión realmente archivada antes del saque inicial",
+        "stages": stages_out,
+        "final_window_counts": dict(final_window_counts),
+    }
+
 def build_performance(matches: list[dict]) -> dict | None:
     """ROI, calibración y calidad probabilística sobre snapshots prepartido."""
 
@@ -228,6 +306,7 @@ def build_performance(matches: list[dict]) -> dict | None:
         "by_league": _group(bets, "league"),
         "by_confidence": by_confidence,
         "probability_quality": probability_quality,
+        "betting_window_quality": _betting_window_quality(matches),
         "initial_vs_10_15": comparison,
         "weak_segments": weak,
     }

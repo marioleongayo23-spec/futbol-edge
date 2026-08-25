@@ -5,7 +5,11 @@ const WINDOW_LABELS = {
   "T-24h": "T−24h",
   "T-12h": "T−12h",
   "T-6h": "T−6h",
-  official_lineup: "Once oficial",
+  "T-3h": "T−3h · sin pre-final",
+  "pre_final_T-3h": "PRE-FINAL · T−3h",
+  "final_T-60_official": "FINAL · XI T−60",
+  "final_T-30_official": "FINAL · XI T−30",
+  official_lineup: "XI oficial · legado",
   "00:15": "00:15",
   "10:15": "10:15",
 };
@@ -64,6 +68,10 @@ export function predictionTimelinePoints(match) {
       probs: item.probs.map(Number),
       xg: Array.isArray(item.xg) ? item.xg.map(Number) : null,
       lineupStatus: item.alineacion?.status || null,
+      lineupPhase: item.alineacion?.phase || null,
+      sourceQuality: item.alineacion?.source_quality || null,
+      mediaSources: Array.isArray(item.alineacion?.media_sources) ? item.alineacion.media_sources : [],
+      officialPollWindow: item.alineacion?.official_poll_window || null,
       modelVersion: item.model_version || item.model_meta?.version || null,
       snapshot: item,
     }));
