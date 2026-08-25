@@ -52,5 +52,5 @@ jobs:
 
       # NOTA: el feed (data/dashboard.json) lo genera y publica SOLO el cron
       # (futbol-pred.yml), que sí lleva la clave de IA. Antes este smoke-test
-      # regeneraba el feed en cada push SIN la clave de IA y borraba las previas y
-      # alineaciones de Gemini. Por eso ya no toca el feed aquí.
+      # regeneraba el feed en cada push SIN claves de IA y borraba las previas y
+      # alineaciones cacheadas. Por eso ya no toca el feed aquí.

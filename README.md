@@ -5,7 +5,8 @@ mercados (over/under, hándicap, value), quiniela y detalle por partido.
 
 - **Frontend** (`app/`): React + Vite. Lee el feed de `football/data/dashboard.json`.
 - **Backend / cron** (`football/`): genera el feed con datos reales.
-- **Automatización** (`.github/workflows/`): el cron regenera el feed cada 12 h.
+- **Automatización** (`.github/workflows/`): datos/resultados cada 15 minutos;
+  controles de IA/completitud únicamente a las 00:15 y 10:15 de Madrid para partidos del día.
 
 ## Funciones de la app
 
@@ -25,6 +26,9 @@ mercados (over/under, hándicap, value), quiniela y detalle por partido.
 - **Extras UX** — modo claro/oscuro, *skeletons* de carga, aviso de feed
   desactualizado, copia local de respaldo del feed y **PWA instalable** con
   soporte offline.
+- **Motor auditable** — snapshots inmutables prepartido, ensemble Dixon-Coles +
+  Elo promovido solo si gana en validación temporal, pseudo-xG gratuito y
+  Poisson/Negative Binomial según la dispersión de cada mercado.
 
 ## Deploy
 
@@ -36,7 +40,14 @@ mercados (over/under, hándicap, value), quiniela y detalle por partido.
     `VITE_SUPABASE_ANON_KEY` / `VITE_ALLOWED_EMAIL` para activar login privado
     (si no se definen, la app corre en modo abierto).
 - **Secrets del repo** (Settings → Secrets) para el cron:
-  `FOOTBALL_DATA_API_KEY`, `API_FOOTBALL_KEY`, `ODDS_API_KEY`.
+  `FOOTBALL_DATA_API_KEY`, `API_FOOTBALL_KEY`, `ODDS_API_KEY`,
+  `AI_API_KEY`/`GEMINI_API_KEY` y `GROQ_API_KEY`. Gemini es el proveedor
+  primario y Groq el fallback; opcionalmente `LOCAL_AI_BASE_URL` y
+  `LOCAL_AI_MODEL` añaden Ollama/vLLM/LM Studio como tercer nivel. La IA refresca
+  solo los partidos del mismo día en dos pasadas, a las 00:15 y 10:15 (Madrid),
+  con presupuesto diario, reintento selectivo y caché/LKG; los resultados
+  siguen refrescando cada 15 minutos sin consumir IA. Desde **Run workflow** se puede marcar
+  `force_ai` para una regeneración manual.
 
 ## Desarrollo local
 
@@ -55,7 +66,7 @@ Algunas fuentes (FBref para **jugadores** y Loterías y Apuestas para la
 **quiniela** oficial) devuelven `403` desde los runners de GitHub, pero sí
 responden desde una IP residencial española. Para eso hay un modo local que baja
 esos datos, regenera el feed y lo publica en `main` (de donde leen Vercel y la
-app). El cron de GitHub sigue actualizando cada 12 h todo lo accesible desde CI;
+app). El cron de GitHub sigue actualizando cada 15 minutos todo lo accesible desde CI;
 esto añade lo que CI no puede.
 
 ```bash

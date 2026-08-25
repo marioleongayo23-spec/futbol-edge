@@ -5,12 +5,24 @@ name: futbol-pred (cron)
 #   FOOTBALL_DATA_API_KEY, API_FOOTBALL_KEY, ODDS_API_KEY, DATABASE_URL (opcional)
 
 on:
+  # Valida y materializa el feed con el código recién fusionado. Se ignoran los
+  # commits automáticos que solo cambian el propio feed para evitar un bucle.
+  push:
+    branches: [main]
+    paths-ignore:
+      - "football/data/dashboard.json"
   schedule:
     # Cada 15 min: durante los partidos los resultados aparecen casi al momento.
     # El commit solo se hace si el feed cambió, así que fuera de horario de
     # partidos no genera ruido. (GitHub puede retrasar el cron en picos.)
     - cron: "*/15 * * * *"
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      force_ai:
+        description: "Forzar IA fuera de ventana y saltar TTL (manual)"
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: write
@@ -49,70 +61,73 @@ jobs:
             python -m futbol_pred.cli run --league $league || true
           done
 
-      - name: Generar feed para Fútbol Edge
+      - name: Generar feed protegido para Fútbol Edge
         env:
           FOOTBALL_DATA_API_KEY: ${{ secrets.FOOTBALL_DATA_API_KEY }}
           API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
           ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          # IA con fallback: Gemini primero, luego OpenAI/compatible (ChatGPT,
-          # Groq, OpenRouter...). Define las claves que tengas.
+          # IA: Gemini primero y Groq de fallback. El cron de resultados sigue
+          # cada 15 min; la IA solo refresca partidos del día a las 00:15 y
+          # 10:15 de Madrid, con caché entre ambas pasadas.
           AI_API_KEY: ${{ secrets.AI_API_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: ${{ secrets.GEMINI_MODEL }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          GROQ_MODEL: ${{ secrets.GROQ_MODEL }}
+          # Compatibilidad con la configuración Groq genérica anterior.
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENAI_BASE_URL: ${{ secrets.OPENAI_BASE_URL }}
           OPENAI_MODEL: ${{ secrets.OPENAI_MODEL }}
+          # Tercer nivel opcional: endpoint gratuito/local OpenAI-compatible
+          # (Ollama, vLLM o LM Studio). Después queda el motor determinista.
+          LOCAL_AI_BASE_URL: ${{ secrets.LOCAL_AI_BASE_URL }}
+          LOCAL_AI_MODEL: ${{ secrets.LOCAL_AI_MODEL }}
+          LOCAL_AI_API_KEY: ${{ secrets.LOCAL_AI_API_KEY }}
+          AI_DAILY_CALL_BUDGET: "16"
+          AI_REFRESH_RUN: ${{ github.event_name == 'schedule' && '1' || '0' }}
+          FORCE_AI: ${{ github.event_name == 'workflow_dispatch' && inputs.force_ai && '1' || '0' }}
         run: |
-          python - <<'PY'
-          import os, requests
-          k = os.getenv("AI_API_KEY") or os.getenv("GEMINI_API_KEY") or ""
-          print(f"[diag] clave IA detectada: {'SÍ, longitud '+str(len(k)) if k else 'NO'}")
-          if k:
-              m = os.getenv("GEMINI_MODEL", "gemini-3.6-flash")
-              # ListModels NO consume cuota de generación: confirma si el modelo existe.
-              try:
-                  lm = requests.get("https://generativelanguage.googleapis.com/v1beta/models",
-                                    params={"key": k, "pageSize": 100}, timeout=20)
-                  names = [x.get("name", "") for x in (lm.json().get("models") or [])]
-                  print(f"[gemini-diag] listmodels status={lm.status_code} tiene_{m}={'models/'+m in names}")
-              except Exception as e:  # noqa: BLE001
-                  print(f"[gemini-diag] listmodels error {type(e).__name__}")
-              # Una generación mínima para ver 200 vs 429 (cuota).
-              try:
-                  g = requests.post(f"https://generativelanguage.googleapis.com/v1beta/models/{m}:generateContent",
-                                    params={"key": k}, json={"contents":[{"parts":[{"text":"hola"}]}]}, timeout=30)
-                  print(f"[gemini-diag] generate modelo={m} status={g.status_code} body={g.text[:200]}")
-              except Exception as e:  # noqa: BLE001
-                  print(f"[gemini-diag] generate error {type(e).__name__}")
-          PY
           python -m futbol_pred.dashboard
           python - <<'PY'
           import json
           d = json.load(open("data/dashboard.json", encoding="utf-8"))
-          ms = d["matches"]
-          print("[diag] preview:", sum(1 for m in ms if m.get("preview")),
-                "| alineacion:", sum(1 for m in ms if m.get("alineacion")),
-                "| tendencias:", sum(1 for m in ms if m.get("tendencias")))
+          q = d.get("feed_quality", {})
+          print("[feed] calidad:", q.get("score"), "| métricas:", q.get("metrics"))
           PY
 
       - name: Publicar feed actualizado en la rama
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/dashboard.json
-          if git diff --cached --quiet; then
-            echo "El feed no ha cambiado"
-          else
-            git commit -m "Actualizar feed automático de Fútbol Edge"
-            # Robusto ante pushes concurrentes (cron + manual): rebase y reintenta.
-            pushed=0
-            for i in 1 2 3 4 5; do
-              git pull --rebase --autostash origin "${GITHUB_REF_NAME}" || true
-              if git push origin "HEAD:${GITHUB_REF_NAME}"; then pushed=1; break; fi
-              echo "push rechazado, reintento $i…"; sleep $((i * 3))
-            done
-            [ "$pushed" = 1 ] || { echo "No se pudo publicar el feed tras varios intentos"; exit 1; }
-          fi
+          # Separa el JSON generado del checkout del job. Si otro cron publica
+          # mientras calculamos, reaplicamos este artefacto sobre la última main
+          # en un worktree limpio: no hay rebase del JSON ni falsos positivos.
+          generated="${RUNNER_TEMP}/dashboard.generated.json"
+          publish_root="${RUNNER_TEMP}/feed-publish"
+          cp data/dashboard.json "$generated"
+          git fetch origin "${GITHUB_REF_NAME}"
+          git worktree add --detach "$publish_root" "origin/${GITHUB_REF_NAME}"
+          pushed=0
+          for i in 1 2 3 4 5; do
+            git -C "$publish_root" fetch origin "${GITHUB_REF_NAME}"
+            git -C "$publish_root" checkout --detach "origin/${GITHUB_REF_NAME}"
+            cp "$generated" "$publish_root/football/data/dashboard.json"
+            git -C "$publish_root" add football/data/dashboard.json
+            if git -C "$publish_root" diff --cached --quiet; then
+              echo "El feed no ha cambiado"
+              pushed=1
+              break
+            fi
+            git -C "$publish_root" commit -m "Actualizar feed automático de Fútbol Edge"
+            if git -C "$publish_root" push origin "HEAD:${GITHUB_REF_NAME}"; then
+              pushed=1
+              break
+            fi
+            echo "push concurrente, reaplicando feed sobre main (intento $i)…"
+            sleep $((i * 3))
+          done
+          [ "$pushed" = 1 ] || { echo "No se pudo publicar el feed tras cinco intentos limpios"; exit 1; }
 
       - name: Subir informes como artefacto
         if: always()
@@ -121,3 +136,18 @@ jobs:
           name: predicciones
           path: football/data/*.json
           if-no-files-found: ignore
+
+      - name: Verificar producción y feed publicado
+        if: github.ref == 'refs/heads/main'
+        run: |
+          ok=0
+          for i in 1 2 3 4 5; do
+            if curl -fsS --max-time 20 https://futbol-edge-snowy.vercel.app/ >/dev/null \
+              && curl -fsS --max-time 20 https://raw.githubusercontent.com/marioleongayo23-spec/futbol-edge/main/football/data/dashboard.json \
+                | python -c 'import json,sys; d=json.load(sys.stdin); assert d.get("feed_quality",{}).get("valid") is True'; then
+              ok=1
+              break
+            fi
+            sleep 12
+          done
+          [ "$ok" = 1 ] || { echo "Producción o feed no saludable"; exit 1; }

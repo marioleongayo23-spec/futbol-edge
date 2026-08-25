@@ -36,6 +36,18 @@ def _mean(xs):
     return sum(xs) / len(xs) if xs else None
 
 
+def _percentile(value, population):
+    """Percentil inclusivo, estable también con muestras pequeñas o empatadas."""
+    if value is None:
+        return None
+    peers = sorted(float(item) for item in population if item is not None)
+    if not peers:
+        return None
+    below = sum(item < value for item in peers)
+    equal = sum(item == value for item in peers)
+    return round(100 * (below + 0.5 * equal) / len(peers))
+
+
 @dataclass
 class TrendModel:
     # equipo -> métrica -> {hf,ha,af,aa}: a favor/en contra como local/visitante.
@@ -153,5 +165,149 @@ class TrendModel:
                 "pct": round(signal * 100),
                 "label": cfg["label"],
                 "reason": "; ".join(reasons) or "equilibrado para estos equipos",
+                "model_total": round(float(predicted[metric]), 2) if predicted and metric in predicted else None,
             }
         return out
+
+    def matchup_profile(self, home, away) -> dict:
+        """Vector táctico empírico a partir de acciones, sin inventar formaciones."""
+
+        def peer_values(metric: str, key: str):
+            return [
+                self._avg(team, metric, key)
+                for team in self.stat
+                if self._avg(team, metric, key) is not None
+            ]
+
+        def side(team, venue: str) -> dict:
+            fav = "hf" if venue == "home" else "af"
+            against = "ha" if venue == "home" else "aa"
+            samples = len(self.stat.get(team, {}).get("shots", {}).get(fav, []))
+            values = {}
+            for metric in ("shots", "corners", "fouls", "yellows", "goals"):
+                values[metric] = {
+                    "for": self._avg(team, metric, fav),
+                    "against": self._avg(team, metric, against),
+                }
+            shots = values["shots"]["for"]
+            goals = values["goals"]["for"]
+            efficiency = goals / shots if shots and goals is not None else None
+            contact = _mean([
+                value for value in (
+                    values["fouls"]["for"],
+                    (values["yellows"]["for"] or 0) * 3
+                    if values["yellows"]["for"] is not None else None,
+                ) if value is not None
+            ])
+
+            def dimension(label, value, population, unit):
+                return {
+                    "label": label,
+                    "score": _percentile(value, population),
+                    "observed": round(value, 2) if value is not None else None,
+                    "unit": unit,
+                }
+
+            efficiencies = []
+            contacts = []
+            for peer in self.stat:
+                peer_shots = self._avg(peer, "shots", fav)
+                peer_goals = self._avg(peer, "goals", fav)
+                if peer_shots and peer_goals is not None:
+                    efficiencies.append(peer_goals / peer_shots)
+                peer_fouls = self._avg(peer, "fouls", fav)
+                peer_cards = self._avg(peer, "yellows", fav)
+                if peer_fouls is not None or peer_cards is not None:
+                    contacts.append(_mean([
+                        item for item in (
+                            peer_fouls,
+                            (peer_cards or 0) * 3 if peer_cards is not None else None,
+                        ) if item is not None
+                    ]))
+            return {
+                "samples": samples,
+                "venue_split": "casa" if venue == "home" else "fuera",
+                "actions": values,
+                "attack_efficiency_goals_per_shot": round(efficiency, 3) if efficiency is not None else None,
+                "style_vector": {
+                    "attack_volume": dimension(
+                        "Volumen ofensivo", shots, peer_values("shots", fav), "remates/partido"
+                    ),
+                    "territorial_pressure": dimension(
+                        "Presión territorial", values["corners"]["for"],
+                        peer_values("corners", fav), "córners/partido",
+                    ),
+                    "defensive_exposure": dimension(
+                        "Exposición defensiva", values["shots"]["against"],
+                        peer_values("shots", against), "remates concedidos/partido",
+                    ),
+                    "finishing_efficiency": dimension(
+                        "Eficacia de remate", efficiency, efficiencies, "goles/remate"
+                    ),
+                    "contact_intensity": dimension(
+                        "Intensidad de contacto", contact, contacts, "índice faltas+tarjetas"
+                    ),
+                },
+            }
+
+        hp, ap = side(home, "home"), side(away, "away")
+        hs = hp["actions"]["shots"]["for"]
+        ac = ap["actions"]["shots"]["against"]
+        ass = ap["actions"]["shots"]["for"]
+        hc = hp["actions"]["shots"]["against"]
+        home_pressure = _mean([value for value in (hs, ac) if value is not None])
+        away_pressure = _mean([value for value in (ass, hc) if value is not None])
+        evidence = min(hp["samples"], ap["samples"])
+        notes = []
+        if home_pressure is not None and away_pressure is not None:
+            if home_pressure >= away_pressure * 1.2:
+                notes.append(f"{home} proyecta más volumen de remate por generación propia y concesión rival")
+            elif away_pressure >= home_pressure * 1.2:
+                notes.append(f"{away} proyecta más volumen de remate pese a jugar fuera")
+            else:
+                notes.append("volumen de ataque equilibrado entre ambos perfiles")
+        fouls = [
+            hp["actions"]["fouls"]["for"], ap["actions"]["fouls"]["for"],
+        ]
+        if all(value is not None for value in fouls) and sum(fouls) >= 27:
+            notes.append("emparejamiento de contacto alto por faltas cometidas")
+        clashes = []
+        home_attack = hp["style_vector"]["attack_volume"]["score"]
+        away_exposure = ap["style_vector"]["defensive_exposure"]["score"]
+        away_attack = ap["style_vector"]["attack_volume"]["score"]
+        home_exposure = hp["style_vector"]["defensive_exposure"]["score"]
+        if home_attack is not None and away_exposure is not None and min(home_attack, away_exposure) >= 65:
+            clashes.append({
+                "edge": "home_attack",
+                "label": f"Volumen de {home} contra exposición de {away}",
+                "strength": round((home_attack + away_exposure) / 2),
+            })
+        if away_attack is not None and home_exposure is not None and min(away_attack, home_exposure) >= 65:
+            clashes.append({
+                "edge": "away_attack",
+                "label": f"Volumen de {away} contra exposición de {home}",
+                "strength": round((away_attack + home_exposure) / 2),
+            })
+        contact_scores = [
+            hp["style_vector"]["contact_intensity"]["score"],
+            ap["style_vector"]["contact_intensity"]["score"],
+        ]
+        if all(score is not None for score in contact_scores) and min(contact_scores) >= 65:
+            clashes.append({
+                "edge": "contact",
+                "label": "Cruce de dos perfiles de contacto alto",
+                "strength": round(sum(contact_scores) / 2),
+            })
+        return {
+            "method": "percentiles de splits observados casa/fuera; no infiere una formación",
+            "home": hp,
+            "away": ap,
+            "expected_shot_pressure": {
+                "home": round(home_pressure, 1) if home_pressure is not None else None,
+                "away": round(away_pressure, 1) if away_pressure is not None else None,
+            },
+            "reliability": "alta" if evidence >= 10 else "media" if evidence >= 5 else "baja",
+            "minimum_samples": evidence,
+            "style_clashes": clashes,
+            "notes": notes or ["muestra insuficiente para caracterizar el emparejamiento"],
+        }

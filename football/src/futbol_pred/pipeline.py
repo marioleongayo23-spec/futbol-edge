@@ -7,7 +7,7 @@ ejemplo) si no hay claves, para poder probar el pipeline de punta a punta.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 
 from .config import settings
 from .ingest.api_football import ApiFootballClient, Fixture
@@ -98,7 +98,7 @@ def fit_model_from_fixtures(
         raise ValueError("No hay partidos jugados para ajustar el modelo")
 
     name_fn = name_fn or (lambda n: n)
-    as_of = as_of or datetime.utcnow()
+    as_of = as_of or datetime.now(timezone.utc).replace(tzinfo=None)
     home_teams, away_teams, hg, ag, days = [], [], [], [], []
     for f in played:
         home_teams.append(name_fn(f.home_team))
@@ -231,6 +231,8 @@ def run_model_report(league: str = "laliga", season: int | None = None) -> dict 
         BaselineRates,
         DixonColesPredictor,
         EloPredictor,
+        fit_walk_forward_ensemble,
+        fit_walk_forward_residual,
         walk_forward,
     )
     from .config import LEAGUE_META
@@ -251,6 +253,7 @@ def run_model_report(league: str = "laliga", season: int | None = None) -> dict 
     }
     metrics: dict = {}
     dc_result = None
+    elo_result = None
     for name, pred in predictors.items():
         try:
             res = walk_forward(matches, pred, min_train_rounds=3)
@@ -263,6 +266,24 @@ def run_model_report(league: str = "laliga", season: int | None = None) -> dict 
                          for k, v in m.items()}
         if name == "dixon_coles":
             dc_result = res
+        elif name == "elo":
+            elo_result = res
+
+    ensemble = None
+    residual = None
+    if dc_result is not None and elo_result is not None:
+        ensemble = fit_walk_forward_ensemble(dc_result.records, elo_result.records)
+        residual = fit_walk_forward_residual(dc_result.records, elo_result.records)
+        if ensemble and ensemble.get("validation", {}).get("n"):
+            metrics["ensemble"] = {
+                key: (round(value, 4) if isinstance(value, float) else value)
+                for key, value in ensemble["validation"].items()
+            }
+        if residual and residual.get("validation", {}).get("n"):
+            metrics["residual"] = {
+                key: (round(value, 4) if isinstance(value, float) else value)
+                for key, value in residual["validation"].items()
+            }
 
     if not metrics:
         return None
@@ -281,6 +302,8 @@ def run_model_report(league: str = "laliga", season: int | None = None) -> dict 
         "n_predicciones": n_pred,
         "predictors": metrics,
         "calibration": calibration,
+        "ensemble": ensemble,
+        "residual": residual,
     }
 
 

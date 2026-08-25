@@ -117,9 +117,18 @@ class FootballDataClient:
             return {}
         meta = {}
         for t in data.get("teams", []):
+            squad = []
+            for player in t.get("squad") or []:
+                name = str(player.get("name") or "").strip()
+                if name:
+                    squad.append({
+                        "name": name,
+                        "position": str(player.get("position") or "").strip(),
+                    })
             meta[t.get("name", "")] = {
                 "crest": t.get("crest"),
                 "tla": t.get("tla"),
                 "colors": t.get("clubColors"),
+                "squad": squad,
             }
         return meta

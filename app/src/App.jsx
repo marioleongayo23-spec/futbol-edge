@@ -5,18 +5,13 @@ import { leaguesIn, projectedTable } from "./standings";
 import { teamProfile, teamSquad } from "./teams";
 import { bestValue, countdown, getFavs, modelAccuracy, recentForm, toggleFav, topValueBets } from "./insights";
 import MatchDetail from "./MatchDetail";
+import ProbabilityQualityPanel from "./ProbabilityQualityPanel";
+import ClvPanel from "./ClvPanel";
+import AccuracyMatchDetails from "./AccuracyMatchDetails";
 import { authEnabled, signOut, useSession } from "./supabase";
 
-/* ---------- Tema claro/oscuro ---------- */
-function useTheme() {
-  const [theme, setTheme] = useState(() => {
-    try { return localStorage.getItem("theme") || "dark"; } catch { return "dark"; }
-  });
-  useEffect(() => {
-    document.documentElement.dataset.theme = theme;
-    try { localStorage.setItem("theme", theme); } catch { /* ignore */ }
-  }, [theme]);
-  return [theme, () => setTheme((t) => (t === "dark" ? "light" : "dark"))];
+function savedLightTheme() {
+  try { return localStorage.getItem("theme") === "light"; } catch { return false; }
 }
 
 /* ---------- Iconos de la barra lateral ---------- */
@@ -79,7 +74,7 @@ function MatchRow({ m, onOpen, formMap }) {
   const best = pred ? ["1", "X", "2"][m.probs.indexOf(Math.max(...m.probs))] : null;
   const val = bestValue(m);
   return (
-    <button className="mrow" onClick={() => onOpen(m)}>
+    <button type="button" className="mrow" onClick={() => onOpen(m)}>
       <span className="mrow-time">{m.finished ? "FT" : hhmm(m.kickoff)}</span>
       <span className="mrow-body">
         <span className="mrow-line">
@@ -110,6 +105,7 @@ function Resumen({ matches, onOpen, goto, favs, onTeam }) {
     return i < 0 ? Math.max(0, days.length - 1) : i;
   }, [days]);
   const [idx, setIdx] = useState(startIdx);
+  const [renderedAt] = useState(() => Date.now());
 
   const day = days[idx];
   const dayMatches = useMemo(() => matches.filter((m) => m.date === day).sort((a, b) => (a.kickoff || "").localeCompare(b.kickoff || "")), [matches, day]);
@@ -128,13 +124,12 @@ function Resumen({ matches, onOpen, goto, favs, onTeam }) {
   const dayValue = useMemo(() => topValueBets(dayMatches, 3), [dayMatches]);
   const favList = useMemo(() => {
     if (!favs || !favs.size) return [];
-    const now = Date.now();
     return [...favs].map((t) => {
       const fx = matches.filter((m) => m.home === t || m.away === t).sort((a, b) => (a.kickoff || "").localeCompare(b.kickoff || ""));
-      const next = fx.find((m) => new Date(m.kickoff).getTime() >= now) || fx[fx.length - 1];
+      const next = fx.find((m) => new Date(m.kickoff).getTime() >= renderedAt) || fx[fx.length - 1];
       return { team: t, m: next };
     }).filter((x) => x.m);
-  }, [favs, matches]);
+  }, [favs, matches, renderedAt]);
 
   const win = 9;
   const start = Math.max(0, Math.min(idx - 4, Math.max(0, days.length - win)));
@@ -155,30 +150,30 @@ function Resumen({ matches, onOpen, goto, favs, onTeam }) {
         <div className="card">
           <div className="lbl">◆ Value del día <span className="dim">(modelo vs mercado)</span></div>
           {dayValue.map(({ m, selection, edge, odds }) => (
-            <div key={m.id} className="vd-row click" onClick={() => onOpen(m)}>
+            <button type="button" key={m.id} className="vd-row click row-button" onClick={() => onOpen(m)}>
               <span className="vd-team">{m.home} <span className="dim">vs</span> {m.away}</span>
               <span className="chips">
                 <span className="chip">Apuesta <b>{selection}</b></span>
                 <span className="chip">Cuota <b>{odds}</b></span>
                 <span className="pill y">+{(edge * 100).toFixed(1)}%</span>
               </span>
-            </div>
+            </button>
           ))}
         </div>
       )}
 
       <div className="cal">
         <div className="cal-nav">
-          <button className="cal-btn" disabled={idx <= 0} onClick={() => setIdx((i) => Math.max(0, i - 1))} aria-label="Día anterior">‹</button>
+          <button type="button" className="cal-btn" disabled={idx <= 0} onClick={() => setIdx((i) => Math.max(0, i - 1))} aria-label="Día anterior">‹</button>
           <div className="cal-title"><b>{dayLong(day)}</b>{day === t && <span className="cal-today">HOY</span>}</div>
-          <button className="cal-btn" disabled={idx >= days.length - 1} onClick={() => setIdx((i) => Math.min(days.length - 1, i + 1))} aria-label="Día siguiente">›</button>
-          <button className="cal-btn wide" onClick={() => setIdx(startIdx)}>Hoy</button>
+          <button type="button" className="cal-btn" disabled={idx >= days.length - 1} onClick={() => setIdx((i) => Math.min(days.length - 1, i + 1))} aria-label="Día siguiente">›</button>
+          <button type="button" className="cal-btn wide" onClick={() => setIdx(startIdx)}>Hoy</button>
         </div>
         <div className="cal-strip">
           {strip.map((d) => {
             const n = matches.filter((m) => m.date === d).length;
             return (
-              <button key={d} className={"cal-day" + (d === day ? " on" : "") + (d === t ? " today" : "")} onClick={() => setIdx(days.indexOf(d))}>
+              <button type="button" key={d} className={"cal-day" + (d === day ? " on" : "") + (d === t ? " today" : "")} onClick={() => setIdx(days.indexOf(d))}>
                 <span className="cd-wd">{dayWd(d)}</span>
                 <span className="cd-dm">{dayNum(d)}</span>
                 <span className="cd-n">{n}</span>
@@ -198,9 +193,9 @@ function Resumen({ matches, onOpen, goto, favs, onTeam }) {
           <div className="lbl">★ Tus equipos</div>
           {favList.map(({ team, m }) => (
             <div key={team} className="vd-row">
-              <span className="vd-team click" onClick={() => onTeam && onTeam(team)}>{team}</span>
+              <button type="button" className="vd-team click text-button" onClick={() => onTeam && onTeam(team)}>{team}</button>
               <span className="chips">
-                <span className="chip click" onClick={() => onOpen(m)}>{m.finished && m.result ? `${m.result[0]}-${m.result[1]}` : (m.markets?.marcador || "·")} · {m.home === team ? "vs " + m.away : "@ " + m.home}</span>
+                <button type="button" className="chip click" onClick={() => onOpen(m)}>{m.finished && m.result ? `${m.result[0]}-${m.result[1]}` : (m.markets?.marcador || "·")} · {m.home === team ? "vs " + m.away : "@ " + m.home}</button>
                 <span className="dim" style={{ fontSize: ".72rem" }}>{m.finished ? "FT" : (countdown(m.kickoff) || fmtKick(m.kickoff))}</span>
               </span>
             </div>
@@ -212,10 +207,10 @@ function Resumen({ matches, onOpen, goto, favs, onTeam }) {
         <h2>Explora</h2>
       </div>
       <div className="quick-links">
-        <button className="qlink" onClick={() => goto("partidos")}><Icon name="partidos" /><span>Partidos y mercados</span></button>
-        <button className="qlink" onClick={() => goto("clasificacion")}><Icon name="clasificacion" /><span>Clasificación</span></button>
-        <button className="qlink" onClick={() => goto("value")}><Icon name="value" /><span>Value bets</span></button>
-        <button className="qlink" onClick={() => goto("quiniela")}><Icon name="quiniela" /><span>Quiniela</span></button>
+        <button type="button" className="qlink" onClick={() => goto("partidos")}><Icon name="partidos" /><span>Partidos y mercados</span></button>
+        <button type="button" className="qlink" onClick={() => goto("clasificacion")}><Icon name="clasificacion" /><span>Clasificación</span></button>
+        <button type="button" className="qlink" onClick={() => goto("value")}><Icon name="value" /><span>Value bets</span></button>
+        <button type="button" className="qlink" onClick={() => goto("quiniela")}><Icon name="quiniela" /><span>Quiniela</span></button>
       </div>
     </>
   );
@@ -240,10 +235,10 @@ function Clasificacion({ matches, onTeam }) {
       <div className="card">
         <div className="row" style={{ justifyContent: "space-between" }}>
           <div className="seg-toggle">
-            <button className={mode === "real" ? "on" : ""} onClick={() => setMode("real")}>Real</button>
-            <button className={mode === "proy" ? "on" : ""} onClick={() => setMode("proy")}>Proyección</button>
+            <button type="button" className={mode === "real" ? "on" : ""} aria-pressed={mode === "real"} onClick={() => setMode("real")}>Real</button>
+            <button type="button" className={mode === "proy" ? "on" : ""} aria-pressed={mode === "proy"} onClick={() => setMode("proy")}>Proyección</button>
           </div>
-          {ligas.length > 1 && <select value={liga} onChange={(e) => setLiga(e.target.value)}>{ligas.map((l) => <option key={l} value={l}>{l}</option>)}</select>}
+          {ligas.length > 1 && <select aria-label="Competición de la clasificación" value={liga} onChange={(e) => setLiga(e.target.value)}>{ligas.map((l) => <option key={l} value={l}>{l}</option>)}</select>}
         </div>
         <p className="note" style={{ color: "var(--muted)" }}>
           {mode === "real"
@@ -260,7 +255,7 @@ function Clasificacion({ matches, onTeam }) {
               return (
                 <tr key={t.name} className={i < 4 ? "row-ucl" : i < 6 ? "row-eur" : i >= table.length - 3 ? "row-desc" : ""}>
                   <td>{i + 1}</td>
-                  <td className="tl"><div className="cls-team click" onClick={() => onTeam && onTeam(t.name)} style={{ cursor: "pointer" }}><img className="crest sm" alt="" loading="lazy" src={crestFor(t.name, t.colors, t.crest)} onError={(e) => (e.target.src = crestFor(t.name, t.colors, null))} /><span className="tn">{t.name}</span></div></td>
+                  <td className="tl"><button type="button" className="cls-team click text-button" onClick={() => onTeam && onTeam(t.name)}><img className="crest sm" alt="" loading="lazy" src={crestFor(t.name, t.colors, t.crest)} onError={(e) => (e.target.src = crestFor(t.name, t.colors, null))} /><span className="tn">{t.name}</span></button></td>
                   <td>{t.pj}</td><td>{t.w}</td><td>{t.d}</td><td>{t.l}</td><td>{t.gf}</td><td>{t.ga}</td>
                   <td className={gd >= 0 ? "value-yes" : "value-no"}>{gd > 0 ? "+" : ""}{gd}</td>
                   <td><b>{mode === "real" ? t.ptsReal : t.ptsProy}</b></td>
@@ -296,12 +291,12 @@ function Mercados({ matches, q, onOpen }) {
     <>
       <div className="controls">
         {ligas.length > 1 && (
-          <select value={liga} onChange={(e) => setLiga(e.target.value)}>
+          <select aria-label="Filtrar partidos por competición" value={liga} onChange={(e) => setLiga(e.target.value)}>
             <option value="">Todas las ligas</option>
             {ligas.map((l) => <option key={l} value={l}>{l}</option>)}
           </select>
         )}
-        <button className={"seg-toggle-btn" + (onlyVal ? " on" : "")} onClick={() => setOnlyVal((v) => !v)}>◆ Solo value</button>
+        <button type="button" className={"seg-toggle-btn" + (onlyVal ? " on" : "")} aria-pressed={onlyVal} onClick={() => setOnlyVal((v) => !v)}>◆ Solo value</button>
       </div>
       {!ms.length ? <div className="state">{q ? `No hay partidos para “${q}”.` : "No hay partidos con estos filtros."}</div> : (
       <div className="card" style={{ padding: "6px 10px", overflowX: "auto" }}>
@@ -312,7 +307,7 @@ function Mercados({ matches, q, onOpen }) {
             const o25 = m.markets?.over_2_5 ?? null;
             const val = bestValue(m);
             return (
-              <tr key={m.id} className="click" onClick={() => onOpen(m)}>
+              <tr key={m.id} className="click" role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onOpen(m); }} onClick={() => onOpen(m)}>
                 <td className="tl"><div className="mk-team"><b>{m.home}</b> <span className="dim">vs</span> {m.away}<div className="mk-sub">{m.league} · J{m.matchday || ""} · {fmtKick(m.kickoff)}</div></div></td>
                 <td><span className={"q-" + sign(m)} style={{ fontWeight: 800 }}>{sign(m)}</span></td>
                 <td>{m.markets?.marcador || "—"}</td>
@@ -351,7 +346,7 @@ function Jugadores({ players }) {
       <div className="card">
         <div className="row" style={{ justifyContent: "space-between" }}>
           <div className="lbl" style={{ margin: 0 }}>Ranking de jugadores · {cur.label}</div>
-          {ligas.length > 1 && <select value={liga} onChange={(e) => setLiga(e.target.value)}>{ligas.map((l) => <option key={l} value={l}>{players[l].label}</option>)}</select>}
+          {ligas.length > 1 && <select aria-label="Competición del ranking de jugadores" value={liga} onChange={(e) => setLiga(e.target.value)}>{ligas.map((l) => <option key={l} value={l}>{players[l].label}</option>)}</select>}
         </div>
         <p className="note" style={{ color: "var(--muted)" }}>Fuente: Understat (goles, asistencias, remates, xG y tarjetas por jugador de LaLiga). Se actualiza con el scraper local. Segunda y faltas por jugador no disponibles gratis.</p>
       </div>
@@ -426,14 +421,14 @@ function Quiniela({ matches, quiniela, tri, dob, setTri, setDob }) {
           ? <div className="lbl">🎫 Quiniela oficial{quiniela.jornada ? ` · Jornada ${quiniela.jornada}` : ""} con los signos del modelo</div>
           : <div className="lbl">Quiniela del modelo (15 partidos con predicción). Añade <code>football/data/quiniela.json</code> para usar la combinación oficial de LAE.</div>}
         <div className="row">
-          <div className="grow"><div className="lbl">Triples</div><input type="range" min="0" max="8" value={tri} className="grow" onChange={(e) => setTri(+e.target.value)} /> {tri}</div>
-          <div className="grow"><div className="lbl">Dobles</div><input type="range" min="0" max="8" value={dob} className="grow" onChange={(e) => setDob(+e.target.value)} /> {dob}</div>
+          <div className="grow"><div className="lbl">Triples</div><input aria-label="Número de triples" type="range" min="0" max="8" value={tri} className="grow" onChange={(e) => setTri(+e.target.value)} /> {tri}</div>
+          <div className="grow"><div className="lbl">Dobles</div><input aria-label="Número de dobles" type="range" min="0" max="8" value={dob} className="grow" onChange={(e) => setDob(+e.target.value)} /> {dob}</div>
         </div>
         <div className="chips">
           {nPred < ms.length && <span className="chip">{ms.length - nPred} sin predicción del modelo</span>}
           <span className="chip">Coste <b>{cost}</b> columnas</span>
           <span className="chip">Prob. pleno <b>{(pAll * 100).toFixed(3)}%</b></span>
-          <button className="mini" onClick={copy}>{copied ? "✓ Copiado" : "📋 Copiar quiniela"}</button>
+          <button type="button" className="mini" onClick={copy}>{copied ? "✓ Copiado" : "📋 Copiar quiniela"}</button>
         </div>
       </div>
       {fc.map((f, i) => {
@@ -470,6 +465,8 @@ function ValueBets({ matches, bank, setBank }) {
   const bankN = Number(bank) || 1000;
   let rows = ms.map((m, i) => {
     const pr = [m.probs[0] / 100, m.probs[1] / 100, m.probs[2] / 100];
+    const blocked = m.recommendation?.decision === "no_pick";
+    const reasons = m.recommendation?.reasons || [];
     // Cuotas reales de mercado (media de casas, co.uk) cargadas del feed;
     // el usuario puede sobrescribirlas escribiendo en el input.
     const feedO = m.odds?.["1x2"]?.odds || null;
@@ -481,35 +478,37 @@ function ValueBets({ matches, bank, setBank }) {
     const fair = haveAll ? fairProbs(o) : null;
     const vig = haveAll ? overround(o) : null;
     let best = null;
-    o.forEach((oo, j) => { if (oo > 1) { const e = pr[j] * oo - 1; if (!best || e > best.e) best = { j, s: ["1", "X", "2"][j], o: oo, e }; } });
-    const stake = best ? Math.min(bankN * kelly(pr[best.j], best.o) * 0.25, bankN * 0.05) : 0;
-    return { m, i, pr, o, feedO, fair, vig, best, stake };
+    if (!blocked) {
+      o.forEach((oo, j) => { if (oo > 1) { const e = pr[j] * oo - 1; if (!best || e > best.e) best = { j, s: ["1", "X", "2"][j], o: oo, e }; } });
+    }
+    const stake = !blocked && best ? Math.min(bankN * kelly(pr[best.j], best.o) * 0.25, bankN * 0.05) : 0;
+    return { m, i, pr, o, feedO, fair, vig, best, stake, blocked, reasons, haveAll };
   });
-  rows = rows.sort((a, b) => (b.best?.e ?? -9) - (a.best?.e ?? -9));
-  const nValue = rows.filter((r) => r.best && r.best.e > 0.02).length;
-  const nWithOdds = rows.filter((r) => r.best).length;
+  rows = rows.sort((a, b) => Number(a.blocked) - Number(b.blocked) || (b.best?.e ?? -9) - (a.best?.e ?? -9));
+  const nValue = rows.filter((r) => !r.blocked && r.best && r.best.e > 0.02).length;
+  const nWithOdds = rows.filter((r) => r.haveAll).length;
   return (
     <>
       <div className="card">
         <div className="row" style={{ justifyContent: "space-between" }}>
-          <div><div className="lbl">Bankroll (€)</div><input type="number" value={bank} style={{ width: 130 }} onChange={(e) => setBank(e.target.value)} /></div>
+          <div><div className="lbl">Bankroll (€)</div><input aria-label="Bankroll para calcular stakes" type="number" value={bank} style={{ width: 130 }} onChange={(e) => setBank(e.target.value)} /></div>
           <div className="chips">
             <span className="chip">Con cuota <b>{nWithOdds}</b></span>
-            <span className="chip">Value (edge&gt;2%) <b className={nValue ? "value-yes" : ""}>{nValue}</b></span>
+            <span className="chip">Value elegible (edge&gt;2%) <b className={nValue ? "value-yes" : ""}>{nValue}</b></span>
           </div>
         </div>
-        <p className="note" style={{ color: "var(--muted)" }}>Cuotas de mercado (media de casas, co.uk) cargadas automáticamente; puedes sobrescribirlas. Se quita el margen y se compara con el modelo. Stake = Kelly ¼ (máx. 5%).</p>
+        <p className="note" style={{ color: "var(--muted)" }}>Cuotas de mercado (media de casas, co.uk) cargadas automáticamente; puedes sobrescribirlas. Se quita el margen y se compara con el modelo. Solo los partidos elegibles calculan edge y stake = Kelly ¼ (máx. 5%).</p>
       </div>
       {!ms.length && <div className="state">No hay partidos con predicción.</div>}
       {rows.map((r) => (
-        <div className="card" key={r.i}>
+        <div className="card" key={r.i} data-recommendation={r.blocked ? "no_pick" : "eligible"}>
           <div className="row" style={{ justifyContent: "space-between" }}>
             <div className="tn" style={{ flex: 1 }}>{r.m.home} vs {r.m.away}</div>
             <div className="chips">{["1", "X", "2"].map((s, j) => <span key={s} className="chip">{s} <b>{r.m.probs[j]}%</b>{r.fair ? <span className="dim"> / {(r.fair[j] * 100).toFixed(0)}%</span> : null}</span>)}</div>
           </div>
           <div className="row" style={{ marginTop: 8 }}>
             {["1", "X", "2"].map((s, j) => {
-              const e = r.o[j] > 1 ? r.pr[j] * r.o[j] - 1 : null;
+              const e = !r.blocked && r.o[j] > 1 ? r.pr[j] * r.o[j] - 1 : null;
               return (
                 <div key={s} className="odds-in">
                   <input type="number" step="0.01" placeholder={"Cuota " + s} style={{ width: 92 }} value={odds[r.i + s] ?? (r.feedO ? r.feedO[s] : "")} onChange={(ev) => setOdds({ ...odds, [r.i + s]: ev.target.value })} />
@@ -520,7 +519,8 @@ function ValueBets({ matches, bank, setBank }) {
           </div>
           <div className="row" style={{ marginTop: 6 }}>
             {r.vig != null && <span className="chip">Margen casa <b>{(r.vig * 100).toFixed(1)}%</b></span>}
-            {r.best && r.best.e > 0.02 ? <span className="pill y">VALUE {r.best.s}: edge {(r.best.e * 100).toFixed(1)}% · apostar {r.stake.toFixed(2)}€</span>
+            {r.blocked ? <span className="value-no">Sin apuesta recomendada{r.reasons.length ? ` · ${r.reasons.join(" · ")}` : ""}</span>
+              : r.best && r.best.e > 0.02 ? <span className="pill y">VALUE {r.best.s}: edge {(r.best.e * 100).toFixed(1)}% · apostar {r.stake.toFixed(2)}€</span>
               : r.best ? <span className="value-no">Sin value (mejor {r.best.s}: {(r.best.e * 100).toFixed(1)}%)</span> : null}
           </div>
         </div>
@@ -564,7 +564,7 @@ const METRIC_INFO = [
   ["log_loss", "LogLoss", "Pérdida logarítmica (menor = mejor)"],
   ["accuracy", "Acierto", "% de signos acertados (mayor = mejor)"],
 ];
-const PRED_LABEL = { baseline: "Base (tasas)", elo: "Elo", dixon_coles: "Dixon-Coles" };
+const PRED_LABEL = { baseline: "Base (tasas)", elo: "Elo", dixon_coles: "Dixon-Coles", ensemble: "Ensemble calibrado", residual: "Residual challenger" };
 
 function ModelReport({ model }) {
   const ligas = model ? Object.keys(model) : [];
@@ -573,6 +573,8 @@ function ModelReport({ model }) {
   const rep = model[liga] || model[ligas[0]];
   const preds = rep.predictors || {};
   const names = Object.keys(preds);
+  const ensembleActive = Boolean(rep.ensemble?.accepted);
+  const residualActive = Boolean(rep.residual?.accepted);
   // Mejor (menor) por métrica descendente-mala; para accuracy, mayor es mejor.
   const best = {};
   for (const [key] of METRIC_INFO) {
@@ -587,14 +589,14 @@ function ModelReport({ model }) {
         <div className="row-between">
           <div className="lbl">Rendimiento del modelo (walk-forward)</div>
           {ligas.length > 1 && (
-            <select value={liga} onChange={(e) => setLiga(e.target.value)}>
+            <select aria-label="Competición del rendimiento del modelo" value={liga} onChange={(e) => setLiga(e.target.value)}>
               {ligas.map((l) => <option key={l} value={l}>{model[l].label}</option>)}
             </select>
           )}
         </div>
         <div className="mut" style={{ margin: "4px 0 10px" }}>
           Validación honesta: se entrena solo con el pasado y se predice cada jornada.
-          {" "}<b>{rep.n_predicciones}</b> predicciones evaluadas esta temporada.
+          {" "}<b>{rep.n_predicciones}</b> predicciones evaluadas{rep.evaluation_season ? ` en la temporada ${rep.evaluation_season}/${String(rep.evaluation_season + 1).slice(-2)}` : " esta temporada"}.
         </div>
         <div className="tbl-wrap">
           <table className="tbl-mk metrics-tbl">
@@ -606,8 +608,8 @@ function ModelReport({ model }) {
             </thead>
             <tbody>
               {names.map((n) => (
-                <tr key={n} className={n === "dixon_coles" ? "row-live" : ""}>
-                  <td className="tl">{PRED_LABEL[n] || n}{n === "dixon_coles" && <span className="tag-live">EN USO</span>}</td>
+                <tr key={n} className={(n === "ensemble" && ensembleActive) || (n === "residual" && residualActive) ? "row-live" : ""}>
+                  <td className="tl">{PRED_LABEL[n] || n}{["ensemble", "residual"].includes(n) && <span className="tag-live">{(n === "ensemble" ? ensembleActive : residualActive) ? "EN USO" : "CANDIDATO"}</span>}</td>
                   {METRIC_INFO.map(([k]) => {
                     const v = preds[n][k];
                     const isBest = v != null && best[k] != null && v === best[k];
@@ -618,6 +620,9 @@ function ModelReport({ model }) {
             </tbody>
           </table>
         </div>
+        {rep.residual && <div className="mut" style={{ marginTop: 8 }}>
+          Residual: <b>{rep.residual.accepted ? "gate superado" : "bloqueado"}</b> · {rep.residual.status === "blocked_insufficient_sample" ? `${rep.residual.n}/${rep.residual.minimum_required} partidos mínimos` : `${rep.residual.n_validation || 0} partidos de validación temporal`} · exige mejorar log loss y RPS frente a Dixon-Coles y Elo.
+        </div>}
         <div className="mut" style={{ marginTop: 8 }}>Verde = mejor valor por columna. RPS es el estándar en fútbol; premia acercarse al resultado ordenado 1-X-2.</div>
       </div>
       {calib1.length > 0 && (
@@ -652,8 +657,8 @@ function AccuracyPanel({ acc }) {
     <div className="card">
       <div className="lbl">Precisión histórica (predicho vs real)</div>
       <div className="mut" style={{ margin: "2px 0 12px" }}>
-        Sobre <b>{acc.n_partidos}</b> partidos ya jugados. El error medio por métrica dice
-        en qué acierta el modelo y dónde se desvía — es lo que usamos para mejorar.
+        Sobre <b>{acc.n_partidos}</b> snapshots guardados antes del saque inicial. El error medio por métrica dice
+        en qué acierta el modelo y dónde se desvía — nunca se recalcula con el resultado conocido.
       </div>
       <div className="stat-tiles" style={{ marginBottom: 6 }}>
         <div className="stat">
@@ -694,19 +699,58 @@ function AccuracyPanel({ acc }) {
 function Datos({ data }) {
   const ds = data.data_sources || {};
   const ageH = feedAgeHours(data);
+  const perf = data.performance || { overall: { n: 0 }, by_market: [], by_league: [], weak_segments: [] };
+  const audit = data.content_audit;
+  const usage = data.ai_usage;
+  const metricRows = [
+    ["Mercado", perf?.by_market], ["Competición", perf?.by_league],
+  ];
   return (
     <>
+      <div className="card">
+        <div className="row-between"><div className="lbl">Control de completitud</div><span className={"pill " + (audit?.status === "ok" ? "y" : "")}>{audit?.status === "ok" ? "completo" : "revisar"}</span></div>
+        <div className="chips">
+          <span className="chip">Partidos del día <b>{audit?.matches_today ?? 0}</b></span>
+          <span className="chip">Completos <b>{audit?.complete ?? 0}</b></span>
+          <span className="chip">Reintentos selectivos <b>{audit?.selective_retries ?? 0}</b></span>
+          <span className="chip">Onces oficiales nuevos <b>{audit?.official_lineup_updates ?? 0}</b></span>
+          <span className="chip">Clima actualizado <b>{audit?.weather_updates ?? 0}</b></span>
+          {usage && <span className="chip">IA diaria <b>{usage.requests}/{usage.budget}</b></span>}
+        </div>
+        {(audit?.incomplete || []).map((item) => <div className="note value-no" key={item.id}>{item.partido}: falta {item.missing.join(", ")}</div>)}
+      </div>
+      <div className="card">
+        <div className="lbl">Rendimiento real del modelo</div>
+        <div className="chips">
+          <span className="chip">Muestra <b>{perf.overall?.n ?? 0}</b></span>
+          <span className="chip">Acierto <b>{perf.overall?.hit_rate ?? "—"}%</b></span>
+          <span className="chip">ROI <b className={(perf.overall?.roi ?? 0) >= 0 ? "value-yes" : "value-no"}>{perf.overall?.roi ?? "—"}%</b></span>
+          {perf.initial_vs_10_15 && <span className="chip">10:15 vs inicial <b className={perf.initial_vs_10_15.improved ? "value-yes" : "value-no"}>{perf.initial_vs_10_15.delta > 0 ? "+" : ""}{perf.initial_vs_10_15.delta} Brier</b></span>}
+        </div>
+        {metricRows.map(([title, rows]) => (rows || []).length > 0 && <div key={title} className="tbl-wrap" style={{ marginTop: 10 }}>
+          <div className="mut">Por {title.toLowerCase()}</div>
+          <table className="tbl-mk"><thead><tr><th className="tl">{title}</th><th>N</th><th>Acierto</th><th>ROI</th></tr></thead>
+            <tbody>{rows.map((row) => <tr key={row.label}><td className="tl">{row.label}</td><td>{row.n}</td><td>{row.hit_rate ?? "—"}%</td><td className={(row.roi ?? 0) >= 0 ? "value-yes" : "value-no"}>{row.roi ?? "—"}%</td></tr>)}</tbody>
+          </table>
+        </div>)}
+        {(perf.weak_segments || []).length > 0 && <div className="note value-no">Segmentos a vigilar: {perf.weak_segments.map((row) => `${row.segment} (${row.roi}% ROI, n=${row.n})`).join(" · ")}</div>}
+        {perf.overall?.n ? <div className="mut" style={{ marginTop: 8 }}>{perf.method}</div> : <div className="note" style={{ marginTop: 8 }}>Aún sin muestra válida: el panel se activará cuando terminen partidos que ya tengan snapshot prepartido, sin reconstruir predicciones a posteriori.</div>}
+      </div>
+      <ProbabilityQualityPanel quality={perf.probability_quality} />
       <AccuracyPanel acc={data.accuracy} />
+      <AccuracyMatchDetails rows={data.accuracy?.matches} />
       <ModelReport model={data.model} />
       <div className="card">
         <div className="lbl">Motor y estado</div>
         <div className="chips">
-          <span className="chip">Motor <b>{data.engine || "dixon-coles"} + Elo</b></span>
+          <span className="chip">Motor <b>{data.engine === "residual" ? "Residual validado" : data.engine === "ensemble" ? "Dixon-Coles + Elo calibrado" : (data.engine || "Dixon-Coles")}</b></span>
           <span className="chip">Schema <b>v{data.schema_version}</b></span>
           <span className="chip">Temporada <b>{data.season}</b></span>
           <span className="chip">Generado <b>{new Date(data.generated_at).toLocaleString("es-ES")}</b></span>
           {ageH != null && <span className={"chip"}>Antigüedad <b className={isStale(data) ? "value-no" : "value-yes"}>{Math.round(ageH)} h</b></span>}
+          <span className="chip">Calidad feed <b className={data.feed_quality?.valid ? "value-yes" : "value-no"}>{Math.round((data.feed_quality?.score ?? 0) * 100)}%</b></span>
         </div>
+        {(data.feed_quality?.issues || []).length > 0 && <div className="note value-no">Incidencias: {data.feed_quality.issues.join(" · ")}</div>}
       </div>
       <div className="card">
         <div className="lbl">Fuentes de datos</div>
@@ -718,11 +762,17 @@ function Datos({ data }) {
       <div className="card">
         <div className="lbl">Modelos activos</div>
         <ul className="mdl">
-          <li><b>Dixon-Coles</b> con ponderación temporal y corrección de resultados bajos.</li>
-          <li><b>Elo</b> dinámico para fuerza de equipos.</li>
-          <li><b>Matriz de goles Poisson</b> en cliente → cualquier mercado (over/under, hándicap, BTTS, marcador exacto).</li>
+          <li><b>Ensemble Dixon-Coles + Elo</b> con pesos y temperatura aprendidos sobre predicciones walk-forward.</li>
+          <li><b>Residual challenger</b>: corrige logits con el desacuerdo DC/Elo y solo entra en producción si mejora a ambos en una cola temporal.</li>
+          <li><b>Simulador de estados</b>: explora calor, marcador, fatiga y expulsiones por tramos de cinco minutos; se muestra como escenario y no contamina el 1X2.</li>
+          <li><b>Pseudo-xG gratuito</b> a partir de remates y tiros a puerta, regularizado y limitado para evitar saltos.</li>
+          <li><b>Poisson / Negative Binomial</b> según la dispersión real de cada mercado de córners, tarjetas y remates.</li>
+          <li><b>Snapshots 00:15 y 10:15</b>: cada predicción queda congelada antes del partido para medirla sin leakage.</li>
           <li><b>Calibración con el mercado</b>: con pocas jornadas jugadas la probabilidad se mezcla con la del mercado (sin margen) y va pesando más el modelo según avanza la liga. Evita edges inflados.</li>
           <li><b>Cara a cara (h2h)</b>: enfrentamientos directos pasados en el detalle del partido.</li>
+          <li><b>Perfil ataque–defensa</b>: splits reales casa/fuera de volumen, concesión, córners, faltas y tarjetas; declara tamaño de muestra.</li>
+          <li><b>Clima del estadio</b>: previsión Open-Meteo a la hora del saque inicial. Por ahora ajusta confianza y explicación, no goles.</li>
+          <li><b>Abstención</b>: bloquea el pick si la confianza, la completitud o el acuerdo entre modelos no alcanzan el mínimo.</li>
           <li><b>Value</b>: edge = prob·cuota − 1 (con la prob. calibrada), staking con Kelly fraccionado.</li>
         </ul>
       </div>
@@ -757,6 +807,7 @@ function Cartera({ matches }) {
   const [bets, setBets] = useState(() => loadLS(LS_BETS, []));
   const [bank0, setBank0] = useState(() => loadLS(LS_BANK0, 1000));
   const [f, setF] = useState({ match: "", sel: "1", odds: "", stake: "" });
+  const [message, setMessage] = useState("");
   useEffect(() => saveLS(LS_BETS, bets), [bets]);
   useEffect(() => saveLS(LS_BANK0, bank0), [bank0]);
 
@@ -778,12 +829,19 @@ function Cartera({ matches }) {
 
   const add = () => {
     const odds = Number(f.odds), stake = Number(f.stake);
-    if (!(odds > 1) || !(stake > 0) || !f.match.trim()) return;
-    setBets([{ id: Date.now(), date: new Date().toISOString().slice(0, 10), match: f.match.trim(), sel: f.sel, odds, stake, result: "open" }, ...bets]);
+    if (!(odds > 1) || !(stake > 0) || !f.match.trim()) {
+      setMessage("Completa partido, cuota mayor que 1 y stake positivo.");
+      return;
+    }
+    const linked = matches.find((match) => `${match.home} - ${match.away}` === f.match.trim());
+    setBets([{ id: Date.now(), date: new Date().toISOString().slice(0, 10), match: f.match.trim(), matchId: linked?.id || null, sel: f.sel, odds, stake, result: "open" }, ...bets]);
     setF({ match: "", sel: "1", odds: "", stake: "" });
+    setMessage("Apuesta añadida.");
   };
   const settle = (id, result) => setBets(bets.map((b) => b.id === id ? { ...b, result } : b));
-  const del = (id) => setBets(bets.filter((b) => b.id !== id));
+  const del = (id) => {
+    if (window.confirm("¿Eliminar esta apuesta?")) setBets(bets.filter((b) => b.id !== id));
+  };
 
   return (
     <>
@@ -793,6 +851,8 @@ function Cartera({ matches }) {
         <div className="stat"><span className="stat-k">ROI / Yield</span><b className="stat-v" style={{ color: roi >= 0 ? "var(--green)" : "var(--red)" }}>{roi >= 0 ? "+" : ""}{roi.toFixed(1)}%</b><span className="stat-s">{staked.toFixed(0)}€ apostados</span></div>
         <div className="stat"><span className="stat-k">Acierto</span><b className="stat-v">{hit.toFixed(0)}%</b><span className="stat-s">{wins}/{settled.length} ganadas</span></div>
       </div>
+
+      <ClvPanel bets={bets} matches={matches} />
 
       <div className="card">
         <div className="lbl">Evolución del beneficio</div>
@@ -804,17 +864,18 @@ function Cartera({ matches }) {
         <div className="row">
           <input className="grow" list="fe-matches" placeholder="Partido (o texto libre)" value={f.match} onChange={(e) => setF({ ...f, match: e.target.value })} />
           <datalist id="fe-matches">{suggestions.map((s) => <option key={s} value={s} />)}</datalist>
-          <select value={f.sel} onChange={(e) => setF({ ...f, sel: e.target.value })}>
+          <select aria-label="Selección de la apuesta" value={f.sel} onChange={(e) => setF({ ...f, sel: e.target.value })}>
             <option value="1">1</option><option value="X">X</option><option value="2">2</option>
             <option value="Over">Over</option><option value="Under">Under</option><option value="BTTS">BTTS</option><option value="Otro">Otro</option>
           </select>
           <input type="number" step="0.01" placeholder="Cuota" style={{ width: 90 }} value={f.odds} onChange={(e) => setF({ ...f, odds: e.target.value })} />
           <input type="number" step="1" placeholder="Stake €" style={{ width: 90 }} value={f.stake} onChange={(e) => setF({ ...f, stake: e.target.value })} />
-          <button className="add-btn" onClick={add}>Añadir</button>
+          <button type="button" className="add-btn" onClick={add}>Añadir</button>
         </div>
+        {message && <div className="inline-status" role="status">{message}</div>}
         <div className="row" style={{ marginTop: 8 }}>
           <span className="lbl" style={{ margin: 0 }}>Bankroll inicial</span>
-          <input type="number" style={{ width: 110 }} value={bank0} onChange={(e) => setBank0(e.target.value)} />
+          <input aria-label="Bankroll inicial de la cartera" type="number" style={{ width: 110 }} value={bank0} onChange={(e) => setBank0(e.target.value)} />
         </div>
       </div>
 
@@ -832,13 +893,13 @@ function Cartera({ matches }) {
                   <td>
                     {b.result === "open" ? (
                       <span className="settle">
-                        <button className="s-won" onClick={() => settle(b.id, "won")}>✓</button>
-                        <button className="s-lost" onClick={() => settle(b.id, "lost")}>✗</button>
-                        <button className="s-void" onClick={() => settle(b.id, "void")}>N</button>
+                        <button type="button" className="s-won" onClick={() => settle(b.id, "won")} aria-label={`Marcar ${b.match} como ganada`}>✓</button>
+                        <button type="button" className="s-lost" onClick={() => settle(b.id, "lost")} aria-label={`Marcar ${b.match} como perdida`}>✗</button>
+                        <button type="button" className="s-void" onClick={() => settle(b.id, "void")} aria-label={`Marcar ${b.match} como nula`}>N</button>
                       </span>
                     ) : <span className={"pill " + (b.result === "won" ? "y" : "")}>{b.result === "won" ? "Ganada" : b.result === "lost" ? "Perdida" : "Nula"}</span>}
                   </td>
-                  <td><button className="s-del" onClick={() => del(b.id)}>🗑</button></td>
+                  <td><button type="button" className="s-del" onClick={() => del(b.id)} aria-label={`Eliminar apuesta ${b.match}`}>🗑</button></td>
                 </tr>
               ))}
             </tbody>
@@ -869,12 +930,12 @@ function TeamPage({ team, matches, players, onBack, onOpen, isFav, onFav }) {
   const squad = useMemo(() => teamSquad(players, team), [players, team]);
   return (
     <div>
-      <button className="back" onClick={onBack}>← Volver</button>
+      <button type="button" className="back" onClick={onBack}>← Volver</button>
       <div className="card">
         <div className="row" style={{ alignItems: "center", gap: 12 }}>
           <img className="crest" alt="" src={crestFor(p.name, p.colors, p.crest)} onError={(e) => (e.target.src = crestFor(p.name, p.colors, null))} />
           <div style={{ flex: 1 }}><div className="tn" style={{ fontSize: 20, fontWeight: 800 }}>{p.name}</div><div className="kick">{p.league}</div></div>
-          <button className={"fav-btn" + (isFav ? " on" : "")} onClick={() => onFav && onFav(p.name)} title={isFav ? "Quitar de favoritos" : "Añadir a favoritos"}>{isFav ? "★" : "☆"}</button>
+          <button type="button" className={"fav-btn" + (isFav ? " on" : "")} onClick={() => onFav && onFav(p.name)} aria-label={isFav ? `Quitar ${p.name} de favoritos` : `Añadir ${p.name} a favoritos`} title={isFav ? "Quitar de favoritos" : "Añadir a favoritos"}>{isFav ? "★" : "☆"}</button>
         </div>
         {p.form.length > 0 && (
           <div className="chips" style={{ marginTop: 10 }}>
@@ -927,7 +988,7 @@ function TeamPage({ team, matches, players, onBack, onOpen, isFav, onFav }) {
         <table className="tbl-mk">
           <tbody>
             {p.fixtures.map((m) => (
-              <tr key={m.id} className="click" onClick={() => onOpen(m)}>
+              <tr key={m.id} className="click" role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onOpen(m); }} onClick={() => onOpen(m)}>
                 <td className="tl"><div className="mk-team"><b>{m.home}</b> <span className="dim">vs</span> {m.away}<div className="mk-sub">{m.league} · {fmtKick(m.kickoff)}</div></div></td>
                 <td style={{ fontWeight: 700 }}>{m.finished && m.result ? `${m.result[0]}-${m.result[1]}` : (m.markets?.marcador || "—")}</td>
                 <td className="dim">›</td>
@@ -948,7 +1009,6 @@ const NAV = [
 
 export default function App() {
   const { session } = useSession();
-  const [theme, toggleTheme] = useTheme();
   const [data, setData] = useState(null);
   const [err, setErr] = useState("");
   const [view, setView] = useState("resumen");
@@ -979,7 +1039,7 @@ export default function App() {
         </div>
         <nav className="snav">
           {NAV.map(([k, l]) => (
-            <button key={k} className={"snav-item" + (view === k && !sel ? " on" : "")} onClick={() => goto(k)}>
+            <button type="button" key={k} className={"snav-item" + (view === k && !sel ? " on" : "")} onClick={() => goto(k)}>
               <Icon name={k === "clasificacion" ? "clasificacion" : k === "value" ? "value" : k} /> <span>{l}</span>
             </button>
           ))}
@@ -988,28 +1048,30 @@ export default function App() {
           <div className="cal-card">
             <div className="cal-h">Calendario <b className="value-yes">conectado</b></div>
             <div className="cal-bar"><span /></div>
-            <div className="cal-sub">Fuente: {data?.data_sources?.fixtures || "Calendario verificado"}<br />Motor: {data?.engine || "Dixon-Coles"} + Elo</div>
+            <div className="cal-sub">Fuente: {data?.data_sources?.fixtures || "Calendario verificado"}<br />Motor: {data?.engine === "ensemble" ? "Dixon-Coles + Elo calibrado" : (data?.engine || "Dixon-Coles")}</div>
           </div>
           <div className="user">
             <div className="avatar">{userName.slice(0, 2).toUpperCase()}</div>
-            <div><div className="uname">{userName}</div><div className="usub">Acceso {authEnabled ? "privado" : "abierto"} · {authEnabled ? <a onClick={signOut} style={{ cursor: "pointer" }}>salir</a> : "demo"}</div></div>
+            <div><div className="uname">{userName}</div><div className="usub">Acceso {authEnabled ? "privado" : "abierto"} · {authEnabled ? <button type="button" className="link-button" onClick={signOut}>salir</button> : "demo"}</div></div>
           </div>
         </div>
       </aside>
 
       <div className="main-col">
         <header className="topbar">
-          <button className="burger" onClick={() => setMenuOpen((v) => !v)} aria-label="Menú">☰</button>
-          <div className="search"><Icon name="search" /><input placeholder="Buscar equipo o competición…" value={q}
+          <button type="button" className="burger" onClick={() => setMenuOpen((v) => !v)} aria-label="Abrir menú" aria-expanded={menuOpen}>☰</button>
+          <div className="search"><Icon name="search" /><input aria-label="Buscar equipo o competición" placeholder="Buscar equipo o competición…" value={q}
             onChange={(e) => { const v = e.target.value; setQ(v); if (v.trim()) { setSel(null); setTeamSel(null); setView("partidos"); } }} /></div>
           <div className="top-right">
             <span className="badge-cal"><span className="dot d-ucl" /> {data ? "Calendario verificado" : "Cargando…"}</span>
-            <button className="theme-btn" onClick={toggleTheme} title="Cambiar tema" aria-label="Cambiar tema">{theme === "dark" ? "☀️" : "🌙"}</button>
+            <input type="checkbox" className="theme-btn theme-toggle"
+              defaultChecked={savedLightTheme()} title="Cambiar tema" aria-label="Alternar tema claro u oscuro" />
           </div>
         </header>
 
         <main className="content">
-          {data && isStale(data) && <div className="banner warn">⚠️ El feed puede estar desactualizado (hace {Math.round(feedAgeHours(data))} h). El cron lo refresca cada 15 min.</div>}
+          {data && isStale(data) && <div className="banner warn">⚠️ El feed puede estar desactualizado (hace {Math.round(feedAgeHours(data))} h). Se revisa a las 00:15 y 10:15, con control adicional cuando hay onces oficiales.</div>}
+          {data?.alerts?.some((item) => item.severity === "critical") && <div className="banner warn">⚠️ {data.alerts.filter((item) => item.severity === "critical").map((item) => item.message).join(" · ")}</div>}
           {data?._fromFallback && <div className="banner">Mostrando copia local del feed (no se pudo cargar el remoto).</div>}
           {err && <div className="state">No se pudo cargar el feed.<br />{err}</div>}
           {!data && !err && <Skeletons n={5} />}
@@ -1033,7 +1095,12 @@ export default function App() {
           )}
         </main>
       </div>
-      {menuOpen && <div className="scrim" onClick={() => setMenuOpen(false)} />}
+      <nav className="bottom-nav" aria-label="Navegación móvil">
+        {[["resumen", "⌂", "Inicio"], ["partidos", "⚽", "Partidos"], ["value", "◆", "Value"], ["cartera", "▣", "Cartera"]].map(([key, icon, label]) => (
+          <button type="button" key={key} className={view === key && !sel ? "on" : ""} onClick={() => goto(key)}><span>{icon}</span>{label}</button>
+        ))}
+      </nav>
+      {menuOpen && <button type="button" className="scrim" onClick={() => setMenuOpen(false)} aria-label="Cerrar menú" />}
     </div>
   );
 }

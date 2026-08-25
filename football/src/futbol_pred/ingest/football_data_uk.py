@@ -36,6 +36,7 @@ STAT_COLS = {
     "fouls": ("HF", "AF"),
     "yellows": ("HY", "AY"),
     "reds": ("HR", "AR"),
+    "offsides": ("HO", "AO"),
     "goals": ("FTHG", "FTAG"),
 }
 
@@ -45,6 +46,8 @@ class MatchStats:
     home_team: str
     away_team: str
     stats: dict[str, tuple[float, float]]  # nombre -> (local, visitante)
+    referee: str | None = None
+    kickoff: datetime | None = None
 
 
 def season_code(season: int) -> str:
@@ -59,6 +62,58 @@ def _decode(resp: requests.Response) -> str:
     primera columna ('Div'), rompiendo el DictReader. Forzamos utf-8-sig: quita
     el BOM y respeta los acentos de los nombres de equipo."""
     return resp.content.decode("utf-8-sig", errors="replace")
+
+
+def _movement_meta(row: dict) -> dict | None:
+    """Movimiento 1X2 con una sola fuente emparejada de apertura a última.
+
+    Prioriza el consenso ``Avg*`` cuando existen los seis precios; si la pareja
+    está incompleta cae a Bet365. Nunca mezcla apertura de una fuente con última
+    de otra. ``closing_1x2`` se conserva como alias compatible con feeds antiguos.
+    """
+
+    candidates = (
+        ("market_average", ("AvgH", "AvgD", "AvgA"), ("AvgCH", "AvgCD", "AvgCA")),
+        ("Bet365", ("B365H", "B365D", "B365A"), ("B365CH", "B365CD", "B365CA")),
+    )
+    for source, opening_cols, latest_cols in candidates:
+        opening_values = [_num(row.get(column)) for column in opening_cols]
+        latest_values = [_num(row.get(column)) for column in latest_cols]
+        if not all(value and value > 1 for value in opening_values + latest_values):
+            continue
+        opening = dict(zip(("1", "X", "2"), opening_values))
+        latest = dict(zip(("1", "X", "2"), latest_values))
+        return {
+            "source": "football-data.co.uk",
+            "movement_source": source,
+            "opening_1x2": opening,
+            "latest_1x2": latest,
+            "closing_1x2": latest,
+            "movement_pct": {
+                key: round(100 * (latest[key] - opening[key]) / opening[key], 1)
+                for key in opening
+            },
+        }
+    return None
+
+
+def _closing_odds(row: dict) -> dict | None:
+    """Cierre 1X2 histórico, priorizando consenso y sin mezclar fuentes."""
+
+    candidates = (
+        ("market_average", ("AvgCH", "AvgCD", "AvgCA")),
+        ("Bet365", ("B365CH", "B365CD", "B365CA")),
+    )
+    for source, columns in candidates:
+        values = [_num(row.get(column)) for column in columns]
+        if not all(value and value > 1 for value in values):
+            continue
+        return {
+            "source": "football-data.co.uk",
+            "market_source": source,
+            "1x2": dict(zip(("1", "X", "2"), values)),
+        }
+    return None
 
 
 class FootballDataUKClient:
@@ -118,18 +173,41 @@ class FootballDataUKClient:
             home, away = row.get("HomeTeam"), row.get("AwayTeam")
             if not home or not away:
                 continue
-            h = _num(row.get("AvgH")) or _num(row.get("B365H"))
-            d = _num(row.get("AvgD")) or _num(row.get("B365D"))
-            a = _num(row.get("AvgA")) or _num(row.get("B365A"))
-            over = _num(row.get("Avg>2.5")) or _num(row.get("B365>2.5"))
-            under = _num(row.get("Avg<2.5")) or _num(row.get("B365<2.5"))
+            h = _num(row.get("AvgCH")) or _num(row.get("AvgH")) or _num(row.get("B365CH")) or _num(row.get("B365H"))
+            d = _num(row.get("AvgCD")) or _num(row.get("AvgD")) or _num(row.get("B365CD")) or _num(row.get("B365D"))
+            a = _num(row.get("AvgCA")) or _num(row.get("AvgA")) or _num(row.get("B365CA")) or _num(row.get("B365A"))
+            over = _num(row.get("AvgC>2.5")) or _num(row.get("Avg>2.5")) or _num(row.get("B365C>2.5")) or _num(row.get("B365>2.5"))
+            under = _num(row.get("AvgC<2.5")) or _num(row.get("Avg<2.5")) or _num(row.get("B365C<2.5")) or _num(row.get("B365<2.5"))
             odds: dict = {}
             if h and d and a:
                 odds["1x2"] = {"1": h, "X": d, "2": a}
             if over and under:
                 odds["ou25"] = {"over": over, "under": under}
             if odds:
+                movement = _movement_meta(row)
+                if movement:
+                    odds["_meta"] = movement
                 out.append({"div": div, "home": home, "away": away, "odds": odds})
+        return out
+
+    def get_historical_closing_odds(self, league: str, season: int) -> list[dict]:
+        """Cierres 1X2 de partidos jugados desde el CSV histórico de temporada."""
+        if league not in DIV_CODE:
+            return []
+        div = DIV_CODE[league]
+        try:
+            response = requests.get(
+                f"{BASE_URL}/{season_code(season)}/{div}.csv", timeout=self.timeout
+            )
+            response.raise_for_status()
+        except requests.RequestException:
+            return []
+        out: list[dict] = []
+        for row in csv.DictReader(io.StringIO(_decode(response).lstrip("﻿"))):
+            home, away = row.get("HomeTeam"), row.get("AwayTeam")
+            closing = _closing_odds(row)
+            if home and away and closing:
+                out.append({"home": home, "away": away, "closing_odds": closing})
         return out
 
     @staticmethod
@@ -144,7 +222,13 @@ class FootballDataUKClient:
                 h, a = _num(row.get(hc)), _num(row.get(ac))
                 if h is not None and a is not None:
                     stats[name] = (h, a)
-            out.append(MatchStats(row["HomeTeam"], row["AwayTeam"], stats))
+            out.append(MatchStats(
+                row["HomeTeam"],
+                row["AwayTeam"],
+                stats,
+                (row.get("Referee") or "").strip() or None,
+                _parse_date(row.get("Date"), row.get("Time")),
+            ))
         return out
 
 

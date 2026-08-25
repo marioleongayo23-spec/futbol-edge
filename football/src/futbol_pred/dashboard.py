@@ -7,15 +7,31 @@ fuente real configurada, no sobrescribe el último feed válido con datos demo.
 from __future__ import annotations
 
 import json
+import hashlib
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from .config import DATA_DIR
+from .backtest import ensemble_probabilities
+from .backtest.ensemble import temperature_scale
+from .backtest.residual import residual_probabilities
+from .context import WeatherClient, venue_for
+from .elo import EloRatings
+from .feed_quality import load_feed, preserve_last_known_good, write_feed_safely
 from .ingest.api_football import ApiFootballClient, Fixture
 from .ingest.football_data import FootballDataClient
 from .normalize import canonical_team
+from .market_calibration import learn_market_calibration
+from .operational import (
+    annotate_prediction_context, attach_official_context, attach_state_simulations,
+    build_alerts, content_audit,
+)
+from .performance import build_performance
+from .finished_stats import attach_finished_stats
+from .accuracy_detail import enrich_accuracy
 from .pipeline import fit_model_from_fixtures, get_fixtures, predict_match, run_model_report
+from .prediction_snapshots import apply_prediction_snapshots, latest_pre_match_snapshot
 
 MADRID = ZoneInfo("Europe/Madrid")
 OUTPUT = Path(DATA_DIR) / "dashboard.json"
@@ -65,6 +81,56 @@ def ensure_aware(value: datetime) -> datetime:
     return value if value.tzinfo is not None else value.replace(tzinfo=timezone.utc)
 
 
+def _fit_elo_from_fixtures(fixtures: list[Fixture]) -> EloRatings:
+    """Elo actual usando solo resultados anteriores, en orden cronológico."""
+
+    elo = EloRatings()
+    played = sorted(
+        (fixture for fixture in fixtures if fixture.home_goals is not None and fixture.away_goals is not None),
+        key=lambda fixture: ensure_aware(fixture.kickoff),
+    )
+    for fixture in played:
+        elo.update(
+            _canon(fixture.home_team),
+            _canon(fixture.away_team),
+            int(fixture.home_goals),
+            int(fixture.away_goals),
+        )
+    return elo
+
+
+def _previous_ensemble_params(previous: dict | None, league: str) -> dict:
+    """Parámetros OOF del feed anterior; defaults conservadores si aún no hay muestra."""
+
+    try:
+        ensemble = previous["model"][league]["ensemble"]
+        if not ensemble.get("accepted"):
+            return {"dc_weight": 1.0, "temperature": 1.0, "accepted": False}
+        production = ensemble["production"]
+    except (KeyError, TypeError):
+        return {"dc_weight": 1.0, "temperature": 1.0, "accepted": False}
+    try:
+        return {
+            "dc_weight": max(0.05, min(0.95, float(production["dc_weight"]))),
+            "temperature": max(0.65, min(1.8, float(production["temperature"]))),
+            "accepted": True,
+        }
+    except (KeyError, TypeError, ValueError):
+        return {"dc_weight": 1.0, "temperature": 1.0, "accepted": False}
+
+
+def _previous_residual_params(previous: dict | None, league: str) -> dict:
+    """Solo expone pesos residuales si el informe temporal aprobó el gate."""
+    try:
+        residual = previous["model"][league]["residual"]
+        production = residual["production"]
+        if not residual.get("accepted") or not production.get("converged"):
+            return {"accepted": False}
+        return {**production, "accepted": True}
+    except (KeyError, TypeError):
+        return {"accepted": False}
+
+
 def fixture_payload(
     fixture: Fixture,
     model,
@@ -73,9 +139,14 @@ def fixture_payload(
     team_meta: dict | None = None,
     real_stats: dict | None = None,
     odds_map: dict | None = None,
+    closing_odds_map: dict | None = None,
     model_weight: float = 0.6,
     h2h: dict | None = None,
     trends=None,
+    elo: EloRatings | None = None,
+    ensemble_params: dict | None = None,
+    residual_params: dict | None = None,
+    market_temperature: float = 1.0,
 ) -> dict:
     kickoff = ensure_aware(fixture.kickoff).astimezone(MADRID)
     team_meta = team_meta or {}
@@ -124,6 +195,10 @@ def fixture_payload(
             sr = real_stats.get((_canon(fixture.home_team), _canon(fixture.away_team)))
             if sr:
                 payload["statsReal"] = sr
+        if closing_odds_map:
+            closing = closing_odds_map.get((_canon(fixture.home_team), _canon(fixture.away_team)))
+            if closing:
+                payload["closing_odds"] = closing
 
     if model is None:
         return payload
@@ -134,8 +209,39 @@ def fixture_payload(
     except (KeyError, ValueError):
         return payload
 
-    probs = prediction.one_x_two
+    dc_probs = prediction.one_x_two
     eh, ea = prediction.expected_goals
+    pseudo_xg = None
+    if stats is not None:
+        try:
+            pseudo_xg = stats.pseudo_xg(fixture.home_team, fixture.away_team)
+        except (KeyError, TypeError, ValueError):
+            pseudo_xg = None
+    if pseudo_xg and pseudo_xg.get("weight", 0) > 0:
+        weight = float(pseudo_xg["weight"])
+        # El proxy nunca puede desplazar bruscamente al score model: primero se
+        # limita a ±35% y después entra con un peso máximo del 25%.
+        proxy_home = min(eh * 1.35, max(eh * 0.65, float(pseudo_xg["home"])))
+        proxy_away = min(ea * 1.35, max(ea * 0.65, float(pseudo_xg["away"])))
+        eh = (1.0 - weight) * eh + weight * proxy_home
+        ea = (1.0 - weight) * ea + weight * proxy_away
+        matrix = model.predict_matrix(home_id, away_id, lambdas=(eh, ea))
+        dc_probs = matrix.one_x_two()
+
+    params = ensemble_params or {}
+    dc_weight = float(params.get("dc_weight", 0.75))
+    temperature = float(params.get("temperature", 1.0))
+    elo_probs = elo.match_probabilities(home_id, away_id) if elo is not None else dc_probs
+    ensemble_active = bool(params.get("accepted")) and elo is not None
+    ensemble_probs = (
+        ensemble_probabilities(dc_probs, elo_probs, dc_weight, temperature)
+        if ensemble_active else dc_probs
+    )
+    residual_active = bool((residual_params or {}).get("accepted")) and elo is not None
+    probs = (
+        residual_probabilities(dc_probs, elo_probs, residual_params or {})
+        if residual_active else ensemble_probs
+    )
     # Guard de sanidad: descarta predicciones REALMENTE rotas (p. ej. un único
     # resultado al ~100%). El umbral inferior de goles es laxo a propósito: un
     # equipo muy flojo (recién ascendido) contra una gran defensa puede tener un
@@ -158,7 +264,30 @@ def fixture_payload(
     # (esperado vs real); NO tocamos engine, que sigue siendo 'resultado-real'.
     payload.update({
         "probs": [round(probs["1"] * 100), round(probs["X"] * 100), round(probs["2"] * 100)],
-        "xg": [round(value, 2) for value in prediction.expected_goals],
+        "model_probs": [round(probs["1"] * 100, 2), round(probs["X"] * 100, 2), round(probs["2"] * 100, 2)],
+        "xg": [round(eh, 2), round(ea, 2)],
+        "model_meta": {
+            "version": "edge-2.0",
+            "provider": (
+                "Residual validado (Dixon-Coles + Elo)" if residual_active
+                else "Dixon-Coles + Elo calibrado" if ensemble_active else "Dixon-Coles híbrido"
+            ),
+            "components": {
+                "dixon_coles": {key: round(value, 4) for key, value in dc_probs.items()},
+                "elo": {key: round(value, 4) for key, value in elo_probs.items()},
+            },
+            "ensemble": {
+                "dc_weight": round(dc_weight, 4),
+                "elo_weight": round(1.0 - dc_weight, 4),
+                "temperature": round(temperature, 4),
+                "accepted": ensemble_active,
+            },
+            "residual": {
+                "accepted": residual_active,
+                "gate": "log_loss+rps_vs_dc_y_elo",
+            },
+            "pseudo_xg": pseudo_xg,
+        },
         "markets": {
             "over_2_5": round(matrix.over(2.5), 3),
             "over_1_5": round(matrix.over(1.5), 3),
@@ -166,9 +295,10 @@ def fixture_payload(
             "btts": round(matrix.btts()["yes"], 3),
             "marcador": f"{top[0]}-{top[1]}",
         },
+        "score_distribution": matrix.distribution_summary(),
     })
     if not finished_with_result:
-        payload["engine"] = "dixon-coles"
+        payload["engine"] = "residual" if residual_active else "ensemble" if ensemble_active else "dixon-coles"
 
     # Si algún equipo aún no tiene histórico (recién ascendido, sin datos de la
     # temporada), la predicción usa prior neutro: la marcamos como provisional.
@@ -215,6 +345,9 @@ def fixture_payload(
             t = trends.trend(home_id, away_id, kickoff=fixture.kickoff, predicted=predicted)
             if t:
                 payload["tendencias"] = t
+            tactical = trends.matchup_profile(home_id, away_id)
+            if tactical:
+                payload["tactical_matchup"] = tactical
         except Exception:  # noqa: BLE001 - la tendencia nunca tumba el feed
             pass
 
@@ -222,12 +355,12 @@ def fixture_payload(
     if not finished_with_result and odds_map:
         mo = odds_map.get((_canon(fixture.home_team), _canon(fixture.away_team)))
         if mo:
-            _attach_odds_value(payload, mo, prediction.one_x_two, matrix, model_weight)
+            _attach_odds_value(payload, mo, probs, matrix, model_weight, market_temperature)
     return payload
 
 
 def _attach_odds_value(payload: dict, market_odds: dict, one_x_two: dict, matrix,
-                       model_weight: float = 0.6) -> None:
+                       model_weight: float = 0.6, market_temperature: float = 1.0) -> None:
     """Añade payload['odds'] (mercado + prob. justa sin vig) y payload['value'].
 
     CALIBRACIÓN: con pocas jornadas el modelo va sobreconfiado, así que las
@@ -249,12 +382,18 @@ def _attach_odds_value(payload: dict, market_odds: dict, one_x_two: dict, matrix
         cal = {s: w * one_x_two.get(s, 0.0) + (1 - w) * fair_probs[s] for s in ("1", "X", "2")}
         tot = sum(cal.values()) or 1.0
         cal = {s: cal[s] / tot for s in cal}
+        cal = temperature_scale(cal, market_temperature)
         block["1x2"] = {
             "odds": {k: round(o[k], 2) for k in ("1", "X", "2")},
             "fair": {k: round(fair_probs[k], 3) for k in ("1", "X", "2")},
         }
         payload["probs"] = [round(cal["1"] * 100), round(cal["X"] * 100), round(cal["2"] * 100)]
         payload["calibrated"] = True
+        payload["market_calibration"] = {
+            "model_weight": round(w, 4),
+            "market_weight": round(1.0 - w, 4),
+            "temperature": round(market_temperature, 4),
+        }
         for sel in ("1", "X", "2"):
             value.append({
                 "market": "1x2", "selection": sel, "odds": round(o[sel], 2),
@@ -282,136 +421,498 @@ def _attach_odds_value(payload: dict, market_odds: dict, one_x_two: dict, matrix
                 })
 
     if block:
+        if isinstance(market_odds.get("_meta"), dict):
+            block["meta"] = market_odds["_meta"]
         payload["odds"] = block
         value.sort(key=lambda v: v["edge"], reverse=True)
         payload["value"] = value
 
 
-def _gemini_window(now: datetime) -> bool:
-    """La capa gratuita de Gemini es MUY limitada (p. ej. 20 req/día), así que
-    solo llamamos en una ventana matinal (06-11 h Madrid): una carga al día para
-    los partidos del día. El resto de pasadas reutilizan la caché sin llamar.
-    FORCE_GEMINI=1 fuerza la llamada (para pruebas manuales)."""
+def _env_true(name: str) -> bool:
     import os
-    if os.environ.get("FORCE_GEMINI"):
+
+    return os.environ.get(name, "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _force_ai() -> bool:
+    """Solo se activa de forma explícita (workflow_dispatch o ejecución local)."""
+
+    return _env_true("FORCE_AI")
+
+
+def _ai_window(now: datetime) -> bool:
+    """Dos controles diarios a las 00:15 y 10:15, tolerando retraso del cron."""
+
+    if _force_ai():
         return True
+    # En Actions un push puede coincidir por casualidad con la hora. Si el
+    # workflow declara el tipo de ejecución, solo el cron abre la ventana.
+    import os
+    refresh_run = os.environ.get("AI_REFRESH_RUN")
+    if refresh_run is not None and not _env_true("AI_REFRESH_RUN"):
+        return False
+    local = ensure_aware(now).astimezone(MADRID)
+    return local.hour in {0, 10} and 15 <= local.minute < 45
+
+
+def _same_match_day(match: dict, now: datetime) -> bool:
     try:
-        return 6 <= ensure_aware(now).astimezone(MADRID).hour < 11
-    except Exception:
-        return True
+        kickoff = ensure_aware(datetime.fromisoformat(match["kickoff"])).astimezone(MADRID)
+    except (KeyError, TypeError, ValueError):
+        return False
+    return kickoff.date() == ensure_aware(now).astimezone(MADRID).date()
 
 
-def _attach_previews(matches: list[dict], now: datetime, horizon_days: int = 2, limit: int = 5) -> None:
-    """Añade una previa narrativa (Gemini) a los próximos partidos con predicción.
+def _attach_venue_weather(matches: list[dict], now: datetime, client: WeatherClient | None = None) -> int:
+    """Geolocaliza todos los partidos y refresca el tiempo solo en las dos ventanas."""
 
-    Reutiliza las previas del feed anterior (por id) para no re-llamar a Gemini
-    cada hora, y limita por fecha y cantidad para respetar el plan gratuito.
-    Sin clave (AI_API_KEY) no hace nada. Cualquier fallo se ignora en silencio.
-    """
-    try:
-        from .ingest.ai_client import available
-        from .ingest.preview_gemini import generate_preview
-    except Exception:
-        return
-    if not available():
-        return
-
-    prev: dict[str, str] = {}
-    try:
-        old = json.loads(OUTPUT.read_text(encoding="utf-8"))
-        for m in old.get("matches", []):
-            if m.get("preview") and m.get("id"):
-                prev[m["id"]] = m["preview"]
-    except Exception:
-        pass
-
-    now = ensure_aware(now)
-    cands = [m for m in matches if not m.get("finished") and m.get("probs")]
-    cands.sort(key=lambda m: m.get("kickoff") or "")
-    made = 0
-    for m in cands:
-        cached = prev.get(m.get("id"))
-        if cached:
-            m["preview"] = cached
+    refresh = _ai_window(now)
+    weather = client or WeatherClient()
+    updated = 0
+    for match in matches:
+        venue = venue_for(match.get("home", ""))
+        if not venue:
             continue
-        if made >= limit or not _gemini_window(now):
+        match["venue"] = venue["name"]
+        match["venue_meta"] = venue
+        if not refresh or match.get("finished") or not _same_match_day(match, now):
             continue
         try:
-            days = (datetime.fromisoformat(m["kickoff"]) - now).days
-        except Exception:
-            days = 0
-        if days > horizon_days:
+            kickoff = ensure_aware(datetime.fromisoformat(match["kickoff"])).astimezone(MADRID)
+        except (KeyError, TypeError, ValueError):
             continue
-        txt = generate_preview(m)
-        if txt:
-            m["preview"] = txt
-            made += 1
+        forecast = weather.forecast(venue, kickoff)
+        if forecast:
+            forecast["source_updated_at"] = ensure_aware(now).astimezone(MADRID).isoformat()
+            match["weather"] = forecast
+            updated += 1
+    return updated
 
 
-def _attach_lineups(matches: list[dict], now: datetime, horizon_days: int = 2,
-                    limit: int = 10, ttl_hours: int = 12) -> None:
-    """Alineaciones probables + bajas (IA con búsqueda web) en UNA llamada/bloque.
+def _attach_archived_weather(
+    matches: list[dict],
+    now: datetime,
+    client: WeatherClient | None = None,
+    limit: int = 6,
+) -> int:
+    """Backfill incremental de tiempo pasado sin modificar predicciones.
 
-    Cachea por id con marca de tiempo: solo re-consulta lo que tenga más de
-    ttl_hours (por defecto 12 h) => ~2 llamadas/día aunque el feed corra cada
-    15 min. Sin clave o ante cualquier fallo, no hace nada."""
+    Solo consulta partidos terminados hace al menos 12 horas y sin caché. Se
+    procesan primero los más antiguos para que un dato reciente aún no archivado
+    no bloquee el relleno del resto de la temporada.
+    """
+
+    weather = client or WeatherClient()
+    cutoff = ensure_aware(now) - timedelta(hours=12)
+    candidates: list[tuple[datetime, dict, dict]] = []
+    for match in matches:
+        if not match.get("finished") or match.get("weather_actual"):
+            continue
+        venue = match.get("venue_meta") or venue_for(match.get("home", ""))
+        if not venue:
+            continue
+        try:
+            kickoff = ensure_aware(datetime.fromisoformat(match["kickoff"])).astimezone(MADRID)
+        except (KeyError, TypeError, ValueError):
+            continue
+        if kickoff > cutoff:
+            continue
+        candidates.append((kickoff, match, venue))
+
+    candidates.sort(key=lambda row: row[0])
+    updated = 0
+    for kickoff, match, venue in candidates[:max(0, limit)]:
+        historical = weather.historical(venue, kickoff)
+        if not historical:
+            continue
+        historical["source_updated_at"] = ensure_aware(now).astimezone(MADRID).isoformat()
+        match["weather_actual"] = historical
+        updated += 1
+    return updated
+
+
+def _age_hours(now: datetime, value: str | None) -> float | None:
+    try:
+        stamp = ensure_aware(datetime.fromisoformat(str(value)))
+    except (TypeError, ValueError):
+        return None
+    return (ensure_aware(now) - stamp).total_seconds() / 3600
+
+
+def _within_horizon(match: dict, now: datetime, horizon_days: int) -> bool:
+    try:
+        delta = ensure_aware(datetime.fromisoformat(match["kickoff"])) - ensure_aware(now)
+    except (KeyError, TypeError, ValueError):
+        return False
+    return -3 * 3600 <= delta.total_seconds() <= horizon_days * 86400
+
+
+def _can_attempt(match: dict, kind: str, now: datetime, cooldown_hours: int = 6) -> bool:
+    if _force_ai():
+        return True
+    attempted = (match.get("ai_attempts") or {}).get(kind)
+    age = _age_hours(now, attempted)
+    return age is None or age >= cooldown_hours
+
+
+def _mark_attempt(match: dict, kind: str, now: datetime) -> None:
+    attempts = dict(match.get("ai_attempts") or {})
+    attempts[kind] = ensure_aware(now).isoformat()
+    match["ai_attempts"] = attempts
+
+
+def _content_fingerprint(match: dict, kind: str) -> str:
+    """Huella de los datos que justifican regenerar contenido con IA."""
+
+    fields = ["home", "away", "kickoff", "probs", "xg", "stats", "tendencias"]
+    if kind == "lineup":
+        fields.extend(["players", "status"])
+    raw = {field: match.get(field) for field in fields}
+    return hashlib.sha256(json.dumps(raw, sort_keys=True, default=str).encode()).hexdigest()[:16]
+
+
+def _attach_previews(
+    matches: list[dict],
+    now: datetime,
+    horizon_days: int = 2,
+    limit: int = 5,
+    ttl_hours: int = 8,
+) -> None:
+    """Actualiza con IA en ventana y rellena gratis cualquier hueco restante."""
+
+    try:
+        from .ingest.ai_client import available
+        from .ingest.preview_gemini import generate_preview, generate_statistical_preview
+    except Exception:
+        return
+
+    candidates = []
+    if available() and _ai_window(now):
+        for match in matches:
+            if match.get("finished") or not match.get("probs") or not _same_match_day(match, now):
+                continue
+            meta = match.get("preview_meta") or {}
+            age = _age_hours(now, meta.get("generated_at"))
+            is_local_fallback = meta.get("provider") == "Motor estadístico local"
+            fingerprint = _content_fingerprint(match, "preview")
+            unchanged = meta.get("input_fingerprint") == fingerprint
+            fresh = bool(match.get("preview")) and not is_local_fallback and age is not None and age < ttl_hours
+            if (fresh or (unchanged and not is_local_fallback)) and not _force_ai():
+                continue
+            if _can_attempt(match, "preview", now):
+                candidates.append(match)
+        candidates.sort(key=lambda match: match.get("kickoff") or "")
+
+        for match in candidates[:limit]:
+            _mark_attempt(match, "preview", now)
+            try:
+                result = generate_preview(match)
+            except Exception:
+                result = None
+            if not result:
+                continue
+            match["preview"] = result.text
+            match["preview_meta"] = {
+                "provider": result.provider,
+                "model": result.model,
+                "generated_at": ensure_aware(now).isoformat(),
+                "quality": result.quality,
+                "input_fingerprint": _content_fingerprint(match, "preview"),
+            }
+
+    # Nunca se publica un próximo partido con predicción sin resumen. El texto
+    # local no consume cuota y la IA lo sustituye en la siguiente ventana.
+    stamp = ensure_aware(now).isoformat()
+    for match in matches:
+        if match.get("finished") or not match.get("probs") or match.get("preview"):
+            continue
+        result = generate_statistical_preview(match)
+        if result:
+            match["preview"] = result.text
+            match["preview_meta"] = {
+                "provider": result.provider,
+                "model": result.model,
+                "generated_at": stamp,
+                "quality": result.quality,
+                "provisional": True,
+                "input_fingerprint": _content_fingerprint(match, "preview"),
+            }
+
+
+def _attach_lineups(
+    matches: list[dict],
+    now: datetime,
+    squads: dict[str, list[dict]] | None = None,
+    horizon_days: int = 2,
+    limit: int = 10,
+    ttl_hours: int = 8,
+) -> None:
+    """Actualiza onces con IA y cae a plantillas reales + motor local gratis."""
+
+    try:
+        from .ingest.ai_client import available
+        from .ingest.lineups_ai import build_statistical_lineup, ensure_position_metadata, fetch_lineups
+    except Exception:
+        return
+
+    # Migra onces cacheados del formato anterior. Se muestran completos desde ya,
+    # pero se refrescan con posiciones reales en la siguiente pasada IA.
+    for match in matches:
+        if match.get("alineacion"):
+            ensure_position_metadata(match["alineacion"])
+            lineup = match["alineacion"]
+            lineup.setdefault(
+                "status",
+                "estimado" if lineup.get("provider") == "Motor estadístico local" else "probable",
+            )
+
+    stale = []
+    stamp = ensure_aware(now).isoformat()
+    if available() and _ai_window(now):
+        for match in matches:
+            if match.get("finished") or not match.get("probs") or not _same_match_day(match, now):
+                continue
+            lineup = match.get("alineacion") or {}
+            generated_at = lineup.get("generated_at") or lineup.get("ts")
+            age = _age_hours(now, generated_at)
+            is_local_fallback = lineup.get("provider") == "Motor estadístico local"
+            fingerprint = _content_fingerprint(match, "lineup")
+            unchanged = lineup.get("input_fingerprint") == fingerprint
+            has_positions = (
+                len(lineup.get("posiciones_local") or []) == 11
+                and len(lineup.get("posiciones_visitante") or []) == 11
+            )
+            fresh = (
+                bool(lineup) and has_positions and not lineup.get("positions_inferred")
+                and not is_local_fallback and age is not None and age < ttl_hours
+            )
+            if (fresh or (unchanged and not is_local_fallback)) and not _force_ai():
+                continue
+            if _can_attempt(match, "lineup", now):
+                stale.append(match)
+        stale.sort(key=lambda match: match.get("kickoff") or "")
+        stale = stale[:limit]
+        for match in stale:
+            _mark_attempt(match, "lineup", now)
+        query = [{"partido": f"{match['home']} vs {match['away']}"} for match in stale]
+        try:
+            generated = fetch_lineups(query) if query else {}
+        except Exception:
+            generated = {}
+        for match in stale:
+            data = generated.get(f"{match['home']} vs {match['away']}")
+            if data:
+                match["alineacion"] = {
+                    **data,
+                    "generated_at": stamp,
+                    "ts": stamp,
+                    "fuente": data.get("provider"),
+                    "status": data.get("status") or "probable",
+                    "input_fingerprint": _content_fingerprint(match, "lineup"),
+                }
+
+    squads = squads or {}
+    for match in matches:
+        if match.get("finished") or not match.get("probs") or match.get("alineacion"):
+            continue
+        home_squad = _squad_for(squads, match.get("home"))
+        away_squad = _squad_for(squads, match.get("away"))
+        data = build_statistical_lineup(match, home_squad, away_squad)
+        if data:
+            match["alineacion"] = {
+                **data,
+                "generated_at": stamp,
+                "ts": stamp,
+                "fuente": data.get("provider"),
+                "status": data.get("status") or "estimado",
+                "input_fingerprint": _content_fingerprint(match, "lineup"),
+            }
+
+def _retry_incomplete(matches: list[dict], audit: dict, now: datetime, limit: int = 5) -> int:
+    """Segundo intento granular: una petición por partido, solo si falta contenido."""
+
+    if not _ai_window(now):
+        return 0
     try:
         from .ingest.ai_client import available
         from .ingest.lineups_ai import fetch_lineups
+        from .ingest.preview_gemini import generate_preview
     except Exception:
-        return
+        return 0
     if not available():
-        return
-
-    now = ensure_aware(now)
-    prev: dict[str, dict] = {}
-    try:
-        old = json.loads(OUTPUT.read_text(encoding="utf-8"))
-        for m in old.get("matches", []):
-            if m.get("alineacion") and m.get("id"):
-                prev[m["id"]] = m["alineacion"]
-    except Exception:
-        pass
-
-    def fresh(al: dict) -> bool:
-        try:
-            return (now - datetime.fromisoformat(al["ts"])).total_seconds() < ttl_hours * 3600
-        except Exception:
-            return False
-
-    stale = []
-    for m in matches:
-        if m.get("finished") or not m.get("probs"):
+        return 0
+    by_id = {match.get("id"): match for match in matches}
+    stamp = ensure_aware(now).isoformat()
+    retried = 0
+    for issue in (audit.get("incomplete") or [])[:limit]:
+        match = by_id.get(issue.get("id"))
+        if not match:
             continue
-        try:
-            if (datetime.fromisoformat(m["kickoff"]) - now).days > horizon_days:
+        missing = set(issue.get("missing") or [])
+        _mark_attempt(match, "selective_retry", now)
+        if "previa" in missing:
+            try:
+                preview = generate_preview(match)
+            except Exception:
+                preview = None
+            if preview:
+                match["preview"] = preview.text
+                match["preview_meta"] = {
+                    "provider": preview.provider, "model": preview.model,
+                    "generated_at": stamp, "quality": preview.quality,
+                }
+        if missing.intersection({"once", "posiciones", "props"}):
+            key = f"{match['home']} vs {match['away']}"
+            try:
+                data = fetch_lineups([{"partido": key}]).get(key)
+            except Exception:
+                data = None
+            if data:
+                match["alineacion"] = {
+                    **data, "generated_at": stamp, "ts": stamp,
+                    "fuente": data.get("provider"), "status": data.get("status") or "probable",
+                    "input_fingerprint": _content_fingerprint(match, "lineup"),
+                    "selective_retry": True,
+                }
+        retried += 1
+    return retried
+
+
+def _squad_for(squads: dict[str, list[dict]], team: str | None) -> list[dict]:
+    if not team:
+        return []
+    if team in squads:
+        return squads[team]
+    wanted = _canon(team)
+    for name, squad in squads.items():
+        if _canon(name) == wanted:
+            return squad
+    return []
+
+
+def _merge_squad_players(
+    players: dict | None,
+    squads_by_league: dict[str, dict],
+    previous_players: dict | None = None,
+) -> dict | None:
+    """Completa el feed de jugadores con las plantillas gratuitas oficiales."""
+
+    out = json.loads(json.dumps(previous_players or {}))
+    for league, current in (players or {}).items():
+        bucket = out.setdefault(league, {"label": current.get("label", league), "rankings": {}, "players": []})
+        bucket["label"] = current.get("label") or bucket.get("label") or league
+        bucket.setdefault("rankings", {}).update(current.get("rankings") or {})
+        flat = bucket.setdefault("players", [])
+        positions = {(str(p.get("team")).casefold(), str(p.get("player")).casefold()): i for i, p in enumerate(flat)}
+        for player in current.get("players") or []:
+            key = (str(player.get("team")).casefold(), str(player.get("player")).casefold())
+            if key in positions:
+                flat[positions[key]] = player
+            else:
+                positions[key] = len(flat)
+                flat.append(player)
+    labels = {"laliga": "LaLiga", "segunda": "LaLiga Hypermotion", "champions": "Champions League"}
+    for league, teams in squads_by_league.items():
+        bucket = out.setdefault(league, {"label": labels.get(league, league), "rankings": {}, "players": []})
+        bucket.setdefault("rankings", {})
+        flat = bucket.setdefault("players", [])
+        existing = {(str(p.get("team")).casefold(), str(p.get("player")).casefold()) for p in flat}
+        for team, squad in teams.items():
+            for raw in squad:
+                name = str(raw.get("name") or "").strip()
+                key = (team.casefold(), name.casefold())
+                if not name or key in existing:
+                    continue
+                flat.append({
+                    "player": name, "team": team, "position": raw.get("position") or "",
+                    "goals": 0, "assists": 0, "shots": 0, "yc": 0, "min": 0,
+                    "source": "football-data.org squad",
+                })
+                existing.add(key)
+    return out or None
+
+
+def _squads_from_players(players: dict | None) -> dict[str, dict[str, list[dict]]]:
+    out: dict[str, dict[str, list[dict]]] = {}
+    for league, bucket in (players or {}).items():
+        teams: dict[str, list[dict]] = {}
+        for player in bucket.get("players") or []:
+            team = str(player.get("team") or "").strip()
+            name = str(player.get("player") or "").strip()
+            if team and name:
+                teams.setdefault(team, []).append({"name": name, "position": player.get("position") or ""})
+        out[league] = {team: squad for team, squad in teams.items() if len(squad) >= 11}
+    return out
+
+
+def _merge_lineup_players(players: dict | None, matches: list[dict]) -> dict:
+    """Garantiza que todo jugador mostrado en un once exista en el índice global."""
+
+    out = players or {}
+    league_keys = {
+        "LaLiga": "laliga", "LaLiga Hypermotion": "segunda",
+        "Champions League": "champions",
+    }
+    labels = {"laliga": "LaLiga", "segunda": "LaLiga Hypermotion", "champions": "Champions League"}
+    for match in matches:
+        lineup = match.get("alineacion") or {}
+        if not lineup:
+            continue
+        league = league_keys.get(match.get("league"), "segunda")
+        bucket = out.setdefault(league, {"label": labels.get(league, league), "rankings": {}, "players": []})
+        flat = bucket.setdefault("players", [])
+        existing = {(str(row.get("team")).casefold(), str(row.get("player")).casefold()) for row in flat}
+        for side, team, positions, props in (
+            (lineup.get("local") or [], match.get("home"), lineup.get("posiciones_local") or [], lineup.get("clave_local") or []),
+            (lineup.get("visitante") or [], match.get("away"), lineup.get("posiciones_visitante") or [], lineup.get("clave_visitante") or []),
+        ):
+            prop_by_name = {str(row.get("jugador")).casefold(): row for row in props if isinstance(row, dict)}
+            for index, name in enumerate(side):
+                key = (str(team).casefold(), str(name).casefold())
+                if not team or not name or key in existing:
+                    continue
+                prop = prop_by_name.get(str(name).casefold()) or {}
+                flat.append({
+                    "player": name, "team": team,
+                    "position": positions[index] if index < len(positions) else "",
+                    "goals": prop.get("g", 0), "assists": prop.get("a", 0),
+                    "shots": prop.get("r", 0), "yc": prop.get("t", 0),
+                    "min": prop.get("min", 0),
+                    "source": lineup.get("provider") or "once cacheado",
+                    "lineup_status": lineup.get("status") or "estimado",
+                })
+                existing.add(key)
+    return out
+
+
+def _fill_missing_free_squads(
+    matches: list[dict],
+    now: datetime,
+    squads_by_league: dict[str, dict[str, list[dict]]],
+    max_teams: int = 12,
+) -> None:
+    """Consulta API-Football solo para próximos equipos sin plantilla cacheada."""
+
+    client = ApiFootballClient()
+    if client.offline:
+        return
+    league_keys = {"LaLiga": "laliga", "LaLiga Hypermotion": "segunda", "Champions League": "champions"}
+    pending: list[tuple[str, str]] = []
+    seen = set()
+    flat = {team: squad for teams in squads_by_league.values() for team, squad in teams.items()}
+    for match in matches:
+        if match.get("finished") or not match.get("probs") or not _within_horizon(match, now, 3):
+            continue
+        league = league_keys.get(match.get("league"), "laliga")
+        for team in (match.get("home"), match.get("away")):
+            if not team or _squad_for(flat, team) or _canon(team) in seen:
                 continue
-        except Exception:
-            continue
-        cached = prev.get(m.get("id"))
-        if cached and fresh(cached):
-            m["alineacion"] = cached  # aún válida
-        elif cached and not _gemini_window(now):
-            m["alineacion"] = cached  # fuera de ventana: mejor la vieja que nada
-        else:
-            stale.append(m)
-
-    # Solo se hacen llamadas nuevas en la ventana matinal (cuota gratuita).
-    if not stale or not _gemini_window(now):
-        return
-    stale.sort(key=lambda m: m.get("kickoff") or "")
-    stale = stale[:limit]
-    query = [{"partido": f"{m['home']} vs {m['away']}"} for m in stale]
-    try:
-        got = fetch_lineups(query)
-    except Exception:
-        got = {}
-    ts = now.isoformat()
-    for m in stale:
-        data = got.get(f"{m['home']} vs {m['away']}")
-        if not data:
-            continue
-        m["alineacion"] = {**data, "ts": ts, "fuente": "IA (Gemini)"}
+            seen.add(_canon(team))
+            pending.append((league, team))
+    for league, team in pending[:max_teams]:
+        squad = client.get_squad(team)
+        if len(squad) >= 11:
+            squads_by_league.setdefault(league, {})[team] = squad
 
 
 def build_dashboard(
@@ -422,8 +923,21 @@ def build_dashboard(
     now = ensure_aware(now)
     season = current_season(now)
     generated_at = now.astimezone(MADRID).isoformat()
+    previous = load_feed(OUTPUT)
+    from .ingest.ai_client import configure_daily_budget, diagnostics, usage_snapshot
+
+    configure_daily_budget((previous or {}).get("ai_usage"), now.astimezone(MADRID))
+    model_report = _load_model_report(season)
+    calibration_source = {"model": model_report} if model_report else previous
+    market_calibration = {}
+    for league, label in (("laliga", "LaLiga"), ("segunda", "LaLiga Hypermotion")):
+        learned = learn_market_calibration((previous or {}).get("matches") or [], label)
+        if learned:
+            market_calibration[league] = learned
     matches: list[dict] = []
     errors: list[dict] = []
+    squads_by_league: dict[str, dict[str, list[dict]]] = {}
+    stats_models_by_league: dict[str, object] = {}
 
     for league in LEAGUES:
         try:
@@ -440,11 +954,22 @@ def build_dashboard(
                 )
             except (ValueError, KeyError):
                 model = None
+            elo = _fit_elo_from_fixtures(train)
+            ensemble_params = _previous_ensemble_params(calibration_source, league)
+            residual_params = _previous_residual_params(calibration_source, league)
             stats = _fit_stats(league, season)
+            if stats is not None:
+                stats_models_by_league[LEAGUES.get(league, league)] = stats
             meta = _team_meta(league, season)
+            squads_by_league[league] = {
+                team: info.get("squad") or []
+                for team, info in meta.items()
+                if len(info.get("squad") or []) >= 11
+            }
             real_stats = _real_stats_map(league, season)
             trends = _fit_trends(league, season, train)
             odds_map = _odds_map(league)
+            closing_odds_map = _closing_odds_map(league, season)
             # Peso del modelo vs mercado para calibrar: con pocas jornadas jugadas
             # el modelo va sobreconfiado, así que pesa más el mercado; según avanza
             # la liga, el modelo gana peso. mpt = media de partidos por equipo.
@@ -452,12 +977,22 @@ def build_dashboard(
             teams_n = len({f.home_team for f in fixtures} | {f.away_team for f in fixtures})
             mpt = (2 * played_n / teams_n) if teams_n else 0
             model_w = max(0.2, min(0.9, mpt / 12))
+            market_temperature = 1.0
+            learned_market = market_calibration.get(league)
+            if learned_market and learned_market.get("accepted"):
+                production = learned_market["production"]
+                model_w = float(production["model_weight"])
+                market_temperature = float(production["temperature"])
             h2h = _h2h_map(train)  # incluye temporadas previas (sembrado)
             # TODOS los partidos de la temporada (resultados + próximos).
             matches.extend(
                 fixture_payload(fx, model, generated_at, stats=stats, team_meta=meta,
                                 real_stats=real_stats, odds_map=odds_map,
-                                model_weight=model_w, h2h=h2h, trends=trends)
+                                closing_odds_map=closing_odds_map,
+                                model_weight=model_w, h2h=h2h, trends=trends,
+                                elo=elo, ensemble_params=ensemble_params,
+                                residual_params=residual_params,
+                                market_temperature=market_temperature)
                 for fx in sorted(fixtures, key=lambda item: ensure_aware(item.kickoff))
             )
         except Exception as exc:  # una liga no debe tumbar el resto del feed
@@ -469,35 +1004,110 @@ def build_dashboard(
             })
 
     matches.sort(key=lambda item: item["kickoff"])
+    weather_updates = _attach_venue_weather(matches, now)
+    apply_prediction_snapshots(
+        matches,
+        (previous or {}).get("matches"),
+        now,
+        force=_force_ai(),
+        capture=False,
+    )
+    # Recupera predicciones/IA/odds anteriores antes de intentar refrescarlas.
+    # De esta forma un timeout, una cuota agotada o una respuesta parcial jamás
+    # convierte una tarjeta que funcionaba en un hueco en blanco.
+    if previous:
+        preserve_last_known_good(
+            {"schema_version": 7, "matches": matches},
+            {"schema_version": previous.get("schema_version"), "matches": previous.get("matches", [])},
+        )
+    archived_weather_updates = _attach_archived_weather(matches, now)
+    base_players = _merge_squad_players(
+        _load_players(season), squads_by_league, (previous or {}).get("players")
+    )
+    for league, teams in _squads_from_players(base_players).items():
+        known = squads_by_league.setdefault(league, {})
+        for team, squad in teams.items():
+            known.setdefault(team, squad)
+    _fill_missing_free_squads(matches, now, squads_by_league)
+    players = _merge_squad_players(base_players, squads_by_league, (previous or {}).get("players"))
+    all_squads = {
+        team: squad
+        for league_squads in squads_by_league.values()
+        for team, squad in league_squads.items()
+    }
     _attach_previews(matches, now)
-    _attach_lineups(matches, now)
-    return {
-        "schema_version": 2,
+    _attach_lineups(matches, now, squads=all_squads)
+    official_updates = attach_official_context(matches, now, stats_models=stats_models_by_league)
+    finished_stats_updates = attach_finished_stats(
+        matches, now, previous_matches=(previous or {}).get("matches")
+    )
+    state_simulations = attach_state_simulations(matches)
+    players = _merge_lineup_players(players, matches)
+    annotate_prediction_context(matches)
+    # Segunda fase: la revisión se captura cuando contexto, once e impacto ya
+    # están completos. Después se vuelve a anotar para mantener vivo el estado
+    # oficial aunque fuera de las ventanas que congelan la probabilidad.
+    apply_prediction_snapshots(
+        matches,
+        (previous or {}).get("matches"),
+        now,
+        force=_force_ai(),
+    )
+    annotate_prediction_context(matches)
+    first_audit = content_audit(matches, players, now)
+    retried = _retry_incomplete(matches, first_audit, now)
+    players = _merge_lineup_players(players, matches)
+    audit = content_audit(matches, players, now)
+    audit["selective_retries"] = retried
+    audit["official_lineup_updates"] = official_updates
+    audit["weather_updates"] = weather_updates
+    audit["archived_weather_updates"] = archived_weather_updates
+    audit["state_simulations"] = state_simulations
+    ai_events = diagnostics()
+    payload = {
+        "schema_version": 7,
         "generated_at": generated_at,
         "season": season,
         "quiniela": _load_quiniela_oficial(),
-        "players": _load_players(season),
-        "model": _load_model_report(season),
-        "accuracy": _aggregate_accuracy(matches),
-        "engine": "dixon-coles" if any(item["engine"] == "dixon-coles" for item in matches) else "calendar-only",
+        "players": players,
+        "model": model_report,
+        "market_calibration": market_calibration or None,
+        "accuracy": enrich_accuracy(_aggregate_accuracy(matches), matches),
+        "performance": build_performance(matches),
+        "content_audit": audit,
+        "postmatch_stats_updates": finished_stats_updates,
+        "ai_usage": usage_snapshot(),
+        "ai_health": {"events": ai_events[-30:]},
+        "alerts": build_alerts(previous, audit, ai_events, now),
+        "engine": (
+            "residual" if any(item["engine"] == "residual" for item in matches)
+            else "ensemble" if any(item["engine"] == "ensemble" for item in matches)
+            else "dixon-coles" if any(item["engine"] == "dixon-coles" for item in matches)
+            else "calendar-only"
+        ),
         "data_sources": {
             "fixtures": "football-data.org (LaLiga) · football-data.co.uk (Segunda)",
-            "stats": "football-data.co.uk (remates, córners, faltas, tarjetas — reales y esperadas)",
-            "players": "football-data.org (/scorers: goleadores y asistencias)",
+            "stats": "football-data.co.uk (3 temporadas; pseudo-xG, remates, córners, faltas y tarjetas)",
+            "players": "football-data.org (plantillas, goleadores y asistencias)",
             "odds": "football-data.co.uk (media de mercado: 1X2 y over/under 2.5)",
+            "lineups": "API-Football para onces oficiales y bajas cerca del partido; football-data.org para plantillas",
+            "ai": "Gemini dinámico → Groq → motor estadístico local gratuito; control del día a las 00:15 y 10:15 Europe/Madrid, con presupuesto y caché",
+            "weather": "Open-Meteo (CC BY 4.0): previsión horaria + Historical Forecast archivado por estadio; el histórico es solo para validación hasta superar gate",
+            "tactics": "football-data.co.uk, perfiles observados casa/fuera de remates, córners, faltas, tarjetas y goles",
         },
         "disclaimer": "Probabilidades y ventaja estadística, no certezas. "
-                      "Los datos de jugadores y cuotas se muestran como pendientes "
-                      "hasta conectar una fuente real.",
+                      "Las plantillas gratuitas y los onces del motor local son provisionales; "
+                      "las cuotas se muestran como pendientes cuando no existe una fuente real.",
         "counts": {
             "total": len(matches),
             "jugados": sum(1 for m in matches if m.get("finished")),
             "proximos": sum(1 for m in matches if not m.get("finished")),
-            "con_prediccion": sum(1 for m in matches if m.get("engine") == "dixon-coles"),
+            "con_prediccion": sum(1 for m in matches if m.get("engine") in {"dixon-coles", "ensemble", "residual"}),
         },
         "matches": matches,
         "errors": errors,
     }
+    return preserve_last_known_good(payload, previous)
 
 
 def _aggregate_accuracy(matches: list[dict]) -> dict | None:
@@ -505,23 +1115,29 @@ def _aggregate_accuracy(matches: list[dict]) -> dict | None:
     realmente ocurrido en los partidos ya jugados. % de acierto 1X2 y error medio
     (MAE) + sesgo por métrica (córners, remates, faltas...), leyendo los campos que
     ya lleva cada partido jugado (probs/result y stats/statsReal)."""
-    labels = {"shots": "Remates", "sot": "Tiros a puerta", "corners": "Córners",
-              "fouls": "Faltas", "yellows": "Amarillas"}
-    hits = n_sign = 0
+    labels = {"goals": "Goles", "shots": "Remates", "sot": "Tiros a puerta",
+              "corners": "Córners", "fouls": "Faltas", "yellows": "Amarillas",
+              "reds": "Rojas"}
+    hits = n_sign = evaluated = 0
     per: dict = {}
     for m in matches:
         res = m.get("result")
         if not m.get("finished") or not res:
             continue
+        snapshot = latest_pre_match_snapshot(m)
+        if not snapshot:
+            # Nunca puntuamos una predicción recalculada después del resultado.
+            continue
+        evaluated += 1
         # Acierto 1X2: favorito del modelo vs signo real.
-        probs = m.get("probs")
+        probs = snapshot.get("probs")
         if probs and len(probs) == 3:
             fav = ["1", "X", "2"][max(range(3), key=lambda i: probs[i])]
             real = _sign(res[0], res[1])
             n_sign += 1
             hits += int(fav == real)
         # Error por métrica: esperado (stats) vs real (statsReal).
-        pred, real_stats = m.get("stats"), m.get("statsReal")
+        pred, real_stats = snapshot.get("stats"), m.get("statsReal")
         if not pred or not real_stats:
             continue
         for key in labels:
@@ -551,11 +1167,16 @@ def _aggregate_accuracy(matches: list[dict]) -> dict | None:
     ]
     metrics.sort(key=lambda x: x["mae"])
     return {
-        "n_partidos": sum(1 for m in matches if m.get("finished") and m.get("result")),
+        "n_partidos": evaluated,
         "aciertos_1x2": hits,
         "n_1x2": n_sign,
         "pct_1x2": round(100 * hits / n_sign) if n_sign else None,
         "metrics": metrics,
+        "source": "pre_match_snapshots",
+        "excluded_without_snapshot": max(
+            0,
+            sum(1 for m in matches if m.get("finished") and m.get("result")) - evaluated,
+        ),
     }
 
 
@@ -571,6 +1192,17 @@ def _load_model_report(season: int) -> dict | None:
             rep = run_model_report(league=league, season=season)
         except Exception:
             rep = None
+        # En agosto la temporada actual aún no tiene muestra suficiente. Se usa
+        # la última temporada cerrada para aprender pesos y validar al challenger.
+        if not rep or not (rep.get("ensemble") or {}).get("production"):
+            try:
+                historic = run_model_report(league=league, season=season - 1)
+            except Exception:
+                historic = None
+            if historic:
+                historic["evaluation_season"] = season - 1
+                historic["current_season"] = season
+                rep = historic
         if rep:
             rep["label"] = label
             out[league] = rep
@@ -692,15 +1324,40 @@ def _team_meta(league: str, season: int) -> dict:
 
 
 def _fit_stats(league: str, season: int):
-    """Ajusta el modelo de estadísticas (córners, tarjetas...) para 1ª/2ª."""
+    """Ajusta props con liga objetivo + memoria de equipos que cambiaron de división.
+
+    La otra división nunca entra en medias, dispersión, pseudo-xG ni gate
+    temporal: solo aporta acumuladores por equipo al StatsPredictor.
+    """
     if league not in ("laliga", "segunda"):
         return None
     try:
         from .ingest.football_data_uk import FootballDataUKClient
         from .model.stats_markets import StatsPredictor
 
-        rows = FootballDataUKClient().get_stats(league, season)
-        return StatsPredictor().fit(rows)
+        client = FootballDataUKClient()
+        rows = []
+        for back in (2, 1, 0):
+            try:
+                rows.extend(client.get_stats(league, season - back))
+            except Exception:
+                continue
+
+        other = "segunda" if league == "laliga" else "laliga"
+        auxiliary = []
+        for back in (2, 1):
+            try:
+                auxiliary.extend(client.get_stats(other, season - back))
+            except Exception:
+                continue
+        predictor = StatsPredictor().fit(rows, auxiliary_matches=auxiliary)
+        try:
+            from .model.referee_adjustment import RefereeAdjustmentModel
+
+            predictor.referee_model = RefereeAdjustmentModel().fit(rows)
+        except Exception:
+            predictor.referee_model = None
+        return predictor
     except Exception:
         return None
 
@@ -747,6 +1404,8 @@ def _real_stats_map(league: str, season: int) -> dict:
             k: {"home": v[0], "away": v[1], "total": v[0] + v[1]}
             for k, v in ms.stats.items()
         }
+        if ms.referee:
+            out[key]["meta"] = {"referee": ms.referee, "source": "football-data.co.uk"}
     return out
 
 
@@ -784,6 +1443,22 @@ def _odds_map(league: str) -> dict:
     return {(_canon(r["home"]), _canon(r["away"])): r["odds"] for r in rows}
 
 
+def _closing_odds_map(league: str, season: int) -> dict:
+    """Cierre histórico real de partidos jugados, separado de las cuotas live."""
+    if league not in ("laliga", "segunda"):
+        return {}
+    try:
+        from .ingest.football_data_uk import FootballDataUKClient
+
+        rows = FootballDataUKClient().get_historical_closing_odds(league, season)
+    except Exception:
+        return {}
+    return {
+        (_canon(row["home"]), _canon(row["away"])): row["closing_odds"]
+        for row in rows
+    }
+
+
 def main() -> int:
     football_data = FootballDataClient()
     api_football = ApiFootballClient()
@@ -796,12 +1471,15 @@ def main() -> int:
         print("Feed no actualizado: las fuentes no devolvieron próximos partidos")
         return 3
 
-    OUTPUT.parent.mkdir(parents=True, exist_ok=True)
-    OUTPUT.write_text(
-        json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
-        encoding="utf-8",
-    )
-    print(f"Feed actualizado: {len(payload['matches'])} partidos en {OUTPUT}")
+    ok, report = write_feed_safely(OUTPUT, payload)
+    if not ok:
+        print("Feed no actualizado: guard de calidad rechazó la regresión: "
+              + ", ".join(report["issues"][:8]))
+        return 4
+    metrics = report["metrics"]
+    print(f"Feed actualizado: {metrics['matches']} partidos en {OUTPUT} "
+          f"(predicciones={metrics['predictions']}, previas={metrics['previews']}, "
+          f"onces={metrics['lineups']}, calidad={report['score']})")
     return 0
 
 
