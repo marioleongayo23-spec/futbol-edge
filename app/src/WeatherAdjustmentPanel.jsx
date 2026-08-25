@@ -19,10 +19,10 @@ export default function WeatherAdjustmentPanel({ adjustment }) {
     <div className="card" data-testid="weather-adjustment-panel">
       <div className="lbl">Ajuste cuantificado por clima</div>
       <div className="chips">
-        <span className="chip">Goles/xG <b>{pct(mult.goals)}</b></span>
-        <span className="chip">Remates <b>{pct(mult.shots)}</b></span>
-        <span className="chip">Faltas <b>{pct(mult.fouls)}</b></span>
-        <span className="chip">Tarjetas <b>{pct(mult.cards)}</b></span>
+        <span className="chip"><span>Goles/xG</span> <b>{pct(mult.goals)}</b></span>
+        <span className="chip"><span>Remates</span> <b>{pct(mult.shots)}</b></span>
+        <span className="chip"><span>Faltas</span> <b>{pct(mult.fouls)}</b></span>
+        <span className="chip"><span>Tarjetas</span> <b>{pct(mult.cards)}</b></span>
       </div>
       {xg.before && xg.after && (
         <div className="note" style={{ marginTop: 8 }}>
