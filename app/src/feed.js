@@ -47,12 +47,13 @@ export async function loadFeed() {
 }
 
 // Devuelve la antigüedad del feed en horas (o null si no hay fecha).
-export function feedAgeHours(data) {
+// ``now`` es inyectable para que consumidores y tests usen la misma referencia temporal.
+export function feedAgeHours(data, now = Date.now()) {
   const iso = data?.generated_at;
   if (!iso) return null;
   const t = new Date(iso).getTime();
   if (Number.isNaN(t)) return null;
-  return (Date.now() - t) / 36e5;
+  return (now - t) / 36e5;
 }
 
 // "Desactualizado" con contexto: el cron solo commitea si el feed CAMBIA, así que
@@ -60,7 +61,7 @@ export function feedAgeHours(data) {
 // avisamos si el feed es viejo Y hay fútbol ahora mismo (en juego o en las próximas
 // 3 h), o si lleva claramente atascado (>18 h). Evita el falso aviso nocturno.
 export function isStale(data, now = Date.now()) {
-  const h = feedAgeHours(data);
+  const h = feedAgeHours(data, now);
   if (h == null) return false;
   if (h > 18) return true;          // claramente atascado
   if (h <= 2) return false;         // recién actualizado
