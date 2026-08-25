@@ -27,8 +27,19 @@ const history = [
   base("T-12h", 12, [51, 30, 19]),
   base("T-6h", 6, [52, 29, 19]),
 ];
+const prefinal = {
+  ...base("pre_final_T-3h", 3, [54, 27, 19]),
+  alineacion: {
+    status: "probable",
+    phase: "pre_final",
+    source_quality: "media_grounded",
+    media_sources: [{ source: "AS", title: "Alineación posible" }],
+    local: Array.from({ length: 11 }, (_, i) => `Probable L ${i}`),
+    visitante: Array.from({ length: 11 }, (_, i) => `Probable V ${i}`),
+  },
+};
 const official = {
-  ...base("official_lineup", 1.25, [56, 25, 19]),
+  ...base("final_T-60_official", 1, [56, 25, 19]),
   model_probs: [52, 28, 20],
   market_calibration: { model_weight: 0.70, market_weight: 0.30, temperature: 1.05 },
   lineup_impact: {
@@ -37,7 +48,14 @@ const official = {
     probability_adjustment: "not_applied",
     home: {}, away: {},
   },
-  alineacion: { status: "confirmado", provider: "API-Football" },
+  alineacion: {
+    status: "confirmado",
+    phase: "final",
+    provider: "API-Football",
+    official_poll_window: "T-60",
+    local: Array.from({ length: 11 }, (_, i) => `Oficial L ${i}`),
+    visitante: Array.from({ length: 11 }, (_, i) => `Oficial V ${i}`),
+  },
   weather_adjustment: {
     applied: true,
     multipliers: { goals: 0.95, shots: 0.96, fouls: 1.03, cards: 1.04 },
@@ -54,7 +72,7 @@ target.market_calibration = official.market_calibration;
 target.lineup_impact = official.lineup_impact;
 target.alineacion = official.alineacion;
 target.weather_adjustment = official.weather_adjustment;
-target.prediction_history = [...history, official];
+target.prediction_history = [...history, prefinal, official];
 target.prediction_snapshot = official;
 target.value = [
   { market: "1x2", selection: "1", odds: 2.05, modelProb: 0.56, edge: 0.148 },
@@ -73,12 +91,20 @@ async function openApp(page) {
   await row.click();
 }
 
-test("Match Intelligence enseña solo hitos reales y deltas auditables", async ({ page }) => {
+test("Match Intelligence separa inicial pre-final y final oficial sin leakage", async ({ page }) => {
   await openApp(page);
   const panel = page.getByTestId("prediction-timeline-panel");
   await expect(panel).toBeVisible();
-  await expect(panel.getByText("5 capturas reales", { exact: true })).toBeVisible();
-  await expect(panel.locator(".pt-window")).toHaveText(["Primera captura", "T−24h", "T−12h", "T−6h", "Once oficial"]);
+  await expect(panel.getByText("6 capturas reales", { exact: true })).toBeVisible();
+  await expect(panel.locator(".pt-window")).toHaveText([
+    "Primera captura", "T−24h", "T−12h", "T−6h", "PRE-FINAL · T−3h", "FINAL · XI T−60",
+  ]);
+  const versions = panel.locator(".betting-version-strip");
+  await expect(versions).toContainText("INICIAL");
+  await expect(versions).toContainText("PRE-FINAL");
+  await expect(versions).toContainText("FINAL");
+  await expect(versions).toContainText("medios + modelo");
+  await expect(versions).toContainText("API-Football · T-60");
   await expect(panel.getByText("Motor puro · 1", { exact: true })).toBeVisible();
   await expect(panel.getByText("52.0%", { exact: true }).first()).toBeVisible();
   await expect(panel.getByText("Publicada", { exact: true })).toBeVisible();
@@ -86,8 +112,8 @@ test("Match Intelligence enseña solo hitos reales y deltas auditables", async (
   await expect(panel.locator(".prediction-bridge .bridge-delta b")).toHaveText("+4.0 pp");
   await expect(panel.getByText("0.0 pp 1X2", { exact: true })).toHaveCount(2);
   await expect(panel.getByText(/Δ xG total -0.14/)).toBeVisible();
-  await expect(panel.getByText(/Última revisión:/)).toContainText("T−6h");
-  await expect(panel.getByText(/Última revisión:/)).toContainText("Once oficial");
+  await expect(panel.getByText(/Última revisión:/)).toContainText("PRE-FINAL · T−3h");
+  await expect(panel.getByText(/Última revisión:/)).toContainText("FINAL · XI T−60");
   await expect(panel.locator(".audit-drivers")).not.toContainText("Forma reciente");
   await expect(panel.locator(".audit-drivers")).not.toContainText("Descanso");
 });
