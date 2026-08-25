@@ -1,8 +1,8 @@
-"""Tiempo actual e histórico gratuito para el estadio y la hora del partido.
+"""Tiempo futuro e histórico gratuito para el estadio y la hora del partido.
 
-El tiempo futuro se usa solo para explicación/confianza. El histórico se guarda
-como evidencia para validación posterior y no modifica por sí solo el 1X2, xG ni
-ningún mercado.
+El forecast futuro alimenta un ajuste contextual, conservador y explícito de xG,
+remates y disciplina. El histórico queda separado como evidencia para validar o
+recalibrar esos multiplicadores sin contaminar predicciones pasadas.
 """
 
 from __future__ import annotations
@@ -17,8 +17,6 @@ HISTORICAL_FORECAST_URL = "https://historical-forecast-api.open-meteo.com/v1/for
 
 
 def _heat_context(temperature: float, apparent: float, humidity: float) -> dict:
-    # Etiqueta operativa, no corrección de goles. El umbral usa temperatura
-    # aparente y humedad para avisar de estrés térmico sin fingir un WBGT medido.
     load = max(temperature, apparent) + max(0.0, humidity - 60.0) * 0.04
     level = "alto" if load >= 32 else "moderado" if load >= 26 else "bajo"
     return {
@@ -54,7 +52,7 @@ class WeatherClient:
         params = {
             "latitude": venue["latitude"],
             "longitude": venue["longitude"],
-            "hourly": "temperature_2m,apparent_temperature,relative_humidity_2m,precipitation_probability,wind_speed_10m,weather_code",
+            "hourly": "temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,precipitation_probability,wind_speed_10m,weather_code",
             "timezone": "Europe/Madrid",
             "forecast_days": 16,
         }
@@ -74,6 +72,7 @@ class WeatherClient:
                 "temperature_c": round(temperature, 1),
                 "apparent_temperature_c": round(apparent, 1),
                 "humidity_pct": round(humidity),
+                "precipitation_mm": round(_number_at(hourly, "precipitation", index), 2),
                 "precipitation_probability_pct": round(_number_at(hourly, "precipitation_probability", index)),
                 "wind_kmh": round(_number_at(hourly, "wind_speed_10m", index), 1),
                 "weather_code": round(_number_at(hourly, "weather_code", index)),
@@ -81,7 +80,7 @@ class WeatherClient:
                 "source": "Open-Meteo",
                 "source_url": "https://open-meteo.com/",
                 "license": "CC BY 4.0",
-                "model_use": "confianza_y_explicacion",
+                "model_use": "ajuste_cuantitativo_contextual",
             }
         except (requests.RequestException, KeyError, TypeError, ValueError, IndexError):
             return None
@@ -90,9 +89,8 @@ class WeatherClient:
         """Devuelve condiciones pasadas horarias próximas al saque inicial.
 
         Usa Historical Forecast de Open-Meteo: una serie horaria construida con
-        los primeros pasos de sucesivos modelos operativos. Para las últimas
-        temporadas representa mejor las condiciones pasadas que una reanálisis
-        climática de baja resolución. Sigue siendo dato modelizado, no estación.
+        los primeros pasos de sucesivos modelos operativos. Sigue siendo dato
+        modelizado, no estación; se mantiene como evidencia de validación.
         """
 
         day = kickoff.date().isoformat()
@@ -128,7 +126,7 @@ class WeatherClient:
                 "source_url": "https://open-meteo.com/en/docs/historical-forecast-api",
                 "license": "CC BY 4.0",
                 "data_type": "modelo_operativo_historico_horario",
-                "model_use": "validacion_historica_sin_impacto_en_prediccion",
+                "model_use": "validacion_historica",
             }
         except (requests.RequestException, KeyError, TypeError, ValueError, IndexError):
             return None
