@@ -9,6 +9,12 @@ from zoneinfo import ZoneInfo
 MADRID = ZoneInfo("Europe/Madrid")
 MODEL_VERSION = "edge-2.0"
 
+# El cron corre cada 15 minutos. Esta tolerancia permite capturar T-24/T-12/T-6
+# aunque el runner arranque unos minutos tarde, sin etiquetar horas lejanas como
+# si fueran el milestone exacto.
+MILESTONE_TOLERANCE_HOURS = 0.35
+MILESTONES = ((24, "T-24h"), (12, "T-12h"), (6, "T-6h"))
+
 _SNAPSHOT_FIELDS = (
     "probs",
     "model_probs",
@@ -27,6 +33,8 @@ _SNAPSHOT_FIELDS = (
     "extended_market",
     "extended_value",
     "tactical_matchup",
+    "alineacion",
+    "official_context",
     "lineup_impact",
     "state_simulation",
     "prediction_confidence",
@@ -72,6 +80,27 @@ def _snapshot(match: dict, now: datetime, window: str) -> dict | None:
     return out
 
 
+def _captured(history: list[dict], label: str, date: str | None = None) -> bool:
+    for item in history:
+        if not isinstance(item, dict) or item.get("window") != label:
+            continue
+        if date is None or str(item.get("generated_at") or "")[:10] == date:
+            return True
+    return False
+
+
+def _milestone_label(kickoff: datetime | None, now: datetime, history: list[dict]) -> str | None:
+    if kickoff is None:
+        return None
+    hours = (kickoff - now).total_seconds() / 3600
+    if hours <= 0:
+        return None
+    for target, label in MILESTONES:
+        if abs(hours - target) <= MILESTONE_TOLERANCE_HOURS and not _captured(history, label):
+            return label
+    return None
+
+
 def latest_pre_match_snapshot(match: dict) -> dict | None:
     """Último snapshot estrictamente anterior al inicio del partido."""
 
@@ -109,14 +138,15 @@ def apply_prediction_snapshots(
     previous_matches: list[dict] | None,
     now: datetime,
     force: bool = False,
-    max_history: int = 8,
+    max_history: int = 12,
     capture: bool = True,
 ) -> None:
-    """Congela producción y solo crea revisiones 00:15/10:15 para el día.
+    """Congela producción y crea hitos prepartido sin leakage.
 
-    En la primera ejecución se crea una referencia para todos los próximos
-    partidos, de modo que nunca desaparezca una predicción. A partir de ahí solo
-    los encuentros del día se revisan en las dos ventanas acordadas.
+    Primera captura: ``initial``. Además conserva las revisiones históricas
+    ``00:15``/``10:15`` y, desde schema v7, captura T-24h, T-12h, T-6h y el
+    primer estado con once oficial confirmado. Cada hito se guarda una sola vez
+    y siempre antes del saque inicial.
     """
 
     now = _aware(now).astimezone(MADRID)
@@ -136,42 +166,60 @@ def apply_prediction_snapshots(
             history.append(deepcopy(old_current))
 
         kickoff = _parse(match.get("kickoff"))
-        same_day = bool(kickoff and kickoff.astimezone(MADRID).date() == now.date())
-        before_kickoff = kickoff is None or now < kickoff.astimezone(MADRID)
-        in_window = now.hour in {0, 10} and 15 <= now.minute < 45
+        kickoff_local = kickoff.astimezone(MADRID) if kickoff else None
+        same_day = bool(kickoff_local and kickoff_local.date() == now.date())
+        before_kickoff = kickoff_local is None or now < kickoff_local
+        in_legacy_window = now.hour in {0, 10} and 15 <= now.minute < 45
         has_previous = bool(history or old_current)
-        window_label = f"{now.hour:02d}:15"
-        window_already_captured = any(
-            isinstance(item, dict)
-            and item.get("window") == window_label
-            and str(item.get("generated_at") or "")[:10] == now.date().isoformat()
-            for item in history
+
+        lineup = match.get("alineacion") or {}
+        official_lineup = (
+            before_kickoff
+            and lineup.get("status") == "confirmado"
+            and not _captured(history, "official_lineup")
         )
+        milestone = _milestone_label(kickoff_local, now, history) if before_kickoff else None
+        legacy_label = f"{now.hour:02d}:15" if same_day and in_legacy_window else None
+        if legacy_label and _captured(history, legacy_label, now.date().isoformat()):
+            legacy_label = None
+
+        # Prioridad: el evento oficial es irrepetible y más informativo que un
+        # hito horario coincidente. Después, milestones T-x; por último ventanas
+        # legacy. La primera ejecución fuera de hitos sigue siendo ``initial``.
+        capture_label = None
+        if official_lineup:
+            capture_label = "official_lineup"
+        elif milestone:
+            capture_label = milestone
+        elif same_day and force:
+            capture_label = f"{now.hour:02d}:15"
+        elif legacy_label:
+            capture_label = legacy_label
+        elif not has_previous:
+            capture_label = "initial"
+
         should_capture = (
             capture
             and before_kickoff
             and not match.get("finished")
-            and (
-                not has_previous
-                or (same_day and force)
-                or (same_day and in_window and not window_already_captured)
-            )
+            and capture_label is not None
         )
 
         if should_capture:
-            label = window_label if same_day and (in_window or force) else "initial"
-            candidate = _snapshot(match, now, label)
+            candidate = _snapshot(match, now, capture_label)
             if candidate:
-                # Una ejecución repetida dentro de la misma ventana sustituye
-                # su intento, pero nunca duplica ni reescribe ventanas anteriores.
-                history = [
-                    item for item in history
-                    if not (
-                        isinstance(item, dict)
-                        and item.get("window") == label
-                        and str(item.get("generated_at", ""))[:10] == now.date().isoformat()
-                    )
-                ]
+                # Una ejecución repetida dentro de una ventana legacy forzada
+                # sustituye su intento del mismo día. Los milestones y el once
+                # oficial no se reescriben porque _captured los bloquea arriba.
+                if capture_label in {"00:15", "10:15"} or force:
+                    history = [
+                        item for item in history
+                        if not (
+                            isinstance(item, dict)
+                            and item.get("window") == capture_label
+                            and str(item.get("generated_at", ""))[:10] == now.date().isoformat()
+                        )
+                    ]
                 history.append(candidate)
                 old_current = candidate
 
@@ -182,7 +230,7 @@ def apply_prediction_snapshots(
         chosen = latest_pre_match_snapshot(match)
         if chosen:
             _restore(match, chosen, finished=bool(match.get("finished")))
-        elif match.get("finished") or (kickoff is not None and now >= kickoff.astimezone(MADRID)):
+        elif match.get("finished") or (kickoff_local is not None and now >= kickoff_local):
             # Los partidos históricos previos a schema v5 no tenían snapshot.
             # Es preferible mostrar solo el resultado real que atribuir al
             # modelo una predicción reconstruida con información futura.
