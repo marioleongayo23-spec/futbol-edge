@@ -34,6 +34,16 @@ def _team_key(value: str) -> str:
     return ApiFootballClient._team_key(value)
 
 
+def _identity(match: dict) -> str:
+    return "|".join(
+        str(value or "").strip().casefold()
+        for value in (
+            match.get("league"), match.get("home"), match.get("away"),
+            str(match.get("date") or match.get("kickoff") or "")[:10],
+        )
+    )
+
+
 def _pick_team_stats(rows: dict, wanted: str) -> dict | None:
     target = _team_key(wanted)
     if not target:
@@ -86,29 +96,57 @@ def _real_stats_from_detail(detail: dict, home: str, away: str, result=None) -> 
     return out or None
 
 
+def _inherit_previous_stats(match: dict, previous: dict | None) -> None:
+    if not previous or not previous.get("statsReal"):
+        return
+    current = dict(match.get("statsReal") or {})
+    old = dict(previous.get("statsReal") or {})
+    # Si el feed anterior ya tenía el cierre de API-Football, esa captura final
+    # tiene prioridad frente a una fuente histórica que pueda llegar después.
+    if previous.get("statsRealSource") == "API-Football · final":
+        current = {**current, **old}
+    else:
+        current = {**old, **current}
+    match["statsReal"] = current
+    if previous.get("statsRealSource"):
+        match["statsRealSource"] = previous["statsRealSource"]
+    if previous.get("statsRealUpdatedAt"):
+        match["statsRealUpdatedAt"] = previous["statsRealUpdatedAt"]
+    if previous.get("official_context") and not match.get("official_context"):
+        match["official_context"] = previous["official_context"]
+
+
 def attach_finished_stats(
     matches: list[dict],
     now: datetime,
     client: ApiFootballClient | None = None,
+    previous_matches: list[dict] | None = None,
     lookback_days: int = 3,
     limit: int = 40,
 ) -> int:
     """Refresca stats finales de partidos recientes, aunque el once esté confirmado.
 
-    Solo toca partidos que el feed ya considera terminados. Si ``statsReal`` ya
-    está completo para las métricas principales se evita una llamada redundante.
-    Los detalles se recuperan en batch mediante ``get_fixture_details``.
+    Primero hereda cualquier captura final del feed anterior para no consumir API
+    cada 15 minutos. Después solo consulta partidos terminados recientes que sigan
+    sin las métricas principales. Los detalles se recuperan en batch.
     """
 
     client = client or ApiFootballClient()
-    if client.offline:
-        return 0
     now_local = _aware(now).astimezone(MADRID)
     cutoff = now_local - timedelta(days=max(1, int(lookback_days)))
     required = {"shots", "sot", "corners", "fouls", "yellows"}
+    old_by_id = {
+        row.get("id"): row for row in (previous_matches or [])
+        if isinstance(row, dict) and row.get("id")
+    }
+    old_by_key = {
+        _identity(row): row for row in (previous_matches or []) if isinstance(row, dict)
+    }
 
     candidates = []
     for match in matches:
+        old = old_by_id.get(match.get("id")) or old_by_key.get(_identity(match))
+        _inherit_previous_stats(match, old)
         if not match.get("finished") or not match.get("result"):
             continue
         kickoff = _parse(match.get("kickoff"))
@@ -116,6 +154,8 @@ def attach_finished_stats(
             continue
         existing = match.get("statsReal") or {}
         if required.issubset(existing):
+            continue
+        if client.offline:
             continue
         fixture_id = ((match.get("alineacion") or {}).get("official_fixture_id"))
         if not fixture_id:
