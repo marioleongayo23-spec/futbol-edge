@@ -13,12 +13,17 @@ def test_viento_y_lluvia_reducen_goles_y_suben_contacto():
     assert mult["reasons"]
 
 
-def test_ajuste_modifica_xg_stats_y_mercados_sin_tocar_1x2():
+def test_ajuste_modifica_xg_stats_mercados_y_value_sin_tocar_1x2():
     match = {
         "finished": False,
         "xg": [1.8, 1.1],
         "probs": [52, 27, 21],
         "markets": {"over_2_5": 0.55, "btts": 0.50},
+        "value": [
+            {"market": "1x2", "selection": "1", "odds": 2.0, "modelProb": .52, "edge": .04},
+            {"market": "ou25", "selection": "over", "odds": 2.1, "modelProb": .55, "edge": .155},
+            {"market": "ou25", "selection": "under", "odds": 1.8, "modelProb": .45, "edge": -.19},
+        ],
         "stats": {
             "goals": {"home": 1.8, "away": 1.1, "total": 2.9},
             "shots": {"home": 14, "away": 10, "total": 24},
@@ -35,12 +40,19 @@ def test_ajuste_modifica_xg_stats_y_mercados_sin_tocar_1x2():
         },
     }
     before_probs = list(match["probs"])
+    before_1x2 = dict(match["value"][0])
+    old_over_prob = match["value"][1]["modelProb"]
     assert apply_weather_adjustment(match, datetime(2026, 8, 25, 10, 16, tzinfo=timezone.utc))
     assert match["xg"][0] < 1.8 and match["xg"][1] < 1.1
     assert match["stats"]["shots"]["total"] < 24
     assert match["stats"]["fouls"]["total"] > 25
     assert match["stats"]["yellows"]["total"] > 4.4
     assert match["probs"] == before_probs
+    assert match["value"][0] == before_1x2
+    assert match["value"][1]["modelProb"] == match["markets"]["over_2_5"]
+    assert match["value"][1]["modelProb"] != old_over_prob
+    assert match["value"][1]["weather_adjusted"] is True
+    assert match["value"][1]["edge"] == round(match["value"][1]["modelProb"] * 2.1 - 1, 3)
     assert match["weather_adjustment"]["one_x_two_adjusted"] is False
     assert match["weather_adjustment"]["xg"]["delta"][0] < 0
 
