@@ -126,7 +126,7 @@ class WeatherClient:
                 "source_url": "https://open-meteo.com/en/docs/historical-forecast-api",
                 "license": "CC BY 4.0",
                 "data_type": "modelo_operativo_historico_horario",
-                "model_use": "validacion_historica",
+                "model_use": "validacion_historica_sin_impacto_en_prediccion",
             }
         except (requests.RequestException, KeyError, TypeError, ValueError, IndexError):
             return None
