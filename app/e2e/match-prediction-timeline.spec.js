@@ -78,10 +78,7 @@ test("Match Intelligence enseña solo hitos reales y deltas auditables", async (
   const panel = page.getByTestId("prediction-timeline-panel");
   await expect(panel).toBeVisible();
   await expect(panel.getByText("5 capturas reales", { exact: true })).toBeVisible();
-  await expect(panel.getByText("T−24h", { exact: true })).toBeVisible();
-  await expect(panel.getByText("T−12h", { exact: true })).toBeVisible();
-  await expect(panel.getByText("T−6h", { exact: true })).toBeVisible();
-  await expect(panel.getByText("Once oficial", { exact: true })).toBeVisible();
+  await expect(panel.locator(".pt-window")).toHaveText(["Primera captura", "T−24h", "T−12h", "T−6h", "Once oficial"]);
   await expect(panel.getByText("Motor puro · 1", { exact: true })).toBeVisible();
   await expect(panel.getByText("52.0%", { exact: true }).first()).toBeVisible();
   await expect(panel.getByText("Publicada", { exact: true })).toBeVisible();
