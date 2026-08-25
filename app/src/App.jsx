@@ -6,6 +6,7 @@ import { teamProfile, teamSquad } from "./teams";
 import { bestValue, countdown, getFavs, modelAccuracy, recentForm, toggleFav, topValueBets } from "./insights";
 import MatchDetail from "./MatchDetail";
 import PlayerProfile from "./PlayerProfile";
+import TeamIntelligencePanel from "./TeamIntelligencePanel";
 import ProbabilityQualityPanel from "./ProbabilityQualityPanel";
 import ClvPanel from "./ClvPanel";
 import GlobalValuePanel from "./GlobalValuePanel";
@@ -954,6 +955,7 @@ function TeamPage({ team, matches, players, onBack, onOpen, onPlayer, isFav, onF
         <TeamRec r={p.home} label="Local" />
         <TeamRec r={p.away} label="Visitante" />
       </div>
+      <TeamIntelligencePanel team={team} matches={matches} players={players} onPlayer={onPlayer} />
       {Object.keys(p.tendencies).length > 0 && (
         <div className="card">
           <div className="lbl">Tendencias por partido (media real)</div>
