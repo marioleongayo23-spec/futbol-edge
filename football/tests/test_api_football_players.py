@@ -98,7 +98,7 @@ class OfficialClient:
         return []
 
 
-def test_once_oficial_sustituye_fallback_por_props_reales(monkeypatch):
+def test_once_oficial_sustituye_estimacion_por_props_reales(monkeypatch):
     now = datetime(2026, 8, 24, 19, tzinfo=MADRID)
     match = {
         "id": "m1", "league": "LaLiga", "home": "Local FC", "away": "Visitante CF",
@@ -113,7 +113,8 @@ def test_once_oficial_sustituye_fallback_por_props_reales(monkeypatch):
     assert attach_official_context([match], now, OfficialClient()) == 1
     lineup = match["alineacion"]
     assert lineup["status"] == "confirmado"
-    assert lineup["player_props_source"] == "API-Football · players"
+    assert lineup["player_props_source"].startswith("API-Football · players")
+    assert lineup["numeric_props_source"] == "API-Football · players"
     assert lineup["quality"]["real_player_props"] == 22
     assert lineup["quality"]["props_players"] == 22
     assert len(lineup["clave_local"]) == 11
@@ -124,7 +125,7 @@ def test_once_oficial_sustituye_fallback_por_props_reales(monkeypatch):
     assert all(row["tit"] == 1.0 for row in lineup["clave_local"] + lineup["clave_visitante"])
 
 
-def test_once_oficial_con_endpoint_no_disponible_conserva_fallback(monkeypatch):
+def test_once_oficial_sin_endpoint_degrada_sin_inventar_props(monkeypatch):
     now = datetime(2026, 8, 24, 19, tzinfo=MADRID)
     match = {
         "id": "m2", "league": "LaLiga", "home": "Local FC", "away": "Visitante CF",
@@ -133,6 +134,9 @@ def test_once_oficial_con_endpoint_no_disponible_conserva_fallback(monkeypatch):
     monkeypatch.setattr("futbol_pred.operational.fetch_team_player_rates", lambda *_a, **_k: [])
     assert attach_official_context([match], now, OfficialClient()) == 1
     lineup = match["alineacion"]
-    assert lineup["player_props_source"] == "fallback estadístico/IA"
+    assert lineup["player_props_source"] == "sin datos reales suficientes"
+    assert lineup["numeric_props_source"] == "pending_real_data"
     assert lineup["quality"]["real_player_props"] == 0
-    assert len(lineup["clave_local"]) >= 3 and len(lineup["clave_visitante"]) >= 3
+    assert lineup["quality"]["props_players"] == 0
+    assert lineup["clave_local"] == []
+    assert lineup["clave_visitante"] == []
