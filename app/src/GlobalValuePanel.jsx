@@ -1,6 +1,6 @@
 import { actionableValueRows, marketLabel, selectionLabel } from "./extendedValue";
 
-export default function GlobalValuePanel({ rows, onOpen }) {
+export default function GlobalValuePanel({ rows }) {
   const ranked = actionableValueRows(rows).slice(0, 20);
   if (!ranked.length) {
     return (
@@ -25,9 +25,7 @@ export default function GlobalValuePanel({ rows, onOpen }) {
           <tbody>
             {ranked.map((row, index) => (
               <tr key={`${row.match_id}-${row.market}-${row.selection}-${row.line}-${row.player}-${index}`}>
-                <td className="tl">
-                  <button type="button" className="mini" onClick={() => onOpen?.(row.match_id)}>{row.home}–{row.away}</button>
-                </td>
+                <td className="tl"><b>{row.home}–{row.away}</b></td>
                 <td className="tl">{marketLabel(row.market)}</td>
                 <td className="tl">{selectionLabel(row)}</td>
                 <td>{Number(row.odds).toFixed(2)}</td>
