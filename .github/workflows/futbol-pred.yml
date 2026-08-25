@@ -68,7 +68,7 @@ jobs:
           k = os.getenv("AI_API_KEY") or os.getenv("GEMINI_API_KEY") or ""
           print(f"[diag] clave IA detectada: {'SÍ, longitud '+str(len(k)) if k else 'NO'}")
           if k:
-              m = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
+              m = os.getenv("GEMINI_MODEL", "gemini-3.6-flash")
               # ListModels NO consume cuota de generación: confirma si el modelo existe.
               try:
                   lm = requests.get("https://generativelanguage.googleapis.com/v1beta/models",

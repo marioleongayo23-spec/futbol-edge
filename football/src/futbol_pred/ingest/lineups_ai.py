@@ -23,7 +23,7 @@ import requests
 
 API_KEY = os.getenv("AI_API_KEY") or os.getenv("GEMINI_API_KEY")
 # Consulta normal a la API (sin grounding): flash-lite, gratis y estable.
-MODEL = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
+MODEL = os.getenv("GEMINI_MODEL", "gemini-3.6-flash")
 _URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 
 _INSTR = (

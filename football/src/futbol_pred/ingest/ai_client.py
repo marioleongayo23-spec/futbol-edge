@@ -28,7 +28,7 @@ def _gemini(prompt: str, max_tokens: int, temperature: float, timeout: int):
     key = os.getenv("AI_API_KEY") or os.getenv("GEMINI_API_KEY")
     if not key:
         return None
-    model = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
+    model = os.getenv("GEMINI_MODEL", "gemini-3.6-flash")
     r = requests.post(
         _GEMINI_URL.format(model=model), params={"key": key},
         json={"contents": [{"parts": [{"text": prompt}]}],

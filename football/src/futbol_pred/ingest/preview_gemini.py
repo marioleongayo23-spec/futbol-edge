@@ -20,7 +20,7 @@ import requests
 API_KEY = os.getenv("AI_API_KEY") or os.getenv("GEMINI_API_KEY")
 # gemini-2.5-flash-lite: gratis y MUY estable (gemini-flash-latest daba 503s
 # intermitentes y respuestas vacías por 'thinking'). Cambiable por env.
-MODEL = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
+MODEL = os.getenv("GEMINI_MODEL", "gemini-3.6-flash")
 _URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 
 _SYSTEM = (
