@@ -70,7 +70,7 @@ def test_fuera_de_ventana_nunca_deja_previa_vacia(monkeypatch):
     assert match["preview_meta"]["provider"] == "Motor estadístico local"
 
 
-def test_fuera_de_ventana_rellena_once_con_plantilla_gratuita(monkeypatch):
+def test_fuera_de_ventana_rellena_once_con_plantilla_sin_inventar_props(monkeypatch):
     now = datetime(2026, 8, 24, 15, tzinfo=MADRID)
     match = _match(now)
     match["stats"] = {
@@ -86,7 +86,10 @@ def test_fuera_de_ventana_rellena_once_con_plantilla_gratuita(monkeypatch):
     assert len(match["alineacion"]["local"]) == 11
     assert len(match["alineacion"]["visitante"]) == 11
     assert match["alineacion"]["provider"] == "Motor estadístico local"
-    assert set(match["alineacion"]["clave_local"][0]) >= {"jugador", "g", "a", "r", "rp", "fc", "fr", "t"}
+    assert match["alineacion"]["model"] == "squad-only-v3"
+    assert match["alineacion"]["clave_local"] == []
+    assert match["alineacion"]["clave_visitante"] == []
+    assert match["alineacion"]["numeric_props_source"] == "pending_real_data"
 
 
 def test_fuera_de_ventana_no_consume_ia_si_falta_once(monkeypatch):
