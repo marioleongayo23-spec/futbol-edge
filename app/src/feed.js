@@ -1,13 +1,13 @@
 // Carga del feed real (resultados cada 15 min; IA/completitud dos veces al día).
 
 export const FEED_URL =
-  import.meta.env.VITE_FEED_URL ||
+  import.meta.env?.VITE_FEED_URL ||
   "https://raw.githubusercontent.com/marioleongayo23-spec/futbol-edge/main/football/data/dashboard.json";
 
 // Copia empaquetada en /public como red de seguridad si el feed remoto falla
 // (por ejemplo sin conexión, o antes de que el cron haya publicado en main).
 // BASE_URL es "/" en Vercel y "/futbol-edge/" en GitHub Pages.
-const FALLBACK_URL = (import.meta.env.BASE_URL || "/") + "dashboard.json";
+const FALLBACK_URL = (import.meta.env?.BASE_URL || "/") + "dashboard.json";
 
 async function fetchJson(url) {
   const r = await fetch(url + (url.includes("?") ? "&" : "?") + "t=" + Date.now());
@@ -55,10 +55,21 @@ export function feedAgeHours(data) {
   return (Date.now() - t) / 36e5;
 }
 
-// El cron de resultados corre cada 15 min; dos horas sin feed ya merecen alerta.
-export function isStale(data) {
+// "Desactualizado" con contexto: el cron solo commitea si el feed CAMBIA, así que
+// de madrugada (sin partidos) el generated_at envejece sin que pase nada malo. Solo
+// avisamos si el feed es viejo Y hay fútbol ahora mismo (en juego o en las próximas
+// 3 h), o si lleva claramente atascado (>18 h). Evita el falso aviso nocturno.
+export function isStale(data, now = Date.now()) {
   const h = feedAgeHours(data);
-  return h != null && h > 2;
+  if (h == null) return false;
+  if (h > 18) return true;          // claramente atascado
+  if (h <= 2) return false;         // recién actualizado
+  const win = 3 * 36e5;             // ±3 h: partido en juego o inminente
+  const matches = Array.isArray(data?.matches) ? data.matches : [];
+  return matches.some((m) => {
+    const t = new Date(m?.kickoff).getTime();
+    return !Number.isNaN(t) && t >= now - win && t <= now + win;
+  });
 }
 
 export const CREST_FALLBACK =
