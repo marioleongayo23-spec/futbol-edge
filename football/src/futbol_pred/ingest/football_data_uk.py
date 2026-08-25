@@ -178,11 +178,16 @@ class FootballDataUKClient:
             a = _num(row.get("AvgCA")) or _num(row.get("AvgA")) or _num(row.get("B365CA")) or _num(row.get("B365A"))
             over = _num(row.get("AvgC>2.5")) or _num(row.get("Avg>2.5")) or _num(row.get("B365C>2.5")) or _num(row.get("B365>2.5"))
             under = _num(row.get("AvgC<2.5")) or _num(row.get("Avg<2.5")) or _num(row.get("B365C<2.5")) or _num(row.get("B365<2.5"))
+            ah_line = next((v for v in (_num(row.get("AHCh")), _num(row.get("AHh"))) if v is not None), None)
+            ah_home = next((v for v in (_num(row.get("AvgCAHH")), _num(row.get("AvgAHH")), _num(row.get("B365CAHH")), _num(row.get("B365AHH"))) if v and v > 1), None)
+            ah_away = next((v for v in (_num(row.get("AvgCAHA")), _num(row.get("AvgAHA")), _num(row.get("B365CAHA")), _num(row.get("B365AHA"))) if v and v > 1), None)
             odds: dict = {}
             if h and d and a:
                 odds["1x2"] = {"1": h, "X": d, "2": a}
             if over and under:
                 odds["ou25"] = {"over": over, "under": under}
+            if ah_line is not None and ah_home and ah_away:
+                odds["asian_handicap"] = {"line": ah_line, "home": ah_home, "away": ah_away, "source": "football-data.co.uk"}
             if odds:
                 movement = _movement_meta(row)
                 if movement:

@@ -15,7 +15,19 @@ def _squad(prefix):
     ]
 
 
-def test_once_oficial_sustituye_estimado_y_mantiene_props_completas():
+def _real_props(prefix):
+    return [
+        {
+            "jugador": f"{prefix} {i}", "g": 0.25, "a": 0.15, "r": 2.2,
+            "rp": 0.9, "fc": 1.1, "fr": 1.0, "t": 0.15,
+            "min": 78.0, "tit": 1.0, "source": "API-Football · players",
+            "sample_minutes": 900,
+        }
+        for i in range(3)
+    ]
+
+
+def test_once_oficial_sustituye_estimado_y_no_inventa_props_sin_muestra():
     now = datetime(2026, 8, 24, 19, tzinfo=MADRID)
     match = {
         "id": "m1", "home": "Local FC", "away": "Visitante CF",
@@ -44,16 +56,18 @@ def test_once_oficial_sustituye_estimado_y_mantiene_props_completas():
     assert lineup["status"] == "confirmado"
     assert lineup["provider"] == "API-Football"
     assert len(lineup["local"]) == len(lineup["visitante"]) == 11
-    assert len(lineup["clave_local"]) >= 3
+    assert lineup["clave_local"] == []
+    assert lineup["clave_visitante"] == []
+    assert lineup["numeric_props_source"] == "pending_real_data"
     assert lineup["disponibilidad_local"][0]["official"] is True
 
 
-def test_auditoria_y_alerta_identifican_solo_huecos_del_dia():
+def test_auditoria_y_alerta_identifican_huecos_obligatorios_del_dia():
     now = datetime(2026, 8, 24, 10, 15, tzinfo=MADRID)
     match = {"id": "m1", "home": "A", "away": "B", "kickoff": (now + timedelta(hours=2)).isoformat()}
     audit = content_audit([match], None, now)
     assert audit["matches_today"] == 1
-    assert set(audit["incomplete"][0]["missing"]) == {"previa", "once", "posiciones", "props", "jugadores"}
+    assert set(audit["incomplete"][0]["missing"]) == {"previa", "once", "posiciones", "jugadores"}
     alerts = build_alerts(None, audit, [
         {"provider": "Gemini", "status": "failed"},
         {"provider": "Groq", "status": "failed"},
@@ -104,9 +118,12 @@ def test_jugadores_del_once_rellenan_indice_global_sin_huecos():
     assert all(row["source"] == "Motor estadístico local" for row in rows)
 
 
-def test_impacto_once_cuantifica_minutos_bajas_y_no_altera_1x2():
+def test_impacto_once_cuantifica_props_reales_y_bajas_sin_alterar_1x2():
     lineup = build_statistical_lineup({"xg": [1.4, 1.0]}, _squad("L"), _squad("V"))
     lineup["status"] = "confirmado"
+    lineup["clave_local"] = _real_props("L")
+    lineup["clave_visitante"] = _real_props("V")
+    lineup["numeric_props_source"] = "API-Football · players"
     lineup["disponibilidad_local"] = [{
         "jugador": "Titular lesionado", "estado": "injury", "official": True,
         "source": "API-Football", "detalle": "Lesión",

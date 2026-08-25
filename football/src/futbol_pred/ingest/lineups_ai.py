@@ -10,29 +10,19 @@ from .ai_client import chat
 
 _INSTR = (
     "Eres analista de fútbol experto en LaLiga y Segunda de España. Para CADA "
-    "partido de la lista da: (1) el ONCE PROBABLE completo de cada equipo, "
-    "exactamente 11 nombres únicos por lado; (2) bajas por lesión o sanción; "
-    "y (3) de 3 a 5 jugadores clave de cada equipo con su estimación para ESE "
-    "partido de goles (g), asistencias (a), remates (r), remates a puerta (rp), "
-    "faltas cometidas (fc), faltas recibidas (fr), tarjetas (t), minutos previstos "
-    "(min) y probabilidad de ser titular (tit, de 0 a 1). No incluyas jugadores "
-    "con menos de 55 minutos previstos ni tit < 0.60. Todas las props "
-    "son números esperados, no porcentajes. Devuelve EXCLUSIVAMENTE JSON válido:\n"
+    "partido da exclusivamente: (1) el ONCE PROBABLE completo de cada equipo, "
+    "exactamente 11 nombres únicos por lado; y (2) bajas por lesión, sanción, "
+    "duda o rotación. NO estimes goles, asistencias, remates, faltas, tarjetas "
+    "ni minutos: el sistema calcula esos números únicamente con datos reales. "
+    "Devuelve EXCLUSIVAMENTE JSON válido:\n"
     '[{"partido":"<tal cual te lo doy>",'
     '"local":[{"j":"nombre","pos":"POR|LD|DFC|LI|CAD|MCD|MC|MP|CAI|ED|EI|DC"}],'
     '"visitante":[{"j":"nombre","pos":"POR|LD|DFC|LI|CAD|MCD|MC|MP|CAI|ED|EI|DC"}],'
     '"bajas_local":["nombre (lesión|sanción|duda|rotación: motivo)"],'
-    '"bajas_visitante":["nombre (lesión|sanción|duda|rotación: motivo)"],'
-    '"clave_local":[{"j":"nombre","g":0.4,"a":0.2,"r":2.5,"rp":1.1,'
-    '"fc":1.2,"fr":1.5,"t":0.3,"min":82,"tit":0.9}],'
-    '"clave_visitante":[{"j":"nombre","g":0.3,"a":0.2,"r":2.0,"rp":0.8,'
-    '"fc":1.5,"fr":1.0,"t":0.4,"min":78,"tit":0.8}]}]\n'
-    "Los 11 jugadores deben ir en su demarcación habitual REAL y pos debe ser la "
-    "posición táctica concreta, no solo defensa/medio/delantero. Ordénalos desde "
-    "el portero hasta el delantero, y de izquierda a derecha dentro de cada línea. "
-    "Incluye TODOS los partidos. No uses null, guiones, 'por confirmar' ni listas "
-    "vacías. Si no puedes completar con suficiente calidad un partido, omítelo: "
-    "el sistema conservará automáticamente su último resultado bueno."
+    '"bajas_visitante":["nombre (lesión|sanción|duda|rotación: motivo)"]}]\n'
+    "Los 11 jugadores deben ir en su demarcación habitual REAL. Ordénalos desde "
+    "el portero hasta el delantero. Incluye todos los partidos; si no puedes "
+    "completar uno con suficiente calidad, omítelo y el sistema conservará caché."
 )
 
 _DEFAULT_FORMATION = ["POR", "LI", "DFC", "DFC", "LD", "MC", "MCD", "MC", "EI", "DC", "ED"]
@@ -102,9 +92,23 @@ def _formation(positions: list[str]) -> str:
     return f"{defenders}-{midfielders}-{attackers}"
 
 
-def ensure_position_metadata(lineup: dict) -> bool:
-    """Migra en memoria un once legado sin perderlo ni dejarlo en blanco."""
+def _verified_numeric_props(rows) -> list[dict]:
+    """Solo conserva números derivados de una muestra individual real."""
+    out = []
+    for row in rows or []:
+        if not isinstance(row, dict):
+            continue
+        try:
+            sample = float(row.get("sample_minutes") or 0)
+        except (TypeError, ValueError):
+            sample = 0
+        if str(row.get("source") or "").startswith("API-Football") and sample > 0:
+            out.append(row)
+    return out
 
+
+def ensure_position_metadata(lineup: dict) -> bool:
+    """Migra un once legado y elimina cualquier prop numérica no verificada."""
     if not isinstance(lineup, dict):
         return False
     had_positions = (
@@ -122,11 +126,12 @@ def ensure_position_metadata(lineup: dict) -> bool:
     lineup["formacion_local"] = _formation(positions_local)
     lineup["formacion_visitante"] = _formation(positions_visitor)
     lineup["positions_inferred"] = bool(lineup.get("positions_inferred") or not had_positions)
-    for side in ("clave_local", "clave_visitante"):
-        for row in lineup.get(side) or []:
-            if isinstance(row, dict):
-                row.setdefault("min", 75.0)
-                row.setdefault("tit", 0.75)
+    local_props = _verified_numeric_props(lineup.get("clave_local"))
+    visitor_props = _verified_numeric_props(lineup.get("clave_visitante"))
+    lineup["clave_local"] = local_props
+    lineup["clave_visitante"] = visitor_props
+    lineup["best_props"] = _best_props(local_props, visitor_props) if (local_props or visitor_props) else []
+    lineup["numeric_props_source"] = "API-Football · players" if (local_props or visitor_props) else "pending_real_data"
     lineup.setdefault(
         "status", "estimado" if lineup.get("provider") == "Motor estadístico local" else "probable"
     )
@@ -138,13 +143,11 @@ def ensure_position_metadata(lineup: dict) -> bool:
         "disponibilidad_visitante",
         _availability(lineup.get("bajas_visitante") or [], lineup.get("provider")),
     )
-    if not lineup.get("best_props"):
-        local_props = [row for row in lineup.get("clave_local") or [] if isinstance(row, dict)]
-        visitor_props = [row for row in lineup.get("clave_visitante") or [] if isinstance(row, dict)]
-        if local_props and visitor_props:
-            lineup["best_props"] = _best_props(local_props, visitor_props)
     quality = dict(lineup.get("quality") or {})
     quality["positions_players"] = 22
+    quality["props_players"] = len(local_props) + len(visitor_props)
+    quality["real_player_props"] = quality["props_players"]
+    quality["numeric_props_source"] = lineup["numeric_props_source"]
     lineup["quality"] = quality
     return True
 
@@ -290,9 +293,7 @@ def _validate_item(item: dict) -> dict | None:
         return None
     local, positions_local = _lineup(item.get("local"), item.get("posiciones_local"))
     visitor, positions_visitor = _lineup(item.get("visitante"), item.get("posiciones_visitante"))
-    key_local = _clave(item.get("clave_local"))
-    key_visitor = _clave(item.get("clave_visitante"))
-    if not local or not visitor or not key_local or not key_visitor:
+    if not local or not visitor:
         return None
     abs_local = _unique_names(item.get("bajas_local"), limit=8) or []
     abs_visitor = _unique_names(item.get("bajas_visitante"), limit=8) or []
@@ -306,25 +307,27 @@ def _validate_item(item: dict) -> dict | None:
         "positions_inferred": False,
         "bajas_local": abs_local,
         "bajas_visitante": abs_visitor,
-        "clave_local": key_local,
-        "clave_visitante": key_visitor,
+        "clave_local": [],
+        "clave_visitante": [],
+        "best_props": [],
+        "numeric_props_source": "pending_real_data",
         "status": "probable",
         "quality": {
             "complete": True,
             "lineup_players": len(local) + len(visitor),
-            "props_players": len(key_local) + len(key_visitor),
+            "props_players": 0,
             "positions_players": len(positions_local) + len(positions_visitor),
             "score": 1.0,
+            "numeric_props_source": "pending_real_data",
         },
     }
     result["disponibilidad_local"] = _availability(abs_local)
     result["disponibilidad_visitante"] = _availability(abs_visitor)
-    result["best_props"] = _best_props(key_local, key_visitor)
     return result
 
 
 def fetch_lineups(matches: list[dict], timeout: int = 60, retries: int = 1) -> dict:
-    """Devuelve solo partidos completos; nunca publica onces o props parciales."""
+    """Devuelve onces y bajas completos; los props numéricos se calculan fuera de la IA."""
 
     del retries
     requested = [str(match.get("partido", "")).strip() for match in matches]
@@ -450,15 +453,12 @@ def _fallback_props(names: list[str], side: str, match: dict) -> list[dict]:
 
 
 def build_statistical_lineup(match: dict, home_squad: list[dict], away_squad: list[dict]) -> dict | None:
-    """Once completo gratuito basado en la plantilla real de football-data.org."""
-
+    """Once gratuito desde plantilla real; no inventa números individuales."""
     local, visitor = _probable_xi(home_squad), _probable_xi(away_squad)
     if not local or not visitor:
         return None
     positions_local = _probable_positions(home_squad, local)
     positions_visitor = _probable_positions(away_squad, visitor)
-    key_local = _fallback_props(local, "home", match)
-    key_visitor = _fallback_props(visitor, "away", match)
     return {
         "local": local,
         "visitante": visitor,
@@ -469,20 +469,22 @@ def build_statistical_lineup(match: dict, home_squad: list[dict], away_squad: li
         "positions_inferred": True,
         "bajas_local": [],
         "bajas_visitante": [],
-        "clave_local": key_local,
-        "clave_visitante": key_visitor,
+        "clave_local": [],
+        "clave_visitante": [],
         "disponibilidad_local": [],
         "disponibilidad_visitante": [],
-        "best_props": _best_props(key_local, key_visitor),
+        "best_props": [],
+        "numeric_props_source": "pending_real_data",
         "status": "estimado",
         "provider": "Motor estadístico local",
-        "model": "squad-stats-v2",
+        "model": "squad-only-v3",
         "quality": {
             "complete": True,
             "lineup_players": 22,
-            "props_players": 6,
+            "props_players": 0,
             "positions_players": 22,
-            "score": 0.78,
+            "score": 0.72,
             "provisional": True,
+            "numeric_props_source": "pending_real_data",
         },
     }

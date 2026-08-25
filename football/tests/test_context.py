@@ -17,6 +17,7 @@ class _Response:
                 "temperature_2m": [35.0, 33.0],
                 "apparent_temperature": [38.0, 36.0],
                 "relative_humidity_2m": [62, 64],
+                "precipitation": [0.0, 0.3],
                 "precipitation_probability": [5, 8],
                 "wind_speed_10m": [9.2, 10.0],
                 "weather_code": [1, 2],
@@ -50,13 +51,14 @@ def test_registro_cubre_nombres_oficiales_largos_del_feed():
     assert {team: venue_for(team)["name"] for team in expected} == expected
 
 
-def test_weather_elige_hora_y_etiqueta_calor_sin_modificar_modelo():
+def test_weather_elige_hora_y_expone_inputs_para_ajuste_cuantificado():
     weather = WeatherClient(session=_Session()).forecast(
         venue_for("Real Madrid"), datetime.fromisoformat("2026-08-24T17:30:00+02:00")
     )
     assert weather["temperature_c"] == 35.0
+    assert weather["precipitation_mm"] == 0.0
     assert weather["heat_stress"]["level"] == "alto"
-    assert weather["model_use"] == "confianza_y_explicacion"
+    assert weather["model_use"] == "ajuste_cuantitativo_contextual"
 
 
 def test_matchup_tactico_declara_muestra_y_no_inventa_formacion():

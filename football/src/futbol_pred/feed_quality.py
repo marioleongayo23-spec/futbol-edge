@@ -11,7 +11,7 @@ from pathlib import Path
 import tempfile
 
 _TOP_LEVEL_LKG = (
-    "quiniela", "players", "model", "market_calibration",
+    "quiniela", "players", "model", "market_calibration", "historical_seed",
 )
 _MATCH_LKG = (
     "probs",
@@ -34,6 +34,10 @@ _MATCH_LKG = (
     "venue_meta",
     "weather",
     "weather_actual",
+    "weather_adjustment",
+    "closing_odds",
+    "extended_market",
+    "extended_value",
     "tactical_matchup",
     "prediction_confidence",
     "prediction_factors",
@@ -163,17 +167,22 @@ def _ai_complete(match: dict, issues: list[str], schema_version: int = 5) -> Non
         or not lineup.get("formacion_visitante")
     ):
         issues.append(f"posiciones_incompletas:{match.get('id')}")
-    if len(lineup.get("clave_local") or []) < 3 or len(lineup.get("clave_visitante") or []) < 3:
-        issues.append(f"props_incompletas:{match.get('id')}")
     if not lineup.get("provider"):
         issues.append(f"once_sin_provider:{match.get('id')}")
-    if lineup.get("provider") != "IA (caché anterior)":
-        required_props = {"jugador", "g", "a", "r", "rp", "fc", "fr", "t"}
-        if schema_version >= 6:
-            required_props.update({"min", "tit"})
-        rows = (lineup.get("clave_local") or []) + (lineup.get("clave_visitante") or [])
-        if any(not isinstance(row, dict) or not required_props.issubset(row) for row in rows):
-            issues.append(f"props_sin_campos_ampliados:{match.get('id')}")
+    rows = (lineup.get("clave_local") or []) + (lineup.get("clave_visitante") or [])
+    if rows:
+        required_props = {"jugador", "g", "a", "r", "rp", "fc", "fr", "t", "min", "tit"}
+        for row in rows:
+            if not isinstance(row, dict) or not required_props.issubset(row):
+                issues.append(f"props_sin_campos_ampliados:{match.get('id')}")
+                break
+            try:
+                sample = float(row.get("sample_minutes") or 0)
+            except (TypeError, ValueError):
+                sample = 0
+            if not str(row.get("source") or "").startswith("API-Football") or sample <= 0:
+                issues.append(f"props_sin_fuente_real:{match.get('id')}")
+                break
     if schema_version >= 6 and lineup.get("status") not in {"confirmado", "probable", "estimado"}:
         issues.append(f"once_sin_estado:{match.get('id')}")
 

@@ -10,6 +10,9 @@ target.result = target.result || [1, 0];
 target.closing_odds = {
   source: "football-data.co.uk",
   market_source: "market_average",
+  is_real: true,
+  capture_kind: "historical_provider_close",
+  captured_at: "2026-08-24T20:00:00+02:00",
   "1x2": { "1": 2.2, X: 3.4, "2": 3.5 },
 };
 const feed = JSON.stringify(feedData);
@@ -32,7 +35,7 @@ async function gotoPortfolio(page) {
   await page.locator(".snav").getByRole("button", { name: "Mi cartera", exact: true }).click();
 }
 
-test("la cartera calcula CLV contra el cierre histórico real", async ({ page }) => {
+test("la cartera calcula CLV solo contra un cierre real", async ({ page }) => {
   await page.route("**/dashboard.json?*", (route) => route.fulfill({
     status: 200,
     contentType: "application/json",

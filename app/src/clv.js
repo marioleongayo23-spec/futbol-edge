@@ -21,7 +21,9 @@ export function closingSourceLabel(closing) {
   const source = closing?.market_source;
   if (source === "market_average") return "media de mercado";
   if (source === "Bet365") return "Bet365 (fallback)";
-  return "mercado";
+  if (source === "The Odds API consensus") return "consenso The Odds API · T−2h";
+  if (source === "football-data.co.uk") return "football-data.co.uk";
+  return source || "mercado real";
 }
 
 export function betClv(bet, matches) {
@@ -29,6 +31,8 @@ export function betClv(bet, matches) {
   const match = findBetMatch(bet, matches);
   if (!match?.finished) return null;
   const closing = match.closing_odds;
+  // CLV nunca se calcula contra cuotas sample, inferidas o sin procedencia real.
+  if (closing?.is_real !== true) return null;
   const prices = closing?.["1x2"];
   if (!prices) return null;
   const taken = Number(bet.odds);
@@ -54,6 +58,8 @@ export function betClv(bet, matches) {
     breakEvenProbPct: +(breakEvenProb * 100).toFixed(2),
     fairEdgePp: +fairEdgePp.toFixed(2),
     source: closingSourceLabel(closing),
+    capturedAt: closing.captured_at || null,
+    captureKind: closing.capture_kind || null,
   };
 }
 
