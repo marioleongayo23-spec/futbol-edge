@@ -5,6 +5,7 @@ import { leaguesIn, projectedTable } from "./standings";
 import { teamProfile, teamSquad } from "./teams";
 import { bestValue, countdown, getFavs, modelAccuracy, recentForm, toggleFav, topValueBets } from "./insights";
 import MatchDetail from "./MatchDetail";
+import PlayerProfile from "./PlayerProfile";
 import ProbabilityQualityPanel from "./ProbabilityQualityPanel";
 import ClvPanel from "./ClvPanel";
 import GlobalValuePanel from "./GlobalValuePanel";
@@ -330,7 +331,7 @@ function Mercados({ matches, q, onOpen }) {
 }
 
 /* ---------- Jugadores (fuente de pago pendiente) ---------- */
-function Jugadores({ players }) {
+function Jugadores({ players, onPlayer }) {
   const ligas = players ? Object.keys(players) : [];
   const [liga, setLiga] = useState(ligas[0] || "");
   if (!players || !ligas.length) {
@@ -359,7 +360,7 @@ function Jugadores({ players }) {
             <table className="tbl-mk">
               <tbody>
                 {rk.players.slice(0, 10).map((p) => (
-                  <tr key={p.rank}>
+                  <tr key={p.rank} role="button" tabIndex={0} onClick={() => onPlayer?.(p)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onPlayer?.(p); }}>
                     <td style={{ width: 22, color: "var(--dim)" }}>{p.rank}</td>
                     <td className="tl"><b>{p.player}</b><div className="mk-sub">{p.team}</div></td>
                     <td style={{ textAlign: "right" }}><b className="value-yes">{p.value != null ? (Number.isInteger(p.value) ? p.value : p.value.toFixed(0)) : "—"}</b></td>
@@ -929,7 +930,7 @@ function TeamRec({ r, label }) {
     </div>
   );
 }
-function TeamPage({ team, matches, players, onBack, onOpen, isFav, onFav }) {
+function TeamPage({ team, matches, players, onBack, onOpen, onPlayer, isFav, onFav }) {
   const p = useMemo(() => teamProfile(matches, team), [matches, team]);
   const squad = useMemo(() => teamSquad(players, team), [players, team]);
   return (
@@ -973,7 +974,7 @@ function TeamPage({ team, matches, players, onBack, onOpen, isFav, onFav }) {
             <thead><tr><th className="tl">Jugador</th><th>Pos</th><th>G</th><th>A</th><th>Rem</th><th>xG</th><th>🟨</th></tr></thead>
             <tbody>
               {squad.map((s, i) => (
-                <tr key={i}>
+                <tr key={i} className="team-player-row" role="button" tabIndex={0} onClick={() => onPlayer?.(s)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onPlayer?.(s); }}>
                   <td className="tl"><b>{s.player}</b></td>
                   <td className="dim">{s.pos}</td>
                   <td>{s.goals || ""}</td>
@@ -1018,6 +1019,7 @@ export default function App() {
   const [view, setView] = useState("resumen");
   const [sel, setSel] = useState(null);
   const [teamSel, setTeamSel] = useState(null);
+  const [playerSel, setPlayerSel] = useState(null);
   const [favs, setFavs] = useState(getFavs);
   const [q, setQ] = useState("");
   const [bank, setBank] = useState(1000);
@@ -1028,10 +1030,11 @@ export default function App() {
   useEffect(() => { loadFeed().then(setData).catch((e) => setErr(e.message)); }, []);
   const matches = useMemo(() => data?.matches || [], [data]);
 
-  const open = (m) => { setSel(m); window.scrollTo(0, 0); };
-  const openTeam = (name) => { setTeamSel(name); setSel(null); setQ(""); window.scrollTo(0, 0); };
+  const open = (m) => { setPlayerSel(null); setSel(m); window.scrollTo(0, 0); };
+  const openTeam = (name) => { setPlayerSel(null); setTeamSel(name); setSel(null); setQ(""); window.scrollTo(0, 0); };
+  const openPlayer = (player) => { setPlayerSel(player); setSel(null); setQ(""); window.scrollTo(0, 0); };
   const onFav = (name) => setFavs(new Set(toggleFav(name)));
-  const goto = (v) => { setView(v); setSel(null); setTeamSel(null); setMenuOpen(false); window.scrollTo(0, 0); };
+  const goto = (v) => { setView(v); setSel(null); setTeamSel(null); setPlayerSel(null); setMenuOpen(false); window.scrollTo(0, 0); };
   const userName = session?.user?.email?.split("@")[0] || "Mario León";
 
   return (
@@ -1065,7 +1068,7 @@ export default function App() {
         <header className="topbar">
           <button type="button" className="burger" onClick={() => setMenuOpen((v) => !v)} aria-label="Abrir menú" aria-expanded={menuOpen}>☰</button>
           <div className="search"><Icon name="search" /><input aria-label="Buscar equipo o competición" placeholder="Buscar equipo o competición…" value={q}
-            onChange={(e) => { const v = e.target.value; setQ(v); if (v.trim()) { setSel(null); setTeamSel(null); setView("partidos"); } }} /></div>
+            onChange={(e) => { const v = e.target.value; setQ(v); if (v.trim()) { setPlayerSel(null); setSel(null); setTeamSel(null); setView("partidos"); } }} /></div>
           <div className="top-right">
             <span className="badge-cal"><span className="dot d-ucl" /> {data ? "Calendario verificado" : "Cargando…"}</span>
             <input type="checkbox" className="theme-btn theme-toggle"
@@ -1080,17 +1083,19 @@ export default function App() {
           {err && <div className="state">No se pudo cargar el feed.<br />{err}</div>}
           {!data && !err && <Skeletons n={5} />}
 
-          {data && sel && <MatchDetail m={sel} bankroll={bank} onBack={() => setSel(null)} onTeam={openTeam} players={data.players} />}
+          {data && playerSel && <PlayerProfile candidate={playerSel} players={data.players} matches={matches} onBack={() => setPlayerSel(null)} onTeam={openTeam} />}
 
-          {data && !sel && teamSel && <TeamPage team={teamSel} matches={matches} players={data.players} onBack={() => setTeamSel(null)} onOpen={open} isFav={favs.has(teamSel)} onFav={onFav} />}
+          {data && !playerSel && sel && <MatchDetail m={sel} bankroll={bank} onBack={() => setSel(null)} onTeam={openTeam} players={data.players} />}
 
-          {data && !sel && !teamSel && (
+          {data && !playerSel && !sel && teamSel && <TeamPage team={teamSel} matches={matches} players={data.players} onBack={() => setTeamSel(null)} onOpen={open} onPlayer={openPlayer} isFav={favs.has(teamSel)} onFav={onFav} />}
+
+          {data && !playerSel && !sel && !teamSel && (
             <>
               <h1 className="view-title">{(NAV.find(([k]) => k === view) || [null, "Resumen"])[1]}</h1>
               {view === "resumen" && <Resumen data={data} matches={matches} q={q} onOpen={open} goto={goto} favs={favs} onTeam={openTeam} />}
               {view === "clasificacion" && <Clasificacion matches={matches} onTeam={openTeam} />}
               {view === "partidos" && <Mercados matches={matches} q={q} onOpen={open} />}
-              {view === "jugadores" && <Jugadores players={data.players} />}
+              {view === "jugadores" && <Jugadores players={data.players} onPlayer={openPlayer} />}
               {view === "value" && <ValueBets matches={matches} bank={bank} setBank={setBank} globalValue={data.value_ranking} />}
               {view === "cartera" && <Cartera matches={matches} />}
               {view === "quiniela" && <Quiniela matches={matches} quiniela={data.quiniela} tri={tri} dob={dob} setTri={setTri} setDob={setDob} />}

@@ -285,6 +285,15 @@ def props_for_official_starters(
             "rating": history.get("rating"),
             "pass_accuracy_pct": history.get("pass_accuracy_pct"),
             "extended": extended,
+            "season": {
+                "minutes": history.get("minutes"),
+                "appearances": history.get("appearances"),
+                "starts": history.get("starts"),
+                "starter_rate": history.get("starter_rate"),
+                "expected_start_minutes": history.get("expected_start_minutes"),
+                "per90": dict(per90),
+                "per90_extended": dict(history.get("per90_extended") or {}),
+            },
         }
         # Combina señal ofensiva y contacto para no sesgar el top solo a delanteros.
         prop["evidence_score"] = round(

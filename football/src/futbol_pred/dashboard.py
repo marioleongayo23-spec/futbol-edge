@@ -849,7 +849,12 @@ def _squads_from_players(players: dict | None) -> dict[str, dict[str, list[dict]
 
 
 def _merge_lineup_players(players: dict | None, matches: list[dict]) -> dict:
-    """Garantiza que todo jugador mostrado en un once exista en el índice global."""
+    """Indexa y enriquece jugadores mostrados en onces con evidencia real de API-Football.
+
+    Nunca sustituye acumulados de Understat por expectativas de un único partido.
+    Los datos de temporada, perfil y rol se añaden en campos separados para UI y
+    futuros challengers. Si un jugador ya existe, se enriquece en lugar de saltarlo.
+    """
 
     out = players or {}
     league_keys = {
@@ -864,27 +869,62 @@ def _merge_lineup_players(players: dict | None, matches: list[dict]) -> dict:
         league = league_keys.get(match.get("league"), "segunda")
         bucket = out.setdefault(league, {"label": labels.get(league, league), "rankings": {}, "players": []})
         flat = bucket.setdefault("players", [])
-        existing = {(str(row.get("team")).casefold(), str(row.get("player")).casefold()) for row in flat}
+        positions_by_key = {
+            (str(row.get("team")).casefold(), str(row.get("player")).casefold()): i
+            for i, row in enumerate(flat)
+        }
         for side, team, positions, props in (
             (lineup.get("local") or [], match.get("home"), lineup.get("posiciones_local") or [], lineup.get("clave_local") or []),
             (lineup.get("visitante") or [], match.get("away"), lineup.get("posiciones_visitante") or [], lineup.get("clave_visitante") or []),
         ):
             prop_by_name = {str(row.get("jugador")).casefold(): row for row in props if isinstance(row, dict)}
             for index, name in enumerate(side):
-                key = (str(team).casefold(), str(name).casefold())
-                if not team or not name or key in existing:
+                if not team or not name:
                     continue
+                key = (str(team).casefold(), str(name).casefold())
                 prop = prop_by_name.get(str(name).casefold()) or {}
-                flat.append({
-                    "player": name, "team": team,
-                    "position": positions[index] if index < len(positions) else "",
-                    "goals": prop.get("g", 0), "assists": prop.get("a", 0),
-                    "shots": prop.get("r", 0), "yc": prop.get("t", 0),
-                    "min": prop.get("min", 0),
-                    "source": lineup.get("provider") or "once cacheado",
+                expected = {
+                    k: prop.get(k) for k in ("g", "a", "r", "rp", "fc", "fr", "t")
+                    if prop.get(k) is not None
+                }
+                if prop.get("extended"):
+                    expected["extended"] = prop.get("extended")
+                rich = {
+                    "player_id": prop.get("player_id"),
+                    "profile": prop.get("profile") or None,
+                    "api_position": prop.get("position"),
+                    "rating": prop.get("rating"),
+                    "pass_accuracy_pct": prop.get("pass_accuracy_pct"),
+                    "expected_minutes": prop.get("min"),
+                    "starter_probability": prop.get("tit"),
+                    "sample_minutes": prop.get("sample_minutes"),
+                    "season": prop.get("season") or None,
+                    "expected_match": expected or None,
+                    "rich_source": prop.get("source"),
                     "lineup_status": lineup.get("status") or "estimado",
-                })
-                existing.add(key)
+                }
+                if key in positions_by_key:
+                    row = flat[positions_by_key[key]]
+                    if not row.get("position"):
+                        row["position"] = (positions[index] if index < len(positions) else None) or prop.get("position") or ""
+                    for field, value in rich.items():
+                        if value not in (None, {}, []):
+                            row[field] = value
+                    continue
+
+                season = prop.get("season") or {}
+                row = {
+                    "player": name, "team": team,
+                    "position": (positions[index] if index < len(positions) else None) or prop.get("position") or "",
+                    "goals": 0, "assists": 0, "shots": 0, "yc": 0,
+                    "min": season.get("minutes") or prop.get("sample_minutes") or 0,
+                    "source": lineup.get("provider") or "once cacheado",
+                }
+                for field, value in rich.items():
+                    if value not in (None, {}, []):
+                        row[field] = value
+                positions_by_key[key] = len(flat)
+                flat.append(row)
     return out
 
 
