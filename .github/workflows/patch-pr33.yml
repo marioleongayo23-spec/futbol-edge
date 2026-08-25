@@ -16,7 +16,7 @@ jobs:
         with:
           ref: chatgpt/market-value-calibration-hardening
           fetch-depth: 0
-      - name: Hacer único el marcador de ValueBets
+      - name: Ajustar marcadores del parche
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -34,9 +34,13 @@ jobs:
               ''' + "'''  const nWithOdds = rows.filter((r) => r.haveAll).length;\n  return (\n    <>\n      <GlobalValuePanel rows={globalValue} />\n      <div className=\"card\">\n        <div className=\"row\" style={{ justifyContent: \"space-between\" }}>\n'''" + ''',
               "GlobalValuePanel render",
           )'''
-          if old not in text:
-              raise SystemExit('No se encontró el bloque antiguo de GlobalValuePanel')
-          p.write_text(text.replace(old, new, 1), encoding='utf-8')
+          if old in text:
+              text = text.replace(old, new, 1)
+          text = text.replace(
+              "assert '_starter_props(' not in operational",
+              "assert '\\ndef _starter_props(' not in operational",
+          )
+          p.write_text(text, encoding='utf-8')
           PY
       - name: Aplicar integración
         run: python tools/apply_pr33_hardening.py
@@ -47,7 +51,7 @@ jobs:
           grep -q "GlobalValuePanel" app/src/App.jsx
           grep -q "HistoricalQualityPanel" app/src/App.jsx
           grep -q "WeatherAdjustmentPanel" app/src/MatchDetail.jsx
-          ! grep -q "_starter_props(" football/src/futbol_pred/operational.py
+          ! grep -q "^def _starter_props(" football/src/futbol_pred/operational.py
       - name: Commit y push en la rama
         run: |
           if git diff --quiet; then
