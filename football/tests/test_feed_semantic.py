@@ -6,6 +6,13 @@ def _feed():
         "schema_version": 7,
         "generated_at": "2026-08-25T10:15:00+02:00",
         "market_calibration": {"laliga": {"accepted": True}},
+        "content_audit": {
+            "score": 1.0,
+            "weather_updates": 3,
+            "closing_snapshot_updates": 1,
+            "official_lineup_updates": 0,
+        },
+        "postmatch_stats_updates": 2,
         "matches": [
             {
                 "id": "match-1",
@@ -13,6 +20,7 @@ def _feed():
                 "status": "SCHEDULED",
                 "probs": [45, 30, 25],
                 "odds": {"1": 2.1, "X": 3.2, "2": 3.8},
+                "weather": {"temperature_c": 24, "wind_kmh": 10},
             }
         ],
     }
@@ -23,6 +31,17 @@ def test_timestamp_de_generacion_no_cambia_la_huella():
     second = _feed()
     second["generated_at"] = "2026-08-25T10:30:00+02:00"
     second["matches"][0]["updatedAt"] = "2026-08-25T10:30:00+02:00"
+
+    assert semantic_digest(first) == semantic_digest(second)
+
+
+def test_contadores_de_la_ejecucion_no_cambian_la_huella():
+    first = _feed()
+    second = _feed()
+    second["content_audit"]["weather_updates"] = 0
+    second["content_audit"]["closing_snapshot_updates"] = 0
+    second["content_audit"]["official_lineup_updates"] = 2
+    second["postmatch_stats_updates"] = 0
 
     assert semantic_digest(first) == semantic_digest(second)
 
@@ -39,6 +58,14 @@ def test_cambio_real_en_resultado_si_cambia_la_huella():
     first = _feed()
     second = _feed()
     second["matches"][0].update({"finished": True, "result": [2, 1]})
+
+    assert semantic_digest(first) != semantic_digest(second)
+
+
+def test_cambio_real_en_clima_si_cambia_la_huella():
+    first = _feed()
+    second = _feed()
+    second["matches"][0]["weather"]["wind_kmh"] = 30
 
     assert semantic_digest(first) != semantic_digest(second)
 
