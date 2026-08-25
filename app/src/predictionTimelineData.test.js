@@ -27,7 +27,7 @@ test("leadTimeLabel deriva la distancia real al saque inicial", () => {
 });
 
 test("mercado es delta real publicado menos motor; once y clima no inventan 1X2", () => {
-  const current = snapshot("official_lineup", "2026-08-24T19:45:00+02:00", [54, 27, 19], {
+  const current = snapshot("final_T-60_official", "2026-08-24T20:00:00+02:00", [54, 27, 19], {
     model_probs: [51, 29, 20],
     market_calibration: { model_weight: 0.7, market_weight: 0.3, temperature: 1.05 },
     lineup_impact: { evidence: "alta", confidence_penalty_pp: 4, probability_adjustment: "not_applied" },
@@ -52,11 +52,11 @@ test("mercado es delta real publicado menos motor; once y clima no inventan 1X2"
 
 test("cambio de último snapshot se calcula sobre el favorito publicado", () => {
   const a = snapshot("T-6h", "2026-08-24T15:00:00+02:00", [50, 30, 20]);
-  const b = snapshot("official_lineup", "2026-08-24T19:45:00+02:00", [53, 28, 19], { model_probs: [52, 29, 19] });
+  const b = snapshot("final_T-60_official", "2026-08-24T20:00:00+02:00", [53, 28, 19], { model_probs: [52, 29, 19] });
   const result = auditablePrediction({ kickoff, prediction_history: [a, b], prediction_snapshot: b });
   assert.equal(result.previousDelta, 3);
   assert.equal(result.previousLabel, "T−6h");
-  assert.equal(result.latestLabel, "Once oficial");
+  assert.equal(result.latestLabel, "FINAL · XI T−60");
 });
 
 test("strongestRealEdge solo utiliza value 1X2 con cuota y edge numéricos", () => {
@@ -67,4 +67,19 @@ test("strongestRealEdge solo utiliza value 1X2 con cuota y edge numéricos", () 
   ] });
   assert.equal(best.selection, "1");
   assert.equal(best.edge, 0.07);
+});
+
+
+test("timeline distingue pre-final y final oficial", () => {
+  const pre = snapshot("pre_final_T-3h", "2026-08-24T18:00:00+02:00", [51, 29, 20], {
+    alineacion: { phase: "pre_final", status: "probable", source_quality: "media_grounded", media_sources: [{ source: "AS" }] },
+  });
+  const final = snapshot("final_T-30_official", "2026-08-24T20:30:00+02:00", [53, 28, 19], {
+    alineacion: { phase: "final", status: "confirmado", official_poll_window: "T-30" },
+  });
+  const points = predictionTimelinePoints({ kickoff, prediction_history: [pre, final], prediction_snapshot: final });
+  assert.equal(points[0].label, "PRE-FINAL · T−3h");
+  assert.equal(points[0].sourceQuality, "media_grounded");
+  assert.equal(points[1].label, "FINAL · XI T−30");
+  assert.equal(points[1].officialPollWindow, "T-30");
 });
