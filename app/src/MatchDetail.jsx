@@ -6,6 +6,7 @@ import { marketMovementRows, marketMovementSourceLabel } from "./markets";
 import OfficialStatsPanel from "./OfficialStatsPanel";
 import WeatherAdjustmentPanel from "./WeatherAdjustmentPanel";
 import { teamSquad } from "./teams";
+import PredictionTimelinePanel from "./PredictionTimelinePanel";
 
 function Teams({ m, onTeam }) {
   return (
@@ -444,6 +445,8 @@ export default function MatchDetail({ m, bankroll, onBack, onTeam, players }) {
           <button type="button" className="mini" onClick={share}>{copied ? "✓ Copiado" : "🔗 Compartir"}</button>
         </div>
       </div>
+
+      <PredictionTimelinePanel m={m} />
 
       <nav className="match-nav" aria-label="Secciones del partido">
         {[['analysis', 'Previa'], ['lineup', 'Onces'], ['prediction', 'Pronóstico'], ['stats', 'Datos']].map(([key, label]) => (
