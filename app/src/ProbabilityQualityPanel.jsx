@@ -22,6 +22,40 @@ function Delta({ value }) {
   return <span className={className}>{number > 0 ? "+" : ""}{number.toFixed(4)}</span>;
 }
 
+function QualityVisual({ rows }) {
+  const metrics = [
+    ["log_loss", "LogLoss"],
+    ["brier", "Brier"],
+    ["rps", "RPS"],
+  ];
+  return (
+    <div className="quality-visual" aria-label="Comparativa visual de calidad probabilística">
+      {metrics.map(([key, label]) => {
+        const available = rows.filter((row) => row.data?.[key] != null);
+        const max = Math.max(...available.map((row) => Number(row.data[key])), 0.0001);
+        const best = Math.min(...available.map((row) => Number(row.data[key])), Infinity);
+        return (
+          <div className="quality-metric" key={key}>
+            <div className="quality-metric-head"><b>{label}</b><span>menor = mejor</span></div>
+            {available.map(({ key: sourceKey, label: sourceLabel, data }) => {
+              const value = Number(data[key]);
+              const width = Math.max(7, Math.min(100, (value / max) * 100));
+              const isBest = Math.abs(value - best) < 1e-9;
+              return (
+                <div className={`quality-bar-row ${isBest ? "best" : ""}`} key={sourceKey}>
+                  <span>{sourceLabel}</span>
+                  <div className="quality-track"><i style={{ width: `${width}%` }} /></div>
+                  <b>{value.toFixed(4)}</b>
+                </div>
+              );
+            })}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function Comparison({ title, comparison }) {
   if (!comparison) return null;
   const sample = sampleMeta(comparison.n);
@@ -68,6 +102,8 @@ export default function ProbabilityQualityPanel({ quality }) {
         </div>
         <span className={"pill " + overallSample.className}>{overallSample.label}</span>
       </div>
+
+      <QualityVisual rows={rows} />
 
       <div className="tbl-wrap" style={{ marginTop: 10 }}>
         <table className="tbl-mk">
