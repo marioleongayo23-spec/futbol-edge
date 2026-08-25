@@ -1,13 +1,14 @@
-"""Huella estable del feed para evitar publicaciones por timestamps volátiles.
+"""Huella estable del feed para evitar publicaciones por metadata volátil.
 
 El dashboard se recalcula frecuentemente y renueva ``generated_at`` y el
 ``updatedAt`` de cada partido aunque el contenido deportivo no haya cambiado.
-Esos campos son metadata de generación, no una señal que justifique por sí sola
-un commit/deployment.
+También publica algunos contadores que describen *lo que hizo esta ejecución*
+(p. ej. cuántos forecasts refrescó), aunque el estado final resultante sea el
+mismo. Ninguno de esos campos justifica por sí solo un commit/deployment.
 
-La huella conserva TODO el resto del documento: resultados, cuotas, snapshots,
-onces, clima, estadísticas, alertas, calidad, calibración, etc. Cualquier cambio
-real en ellos sigue publicándose.
+La huella conserva los datos sustantivos: resultados, cuotas, snapshots, onces,
+clima final, estadísticas, alertas, calidad, calibración, ranking value, etc.
+Cualquier cambio real en ellos sigue publicándose.
 """
 from __future__ import annotations
 
@@ -17,12 +18,32 @@ import json
 import sys
 from pathlib import Path
 
+# Contadores derivados de la ejecución actual. El estado que representan vive
+# en matches/players/value_ranking y, si cambia, seguirá cambiando la huella.
+RUN_LOCAL_AUDIT_KEYS = {
+    "selective_retries",
+    "official_lineup_updates",
+    "weather_updates",
+    "weather_adjustments",
+    "closing_snapshot_updates",
+    "extended_market_updates",
+    "archived_weather_updates",
+    "state_simulations",
+}
+
 
 def semantic_feed(payload: dict) -> dict:
     """Devuelve una copia del feed sin metadata puramente volátil."""
 
     normalized = copy.deepcopy(payload)
     normalized.pop("generated_at", None)
+    normalized.pop("postmatch_stats_updates", None)
+
+    audit = normalized.get("content_audit")
+    if isinstance(audit, dict):
+        for key in RUN_LOCAL_AUDIT_KEYS:
+            audit.pop(key, None)
+
     matches = normalized.get("matches")
     if isinstance(matches, list):
         for match in matches:
