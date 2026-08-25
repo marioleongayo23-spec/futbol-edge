@@ -83,7 +83,7 @@ test("Match Intelligence enseña solo hitos reales y deltas auditables", async (
   await expect(panel.getByText("52.0%", { exact: true }).first()).toBeVisible();
   await expect(panel.getByText("Publicada", { exact: true })).toBeVisible();
   await expect(panel.getByText("56.0%", { exact: true }).first()).toBeVisible();
-  await expect(panel.getByText("+4.0 pp", { exact: true })).toBeVisible();
+  await expect(panel.locator(".prediction-bridge .bridge-delta b")).toHaveText("+4.0 pp");
   await expect(panel.getByText("0.0 pp 1X2", { exact: true })).toHaveCount(2);
   await expect(panel.getByText(/Δ xG total -0.14/)).toBeVisible();
   await expect(panel.getByText(/Última revisión:/)).toContainText("T−6h");
