@@ -2,7 +2,8 @@
 
 Los multiplicadores son conservadores y acotados. El bloque conserva el valor
 base y el delta para que la UI explique exactamente qué cambió. Si el mismo
-forecast ya fue aplicado, la función es idempotente.
+forecast ya fue aplicado sobre el mismo xG, la función es idempotente; si un
+cron reconstruye el xG base, el ajuste se reaplica aunque la previsión no cambie.
 """
 from __future__ import annotations
 
@@ -18,6 +19,15 @@ def _num(value, default=0.0) -> float:
     except (TypeError, ValueError):
         return default
     return number if math.isfinite(number) else default
+
+
+def _same_pair(left, right, tolerance: float = 0.015) -> bool:
+    if not isinstance(left, list) or not isinstance(right, list) or len(left) != 2 or len(right) != 2:
+        return False
+    try:
+        return all(abs(float(a) - float(b)) <= tolerance for a, b in zip(left, right))
+    except (TypeError, ValueError):
+        return False
 
 
 def weather_multipliers(weather: dict | None) -> dict:
@@ -92,7 +102,15 @@ def apply_weather_adjustment(match: dict, now: datetime | None = None) -> bool:
     weather = match["weather"]
     source_stamp = weather.get("source_updated_at") or weather.get("forecast_for")
     previous = match.get("weather_adjustment") or {}
-    if previous.get("weather_source_updated_at") == source_stamp and previous.get("applied"):
+    # El dashboard se reconstruye desde el modelo en cada cron. Por eso "mismo
+    # forecast" no implica que el xG actual ya esté ajustado: solo saltamos si
+    # el xG coincide con el AFTER previamente publicado. Si ha vuelto al base,
+    # reaplicamos el multiplicador y mantenemos coherencia entre metadata y datos.
+    if (
+        previous.get("weather_source_updated_at") == source_stamp
+        and previous.get("applied")
+        and _same_pair(xg, (previous.get("xg") or {}).get("after"))
+    ):
         return False
 
     mult = weather_multipliers(weather)
