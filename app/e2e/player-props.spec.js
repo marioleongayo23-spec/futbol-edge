@@ -56,8 +56,9 @@ test("la ficha muestra props reales de los 22 titulares cuando existe muestra", 
 
   await expect(page.getByText(`${target.home} · titulares con muestra real 11/11`, { exact: true })).toBeVisible();
   await expect(page.getByText(`${target.away} · titulares con muestra real 11/11`, { exact: true })).toBeVisible();
-  await expect(page.locator(".xi-props .props-tbl tbody tr")).toHaveCount(22);
-  await expect(page.getByText("Local Real 1", { exact: true })).toBeVisible();
-  await expect(page.getByText("Local Real 11", { exact: false }).first()).toBeVisible();
-  await expect(page.getByText("Visitante Real 11", { exact: false }).first()).toBeVisible();
+  const propRows = page.locator(".xi-props .props-tbl tbody tr");
+  await expect(propRows).toHaveCount(22);
+  await expect(propRows.filter({ hasText: "Local Real 1" }).first()).toContainText("API-Football · players");
+  await expect(propRows.filter({ hasText: "Local Real 11" }).first()).toContainText("900 min");
+  await expect(propRows.filter({ hasText: "Visitante Real 11" }).first()).toContainText("per-90 × min previstos");
 });
