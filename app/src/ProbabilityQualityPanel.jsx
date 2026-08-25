@@ -1,8 +1,16 @@
+import "./quality.css";
+
 const SOURCE_ROWS = [
   ["published", "Probabilidad publicada"],
   ["model_only", "Modelo puro"],
   ["market", "Mercado sin margen"],
 ];
+
+const VISUAL_LABELS = {
+  published: "Publicada",
+  model_only: "Modelo",
+  market: "Mercado",
+};
 
 function sampleMeta(n) {
   if (!n) return { label: "sin muestra", className: "value-no" };
@@ -20,6 +28,40 @@ function Delta({ value }) {
   const number = Number(value);
   const className = number < 0 ? "value-yes" : number > 0 ? "value-no" : "dim";
   return <span className={className}>{number > 0 ? "+" : ""}{number.toFixed(4)}</span>;
+}
+
+function QualityVisual({ rows }) {
+  const metrics = [
+    ["log_loss", "LogLoss"],
+    ["brier", "Brier"],
+    ["rps", "RPS"],
+  ];
+  return (
+    <div className="quality-visual" aria-label="Comparativa visual de calidad probabilística">
+      {metrics.map(([key, label]) => {
+        const available = rows.filter((row) => row.data?.[key] != null);
+        const max = Math.max(...available.map((row) => Number(row.data[key])), 0.0001);
+        const best = Math.min(...available.map((row) => Number(row.data[key])), Infinity);
+        return (
+          <div className="quality-metric" key={key}>
+            <div className="quality-metric-head"><b>{label}</b><span>menor = mejor</span></div>
+            {available.map(({ key: sourceKey, data }) => {
+              const value = Number(data[key]);
+              const width = Math.max(7, Math.min(100, (value / max) * 100));
+              const isBest = Math.abs(value - best) < 1e-9;
+              return (
+                <div className={`quality-bar-row ${isBest ? "best" : ""}`} key={sourceKey}>
+                  <span>{VISUAL_LABELS[sourceKey] || sourceKey}</span>
+                  <div className="quality-track"><i style={{ width: `${width}%` }} /></div>
+                  <b>{value.toFixed(4)}</b>
+                </div>
+              );
+            })}
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
 function Comparison({ title, comparison }) {
@@ -68,6 +110,8 @@ export default function ProbabilityQualityPanel({ quality }) {
         </div>
         <span className={"pill " + overallSample.className}>{overallSample.label}</span>
       </div>
+
+      <QualityVisual rows={rows} />
 
       <div className="tbl-wrap" style={{ marginTop: 10 }}>
         <table className="tbl-mk">

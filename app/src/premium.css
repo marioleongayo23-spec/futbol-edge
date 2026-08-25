@@ -1,0 +1,283 @@
+/* Fútbol Edge — premium analytics visual layer
+   Loaded after styles.css so this file can evolve independently without
+   destabilising the tested layout contract. */
+
+:root{
+  --fe-surface:rgba(15,24,37,.82);
+  --fe-surface-strong:rgba(18,29,44,.96);
+  --fe-glow:rgba(34,201,138,.16);
+  --fe-blue-glow:rgba(90,162,255,.16);
+  --fe-shadow:0 18px 52px rgba(0,0,0,.28);
+  --fe-shadow-soft:0 10px 28px rgba(0,0,0,.18);
+  --fe-radius:20px;
+}
+
+:root:has(.theme-toggle:checked){
+  --fe-surface:rgba(255,255,255,.88);
+  --fe-surface-strong:rgba(255,255,255,.98);
+  --fe-glow:rgba(34,201,138,.10);
+  --fe-blue-glow:rgba(90,162,255,.10);
+  --fe-shadow:0 18px 50px rgba(39,62,94,.12);
+  --fe-shadow-soft:0 10px 26px rgba(39,62,94,.09);
+}
+
+body{
+  min-height:100vh;
+  background:
+    radial-gradient(900px 560px at 14% -8%,var(--fe-glow),transparent 62%),
+    radial-gradient(760px 520px at 96% 8%,var(--fe-blue-glow),transparent 60%),
+    var(--bg);
+  background-attachment:fixed;
+}
+
+/* Subtle pitch/data grid: gives the product a sports-intelligence identity. */
+body::before{
+  content:"";
+  position:fixed;
+  inset:0;
+  pointer-events:none;
+  z-index:-1;
+  opacity:.16;
+  background-image:
+    linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px);
+  background-size:42px 42px;
+  mask-image:linear-gradient(to bottom,black,transparent 72%);
+}
+
+.main-col{min-width:0}
+.content{width:min(100%,1480px);margin:0 auto}
+
+.side{
+  background:
+    radial-gradient(420px 260px at 20% 0%,rgba(34,201,138,.10),transparent 70%),
+    var(--bg2);
+  box-shadow:18px 0 50px rgba(0,0,0,.08);
+}
+
+.brand{padding:5px 4px 12px}
+.logo{
+  position:relative;
+  overflow:hidden;
+  box-shadow:0 10px 28px rgba(34,201,138,.22),inset 0 0 0 1px rgba(255,255,255,.10);
+}
+.logo::after{
+  content:"";position:absolute;inset:-35%;
+  background:linear-gradient(120deg,transparent 35%,rgba(255,255,255,.22),transparent 65%);
+  transform:translateX(-70%);animation:feLogoSweep 7s ease-in-out infinite;
+}
+@keyframes feLogoSweep{0%,72%,100%{transform:translateX(-70%)}84%{transform:translateX(70%)}}
+.btag{color:var(--green);opacity:.72}
+
+.snav-item{border:1px solid transparent;transition:transform .15s ease,background .15s ease,border-color .15s ease,color .15s ease}
+.snav-item:hover{transform:translateX(2px);border-color:var(--line)}
+.snav-item.on{
+  border-color:rgba(34,201,138,.18);
+  background:linear-gradient(90deg,rgba(34,201,138,.15),rgba(34,201,138,.04));
+  box-shadow:inset 3px 0 0 var(--green),0 8px 22px rgba(34,201,138,.06);
+}
+
+.topbar{
+  background:color-mix(in srgb,var(--navbg) 91%,transparent);
+  backdrop-filter:blur(18px) saturate(135%);
+  box-shadow:0 12px 32px rgba(0,0,0,.08);
+}
+.search{box-shadow:inset 0 0 0 1px rgba(255,255,255,.015)}
+
+.card{
+  position:relative;
+  border-radius:var(--fe-radius);
+  background:
+    linear-gradient(145deg,rgba(255,255,255,.025),transparent 42%),
+    var(--fe-surface);
+  border-color:color-mix(in srgb,var(--line) 80%,transparent);
+  box-shadow:var(--fe-shadow-soft);
+  backdrop-filter:blur(8px);
+}
+.card::before{
+  content:"";position:absolute;left:18px;right:18px;top:-1px;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.12),transparent);
+  pointer-events:none;
+}
+.card.click{transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease}
+.card.click:hover{transform:translateY(-2px);box-shadow:var(--fe-shadow);border-color:rgba(90,162,255,.46)}
+
+.lbl{
+  letter-spacing:.09em;
+  font-weight:800;
+  font-size:.68rem;
+}
+
+/* KPI cards become compact analytics tiles instead of plain boxes. */
+.stat-tiles{gap:10px}
+.stat{
+  position:relative;
+  overflow:hidden;
+  border-radius:18px;
+  border:1px solid var(--line);
+  background:
+    radial-gradient(180px 100px at 100% 0%,rgba(90,162,255,.08),transparent 70%),
+    var(--fe-surface);
+  box-shadow:var(--fe-shadow-soft);
+  transition:transform .18s ease,border-color .18s ease;
+}
+.stat:hover{transform:translateY(-2px);border-color:color-mix(in srgb,var(--blue) 42%,var(--line))}
+.stat::after{
+  content:"";position:absolute;left:0;right:0;bottom:0;height:2px;
+  background:linear-gradient(90deg,var(--green),var(--blue));opacity:.55;
+}
+.stat-v{letter-spacing:-.035em}
+.stat-k{font-weight:800;letter-spacing:.07em}
+
+/* Match rows read as a live data feed. */
+.mrow{
+  border-radius:16px;
+  margin:7px 0;
+  background:linear-gradient(90deg,var(--fe-surface-strong),color-mix(in srgb,var(--card) 84%,transparent));
+  box-shadow:0 8px 22px rgba(0,0,0,.10);
+  transition:transform .16s ease,border-color .16s ease,box-shadow .16s ease;
+}
+.mrow:hover{transform:translateY(-1px);box-shadow:0 14px 30px rgba(0,0,0,.16);border-color:rgba(90,162,255,.40)}
+.mrow-bar{height:3px;opacity:.9}
+
+.crest{filter:drop-shadow(0 8px 14px rgba(0,0,0,.28))}
+.crest.sm,.crest.xs{filter:drop-shadow(0 3px 7px rgba(0,0,0,.22))}
+
+/* Probability bar: more polished, with inner highlight. */
+.pbar{
+  height:40px;
+  border-radius:13px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 8px 18px rgba(0,0,0,.10);
+}
+.pbar .seg{position:relative;text-shadow:0 1px 0 rgba(255,255,255,.18)}
+.pbar .seg::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(255,255,255,.16),transparent 55%);pointer-events:none}
+
+.chip{
+  border-color:color-mix(in srgb,var(--line) 82%,transparent);
+  background:color-mix(in srgb,var(--card2) 86%,transparent);
+  backdrop-filter:blur(5px);
+}
+.pill{box-shadow:inset 0 0 0 1px rgba(255,255,255,.035)}
+
+/* Existing score heatmap gets a framed analytical surface. */
+.heat{
+  padding:9px;
+  border:1px solid var(--line);
+  border-radius:14px;
+  background:color-mix(in srgb,var(--card2) 80%,transparent);
+}
+.heat div:not(.hh){font-weight:800;transition:transform .12s ease}
+.heat div:not(.hh):hover{transform:scale(1.08);z-index:1}
+
+/* Tactical profile: look like a scouting comparison panel. */
+.tactical-profile{
+  border-radius:18px;
+  background:
+    radial-gradient(380px 160px at 10% 0%,rgba(34,201,138,.08),transparent 65%),
+    radial-gradient(380px 160px at 90% 0%,rgba(90,162,255,.08),transparent 65%),
+    var(--fe-surface-strong);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.035);
+}
+.style-track{height:8px;background:color-mix(in srgb,var(--line) 75%,transparent);box-shadow:inset 0 1px 3px rgba(0,0,0,.18)}
+.style-track i{box-shadow:0 0 12px currentColor}
+.clash-list .chip{border-color:rgba(255,176,32,.24);background:rgba(255,176,32,.06)}
+
+/* Lineup pitch: richer texture but keeps tested player positioning. */
+.pitch-grass{
+  border-radius:22px;
+  border-color:rgba(255,255,255,.16);
+  background-color:#0b5133;
+  background-image:
+    linear-gradient(90deg,transparent 49.8%,rgba(255,255,255,.11) 50%,transparent 50.2%),
+    repeating-linear-gradient(0deg,rgba(255,255,255,.065) 0 38px,rgba(255,255,255,.01) 38px 76px),
+    radial-gradient(520px 280px at 50% 50%,rgba(35,168,105,.30),transparent 70%);
+  box-shadow:inset 0 0 50px rgba(0,0,0,.22),0 16px 34px rgba(0,0,0,.16);
+}
+.player .dot{width:23px;height:23px;box-shadow:0 4px 10px rgba(0,0,0,.48),0 0 0 3px rgba(255,255,255,.07)}
+.player .pn{font-weight:800}
+
+/* Market movement becomes a mini trading terminal. */
+.market-movement{
+  border-radius:17px;
+  background:linear-gradient(145deg,rgba(255,255,255,.018),transparent),var(--fe-surface-strong);
+}
+.market-move{border:1px solid var(--line);position:relative;overflow:hidden}
+.market-move::after{content:"";position:absolute;left:0;bottom:0;height:2px;width:100%;opacity:.65;background:var(--dim)}
+.market-move.shortening::after{background:var(--green)}
+.market-move.drifting::after{background:var(--amber)}
+
+/* Generic visual comparison primitives used by stats/weather panels. */
+.fe-visual-stack{display:grid;gap:11px;margin-top:12px}
+.fe-compare-row{display:grid;grid-template-columns:minmax(44px,auto) minmax(100px,1fr) minmax(110px,1.35fr) minmax(100px,1fr) minmax(44px,auto);align-items:center;gap:8px}
+.fe-compare-label{text-align:center;font-size:.68rem;color:var(--muted);font-weight:800;text-transform:uppercase;letter-spacing:.05em}
+.fe-compare-value{font-variant-numeric:tabular-nums;font-size:.86rem;font-weight:900}
+.fe-compare-value.home{text-align:right;color:var(--green)}
+.fe-compare-value.away{text-align:left;color:var(--blue)}
+.fe-dualbar{display:grid;grid-template-columns:1fr 1fr;gap:3px;height:10px;align-items:stretch}
+.fe-dualbar-half{position:relative;overflow:hidden;border-radius:999px;background:var(--line)}
+.fe-dualbar-half.home{transform:scaleX(-1)}
+.fe-dualbar-fill{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--greenD),var(--green));box-shadow:0 0 12px rgba(34,201,138,.22)}
+.fe-dualbar-half.away .fe-dualbar-fill{background:linear-gradient(90deg,var(--blue),#82bdff);box-shadow:0 0 12px rgba(90,162,255,.22)}
+
+.fe-impact-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:12px}
+.fe-impact-tile{position:relative;overflow:hidden;border:1px solid var(--line);border-radius:14px;padding:11px;background:var(--card2)}
+.fe-impact-tile::after{content:"";position:absolute;left:0;right:0;bottom:0;height:3px;background:var(--impact-color,var(--blue));opacity:.8}
+.fe-impact-tile span{display:block;font-size:.64rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:800}
+.fe-impact-tile b{display:block;margin-top:3px;font-size:1.15rem;font-variant-numeric:tabular-nums}
+.fe-impact-tile.positive{--impact-color:var(--green)}
+.fe-impact-tile.negative{--impact-color:var(--red)}
+.fe-impact-tile.neutral{--impact-color:var(--dim)}
+
+.fe-xg-shift{margin-top:12px;padding:12px 13px;border:1px solid var(--line);border-radius:14px;background:linear-gradient(90deg,rgba(34,201,138,.055),rgba(90,162,255,.055))}
+.fe-xg-shift-line{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center}
+.fe-xg-side{display:flex;flex-direction:column;gap:2px}
+.fe-xg-side:last-child{text-align:right}
+.fe-xg-side small{color:var(--muted);font-size:.64rem;text-transform:uppercase;letter-spacing:.05em}
+.fe-xg-side b{font-size:1.05rem;font-variant-numeric:tabular-nums}
+.fe-xg-arrow{color:var(--dim);font-weight:900}
+
+/* Data/model panels should feel like a quant lab. */
+.calib-svg{filter:drop-shadow(0 12px 20px rgba(0,0,0,.10))}
+.calib-dot{filter:drop-shadow(0 0 5px rgba(90,162,255,.35))}
+.metrics-tbl .row-live td{background:linear-gradient(90deg,rgba(34,201,138,.055),rgba(90,162,255,.045))}
+.metrics-tbl .cell-best{background:rgba(34,201,138,.065)}
+
+.spark{filter:drop-shadow(0 5px 8px rgba(34,201,138,.12))}
+
+/* Tables retain density but gain clearer hierarchy. */
+.tbl-mk thead th,.tbl-cls thead th{position:sticky;top:0;background:color-mix(in srgb,var(--card) 95%,transparent);backdrop-filter:blur(8px);z-index:1}
+.tbl-mk tbody tr,.tbl-cls tbody tr{transition:background .12s ease}
+.tbl-mk tbody tr:hover,.tbl-cls tbody tr:hover{background:rgba(90,162,255,.035)}
+
+/* Team page: existing markup gets a hero feel without changing its contract. */
+.back + .card{
+  overflow:hidden;
+  background:
+    radial-gradient(420px 160px at 0% 0%,rgba(34,201,138,.12),transparent 68%),
+    radial-gradient(420px 160px at 100% 0%,rgba(90,162,255,.11),transparent 68%),
+    var(--fe-surface);
+}
+.back + .card .crest{width:58px;height:58px}
+.back + .card .tn{letter-spacing:-.025em}
+.fav-btn{transition:transform .15s ease,color .15s ease}
+.fav-btn:hover{transform:scale(1.15)}
+
+/* Player ranking cards become more visual even before the full player-profile PR. */
+.players-grid .card{overflow:hidden}
+.players-grid .card::after{content:"";position:absolute;right:-45px;top:-55px;width:130px;height:130px;border-radius:50%;background:radial-gradient(circle,rgba(90,162,255,.09),transparent 70%);pointer-events:none}
+.players-grid .tbl-mk tr:first-child td{padding-top:10px;padding-bottom:10px}
+.players-grid .tbl-mk tr:first-child b{color:var(--green)}
+
+/* Responsive: preserve information density without horizontal chaos. */
+@media(max-width:720px){
+  body::before{background-size:34px 34px}
+  .card{border-radius:16px}
+  .fe-compare-row{grid-template-columns:42px minmax(62px,.75fr) minmax(90px,1fr) minmax(62px,.75fr) 42px;gap:5px}
+  .fe-compare-label{font-size:.58rem}
+  .fe-impact-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .back + .card .crest{width:48px;height:48px}
+}
+
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important;scroll-behavior:auto!important}
+}
