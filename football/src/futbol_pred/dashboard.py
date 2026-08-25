@@ -30,6 +30,9 @@ from .operational import (
 from .performance import build_performance
 from .finished_stats import attach_finished_stats
 from .accuracy_detail import enrich_accuracy
+from .real_market import attach_closing_snapshots, attach_extended_market_value
+from .weather_effects import apply_weather_adjustments
+from .historical_seed import build_historical_seeds
 from .pipeline import fit_model_from_fixtures, get_fixtures, predict_match, run_model_report
 from .prediction_snapshots import apply_prediction_snapshots, latest_pre_match_snapshot
 
@@ -929,11 +932,17 @@ def build_dashboard(
     configure_daily_budget((previous or {}).get("ai_usage"), now.astimezone(MADRID))
     model_report = _load_model_report(season)
     calibration_source = {"model": model_report} if model_report else previous
+    previous_seed = (previous or {}).get("historical_seed") if (previous or {}).get("season") == season else None
+    historical_seeds = previous_seed or build_historical_seeds(season)
     market_calibration = {}
     for league, label in (("laliga", "LaLiga"), ("segunda", "LaLiga Hypermotion")):
         learned = learn_market_calibration((previous or {}).get("matches") or [], label)
         if learned:
-            market_calibration[league] = learned
+            market_calibration[league] = {**learned, "scope": "current_season"}
+        else:
+            seeded = ((historical_seeds.get(league) or {}).get("market_calibration") if historical_seeds else None)
+            if seeded:
+                market_calibration[league] = {**seeded, "scope": "historical_seed"}
     matches: list[dict] = []
     errors: list[dict] = []
     squads_by_league: dict[str, dict[str, list[dict]]] = {}
@@ -1004,7 +1013,6 @@ def build_dashboard(
             })
 
     matches.sort(key=lambda item: item["kickoff"])
-    weather_updates = _attach_venue_weather(matches, now)
     apply_prediction_snapshots(
         matches,
         (previous or {}).get("matches"),
@@ -1020,6 +1028,11 @@ def build_dashboard(
             {"schema_version": 7, "matches": matches},
             {"schema_version": previous.get("schema_version"), "matches": previous.get("matches", [])},
         )
+    weather_updates = _attach_venue_weather(matches, now)
+    weather_adjustments = apply_weather_adjustments(matches, now)
+    closing_snapshot_updates = attach_closing_snapshots(
+        matches, now, previous_matches=(previous or {}).get("matches")
+    )
     archived_weather_updates = _attach_archived_weather(matches, now)
     base_players = _merge_squad_players(
         _load_players(season), squads_by_league, (previous or {}).get("players")
@@ -1044,6 +1057,10 @@ def build_dashboard(
     state_simulations = attach_state_simulations(matches)
     players = _merge_lineup_players(players, matches)
     annotate_prediction_context(matches)
+    market_value = attach_extended_market_value(
+        matches, now, previous_matches=(previous or {}).get("matches"),
+        stats_models=stats_models_by_league,
+    )
     # Segunda fase: la revisión se captura cuando contexto, once e impacto ya
     # están completos. Después se vuelve a anotar para mantener vivo el estado
     # oficial aunque fuera de las ventanas que congelan la probabilidad.
@@ -1061,6 +1078,9 @@ def build_dashboard(
     audit["selective_retries"] = retried
     audit["official_lineup_updates"] = official_updates
     audit["weather_updates"] = weather_updates
+    audit["weather_adjustments"] = weather_adjustments
+    audit["closing_snapshot_updates"] = closing_snapshot_updates
+    audit["extended_market_updates"] = market_value.get("refreshed", 0)
     audit["archived_weather_updates"] = archived_weather_updates
     audit["state_simulations"] = state_simulations
     ai_events = diagnostics()
@@ -1072,6 +1092,9 @@ def build_dashboard(
         "players": players,
         "model": model_report,
         "market_calibration": market_calibration or None,
+        "historical_seed": historical_seeds or None,
+        "value_ranking": market_value.get("ranking") or [],
+        "market_value_source": market_value.get("source"),
         "accuracy": enrich_accuracy(_aggregate_accuracy(matches), matches),
         "performance": build_performance(matches),
         "content_audit": audit,
@@ -1088,15 +1111,15 @@ def build_dashboard(
         "data_sources": {
             "fixtures": "football-data.org (LaLiga) · football-data.co.uk (Segunda)",
             "stats": "football-data.co.uk (3 temporadas; pseudo-xG, remates, córners, faltas y tarjetas)",
-            "players": "football-data.org (plantillas, goleadores y asistencias)",
-            "odds": "football-data.co.uk (media de mercado: 1X2 y over/under 2.5)",
+            "players": "API-Football /players para tasas individuales reales por-90; football-data.org para plantillas; IA solo once y bajas",
+            "odds": "The Odds API cuando hay ODDS_API_KEY (consenso + submercados); football-data.co.uk como fallback real 1X2/O-U2.5/AH cuando publica columnas",
             "lineups": "API-Football para onces oficiales y bajas cerca del partido; football-data.org para plantillas",
             "ai": "Gemini dinámico → Groq → motor estadístico local gratuito; control del día a las 00:15 y 10:15 Europe/Madrid, con presupuesto y caché",
-            "weather": "Open-Meteo (CC BY 4.0): previsión horaria + Historical Forecast archivado por estadio; el histórico es solo para validación hasta superar gate",
+            "weather": "Open-Meteo (CC BY 4.0): forecast horario cuantifica xG/remates/disciplina; histórico separado para validación",
             "tactics": "football-data.co.uk, perfiles observados casa/fuera de remates, córners, faltas, tarjetas y goles",
         },
         "disclaimer": "Probabilidades y ventaja estadística, no certezas. "
-                      "Las plantillas gratuitas y los onces del motor local son provisionales; "
+                      "Las plantillas gratuitas y los onces del motor local son provisionales; los props numéricos solo se muestran con muestra real; "
                       "las cuotas se muestran como pendientes cuando no existe una fuente real.",
         "counts": {
             "total": len(matches),

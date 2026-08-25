@@ -574,12 +574,14 @@ text = replace_once(
 )
 text = replace_once(
     text,
-    '''  return (
+    '''  const nWithOdds = rows.filter((r) => r.haveAll).length;
+  return (
     <>
       <div className="card">
         <div className="row" style={{ justifyContent: "space-between" }}>
 ''',
-    '''  return (
+    '''  const nWithOdds = rows.filter((r) => r.haveAll).length;
+  return (
     <>
       <GlobalValuePanel rows={globalValue} />
       <div className="card">
@@ -651,7 +653,7 @@ quality = read("football/src/futbol_pred/feed_quality.py")
 app = read("app/src/App.jsx")
 match_detail = read("app/src/MatchDetail.jsx")
 assert '"clave_local": []' in lineups and '"clave_visitante": []' in lineups
-assert '_starter_props(' not in operational
+assert '\ndef _starter_props(' not in operational
 assert 'props_sin_fuente_real' in quality
 assert 'GlobalValuePanel' in app and 'HistoricalQualityPanel' in app
 assert 'WeatherAdjustmentPanel' in match_detail

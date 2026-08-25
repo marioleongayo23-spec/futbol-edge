@@ -4,6 +4,7 @@ import { ah, btts, kelly, matrix, oneXtwo, over, topScores } from "./poisson";
 import { confidence, countdown, isSurprise } from "./insights";
 import { marketMovementRows, marketMovementSourceLabel } from "./markets";
 import OfficialStatsPanel from "./OfficialStatsPanel";
+import WeatherAdjustmentPanel from "./WeatherAdjustmentPanel";
 import { teamSquad } from "./teams";
 
 function Teams({ m, onTeam }) {
@@ -224,7 +225,7 @@ function PropsTable({ title, clave, best }) {
         <tbody>
           {clave.map((p, i) => (
             <tr key={i} className={highlighted.has(p.jugador) ? "best-prop" : ""}>
-              <td className="tl" title={p.source ? `${p.source}${p.sample_minutes ? ` · ${p.sample_minutes} min de muestra` : ""}` : undefined}>{highlighted.has(p.jugador) ? "★ " : ""}{p.jugador}</td>
+              <td className="tl" title={p.source ? `${p.source}${p.sample_minutes ? ` · ${p.sample_minutes} min de muestra` : ""}` : undefined}>{highlighted.has(p.jugador) ? "★ " : ""}{p.jugador}{p.source && <div className="mk-sub">{p.source}{p.sample_minutes ? ` · ${p.sample_minutes} min · per-90 × min previstos` : ""}</div>}</td>
               <td>{p.min ?? "–"}</td><td>{p.tit != null ? `${Math.round(p.tit * 100)}%` : "–"}</td>
               <td>{p.g ?? "–"}</td><td>{p.a ?? "–"}</td><td>{p.r ?? "–"}</td><td>{p.rp ?? "–"}</td><td>{p.fc ?? p.f ?? "–"}</td><td>{p.fr ?? "–"}</td><td>{p.t ?? "–"}</td>
             </tr>
@@ -292,10 +293,10 @@ function Alineacion({ m, a }) {
           {(a.best_props || []).map((item) => <span className="chip" key={`${item.lado}-${item.jugador}`} title="Ventaja estadística interna; no incluye cuota de casa">★ {item.jugador} · {item.motivo}</span>)}
         </div>
       )}
-      <div className="xi-grid" style={{ marginTop: 10 }}>
+      {((a.clave_local || []).length > 0 || (a.clave_visitante || []).length > 0) ? <div className="xi-grid" style={{ marginTop: 10 }}>
         <PropsTable title={m.home} clave={a.clave_local} best={a.best_props} />
         <PropsTable title={m.away} clave={a.clave_visitante} best={a.best_props} />
-      </div>
+      </div> : <div className="note" style={{ marginTop: 10 }}>Props numéricos: sin datos reales suficientes. La IA no rellena estimaciones individuales.</div>}
       <p className="note" style={{ color: "var(--muted)", marginTop: 6 }}>
         {isOfficial ? "Once oficial" : "Estimación"} · fuente {provider}{updated ? ` · actualizada ${new Date(updated).toLocaleString("es-ES")}` : ""}{completeness}. Props: MIN minutos · TIT prob. de inicio · G goles · A asist. · R remates · AP a puerta · FC/FR faltas · T tarjetas. {!isOfficial && "La alineación todavía no es oficial; verifica antes de apostar."}
       </p>
@@ -512,6 +513,7 @@ export default function MatchDetail({ m, bankroll, onBack, onTeam, players }) {
         </div>
       )}
 
+      <WeatherAdjustmentPanel adjustment={m.weather_adjustment} />
       <OfficialStatsPanel match={m} />
 
       {m.alineacion && <div className="section-anchor" id="match-lineup"><Alineacion m={m} a={m.alineacion} /></div>}

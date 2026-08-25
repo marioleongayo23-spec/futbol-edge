@@ -7,6 +7,8 @@ import { bestValue, countdown, getFavs, modelAccuracy, recentForm, toggleFav, to
 import MatchDetail from "./MatchDetail";
 import ProbabilityQualityPanel from "./ProbabilityQualityPanel";
 import ClvPanel from "./ClvPanel";
+import GlobalValuePanel from "./GlobalValuePanel";
+import HistoricalQualityPanel from "./HistoricalQualityPanel";
 import AccuracyMatchDetails from "./AccuracyMatchDetails";
 import { authEnabled, signOut, useSession } from "./supabase";
 
@@ -459,7 +461,7 @@ function Quiniela({ matches, quiniela, tri, dob, setTri, setDob }) {
 }
 
 /* ---------- Value bets ---------- */
-function ValueBets({ matches, bank, setBank }) {
+function ValueBets({ matches, bank, setBank, globalValue }) {
   const ms = matches.filter(hasPrediction).filter((m) => !m.finished);
   const [odds, setOdds] = useState({});
   const bankN = Number(bank) || 1000;
@@ -489,6 +491,7 @@ function ValueBets({ matches, bank, setBank }) {
   const nWithOdds = rows.filter((r) => r.haveAll).length;
   return (
     <>
+      <GlobalValuePanel rows={globalValue} />
       <div className="card">
         <div className="row" style={{ justifyContent: "space-between" }}>
           <div><div className="lbl">Bankroll (€)</div><input aria-label="Bankroll para calcular stakes" type="number" value={bank} style={{ width: 130 }} onChange={(e) => setBank(e.target.value)} /></div>
@@ -737,6 +740,7 @@ function Datos({ data }) {
         {perf.overall?.n ? <div className="mut" style={{ marginTop: 8 }}>{perf.method}</div> : <div className="note" style={{ marginTop: 8 }}>Aún sin muestra válida: el panel se activará cuando terminen partidos que ya tengan snapshot prepartido, sin reconstruir predicciones a posteriori.</div>}
       </div>
       <ProbabilityQualityPanel quality={perf.probability_quality} />
+      <HistoricalQualityPanel seeds={data.historical_seed} />
       <AccuracyPanel acc={data.accuracy} />
       <AccuracyMatchDetails rows={data.accuracy?.matches} />
       <ModelReport model={data.model} />
@@ -771,7 +775,7 @@ function Datos({ data }) {
           <li><b>Calibración con el mercado</b>: con pocas jornadas jugadas la probabilidad se mezcla con la del mercado (sin margen) y va pesando más el modelo según avanza la liga. Evita edges inflados.</li>
           <li><b>Cara a cara (h2h)</b>: enfrentamientos directos pasados en el detalle del partido.</li>
           <li><b>Perfil ataque–defensa</b>: splits reales casa/fuera de volumen, concesión, córners, faltas y tarjetas; declara tamaño de muestra.</li>
-          <li><b>Clima del estadio</b>: previsión Open-Meteo a la hora del saque inicial. Por ahora ajusta confianza y explicación, no goles.</li>
+          <li><b>Clima del estadio</b>: Open-Meteo cuantifica un ajuste conservador de xG, remates, faltas y tarjetas; el 1X2 queda intacto hasta validación histórica.</li>
           <li><b>Abstención</b>: bloquea el pick si la confianza, la completitud o el acuerdo entre modelos no alcanzan el mínimo.</li>
           <li><b>Value</b>: edge = prob·cuota − 1 (con la prob. calibrada), staking con Kelly fraccionado.</li>
         </ul>
@@ -1087,7 +1091,7 @@ export default function App() {
               {view === "clasificacion" && <Clasificacion matches={matches} onTeam={openTeam} />}
               {view === "partidos" && <Mercados matches={matches} q={q} onOpen={open} />}
               {view === "jugadores" && <Jugadores players={data.players} />}
-              {view === "value" && <ValueBets matches={matches} bank={bank} setBank={setBank} />}
+              {view === "value" && <ValueBets matches={matches} bank={bank} setBank={setBank} globalValue={data.value_ranking} />}
               {view === "cartera" && <Cartera matches={matches} />}
               {view === "quiniela" && <Quiniela matches={matches} quiniela={data.quiniela} tri={tri} dob={dob} setTri={setTri} setDob={setDob} />}
               {view === "datos" && <Datos data={data} />}

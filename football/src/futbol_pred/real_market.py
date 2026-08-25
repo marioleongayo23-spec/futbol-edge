@@ -27,7 +27,7 @@ SPORT_KEYS = {
     "Champions League": "soccer_uefa_champs_league",
 }
 EXTRA_MARKETS = (
-    "btts", "alternate_totals_corners", "alternate_totals_cards", "alternate_spreads",
+    "btts", "alternate_totals_corners", "alternate_totals_cards", "spreads", "alternate_spreads",
 )
 PLAYER_MARKETS = ("player_shots", "player_shots_on_target", "player_to_receive_card")
 
@@ -349,6 +349,9 @@ def _extra_value_rows(match: dict, quotes: list[Quote], stats_model=None) -> lis
             if p_yes is not None:
                 model_prob = p_yes if selection.casefold() in {"yes", "si", "sí"} else 1 - p_yes if selection.casefold() == "no" else None
         elif q.market in {"alternate_totals_corners", "alternate_totals_cards"} and q.point is not None:
+            allowed = {8.5, 9.5, 10.5} if "corners" in q.market else {3.5, 4.5}
+            if float(q.point) not in allowed:
+                continue
             key = "corners" if "corners" in q.market else "yellows"
             expected = _num((stats.get(key) or {}).get("total"))
             if expected is not None:
@@ -408,7 +411,40 @@ def attach_extended_market_value(
     global_rows: list[dict] = []
     requests_left = max(0, int(max_event_requests))
     if not client.available:
-        return {"refreshed": 0, "ranking": [], "source": "football-data.co.uk fallback: sin submercados fiables"}
+        co_cache: dict[str, list[dict]] = {}
+        for match in matches:
+            if match.get("finished"):
+                continue
+            block = _co_uk_featured(match, co_cache)
+            ah = block.get("asian_handicap") or {}
+            line = _num(ah.get("line"))
+            for side, selection in (("home", match.get("home")), ("away", match.get("away"))):
+                price = _num(ah.get(side))
+                signed_line = line if side == "home" else (-line if line is not None else None)
+                probs = _asian_ev_prob(match.get("xg"), side, signed_line) if price and signed_line is not None else None
+                if not probs:
+                    continue
+                pwin, ppush, _ = probs
+                edge = pwin * price + ppush - 1.0
+                row = {
+                    "market": "spreads", "selection": selection, "line": signed_line,
+                    "odds": round(price, 3), "modelProb": round(pwin, 4),
+                    "edge": round(edge, 4), "market_source": "football-data.co.uk",
+                }
+                match.setdefault("extended_value", []).append(row)
+            for row in (match.get("value") or []) + (match.get("extended_value") or []):
+                try:
+                    edge = float(row.get("edge", -99))
+                except (TypeError, ValueError):
+                    continue
+                if edge > 0.02 and match.get("recommendation", {}).get("decision") != "no_pick":
+                    global_rows.append({
+                        **row, "match_id": match.get("id"), "home": match.get("home"),
+                        "away": match.get("away"), "league": match.get("league"),
+                        "kickoff": match.get("kickoff"),
+                    })
+        ranking = sorted(global_rows, key=lambda row: float(row.get("edge", -99)), reverse=True)[:40]
+        return {"refreshed": 0, "ranking": ranking, "source": "football-data.co.uk fallback"}
     for match in matches:
         if match.get("finished"):
             continue

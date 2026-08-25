@@ -8,7 +8,7 @@ from zoneinfo import ZoneInfo
 
 from .ingest.api_football import ApiFootballClient
 from .ingest.api_football_players import fetch_team_player_rates, props_for_official_starters
-from .ingest.lineups_ai import _best_props, _fallback_props, _formation
+from .ingest.lineups_ai import _best_props, _formation
 from .model.state_simulator import simulate_match_states
 
 MADRID = ZoneInfo("Europe/Madrid")
@@ -89,7 +89,14 @@ def attach_official_context(matches: list[dict], now: datetime, client: ApiFootb
         if -3 * 3600 <= delta <= 2 * 3600:
             lineup = match.get("alineacion") or {}
             if lineup.get("status") == "confirmado":
-                continue
+                real_rows = [
+                    row for row in (lineup.get("clave_local") or []) + (lineup.get("clave_visitante") or [])
+                    if isinstance(row, dict)
+                    and str(row.get("source") or "").startswith("API-Football")
+                    and row.get("sample_minutes")
+                ]
+                if len(real_rows) >= 6:
+                    continue
             polled = _parse(lineup.get("official_poll_at"))
             if polled and (now_local - polled).total_seconds() < 45 * 60:
                 continue
@@ -145,10 +152,13 @@ def attach_official_context(matches: list[dict], now: datetime, client: ApiFootb
         positions_visitor = [row["position"] for row in by_side["visitante"]["starters"]]
         real_local = _real_starter_props(client, match, match.get("home", ""), local, kickoff)
         real_visitor = _real_starter_props(client, match, match.get("away", ""), visitor, kickoff)
-        key_local = real_local or _starter_props(old.get("clave_local"), local, "home", match)
-        key_visitor = real_visitor or _starter_props(old.get("clave_visitante"), visitor, "away", match)
-        real_count = (len(real_local) if real_local else 0) + (len(real_visitor) if real_visitor else 0)
-        props_source = "API-Football · players" if real_local and real_visitor else "mixta: API-Football + fallback" if real_local or real_visitor else "fallback estadístico/IA"
+        key_local = real_local or []
+        key_visitor = real_visitor or []
+        real_count = len(key_local) + len(key_visitor)
+        props_source = (
+            f"API-Football · players ({real_count}/22 con muestra)"
+            if real_count else "sin datos reales suficientes"
+        )
         stamp = now_local.isoformat()
         lineup = {
             **old,
@@ -167,6 +177,7 @@ def attach_official_context(matches: list[dict], now: datetime, client: ApiFootb
             "model": "alineación oficial",
             "fuente": "API-Football · fixtures/lineups",
             "player_props_source": props_source,
+            "numeric_props_source": "API-Football · players" if real_count else "pending_real_data",
             "source_updated_at": stamp,
             "generated_at": stamp,
             "ts": stamp,
@@ -187,13 +198,6 @@ def attach_official_context(matches: list[dict], now: datetime, client: ApiFootb
         updated += 1
     return updated
 
-
-def _starter_props(existing: list[dict] | None, starters: list[str], side: str, match: dict) -> list[dict]:
-    wanted = {_key(name) for name in starters}
-    kept = [row for row in (existing or []) if _key(row.get("jugador")) in wanted]
-    if len(kept) >= 3:
-        return kept[:5]
-    return _fallback_props(starters, side, match)
 
 
 def _merge_absences(lineup: dict, match: dict, absences: list[dict], now: datetime) -> None:
@@ -227,8 +231,6 @@ def content_audit(matches: list[dict], players: dict | None, now: datetime) -> d
             reasons.append("once")
         if len(lineup.get("posiciones_local") or []) != 11 or len(lineup.get("posiciones_visitante") or []) != 11:
             reasons.append("posiciones")
-        if len(lineup.get("clave_local") or []) < 3 or len(lineup.get("clave_visitante") or []) < 3:
-            reasons.append("props")
         if _key(match.get("home")) not in team_players or _key(match.get("away")) not in team_players:
             reasons.append("jugadores")
         if reasons:
