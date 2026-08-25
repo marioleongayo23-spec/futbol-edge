@@ -54,6 +54,8 @@ class FinishedClient:
 def _match(now):
     return {
         "id": "m1",
+        "league": "LaLiga",
+        "date": (now - timedelta(hours=3)).date().isoformat(),
         "home": "Atlético Madrid",
         "away": "Valencia",
         "kickoff": (now - timedelta(hours=3)).isoformat(),
@@ -110,6 +112,30 @@ def test_stats_ya_completas_no_consumen_api():
     }
 
     assert attach_finished_stats([match], now, client=client) == 0
+    assert client.detail_calls == []
+    assert client.find_calls == []
+
+
+def test_stats_finales_del_feed_anterior_se_heredan_sin_reconsultar():
+    now = datetime.fromisoformat("2026-08-25T06:00:00+02:00")
+    client = FinishedClient()
+    current = _match(now)
+    previous = _match(now)
+    previous["statsReal"] = {
+        "shots": {"home": 16, "away": 9, "total": 25},
+        "sot": {"home": 7, "away": 3, "total": 10},
+        "corners": {"home": 8, "away": 4, "total": 12},
+        "fouls": {"home": 11, "away": 15, "total": 26},
+        "yellows": {"home": 2, "away": 4, "total": 6},
+    }
+    previous["statsRealSource"] = "API-Football · final"
+    previous["statsRealUpdatedAt"] = "2026-08-25T00:30:00+02:00"
+
+    assert attach_finished_stats(
+        [current], now, client=client, previous_matches=[previous]
+    ) == 0
+    assert current["statsReal"]["shots"]["total"] == 25
+    assert current["statsRealSource"] == "API-Football · final"
     assert client.detail_calls == []
     assert client.find_calls == []
 
