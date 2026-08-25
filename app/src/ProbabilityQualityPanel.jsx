@@ -6,6 +6,12 @@ const SOURCE_ROWS = [
   ["market", "Mercado sin margen"],
 ];
 
+const VISUAL_LABELS = {
+  published: "Publicada",
+  model_only: "Modelo",
+  market: "Mercado",
+};
+
 function sampleMeta(n) {
   if (!n) return { label: "sin muestra", className: "value-no" };
   if (n < 10) return { label: "muestra insuficiente", className: "value-no" };
@@ -39,13 +45,13 @@ function QualityVisual({ rows }) {
         return (
           <div className="quality-metric" key={key}>
             <div className="quality-metric-head"><b>{label}</b><span>menor = mejor</span></div>
-            {available.map(({ key: sourceKey, label: sourceLabel, data }) => {
+            {available.map(({ key: sourceKey, data }) => {
               const value = Number(data[key]);
               const width = Math.max(7, Math.min(100, (value / max) * 100));
               const isBest = Math.abs(value - best) < 1e-9;
               return (
                 <div className={`quality-bar-row ${isBest ? "best" : ""}`} key={sourceKey}>
-                  <span>{sourceLabel}</span>
+                  <span>{VISUAL_LABELS[sourceKey] || sourceKey}</span>
                   <div className="quality-track"><i style={{ width: `${width}%` }} /></div>
                   <b>{value.toFixed(4)}</b>
                 </div>
