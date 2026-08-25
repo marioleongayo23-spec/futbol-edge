@@ -4,6 +4,7 @@ import { ah, btts, kelly, matrix, oneXtwo, over, topScores } from "./poisson";
 import { confidence, countdown, isSurprise } from "./insights";
 import { marketMovementRows, marketMovementSourceLabel } from "./markets";
 import OfficialStatsPanel from "./OfficialStatsPanel";
+import PlayerFairLines from "./PlayerFairLines";
 import { teamSquad } from "./teams";
 
 function Teams({ m, onTeam }) {
@@ -515,6 +516,7 @@ export default function MatchDetail({ m, bankroll, onBack, onTeam, players }) {
       <OfficialStatsPanel match={m} />
 
       {m.alineacion && <div className="section-anchor" id="match-lineup"><Alineacion m={m} a={m.alineacion} /></div>}
+      <PlayerFairLines match={m} />
       <LineupImpact impact={m.lineup_impact} home={m.home} away={m.away} />
 
       {(players || m.alineacion) && (() => {
