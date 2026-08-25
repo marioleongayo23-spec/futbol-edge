@@ -13,8 +13,8 @@ on:
       - "football/data/dashboard.json"
   schedule:
     # Cada 15 min: durante los partidos los resultados aparecen casi al momento.
-    # El commit solo se hace si el feed cambió, así que fuera de horario de
-    # partidos no genera ruido. (GitHub puede retrasar el cron en picos.)
+    # El commit solo se hace si cambia contenido deportivo/operativo real; los
+    # timestamps de generación por sí solos no provocan publicación.
     - cron: "*/15 * * * *"
   workflow_dispatch:
     inputs:
@@ -112,7 +112,21 @@ jobs:
           for i in 1 2 3 4 5; do
             git -C "$publish_root" fetch origin "${GITHUB_REF_NAME}"
             git -C "$publish_root" checkout --detach "origin/${GITHUB_REF_NAME}"
-            cp "$generated" "$publish_root/football/data/dashboard.json"
+            current="$publish_root/football/data/dashboard.json"
+            # generated_at y matches[*].updatedAt cambian en cada ejecución.
+            # Comparamos una huella que elimina SOLO esos campos volátiles; un
+            # cambio en resultado, cuota, once, clima, estadística, snapshot,
+            # calibración o cualquier otro dato sigue provocando publicación.
+            if [ -f "$current" ]; then
+              current_hash="$(python -m futbol_pred.feed_semantic "$current")"
+              generated_hash="$(python -m futbol_pred.feed_semantic "$generated")"
+              if [ "$current_hash" = "$generated_hash" ]; then
+                echo "El feed solo cambia en timestamps volátiles; no se publica"
+                pushed=1
+                break
+              fi
+            fi
+            cp "$generated" "$current"
             git -C "$publish_root" add football/data/dashboard.json
             if git -C "$publish_root" diff --cached --quiet; then
               echo "El feed no ha cambiado"
