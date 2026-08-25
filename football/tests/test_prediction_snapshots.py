@@ -94,6 +94,7 @@ def test_once_oficial_crea_snapshot_evento_y_archiva_el_once():
         "local": [f"L{i}" for i in range(11)],
         "visitante": [f"V{i}" for i in range(11)],
         "source_updated_at": "2026-08-24T19:45:00+02:00",
+        "official_poll_window": "T-60",
     }
     official["official_context"] = {"referee": "Árbitro Real"}
     official["lineup_impact"] = {
@@ -104,7 +105,7 @@ def test_once_oficial_crea_snapshot_evento_y_archiva_el_once():
     apply_prediction_snapshots([official], [old], datetime(2026, 8, 24, 19, 45, tzinfo=MADRID))
 
     snapshot = official["prediction_snapshot"]
-    assert snapshot["window"] == "official_lineup"
+    assert snapshot["window"] == "final_T-60_official"
     assert snapshot["alineacion"]["status"] == "confirmado"
     assert snapshot["official_context"]["referee"] == "Árbitro Real"
     assert snapshot["lineup_impact"]["probability_adjustment"] == "not_applied"
@@ -112,8 +113,8 @@ def test_once_oficial_crea_snapshot_evento_y_archiva_el_once():
     repeated = _match([80, 10, 10])
     repeated["alineacion"] = official["alineacion"]
     apply_prediction_snapshots([repeated], [official], datetime(2026, 8, 24, 20, tzinfo=MADRID))
-    assert repeated["prediction_snapshot"]["window"] == "official_lineup"
-    assert sum(row.get("window") == "official_lineup" for row in repeated["prediction_history"]) == 1
+    assert repeated["prediction_snapshot"]["window"] == "final_T-60_official"
+    assert sum(row.get("window") == "final_T-60_official" for row in repeated["prediction_history"]) == 1
 
 
 def test_no_captura_once_oficial_despues_del_inicio():
@@ -171,3 +172,53 @@ def test_historico_sin_snapshot_elimina_prediccion_reconstruida():
     apply_prediction_snapshots([current], [], datetime(2026, 8, 24, 23, tzinfo=MADRID))
     assert "probs" not in current
     assert current["prediction_unavailable_reason"] == "sin_snapshot_prepartido"
+
+
+def test_t3_es_prefinal_solo_con_once_probable_completo_refrescado():
+    old = _match([50, 30, 20])
+    apply_prediction_snapshots([old], [], datetime(2026, 8, 23, 15, tzinfo=MADRID))
+    current = _match([54, 28, 18])
+    current["alineacion"] = {
+        "status": "probable", "phase": "pre_final",
+        "local": [f"L{i}" for i in range(11)],
+        "visitante": [f"V{i}" for i in range(11)],
+        "media_sources": [{"source": "AS", "title": "Once probable"}],
+    }
+    apply_prediction_snapshots([current], [old], datetime(2026, 8, 24, 18, tzinfo=MADRID))
+    assert current["prediction_snapshot"]["window"] == "pre_final_T-3h"
+    assert len(current["prediction_snapshot"]["alineacion"]["local"]) == 11
+
+
+def test_t3_sin_once_completo_no_finge_prefinal():
+    old = _match([50, 30, 20])
+    apply_prediction_snapshots([old], [], datetime(2026, 8, 23, 15, tzinfo=MADRID))
+    current = _match([54, 28, 18])
+    current["alineacion"] = {"status": "probable", "phase": "pre_final", "local": ["L"] * 9, "visitante": ["V"] * 11}
+    apply_prediction_snapshots([current], [old], datetime(2026, 8, 24, 18, tzinfo=MADRID))
+    assert current["prediction_snapshot"]["window"] == "T-3h"
+
+
+def test_final_t30_si_el_once_oficial_no_estaba_disponible_a_t60():
+    old = _match([50, 30, 20])
+    apply_prediction_snapshots([old], [], datetime(2026, 8, 23, 15, tzinfo=MADRID))
+    final = _match([56, 27, 17])
+    final["alineacion"] = {
+        "status": "confirmado", "phase": "final", "official_poll_window": "T-30",
+        "local": [f"L{i}" for i in range(11)], "visitante": [f"V{i}" for i in range(11)],
+    }
+    apply_prediction_snapshots([final], [old], datetime(2026, 8, 24, 20, 30, tzinfo=MADRID))
+    assert final["prediction_snapshot"]["window"] == "final_T-30_official"
+
+
+def test_final_t60_no_se_reemplaza_por_una_segunda_final_t30():
+    first = _match([55, 28, 17])
+    first["alineacion"] = {
+        "status": "confirmado", "phase": "final", "official_poll_window": "T-60",
+        "local": [f"L{i}" for i in range(11)], "visitante": [f"V{i}" for i in range(11)],
+    }
+    apply_prediction_snapshots([first], [], datetime(2026, 8, 24, 20, tzinfo=MADRID))
+    second = _match([70, 20, 10])
+    second["alineacion"] = {**first["alineacion"], "official_poll_window": "T-30"}
+    apply_prediction_snapshots([second], [first], datetime(2026, 8, 24, 20, 30, tzinfo=MADRID))
+    assert second["prediction_snapshot"]["window"] == "final_T-60_official"
+    assert second["probs"] == [55, 28, 17]

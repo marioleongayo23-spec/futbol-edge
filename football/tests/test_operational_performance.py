@@ -142,3 +142,54 @@ def test_impacto_once_cuantifica_props_reales_y_bajas_sin_alterar_1x2():
     assert match["probs"] == [52, 28, 20]
     assert match["lineup_impact"]["home"]["attack_presence_index"] is not None
     assert match["prediction_confidence"]["availability_penalty_pp"] == 3.0
+
+
+def test_poll_oficial_usa_t60_y_no_repite_si_ya_confirma():
+    now = datetime(2026, 8, 24, 19, tzinfo=MADRID)
+    match = {"id": "win", "home": "A", "away": "B", "kickoff": (now + timedelta(hours=1)).isoformat(), "xg": [1.1, 1.0], "stats": {}}
+
+    class WindowClient:
+        offline = False
+        calls = 0
+        def find_fixture(self, *_args): return {"fixture": {"id": 9}}
+        def get_official_lineup(self, _id):
+            self.calls += 1
+            positions = ["POR", "LI", "DFC", "DFC", "LD", "MC", "MCD", "MC", "EI", "DC", "ED"]
+            return [
+                {"team": "A", "formation": "4-3-3", "starters": [{"name": f"A{i}", "position": p} for i, p in enumerate(positions)]},
+                {"team": "B", "formation": "4-3-3", "starters": [{"name": f"B{i}", "position": p} for i, p in enumerate(positions)]},
+            ]
+        def get_absences(self, _id): return []
+
+    client = WindowClient()
+    assert attach_official_context([match], now, client) == 1
+    assert match["alineacion"]["official_poll_window"] == "T-60"
+    assert "T-60" in match["alineacion"]["official_poll_windows"]
+    assert attach_official_context([match], now + timedelta(minutes=30), client) == 0
+    assert client.calls == 1
+
+
+def test_poll_oficial_reintenta_t30_si_t60_no_tenia_once():
+    kickoff = datetime(2026, 8, 24, 20, tzinfo=MADRID)
+    match = {"id": "retry", "home": "A", "away": "B", "kickoff": kickoff.isoformat(), "xg": [1.1, 1.0], "stats": {}, "alineacion": {}}
+
+    class RetryClient:
+        offline = False
+        calls = 0
+        def find_fixture(self, *_args): return {"fixture": {"id": 10}}
+        def get_official_lineup(self, _id):
+            self.calls += 1
+            if self.calls == 1: return None
+            positions = ["POR", "LI", "DFC", "DFC", "LD", "MC", "MCD", "MC", "EI", "DC", "ED"]
+            return [
+                {"team": "A", "formation": "4-3-3", "starters": [{"name": f"A{i}", "position": p} for i, p in enumerate(positions)]},
+                {"team": "B", "formation": "4-3-3", "starters": [{"name": f"B{i}", "position": p} for i, p in enumerate(positions)]},
+            ]
+        def get_absences(self, _id): return []
+
+    client = RetryClient()
+    assert attach_official_context([match], kickoff - timedelta(hours=1), client) == 0
+    assert match["alineacion"]["official_poll_window_last_attempt"] == "T-60"
+    assert attach_official_context([match], kickoff - timedelta(minutes=30), client) == 1
+    assert match["alineacion"]["official_poll_window"] == "T-30"
+    assert set(match["alineacion"]["official_poll_windows"]) == {"T-60", "T-30"}
