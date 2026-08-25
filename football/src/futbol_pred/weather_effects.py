@@ -93,6 +93,31 @@ def _scaled_stat(stats: dict, key: str, multiplier: float) -> dict | None:
     }
 
 
+def _sync_ou25_value(match: dict, p_over: float) -> None:
+    """Mantiene el edge O/U coherente con el xG post-clima y la cuota real."""
+    rows = match.get("value")
+    if not isinstance(rows, list):
+        return
+    synced = []
+    for raw in rows:
+        row = dict(raw) if isinstance(raw, dict) else raw
+        if not isinstance(row, dict) or row.get("market") != "ou25":
+            synced.append(row)
+            continue
+        selection = str(row.get("selection") or "").casefold()
+        probability = p_over if selection == "over" else 1.0 - p_over if selection == "under" else None
+        try:
+            odds = float(row.get("odds"))
+        except (TypeError, ValueError):
+            odds = 0.0
+        if probability is not None and odds > 1:
+            row["modelProb"] = round(probability, 3)
+            row["edge"] = round(probability * odds - 1.0, 3)
+            row["weather_adjusted"] = True
+        synced.append(row)
+    match["value"] = synced
+
+
 def apply_weather_adjustment(match: dict, now: datetime | None = None) -> bool:
     if match.get("finished") or not isinstance(match.get("weather"), dict):
         return False
@@ -149,13 +174,15 @@ def apply_weather_adjustment(match: dict, now: datetime | None = None) -> bool:
 
     markets = dict(match.get("markets") or {})
     total = adj_home + adj_away
+    p_over_25 = _over(total, 2.5)
     markets.update({
         "over_1_5": round(_over(total, 1.5), 3),
-        "over_2_5": round(_over(total, 2.5), 3),
+        "over_2_5": round(p_over_25, 3),
         "over_3_5": round(_over(total, 3.5), 3),
         "btts": round(_btts(adj_home, adj_away), 3),
     })
     match["markets"] = markets
+    _sync_ou25_value(match, p_over_25)
     match["weather_adjustment"] = {
         "applied": True,
         "weather_source_updated_at": source_stamp,
