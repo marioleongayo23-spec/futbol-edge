@@ -1,3 +1,5 @@
+import "./quality.css";
+
 const SOURCE_ROWS = [
   ["published", "Probabilidad publicada"],
   ["model_only", "Modelo puro"],
