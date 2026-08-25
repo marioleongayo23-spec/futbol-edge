@@ -16,6 +16,28 @@ jobs:
         with:
           ref: chatgpt/market-value-calibration-hardening
           fetch-depth: 0
+      - name: Hacer único el marcador de ValueBets
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('tools/apply_pr33_hardening.py')
+          text = p.read_text(encoding='utf-8')
+          old = '''text = replace_once(
+              text,
+              ''' + "'''  return (\n    <>\n      <div className=\"card\">\n        <div className=\"row\" style={{ justifyContent: \"space-between\" }}>\n'''" + ''',
+              ''' + "'''  return (\n    <>\n      <GlobalValuePanel rows={globalValue} />\n      <div className=\"card\">\n        <div className=\"row\" style={{ justifyContent: \"space-between\" }}>\n'''" + ''',
+              "GlobalValuePanel render",
+          )'''
+          new = '''text = replace_once(
+              text,
+              ''' + "'''  const nWithOdds = rows.filter((r) => r.haveAll).length;\n  return (\n    <>\n      <div className=\"card\">\n        <div className=\"row\" style={{ justifyContent: \"space-between\" }}>\n'''" + ''',
+              ''' + "'''  const nWithOdds = rows.filter((r) => r.haveAll).length;\n  return (\n    <>\n      <GlobalValuePanel rows={globalValue} />\n      <div className=\"card\">\n        <div className=\"row\" style={{ justifyContent: \"space-between\" }}>\n'''" + ''',
+              "GlobalValuePanel render",
+          )'''
+          if old not in text:
+              raise SystemExit('No se encontró el bloque antiguo de GlobalValuePanel')
+          p.write_text(text.replace(old, new, 1), encoding='utf-8')
+          PY
       - name: Aplicar integración
         run: python tools/apply_pr33_hardening.py
       - name: Validar invariantes rápidas
