@@ -1,3 +1,4 @@
+from copy import deepcopy
 from datetime import datetime, timezone
 
 from futbol_pred.weather_effects import apply_weather_adjustment, weather_multipliers
@@ -44,7 +45,7 @@ def test_ajuste_modifica_xg_stats_y_mercados_sin_tocar_1x2():
     assert match["weather_adjustment"]["xg"]["delta"][0] < 0
 
 
-def test_mismo_forecast_no_se_aplica_dos_veces():
+def test_mismo_forecast_no_se_aplica_dos_veces_sobre_el_mismo_xg():
     match = {
         "finished": False,
         "xg": [1.5, 1.0],
@@ -56,6 +57,33 @@ def test_mismo_forecast_no_se_aplica_dos_veces():
     xg = list(match["xg"])
     assert apply_weather_adjustment(match) is False
     assert match["xg"] == xg
+
+
+def test_mismo_forecast_se_reaplica_si_el_cron_reconstruye_xg_base():
+    match = {
+        "finished": False,
+        "xg": [1.5, 1.0],
+        "stats": {"shots": {"home": 12, "away": 8, "total": 20}},
+        "markets": {},
+        "weather": {"source_updated_at": "stamp", "wind_kmh": 30},
+    }
+    assert apply_weather_adjustment(match)
+    published_adjustment = deepcopy(match["weather_adjustment"])
+    published_after = list(match["xg"])
+
+    # Simula el siguiente cron: el modelo vuelve a crear xG/stats base, mientras
+    # preserve_last_known_good recupera la metadata del ajuste anterior.
+    rebuilt = {
+        "finished": False,
+        "xg": [1.5, 1.0],
+        "stats": {"shots": {"home": 12, "away": 8, "total": 20}},
+        "markets": {},
+        "weather": {"source_updated_at": "stamp", "wind_kmh": 30},
+        "weather_adjustment": published_adjustment,
+    }
+    assert apply_weather_adjustment(rebuilt) is True
+    assert rebuilt["xg"] == published_after
+    assert rebuilt["weather_adjustment"]["xg"]["before"] == [1.5, 1.0]
 
 
 def test_clima_neutro_no_altera_prediccion():
