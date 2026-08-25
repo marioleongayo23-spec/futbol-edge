@@ -87,6 +87,28 @@ function HeroKpis({ m, audit, points }) {
   );
 }
 
+function VersionStrip({ points }) {
+  const initial = points.find((point) => point.window === "initial");
+  const prefinal = points.find((point) => point.window === "pre_final_T-3h");
+  const final = points.find((point) => point.window === "final_T-60_official" || point.window === "final_T-30_official");
+  const cell = (kind, title, point, fallback) => (
+    <div className={`betting-version ${kind} ${point ? "ready" : "pending"}`}>
+      <small>{title}</small>
+      <b>{point ? point.label : fallback}</b>
+      <span>{point ? `${point.probs[0].toFixed(0)} / ${point.probs[1].toFixed(0)} / ${point.probs[2].toFixed(0)} · ${point.lead || ""}` : "pendiente"}</span>
+      {point?.sourceQuality === "media_grounded" && <em>medios + modelo</em>}
+      {point?.officialPollWindow && <em>API-Football · {point.officialPollWindow}</em>}
+    </div>
+  );
+  return (
+    <div className="betting-version-strip" aria-label="Versiones de predicción para apostar">
+      {cell("initial", "INICIAL", initial, "primera captura")}
+      {cell("prefinal", "PRE-FINAL", prefinal, "objetivo T−3h")}
+      {cell("final", "FINAL", final, "XI oficial T−60 / T−30")}
+    </div>
+  );
+}
+
 function PublishedBridge({ audit }) {
   if (!audit.rawModel || !audit.published || audit.favoriteIndex == null) return null;
   const i = audit.favoriteIndex;
@@ -126,12 +148,13 @@ export default function PredictionTimelinePanel({ m }) {
       <div className="row-between prediction-intel-head">
         <div>
           <div className="lbl">Prediction Intelligence</div>
-          <div className="mut">Evolución y explicación auditables · solo snapshots realmente capturados antes del partido</div>
+          <div className="mut">Inicial → PRE-FINAL T−3h → FINAL con XI oficial T−60/T−30 · solo información realmente disponible antes del partido</div>
         </div>
         <span className="pill">NO LEAKAGE</span>
       </div>
 
       <HeroKpis m={m} audit={audit} points={points} />
+      <VersionStrip points={points} />
 
       {points.length > 0 ? (
         <>

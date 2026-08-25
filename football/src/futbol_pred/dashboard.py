@@ -35,6 +35,7 @@ from .weather_effects import apply_weather_adjustments
 from .historical_seed import build_historical_seeds
 from .pipeline import fit_model_from_fixtures, get_fixtures, predict_match, run_model_report
 from .prediction_snapshots import apply_prediction_snapshots, latest_pre_match_snapshot
+from .prefinal_lineups import refresh_prefinal_lineups
 
 MADRID = ZoneInfo("Europe/Madrid")
 OUTPUT = Path(DATA_DIR) / "dashboard.json"
@@ -1090,6 +1091,7 @@ def build_dashboard(
     }
     _attach_previews(matches, now)
     _attach_lineups(matches, now, squads=all_squads)
+    prefinal_updates = refresh_prefinal_lineups(matches, now)
     official_updates = attach_official_context(matches, now, stats_models=stats_models_by_league)
     finished_stats_updates = attach_finished_stats(
         matches, now, previous_matches=(previous or {}).get("matches")
@@ -1116,6 +1118,7 @@ def build_dashboard(
     players = _merge_lineup_players(players, matches)
     audit = content_audit(matches, players, now)
     audit["selective_retries"] = retried
+    audit["prefinal_lineup_updates"] = prefinal_updates
     audit["official_lineup_updates"] = official_updates
     audit["weather_updates"] = weather_updates
     audit["weather_adjustments"] = weather_adjustments
@@ -1153,8 +1156,8 @@ def build_dashboard(
             "stats": "football-data.co.uk (3 temporadas; pseudo-xG, remates, córners, faltas y tarjetas)",
             "players": "API-Football /players para tasas individuales reales por-90; football-data.org para plantillas; IA solo once y bajas",
             "odds": "The Odds API cuando hay ODDS_API_KEY (consenso + submercados); football-data.co.uk como fallback real 1X2/O-U2.5/AH cuando publica columnas",
-            "lineups": "API-Football para onces oficiales y bajas cerca del partido; football-data.org para plantillas",
-            "ai": "Gemini dinámico → Groq → motor estadístico local gratuito; control del día a las 00:15 y 10:15 Europe/Madrid, con presupuesto y caché",
+            "lineups": "PRE-FINAL T-3h con once probable refrescado y señales de medios; FINAL oficial API-Football en T-60 y fallback T-30; football-data.org para plantillas",
+            "ai": "Gemini dinámico → Groq → motor estadístico local; revisiones 00:15/10:15 más PRE-FINAL T-3h bajo presupuesto y caché",
             "weather": "Open-Meteo (CC BY 4.0): forecast horario cuantifica xG/remates/disciplina; histórico separado para validación",
             "tactics": "football-data.co.uk, perfiles observados casa/fuera de remates, córners, faltas, tarjetas y goles",
         },

@@ -74,8 +74,26 @@ def _real_starter_props(client, match, team_name, starters, kickoff):
     return props if len(props) >= 3 else None
 
 
+def _official_poll_window(minutes_to_kickoff: float, attempts: dict) -> str | None:
+    """Ventanas de publicación del XI: primero T-60 y fallback T-30."""
+    if 45 <= minutes_to_kickoff <= 75 and not attempts.get("T-60"):
+        return "T-60"
+    if 15 <= minutes_to_kickoff < 45 and not attempts.get("T-30"):
+        return "T-30"
+    return None
+
+
+def _official_poll_window(minutes_to_kickoff: float, attempts: dict) -> str | None:
+    """Ventanas de publicación del XI: primero T-60 y fallback T-30."""
+    if 45 <= minutes_to_kickoff <= 75 and not attempts.get("T-60"):
+        return "T-60"
+    if 15 <= minutes_to_kickoff < 45 and not attempts.get("T-30"):
+        return "T-30"
+    return None
+
+
 def attach_official_context(matches: list[dict], now: datetime, client: ApiFootballClient | None = None, limit: int = 8, stats_models: dict[str, object] | None = None) -> int:
-    """Actualiza cada 15 min los partidos cercanos al inicio con el once oficial."""
+    """Busca el XI oficial en T-60 y, si aún no existe, reintenta en T-30."""
     client = client or ApiFootballClient()
     if client.offline:
         return 0
@@ -85,41 +103,46 @@ def attach_official_context(matches: list[dict], now: datetime, client: ApiFootb
         kickoff = _parse(match.get("kickoff"))
         if not kickoff or kickoff.date() != now_local.date():
             continue
-        delta = (kickoff - now_local).total_seconds()
-        if -3 * 3600 <= delta <= 2 * 3600:
-            lineup = match.get("alineacion") or {}
-            if lineup.get("status") == "confirmado":
-                real_rows = [
-                    row for row in (lineup.get("clave_local") or []) + (lineup.get("clave_visitante") or [])
-                    if isinstance(row, dict)
-                    and str(row.get("source") or "").startswith("API-Football")
-                    and row.get("sample_minutes")
-                ]
-                if len(real_rows) >= 6:
-                    continue
-            polled = _parse(lineup.get("official_poll_at"))
-            if polled and (now_local - polled).total_seconds() < 45 * 60:
-                continue
-            candidates.append((kickoff, match))
+        minutes_to_kickoff = (kickoff - now_local).total_seconds() / 60
+        if minutes_to_kickoff <= 0:
+            continue
+        lineup = match.get("alineacion") or {}
+        if (
+            lineup.get("status") == "confirmado"
+            and len(lineup.get("local") or []) == 11
+            and len(lineup.get("visitante") or []) == 11
+        ):
+            continue
+        attempts = dict(lineup.get("official_poll_windows") or {})
+        poll_window = _official_poll_window(minutes_to_kickoff, attempts)
+        if not poll_window:
+            continue
+        candidates.append((kickoff, match, poll_window))
+
     resolved = []
-    for kickoff, match in sorted(candidates, key=lambda item: item[0])[:limit]:
+    for kickoff, match, poll_window in sorted(candidates, key=lambda item: item[0])[:limit]:
         fixture = client.find_fixture(match.get("home", ""), match.get("away", ""), kickoff)
         fixture_id = ((fixture or {}).get("fixture") or {}).get("id")
         if fixture_id:
-            resolved.append((kickoff, match, int(fixture_id), fixture))
-    details = client.get_fixture_details([item[2] for item in resolved]) if hasattr(client, "get_fixture_details") else {}
+            resolved.append((kickoff, match, poll_window, int(fixture_id), fixture))
+    details = client.get_fixture_details([item[3] for item in resolved]) if hasattr(client, "get_fixture_details") else {}
     updated = 0
-    for kickoff, match, fixture_id, fixture in resolved:
+    for kickoff, match, poll_window, fixture_id, fixture in resolved:
         detail = details.get(fixture_id) or fixture
         official = client.lineup_from_fixture(detail) if hasattr(client, "lineup_from_fixture") and details else client.get_official_lineup(fixture_id)
         absences = client.get_absences(fixture_id)
         old = match.get("alineacion") or {}
-        old["official_poll_at"] = now_local.isoformat()
+        attempts = dict(old.get("official_poll_windows") or {})
+        attempts[poll_window] = now_local.isoformat()
+        old["official_poll_windows"] = attempts
+        old["official_poll_at"] = now_local.isoformat()  # compatibilidad con feeds previos
+        old["official_poll_window_last_attempt"] = poll_window
         match["alineacion"] = old
         if hasattr(client, "fixture_context"):
             official_context = client.fixture_context(detail)
             if official_context:
                 official_context["source_updated_at"] = now_local.isoformat()
+                official_context["official_poll_window"] = poll_window
                 stats_model = (stats_models or {}).get(match.get("league"))
                 referee_model = getattr(stats_model, "referee_model", None)
                 referee = official_context.get("referee")
@@ -150,6 +173,8 @@ def attach_official_context(matches: list[dict], now: datetime, client: ApiFootb
         visitor = [row["name"] for row in by_side["visitante"]["starters"]]
         positions_local = [row["position"] for row in by_side["local"]["starters"]]
         positions_visitor = [row["position"] for row in by_side["visitante"]["starters"]]
+        if len(local) != 11 or len(visitor) != 11:
+            continue
         real_local = _real_starter_props(client, match, match.get("home", ""), local, kickoff)
         real_visitor = _real_starter_props(client, match, match.get("away", ""), visitor, kickoff)
         key_local = real_local or []
@@ -173,9 +198,11 @@ def attach_official_context(matches: list[dict], now: datetime, client: ApiFootb
             "clave_visitante": key_visitor,
             "best_props": _best_props(key_local, key_visitor),
             "status": "confirmado",
+            "phase": "final",
             "provider": "API-Football",
             "model": "alineación oficial",
-            "fuente": "API-Football · fixtures/lineups",
+            "fuente": f"API-Football · fixtures/lineups · {poll_window}",
+            "official_poll_window": poll_window,
             "player_props_source": props_source,
             "numeric_props_source": "API-Football · players" if real_count else "pending_real_data",
             "source_updated_at": stamp,
@@ -189,6 +216,7 @@ def attach_official_context(matches: list[dict], now: datetime, client: ApiFootb
                 "props_players": len(key_local) + len(key_visitor),
                 "score": 1.0,
                 "official": True,
+                "official_poll_window": poll_window,
                 "real_player_props": real_count,
                 "player_props_source": props_source,
             },
