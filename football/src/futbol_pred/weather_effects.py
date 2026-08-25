@@ -111,8 +111,9 @@ def _sync_ou25_value(match: dict, p_over: float) -> None:
         except (TypeError, ValueError):
             odds = 0.0
         if probability is not None and odds > 1:
-            row["modelProb"] = round(probability, 3)
-            row["edge"] = round(probability * odds - 1.0, 3)
+            published_probability = round(probability, 3)
+            row["modelProb"] = published_probability
+            row["edge"] = round(published_probability * odds - 1.0, 3)
             row["weather_adjusted"] = True
         synced.append(row)
     match["value"] = synced
