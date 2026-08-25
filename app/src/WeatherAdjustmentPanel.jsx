@@ -64,7 +64,8 @@ export default function WeatherAdjustmentPanel({ adjustment }) {
               <b>{xg.after[0]}–{xg.after[1]}</b>
             </div>
           </div>
-          {xg.delta && <div className="mut" style={{ marginTop: 7 }}>Δ xG local {xg.delta[0] > 0 ? "+" : ""}{xg.delta[0]} · visitante {xg.delta[1] > 0 ? "+" : ""}{xg.delta[1]}</div>}
+          <div className="mut" style={{ marginTop: 7 }}>xG: {xg.before[0]}–{xg.before[1]} → {xg.after[0]}–{xg.after[1]}</div>
+          {xg.delta && <div className="mut" style={{ marginTop: 4 }}>Δ xG local {xg.delta[0] > 0 ? "+" : ""}{xg.delta[0]} · visitante {xg.delta[1] > 0 ? "+" : ""}{xg.delta[1]}</div>}
         </div>
       )}
 
