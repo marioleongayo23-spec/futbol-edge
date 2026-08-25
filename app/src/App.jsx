@@ -7,6 +7,7 @@ import { bestValue, countdown, getFavs, modelAccuracy, recentForm, toggleFav, to
 import MatchDetail from "./MatchDetail";
 import ProbabilityQualityPanel from "./ProbabilityQualityPanel";
 import ClvPanel from "./ClvPanel";
+import AccuracyMatchDetails from "./AccuracyMatchDetails";
 import { authEnabled, signOut, useSession } from "./supabase";
 
 function savedLightTheme() {
@@ -737,6 +738,7 @@ function Datos({ data }) {
       </div>
       <ProbabilityQualityPanel quality={perf.probability_quality} />
       <AccuracyPanel acc={data.accuracy} />
+      <AccuracyMatchDetails rows={data.accuracy?.matches} />
       <ModelReport model={data.model} />
       <div className="card">
         <div className="lbl">Motor y estado</div>

@@ -28,6 +28,8 @@ from .operational import (
     build_alerts, content_audit,
 )
 from .performance import build_performance
+from .finished_stats import attach_finished_stats
+from .accuracy_detail import enrich_accuracy
 from .pipeline import fit_model_from_fixtures, get_fixtures, predict_match, run_model_report
 from .prediction_snapshots import apply_prediction_snapshots, latest_pre_match_snapshot
 
@@ -1036,6 +1038,9 @@ def build_dashboard(
     _attach_previews(matches, now)
     _attach_lineups(matches, now, squads=all_squads)
     official_updates = attach_official_context(matches, now, stats_models=stats_models_by_league)
+    finished_stats_updates = attach_finished_stats(
+        matches, now, previous_matches=(previous or {}).get("matches")
+    )
     state_simulations = attach_state_simulations(matches)
     players = _merge_lineup_players(players, matches)
     annotate_prediction_context(matches)
@@ -1067,9 +1072,10 @@ def build_dashboard(
         "players": players,
         "model": model_report,
         "market_calibration": market_calibration or None,
-        "accuracy": _aggregate_accuracy(matches),
+        "accuracy": enrich_accuracy(_aggregate_accuracy(matches), matches),
         "performance": build_performance(matches),
         "content_audit": audit,
+        "postmatch_stats_updates": finished_stats_updates,
         "ai_usage": usage_snapshot(),
         "ai_health": {"events": ai_events[-30:]},
         "alerts": build_alerts(previous, audit, ai_events, now),
@@ -1109,8 +1115,9 @@ def _aggregate_accuracy(matches: list[dict]) -> dict | None:
     realmente ocurrido en los partidos ya jugados. % de acierto 1X2 y error medio
     (MAE) + sesgo por métrica (córners, remates, faltas...), leyendo los campos que
     ya lleva cada partido jugado (probs/result y stats/statsReal)."""
-    labels = {"shots": "Remates", "sot": "Tiros a puerta", "corners": "Córners",
-              "fouls": "Faltas", "yellows": "Amarillas"}
+    labels = {"goals": "Goles", "shots": "Remates", "sot": "Tiros a puerta",
+              "corners": "Córners", "fouls": "Faltas", "yellows": "Amarillas",
+              "reds": "Rojas"}
     hits = n_sign = evaluated = 0
     per: dict = {}
     for m in matches:
