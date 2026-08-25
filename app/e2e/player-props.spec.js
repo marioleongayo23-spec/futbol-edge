@@ -87,7 +87,7 @@ test("las líneas justas muestran probabilidades y cuotas teóricas sin fingir b
   await expect(page.getByText("sin cuota de bookmaker", { exact: true })).toBeVisible();
   const metric = page.getByRole("combobox", { name: "Métrica de jugador para líneas justas" });
   await metric.selectOption("rp");
-  await expect(page.getByText("Remates a puerta", { exact: true })).toBeVisible();
+  await expect(page.getByRole("columnheader", { name: "Remates a puerta", exact: true })).toBeVisible();
   await expect(page.getByText("59%", { exact: true })).toBeVisible();
   await expect(page.getByText("1.69", { exact: true })).toBeVisible();
   await expect(page.getByText(/Solo puede existir value cuando se compare con una cuota real/)).toBeVisible();
