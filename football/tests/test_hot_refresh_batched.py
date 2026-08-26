@@ -23,10 +23,11 @@ def _lineup(team, prefix):
 
 
 class BatchFootball(ApiFootballClient):
-    def __init__(self, status="NS", goals=None):
+    def __init__(self, status="NS", goals=None, publish_lineups=True):
         super().__init__(api_key="test")
         self.calls = []
         self.status = status
+        self.publish_lineups = publish_lineups
         self.goals = goals or {77: {"home": None, "away": None}, 78: {"home": None, "away": None}}
 
     def _row(self, fixture_id, home, away, *, detailed=False):
@@ -39,7 +40,7 @@ class BatchFootball(ApiFootballClient):
             "teams": {"home": {"name": home}, "away": {"name": away}},
             "goals": self.goals[fixture_id],
         }
-        if detailed:
+        if detailed and self.publish_lineups:
             prefixes = ("RM", "BET") if fixture_id == 77 else ("BAR", "VAL")
             row["lineups"] = [_lineup(home, prefixes[0]), _lineup(away, prefixes[1])]
         return row
@@ -130,12 +131,35 @@ def test_t60_dos_partidos_consumen_una_llamada_por_endpoint_batch():
     ]
     assert stats["lineup"] == 2
     assert stats["absences"] == 2
+    assert stats["quota_mode"] == "normal"
     assert [match["api_football_fixture_id"] for match in feed["matches"]] == [77, 78]
     assert all(match["alineacion"]["status"] == "confirmado" for match in feed["matches"])
     assert feed["matches"][0]["alineacion"]["local"][0] == "RM 0"
 
 
-def test_live_reutiliza_fixture_ids_y_no_repite_busqueda_por_fecha():
+def test_lineup_no_publicado_se_reintenta_a_los_cinco_minutos_en_modo_normal():
+    feed = _feed()
+    first = BatchFootball(publish_lineups=False)
+    refresh_payload(
+        feed,
+        now=datetime.fromisoformat("2026-08-26T18:55:00+02:00"),
+        weather_client=NoWeather(),
+        football_client=first,
+    )
+    assert feed["matches"][0]["operational_checks"]["lineup_check_result"] == "not_published"
+
+    retry = BatchFootball(publish_lineups=False)
+    refresh_payload(
+        feed,
+        now=datetime.fromisoformat("2026-08-26T19:00:00+02:00"),
+        weather_client=NoWeather(),
+        football_client=retry,
+    )
+    assert retry.calls == [("fixtures", {"ids": "77-78"}), ("injuries", {"ids": "77-78"})]
+    assert feed["matches"][0]["operational_checks"]["lineup_checked_at"] == "2026-08-26T19:00:00+02:00"
+
+
+def test_live_reutiliza_fixture_ids_y_refresca_cada_diez_minutos_aprox():
     feed = _feed()
     first = BatchFootball()
     refresh_payload(
@@ -161,26 +185,6 @@ def test_live_reutiliza_fixture_ids_y_no_repite_busqueda_por_fecha():
     assert stats["fixture"] == 2
     assert feed["matches"][0]["live_score"] == [1, 0]
     assert feed["matches"][1]["live_score"] == [0, 1]
-    assert feed["matches"][0]["operational_checks"]["fixture_checked_at"] == "2026-08-26T20:20:00+02:00"
-
-
-def test_live_a_los_diez_minutos_no_quema_otra_peticion_free():
-    feed = _feed()
-    first = BatchFootball()
-    refresh_payload(
-        feed,
-        now=datetime.fromisoformat("2026-08-26T19:00:00+02:00"),
-        weather_client=NoWeather(),
-        football_client=first,
-    )
-    live = BatchFootball(status="1H")
-    refresh_payload(
-        feed,
-        now=datetime.fromisoformat("2026-08-26T20:20:00+02:00"),
-        weather_client=NoWeather(),
-        football_client=live,
-    )
-    last_check = feed["matches"][0]["operational_checks"]["fixture_checked_at"]
 
     ten_minutes_later = BatchFootball(status="1H")
     refresh_payload(
@@ -189,9 +193,8 @@ def test_live_a_los_diez_minutos_no_quema_otra_peticion_free():
         weather_client=NoWeather(),
         football_client=ten_minutes_later,
     )
-
-    assert ten_minutes_later.calls == []
-    assert feed["matches"][0]["operational_checks"]["fixture_checked_at"] == last_check
+    assert ten_minutes_later.calls == [("fixtures", {"ids": "77-78"})]
+    assert feed["matches"][0]["operational_checks"]["fixture_checked_at"] == "2026-08-26T20:30:00+02:00"
 
 
 def test_t120_no_repite_injuries_que_el_proveedor_actualiza_mas_lento():
@@ -206,3 +209,27 @@ def test_t120_no_repite_injuries_que_el_proveedor_actualiza_mas_lento():
     )
 
     assert client.calls == []
+
+
+def test_cuota_baja_reduce_frecuencia_de_lineup():
+    feed = _feed()
+    feed["source_health"] = {"api_football": {"daily_remaining": 30}}
+    # T-60: primera consulta permitida.
+    first = BatchFootball(publish_lineups=False)
+    refresh_payload(
+        feed,
+        now=datetime.fromisoformat("2026-08-26T19:00:00+02:00"),
+        weather_client=NoWeather(),
+        football_client=first,
+    )
+    assert feed["matches"][0]["operational_checks"]["lineup_checked_at"] == "2026-08-26T19:00:00+02:00"
+
+    # Cinco minutos después, modo low exige ~9 min y no vuelve a gastar fixtures.
+    retry = BatchFootball(publish_lineups=False)
+    refresh_payload(
+        feed,
+        now=datetime.fromisoformat("2026-08-26T19:05:00+02:00"),
+        weather_client=NoWeather(),
+        football_client=retry,
+    )
+    assert retry.calls == []
