@@ -61,6 +61,17 @@ def test_weather_elige_hora_y_expone_inputs_para_ajuste_cuantificado():
     assert weather["model_use"] == "ajuste_cuantitativo_contextual"
 
 
+def test_weather_convierte_kickoff_utc_a_hora_local_de_madrid():
+    weather = WeatherClient(session=_Session()).forecast(
+        venue_for("Real Madrid"), datetime.fromisoformat("2026-08-24T16:00:00+00:00")
+    )
+    # 16:00 UTC = 18:00 Europe/Madrid en agosto. Sin la conversión explícita
+    # se seleccionaría erróneamente la fila de las 17:00.
+    assert weather["forecast_for"] == "2026-08-24T18:00:00"
+    assert weather["temperature_c"] == 33.0
+    assert weather["precipitation_mm"] == 0.3
+
+
 def test_matchup_tactico_declara_muestra_y_no_inventa_formacion():
     model = TrendModel()
     for _ in range(6):
