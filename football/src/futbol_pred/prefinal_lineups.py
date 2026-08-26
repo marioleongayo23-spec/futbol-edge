@@ -1,9 +1,8 @@
 """Alineación PRE-FINAL a T-3h.
 
 La PRE-FINAL solo se considera once probable cuando está apoyada por evidencia
-externa reciente. Si no hay medios/fuente suficiente, el sistema puede conservar
-o producir una estimación para análisis interno, pero queda marcada como
-``estimado`` y nunca se promociona visualmente como once probable.
+externa reciente para AMBOS equipos. Una noticia de un solo lado puede mejorar
+la estimación, pero nunca respalda automáticamente el XI del rival.
 No sustituye a la alineación oficial T-60/T-30 y no altera 1X2 sin validación.
 """
 from __future__ import annotations
@@ -14,7 +13,7 @@ from zoneinfo import ZoneInfo
 
 from .ingest.ai_client import available, chat
 from .ingest.lineups_ai import _extract_json, _match_key, _validate_item, ensure_position_metadata
-from .ingest.probable_lineup_media import collect_probable_lineup_media
+from .ingest.probable_lineup_media import collect_probable_lineup_media, covered_sides
 
 MADRID = ZoneInfo("Europe/Madrid")
 PREFINAL_TARGET_HOURS = 3.0
@@ -59,6 +58,56 @@ def _filter_real_props(rows, starters: list[str]) -> list[dict]:
     ]
 
 
+def _row_sides(row: dict, match: dict) -> list[str]:
+    explicit = [side for side in (row.get("covered_sides") or []) if side in {"local", "visitante"}]
+    if explicit:
+        return explicit
+    # Compatibilidad con cachés/fixtures antiguos que aún no traen covered_sides.
+    return covered_sides(
+        match.get("home", ""),
+        match.get("away", ""),
+        str(row.get("title") or ""),
+        str(row.get("snippet") or ""),
+    )
+
+
+def _source_card(row: dict) -> dict:
+    return {
+        key: row.get(key)
+        for key in ("source", "title", "published_at", "url", "evidence_level", "evidence_rank")
+        if row.get(key) is not None
+    }
+
+
+def _evidence_summary(match: dict, media: list[dict]) -> dict:
+    local = []
+    away = []
+    for row in media or []:
+        if not isinstance(row, dict):
+            continue
+        sides = _row_sides(row, match)
+        card = _source_card(row)
+        if "local" in sides:
+            local.append(card)
+        if "visitante" in sides:
+            away.append(card)
+    local_grounded = bool(local)
+    away_grounded = bool(away)
+    if local_grounded and away_grounded:
+        level = "trusted_media_both_sides"
+    elif local_grounded or away_grounded:
+        level = "trusted_media_partial"
+    else:
+        level = "model_only"
+    return {
+        "policy": "both_sides_required_for_probable",
+        "hierarchy": ["official_lineup", "trusted_media_both_sides", "model_estimate"],
+        "level": level,
+        "local": {"grounded": local_grounded, "sources": local},
+        "visitante": {"grounded": away_grounded, "sources": away},
+    }
+
+
 def _prompt(candidates: list[dict]) -> str:
     payload = []
     for item in candidates:
@@ -72,13 +121,14 @@ def _prompt(candidates: list[dict]) -> str:
             "bajas_previas_local": current.get("bajas_local") or [],
             "bajas_previas_visitante": current.get("bajas_visitante") or [],
             "evidencia_medios": item["media"],
+            "cobertura_evidencia": item["evidence"],
         })
     return (
         "Actúas como analista prepartido de fútbol español. Son aproximadamente T-3h. "
         "Construye una propuesta de XI usando SOLO la evidencia suministrada, el once previo "
         "y contexto táctico razonable. La prensa es evidencia, no confirmación oficial. "
-        "Si evidencia_medios está vacía, el resultado será tratado por el sistema únicamente "
-        "como ESTIMACIÓN de modelo, nunca como once probable respaldado por fuentes. "
+        "La evidencia se atribuye por equipo: jamás uses una noticia del local como respaldo del XI visitante, ni al revés. "
+        "Si falta evidencia de un lado, ese XI será tratado por el sistema como estimación aunque puedas proponerlo. "
         "No inventes lesiones ni digas que un once es oficial. Si una noticia contradice otra, "
         "prioriza la más reciente y explica la incertidumbre solo mediante las bajas/dudas. "
         "Para cada partido devuelve EXACTAMENTE 11 jugadores únicos por lado, ordenados POR→DEF→MED→ATA. "
@@ -90,27 +140,54 @@ def _prompt(candidates: list[dict]) -> str:
     )
 
 
-def _apply_result(match: dict, result: dict, media: list[dict], now: datetime, provider: str, model: str) -> None:
+def _apply_result(match: dict, result: dict, media: list[dict], evidence: dict,
+                  now: datetime, provider: str, model: str) -> None:
     old = match.get("alineacion") or {}
     stamp = _aware(now).astimezone(MADRID).isoformat()
     local_props = _filter_real_props(old.get("clave_local"), result["local"])
     visitor_props = _filter_real_props(old.get("clave_visitante"), result["visitante"])
-    grounded = bool(media)
+    fully_grounded = evidence.get("level") == "trusted_media_both_sides"
+    partially_grounded = evidence.get("level") == "trusted_media_partial"
+    if fully_grounded:
+        source_quality = "media_grounded"
+        lineup_kind = "source_grounded_probable"
+        phase = "pre_final"
+        status = "probable"
+        fuente = "Pre-final T-3h · medios recientes para ambos equipos + IA"
+        warning = None
+    elif partially_grounded:
+        source_quality = "media_partial"
+        lineup_kind = "partially_grounded_estimate"
+        phase = "pre_final_estimate"
+        status = "estimado"
+        fuente = "Estimación T-3h · evidencia reciente solo para uno de los equipos + IA"
+        missing_side = "visitante" if evidence.get("local", {}).get("grounded") else "local"
+        warning = f"Hay evidencia reciente solo para el {('equipo visitante' if missing_side == 'visitante' else 'equipo local')}; el partido no se etiqueta como XI probable completo."
+    else:
+        source_quality = "model_only"
+        lineup_kind = "model_estimate"
+        phase = "pre_final_estimate"
+        status = "estimado"
+        fuente = "Estimación T-3h · IA + once previo · sin fuente externa suficiente"
+        warning = "XI estimado por modelo; no existe evidencia externa suficiente para ambos equipos."
+
     merged = {
         **old,
         **result,
         "clave_local": local_props,
         "clave_visitante": visitor_props,
         "best_props": [],
-        "status": "probable" if grounded else "estimado",
-        "phase": "pre_final" if grounded else "pre_final_estimate",
-        "lineup_kind": "source_grounded_probable" if grounded else "model_estimate",
+        "status": status,
+        "phase": phase,
+        "lineup_kind": lineup_kind,
         "provider": provider,
         "model": model,
-        "fuente": "Pre-final T-3h · medios recientes + IA" if grounded else "Estimación T-3h · IA + once previo · sin fuente externa suficiente",
+        "fuente": fuente,
         "media_sources": media,
-        "source_quality": "media_grounded" if grounded else "model_only",
-        "display_warning": None if grounded else "XI estimado por modelo; no existe una fuente externa suficiente para llamarlo once probable.",
+        "lineup_evidence": evidence,
+        "evidence_scope": evidence.get("level"),
+        "source_quality": source_quality,
+        "display_warning": warning,
         "prefinal_refresh_at": stamp,
         "source_updated_at": stamp,
         "generated_at": stamp,
@@ -121,11 +198,13 @@ def _apply_result(match: dict, result: dict, media: list[dict], now: datetime, p
     match["alineacion"] = merged
 
 
-def _mark_fallback(match: dict, media: list[dict], now: datetime) -> bool:
+def _mark_fallback(match: dict, media: list[dict], evidence: dict, now: datetime) -> bool:
     lineup = match.get("alineacion") or {}
     stamp = _aware(now).astimezone(MADRID).isoformat()
     lineup["prefinal_attempt_at"] = stamp
     lineup["media_sources"] = media
+    lineup["lineup_evidence"] = evidence
+    lineup["evidence_scope"] = evidence.get("level")
     if not _valid_xi(lineup):
         match["alineacion"] = lineup
         return False
@@ -149,10 +228,10 @@ def _mark_fallback(match: dict, media: list[dict], now: datetime) -> bool:
 def refresh_prefinal_lineups(matches: list[dict], now: datetime, limit: int = 8) -> dict:
     """Refresca una vez el XI en la ventana T-3h.
 
-    Devuelve métricas operativas para auditar cobertura y grounding. Solo una
-    respuesta con evidencia externa se etiqueta como PRE-FINAL probable. Si IA
-    falla o no hay grounding suficiente, conserva el mejor XI previo válido como
-    estimación; nunca rellena nombres para alcanzar 11 ni lo vende como probable.
+    Un PRE-FINAL solo se promociona a ``probable`` si ambos lados están
+    respaldados por evidencia de prensa reciente y el resultado contiene 11+11.
+    Evidencia parcial se conserva y se hace auditable, pero el estado global
+    permanece ``estimado``.
     """
     now_local = _aware(now).astimezone(MADRID)
     candidates = []
@@ -163,10 +242,12 @@ def refresh_prefinal_lineups(matches: list[dict], now: datetime, limit: int = 8)
         if lineup.get("status") == "confirmado" or lineup.get("prefinal_refresh_at"):
             continue
         media = collect_probable_lineup_media(match.get("home", ""), match.get("away", ""), now_local)
+        evidence = _evidence_summary(match, media)
         candidates.append({
             "match": match,
             "partido": f"{match.get('home', '')} - {match.get('away', '')}",
             "media": media,
+            "evidence": evidence,
         })
         if len(candidates) >= limit:
             break
@@ -187,24 +268,29 @@ def refresh_prefinal_lineups(matches: list[dict], now: datetime, limit: int = 8)
                     results[key] = validated
             provider, model = response.provider, response.model
 
-    refreshed = grounded = fallback = 0
+    refreshed = grounded = partial = fallback = probable = 0
     for item in candidates:
         match = item["match"]
         key = _match_key(item["partido"])
         result = results.get(key)
+        level = item["evidence"].get("level")
+        grounded += int(level == "trusted_media_both_sides")
+        partial += int(level == "trusted_media_partial")
         if result and provider and model:
-            _apply_result(match, result, item["media"], now_local, provider, model)
+            _apply_result(match, result, item["media"], item["evidence"], now_local, provider, model)
             refreshed += 1
-            grounded += int(bool(item["media"]))
-        elif _mark_fallback(match, item["media"], now_local):
+            probable += int(match.get("alineacion", {}).get("status") == "probable")
+        elif _mark_fallback(match, item["media"], item["evidence"], now_local):
             refreshed += 1
             fallback += 1
-            grounded += int(bool(item["media"]))
 
     return {
         "candidates": len(candidates),
         "refreshed": refreshed,
         "media_grounded": grounded,
+        "media_partial": partial,
+        "probable": probable,
         "fallback": fallback,
         "target": "T-3h",
+        "grounding_policy": "both_sides_required_for_probable",
     }
