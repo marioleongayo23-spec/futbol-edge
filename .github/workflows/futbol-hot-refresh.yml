@@ -48,6 +48,10 @@ jobs:
             git reset --hard origin/main
 
             PYTHONPATH=football/src python -m futbol_pred.hot_refresh
+            # La cobertura cambia también al cruzar ventanas T−24h/T−8h/T−6h/
+            # T−3h/T−45 aunque la fuente todavía no haya publicado un dato.
+            # Recalcularla aquí hace visible ese hueco sin reentrenar el modelo.
+            PYTHONPATH=football/src python -m futbol_pred.coverage
 
             if git diff --quiet -- football/data/dashboard.json; then
               echo "Sin cambios rápidos sustantivos"
