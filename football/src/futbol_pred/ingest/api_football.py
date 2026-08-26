@@ -160,6 +160,14 @@ class ApiFootballClient:
         except (TypeError, ValueError):
             return 0, 0
 
+    @staticmethod
+    def _formation_parts(formation: str | None) -> list[int]:
+        try:
+            parts = [int(value) for value in str(formation or "").split("-")]
+        except ValueError:
+            return []
+        return parts if parts and all(value > 0 for value in parts) else []
+
     @classmethod
     def _grid_position_contextual(
         cls,
@@ -168,24 +176,29 @@ class ApiFootballClient:
         *,
         line_width: int | None = None,
         max_line: int | None = None,
+        formation_parts: list[int] | None = None,
     ) -> str:
-        """Convierte la cuadrícula oficial usando la geometría de ESA formación.
+        """Convierte ``grid`` usando también la estructura de la formación oficial.
 
-        La implementación anterior asumía que cualquier ``2:1`` era LI y que
-        ``2:4`` o superior era LD. Eso rompe defensas de tres y varias líneas de
-        cinco. Aquí la lateralidad depende del número real de jugadores de la
-        línea; el ``grid`` oficial manda y el ``pos`` genérico solo es fallback.
+        ``grid`` dice fila/columna; la formación (3-4-3, 4-2-3-1...) dice qué
+        representa cada fila. Así evitamos dos errores típicos: llamar LI a un
+        central izquierdo de una defensa de tres y llamar MI/MD a interiores de
+        un 4-3-3 simplemente por estar en columnas exteriores.
         """
         line, column = cls._grid_coords(grid)
         width = max(0, int(line_width or 0))
         last = max(0, int(max_line or 0))
+        parts = formation_parts or []
+        segment_index = line - 2
+        if 0 <= segment_index < len(parts):
+            width = parts[segment_index]
+        segment_count = len(parts)
 
         if line == 1:
             return "POR"
 
-        # Primera línea de campo: 3 centrales si son tres; con cuatro/cinco,
-        # solo los extremos son laterales y el interior permanece como central.
-        if line == 2 and width:
+        # Primera línea tras el portero = defensa.
+        if segment_index == 0 or (not parts and line == 2):
             if width <= 3:
                 return "DFC"
             if column == 1:
@@ -194,8 +207,16 @@ class ApiFootballClient:
                 return "LD"
             return "DFC"
 
-        # Última línea: 1/2 puntas son DC; con tres o más distinguimos extremos.
-        if last and line == last and width:
+        # Último segmento de la formación = ataque.
+        if parts and segment_index == segment_count - 1:
+            if width <= 2:
+                return "DC"
+            if column == 1:
+                return "EI"
+            if column == width:
+                return "ED"
+            return "DC"
+        if not parts and last and line == last and width:
             if width <= 2:
                 return "DC"
             if column == 1:
@@ -204,28 +225,22 @@ class ApiFootballClient:
                 return "ED"
             return "DC"
 
-        # Línea inmediatamente anterior al punta en 4-2-3-1/4-4-1-1: extremos
-        # abiertos y mediapunta(s) interiores.
-        if last >= 5 and line == last - 1 and width:
-            if width == 1:
-                return "MP"
-            if width >= 3 and column == 1:
-                return "EI"
-            if width >= 3 and column == width:
-                return "ED"
-            return "MP"
-
-        # Resto de líneas de medio: lateralidad solo si realmente hay anchura.
-        if line >= 3 and width:
-            if width == 1:
-                return "MC"
-            if width == 2:
-                return "MCD" if line == 3 else "MC"
+        # Segmentos intermedios. En una formación de cuatro bandas (p.ej.
+        # 4-2-3-1/3-4-2-1), la penúltima puede ser claramente mediapunta/extremos.
+        if width == 1:
+            return "MP" if parts and segment_count >= 4 and segment_index == segment_count - 2 else "MCD"
+        if width == 2:
+            return "MP" if parts and segment_count >= 4 and segment_index == segment_count - 2 else "MCD"
+        if width == 3:
+            if parts and segment_count >= 4 and segment_index == segment_count - 2:
+                return "EI" if column == 1 else "ED" if column == width else "MP"
+            return "MC" if column in {1, width} else "MCD"
+        if width >= 4:
             if column == 1:
                 return "MI"
             if column == width:
                 return "MD"
-            return "MCD" if line == 3 else "MC"
+            return "MCD" if segment_index == 1 else "MC"
 
         raw = str(fallback or "").casefold()
         return "POR" if raw == "g" else "DFC" if raw == "d" else "MC" if raw == "m" else "DC"
@@ -342,6 +357,8 @@ class ApiFootballClient:
     def _parse_lineups(cls, response: list[dict]) -> list[dict]:
         out = []
         for team in response:
+            formation = str(team.get("formation") or "").strip()
+            parts = cls._formation_parts(formation)
             raw_starters = team.get("startXI") or []
             widths: dict[int, int] = {}
             max_line = 0
@@ -366,13 +383,14 @@ class ApiFootballClient:
                         player.get("pos"),
                         line_width=widths.get(line),
                         max_line=max_line,
+                        formation_parts=parts,
                     ),
                     "grid": player.get("grid"),
                 })
             if len(starters) == 11:
                 out.append({
                     "team": str((team.get("team") or {}).get("name") or ""),
-                    "formation": team.get("formation"),
+                    "formation": formation or None,
                     "coach": str((team.get("coach") or {}).get("name") or ""),
                     "starters": starters,
                 })
