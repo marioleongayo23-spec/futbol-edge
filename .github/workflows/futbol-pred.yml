@@ -12,10 +12,16 @@ on:
     paths-ignore:
       - "football/data/dashboard.json"
   schedule:
-    # Cada 15 min, escalonado respecto al hot-refresh y fuera del minuto 00.
-    # Además de recalcular el modelo actúa como segundo canal de actualización
-    # del feed si GitHub retrasa alguna ejecución del workflow ligero.
-    - cron: "5,20,35,50 * * * *"
+    # MODO PARTIDO: recálculo predictivo cada 10 min entre 08:01 y 01:51 Madrid.
+    # El hot-refresh despierta cada 5 min entre medias, por lo que contexto y
+    # mercado pueden ser aún más frescos sin reentrenar todo en cada pasada.
+    - cron: "1,11,21,31,41,51 8-23 * * *"
+      timezone: "Europe/Madrid"
+    - cron: "1,11,21,31,41,51 0-1 * * *"
+      timezone: "Europe/Madrid"
+    # Madrugada sin fútbol español: basta con mantener calendario/fuentes vivos.
+    - cron: "6,36 2-7 * * *"
+      timezone: "Europe/Madrid"
   workflow_dispatch:
     inputs:
       force_ai:
@@ -46,7 +52,11 @@ jobs:
           pip install -r requirements.txt
           pip install -e .
 
+      # En cron frecuente no repetimos 277 tests cada 10 min: los gates se
+      # ejecutan en cada cambio de código/PR. Esto reduce minutos y, sobre todo,
+      # el retraso entre una fuente nueva y la predicción publicada.
       - name: Tests (fail-fast antes de predecir)
+        if: github.event_name != 'schedule'
         run: pytest -q
 
       - name: Ejecutar pipeline
@@ -67,9 +77,9 @@ jobs:
           API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
           ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          # IA: Gemini primero y Groq de fallback. El cron de resultados sigue
-          # cada 15 min; la IA solo refresca partidos del día en las ventanas
-          # 00:15-00:44 y 10:15-10:44 de Madrid, con caché entre ambas pasadas.
+          # IA: Gemini primero y Groq de fallback. El pipeline completo se
+          # recalcula cada 10 min en horario de partido; la IA mantiene ventanas
+          # controladas y los onces probables tienen sus hitos T-8/T-3/T-90.
           AI_API_KEY: ${{ secrets.AI_API_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GEMINI_MODEL: ${{ secrets.GEMINI_MODEL }}
