@@ -177,25 +177,55 @@ class ApiFootballClient:
         line_width: int | None = None,
         max_line: int | None = None,
         formation_parts: list[int] | None = None,
+        fallback_role_count: int | None = None,
     ) -> str:
-        """Convierte ``grid`` usando también la estructura de la formación oficial.
+        """Convierte ``grid`` usando formación; tolera datos inconsistentes.
 
-        ``grid`` dice fila/columna; la formación (3-4-3, 4-2-3-1...) dice qué
-        representa cada fila. Así evitamos dos errores típicos: llamar LI a un
-        central izquierdo de una defensa de tres y llamar MI/MD a interiores de
-        un 4-3-3 simplemente por estar en columnas exteriores.
+        Si ``formation`` y las filas del ``grid`` encajan, la formación define el
+        significado de cada fila. Si no encajan, se ignora esa formación y se
+        usa el rol bruto G/D/M/F junto con la lateralidad del grid. Así evitamos
+        convertir una inconsistencia del proveedor en una demarcación falsa.
         """
         line, column = cls._grid_coords(grid)
         width = max(0, int(line_width or 0))
         last = max(0, int(max_line or 0))
         parts = formation_parts or []
+        raw = str(fallback or "").casefold()
+        role_count = max(0, int(fallback_role_count or 0))
         segment_index = line - 2
         if 0 <= segment_index < len(parts):
             width = parts[segment_index]
         segment_count = len(parts)
 
-        if line == 1:
+        if line == 1 or raw == "g":
             return "POR"
+
+        # Fallback robusto cuando formation/grid no son coherentes.
+        if not parts:
+            if raw == "d":
+                if role_count <= 3 or width <= 3:
+                    return "DFC"
+                if column == 1:
+                    return "LI"
+                if column >= width:
+                    return "LD"
+                return "DFC"
+            if raw == "m":
+                if role_count <= 2:
+                    return "MCD"
+                if column == 1:
+                    return "MI"
+                if column >= width:
+                    return "MD"
+                return "MCD"
+            if raw == "f":
+                if role_count <= 2:
+                    return "DC"
+                if column == 1:
+                    return "EI"
+                if column >= 3:
+                    return "ED"
+                return "DC"
 
         # Primera línea tras el portero = defensa.
         if segment_index == 0 or (not parts and line == 2):
@@ -226,7 +256,7 @@ class ApiFootballClient:
             return "DC"
 
         # Segmentos intermedios. En una formación de cuatro bandas (p.ej.
-        # 4-2-3-1/3-4-2-1), la penúltima puede ser claramente mediapunta/extremos.
+        # 4-2-3-1/3-4-2-1), la penúltima puede ser mediapunta/extremos.
         if width == 1:
             return "MP" if parts and segment_count >= 4 and segment_index == segment_count - 2 else "MCD"
         if width == 2:
@@ -242,8 +272,7 @@ class ApiFootballClient:
                 return "MD"
             return "MCD" if segment_index == 1 else "MC"
 
-        raw = str(fallback or "").casefold()
-        return "POR" if raw == "g" else "DFC" if raw == "d" else "MC" if raw == "m" else "DC"
+        return "DFC" if raw == "d" else "MC" if raw == "m" else "DC"
 
     @classmethod
     def _grid_position(cls, grid: str | None, fallback: str | None = None) -> str:
@@ -361,13 +390,27 @@ class ApiFootballClient:
             parts = cls._formation_parts(formation)
             raw_starters = team.get("startXI") or []
             widths: dict[int, int] = {}
+            counts_by_line: dict[int, int] = {}
+            role_counts: dict[str, int] = {}
             max_line = 0
             for raw in raw_starters:
                 player = raw.get("player") or {}
                 line, column = cls._grid_coords(player.get("grid"))
+                role = str(player.get("pos") or "").casefold()
+                if role:
+                    role_counts[role] = role_counts.get(role, 0) + 1
                 if line > 0 and column > 0:
                     widths[line] = max(widths.get(line, 0), column)
+                    counts_by_line[line] = counts_by_line.get(line, 0) + 1
                     max_line = max(max_line, line)
+
+            outfield_lines = sorted(line for line in counts_by_line if line > 1)
+            formation_consistent = bool(
+                parts
+                and len(outfield_lines) == len(parts)
+                and all(counts_by_line[line] == parts[index] for index, line in enumerate(outfield_lines))
+            )
+            trusted_parts = parts if formation_consistent else []
 
             starters = []
             for raw in raw_starters:
@@ -376,6 +419,7 @@ class ApiFootballClient:
                 if not name:
                     continue
                 line, _column = cls._grid_coords(player.get("grid"))
+                role = str(player.get("pos") or "").casefold()
                 starters.append({
                     "name": name,
                     "position": cls._grid_position_contextual(
@@ -383,7 +427,8 @@ class ApiFootballClient:
                         player.get("pos"),
                         line_width=widths.get(line),
                         max_line=max_line,
-                        formation_parts=parts,
+                        formation_parts=trusted_parts,
+                        fallback_role_count=role_counts.get(role),
                     ),
                     "grid": player.get("grid"),
                 })
@@ -393,6 +438,7 @@ class ApiFootballClient:
                     "formation": formation or None,
                     "coach": str((team.get("coach") or {}).get("name") or ""),
                     "starters": starters,
+                    "position_grid_consistent": formation_consistent,
                 })
         return out if len(out) == 2 else []
 
