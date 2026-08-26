@@ -10,6 +10,7 @@ from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
 from html import unescape
 import re
+import unicodedata
 import xml.etree.ElementTree as ET
 
 import requests
@@ -25,10 +26,51 @@ TRUSTED_MEDIA = {
     "el desmarque": "ElDesmarque",
 }
 
+# Jerarquía de evidencia, no ranking editorial entre cabeceras. Un XI oficial
+# siempre está por encima de una propuesta de prensa; una propuesta de prensa
+# reciente está por encima de una estimación de modelo/fallback.
+EVIDENCE_HIERARCHY = {
+    "official_lineup": 1,
+    "trusted_media_recent": 2,
+    "model_estimate": 3,
+}
+
 
 def _clean_html(value: str | None) -> str:
     text = re.sub(r"<[^>]+>", " ", unescape(str(value or "")))
     return re.sub(r"\s+", " ", text).strip()
+
+
+def _norm(value: str | None) -> str:
+    text = unicodedata.normalize("NFKD", str(value or ""))
+    text = "".join(char for char in text if not unicodedata.combining(char)).casefold()
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def _team_mentioned(team: str, haystack: str) -> bool:
+    team_norm = _norm(team)
+    text = _norm(haystack)
+    if not team_norm or not text:
+        return False
+    if team_norm in text:
+        return True
+    # Los proveedores suelen traer sufijos jurídicos/deportivos que la prensa
+    # omite (CF, FC, de Fútbol...). Aceptamos el núcleo largo, evitando tokens
+    # genéricos que provocarían atribuciones falsas.
+    stop = {"cf", "fc", "cd", "ud", "sd", "rcd", "real", "club", "de", "del", "la", "el", "futbol", "balompie"}
+    tokens = [token for token in re.findall(r"[a-z0-9]+", team_norm) if token not in stop and len(token) >= 4]
+    return bool(tokens) and any(re.search(rf"\b{re.escape(token)}\b", text) for token in tokens)
+
+
+def covered_sides(home: str, away: str, title: str, snippet: str | None = None) -> list[str]:
+    """Atribuye una pieza de evidencia únicamente al equipo que menciona."""
+    haystack = f"{title} {snippet or ''}"
+    sides = []
+    if _team_mentioned(home, haystack):
+        sides.append("local")
+    if _team_mentioned(away, haystack):
+        sides.append("visitante")
+    return sides
 
 
 def _fresh(pub_date: str | None, now: datetime, max_age_hours: int) -> tuple[bool, str | None]:
@@ -56,8 +98,9 @@ def collect_probable_lineup_media(
     """Busca noticias recientes sobre posibles onces de un partido.
 
     Google News RSS se usa solo como índice. Se conserva título, medio, fecha,
-    snippet y enlace del resultado; nunca se afirma que un jugador sea titular
-    porque aparezca en una noticia.
+    snippet, enlace y, crucialmente, qué lado del partido respalda la pieza.
+    Una noticia sobre un solo equipo nunca debe fundamentar automáticamente el
+    XI del rival.
     """
     query = f'"{home}" "{away}" ("alineación posible" OR "alineación probable" OR "once probable")'
     try:
@@ -88,8 +131,8 @@ def collect_probable_lineup_media(
         snippet = _clean_html(item.findtext("description"))
         link = (item.findtext("link") or "").strip()
         haystack = f"{title} {snippet}".casefold()
-        # Exige que la noticia hable al menos de uno de los dos equipos y de XI.
-        if not (home.casefold() in haystack or away.casefold() in haystack):
+        sides = covered_sides(home, away, title, snippet)
+        if not sides:
             continue
         if not any(token in haystack for token in ("alineaci", "once", "titular")):
             continue
@@ -104,6 +147,9 @@ def collect_probable_lineup_media(
             "snippet": snippet[:700] or None,
             "url": link or None,
             "role": "probable_lineup_evidence",
+            "covered_sides": sides,
+            "evidence_level": "trusted_media_recent",
+            "evidence_rank": EVIDENCE_HIERARCHY["trusted_media_recent"],
         })
         if len(out) >= max_items:
             break
