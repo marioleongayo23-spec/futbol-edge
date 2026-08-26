@@ -10,6 +10,27 @@ function impactClass(multiplier) {
   return "neutral";
 }
 
+function fmtWeatherTime(value) {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toLocaleString("es-ES", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+}
+
+function WeatherSource({ adjustment }) {
+  const source = adjustment.weather_source || "Open-Meteo";
+  const forecast = fmtWeatherTime(adjustment.weather_forecast_for);
+  const refreshed = fmtWeatherTime(adjustment.weather_source_updated_at);
+  const sameStamp = adjustment.weather_forecast_for && adjustment.weather_source_updated_at
+    && adjustment.weather_forecast_for === adjustment.weather_source_updated_at;
+  return (
+    <p className="note source-note">
+      {source}{forecast ? ` · previsión para ${forecast}` : ""}{refreshed && !sameStamp ? ` · refrescada ${refreshed}` : ""}.
+      {" "}La hora corresponde a la zona Europe/Madrid utilizada para el saque inicial.
+    </p>
+  );
+}
+
 function ImpactTile({ label, value }) {
   return (
     <div className={`fe-impact-tile ${impactClass(value)}`}>
@@ -29,6 +50,7 @@ export default function WeatherAdjustmentPanel({ adjustment }) {
           <span className="pill">NEUTRO</span>
         </div>
         <div className="note">Sin ajuste: {adjustment.reason || "condiciones dentro de umbrales neutros"}.</div>
+        <WeatherSource adjustment={adjustment} />
       </div>
     );
   }
@@ -70,6 +92,7 @@ export default function WeatherAdjustmentPanel({ adjustment }) {
       )}
 
       <div className="mut" style={{ marginTop: 10 }}>{(adjustment.reasons || []).join(" · ")}</div>
+      <WeatherSource adjustment={adjustment} />
       <p className="note source-note">Ajuste conservador sobre xG, remates, faltas/tarjetas y mercados de goles. El 1X2 calibrado no se altera hasta superar validación histórica.</p>
     </div>
   );
