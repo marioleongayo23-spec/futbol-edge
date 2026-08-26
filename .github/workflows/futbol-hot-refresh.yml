@@ -82,29 +82,35 @@ jobs:
               git fetch origin main
               git reset --hard origin/main
 
-              # 1) Estado, XI oficial y meteo con batching/cuota dinámica.
+              # 1) Un falso 'confirmado' nunca puede bloquear el polling oficial.
+              PYTHONPATH=football/src python -m futbol_pred.matchday_confirmation_guard
+
+              # 2) Estado, XI oficial y meteo con batching/cuota dinámica.
               PYTHONPATH=football/src python -m futbol_pred.hot_refresh_metered
 
-              # 2) T-2h: fuerza una foto reciente de bajas y la deduplica.
+              # 3) Última milla: si el XI llega después de T-10 seguimos buscándolo.
+              PYTHONPATH=football/src python -m futbol_pred.matchday_official_last_mile
+
+              # 4) T-2h: fuerza una foto reciente de bajas y la deduplica.
               PYTHONPATH=football/src python -m futbol_pred.matchday_absence_refresh
 
-              # 3) T-2h: prensa reciente + continuidad oficial + props reales.
+              # 5) T-2h: prensa reciente + continuidad oficial + props reales.
               #    Si no hay partido crítico, es prácticamente un no-op.
               PYTHONPATH=football/src python -m futbol_pred.matchday_probable_refresh
 
-              # 4) Última barrera: un probable no puede contener una baja oficial.
+              # 6) Última barrera: un probable no puede contener una baja oficial.
               PYTHONPATH=football/src python -m futbol_pred.matchday_lineup_integrity
 
-              # 5) Cuotas con TTL dinámico según proximidad y créditos.
+              # 7) Cuotas con TTL dinámico según proximidad y créditos.
               PYTHONPATH=football/src python -m futbol_pred.matchday_market_refresh
 
-              # 6) Reacción predictiva inmediata a clima/XI/bajas/mercado.
+              # 8) Reacción predictiva inmediata a clima/XI/bajas/mercado.
               PYTHONPATH=football/src python -m futbol_pred.matchday_prediction_refresh
 
-              # 7) Certifica frescura/coherencia; warning/critical obliga a reintento.
+              # 9) Certifica autoridad/frescura y bloquea apuestas si no está ready.
               PYTHONPATH=football/src python -m futbol_pred.matchday_freshness_gate
 
-              # 8) Matriz de cobertura/frescura visible.
+              # 10) Matriz de cobertura/frescura visible.
               PYTHONPATH=football/src python -m futbol_pred.coverage
 
               # Diagnóstico legible en Actions, sin secretos ni cuerpo de artículos.
