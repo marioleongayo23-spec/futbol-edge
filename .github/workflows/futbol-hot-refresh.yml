@@ -1,8 +1,8 @@
 name: futbol-edge hot refresh
 
 # Canal ligero para información que cambia cerca del partido. No reentrena el
-# modelo ni sustituye al pipeline completo: prioriza latencia mínima para clima,
-# estado, XI oficial, bajas y cuotas del mismo día.
+# modelo: prioriza latencia mínima para clima, estado, XI, bajas, cuotas y las
+# capas de predicción que dependen de esos datos.
 on:
   schedule:
     # Cada 5 min, evitando el minuto 00 donde GitHub documenta más retrasos.
@@ -52,17 +52,19 @@ jobs:
             git fetch origin main
             git reset --hard origin/main
 
-            # API-Football: estado/XI/bajas con batching y telemetría de cuota.
+            # 1) API-Football: estado/XI/bajas con batching y telemetría de cuota.
             PYTHONPATH=football/src python -m futbol_pred.hot_refresh_metered
 
-            # The Odds API: una llamada destacada por liga solo cuando vence el
-            # TTL dinámico del partido. Actualiza 1X2/O-U/value y recalibra la
-            # capa mercado↔modelo sin tocar model_probs.
+            # 2) The Odds API: una llamada destacada por liga solo cuando vence
+            # el TTL dinámico. Actualiza 1X2/O-U/value y la calibración live.
             PYTHONPATH=football/src python -m futbol_pred.matchday_market_refresh
 
-            # La cobertura cambia también al cruzar ventanas aunque la fuente
-            # todavía no haya publicado un dato; hacerlo visible evita "pendiente"
-            # ambiguo en el seguimiento operativo.
+            # 3) Reacción predictiva inmediata: reaplica clima sobre xG base,
+            # sincroniza mercados de goles/value y recalcula confianza/no-pick
+            # tras cambios de XI/bajas. model_probs permanece inmutable.
+            PYTHONPATH=football/src python -m futbol_pred.matchday_prediction_refresh
+
+            # 4) Cobertura operativa para estados de fuente claros.
             PYTHONPATH=football/src python -m futbol_pred.coverage
 
             if git diff --quiet -- football/data/dashboard.json; then
@@ -72,7 +74,7 @@ jobs:
             fi
 
             git add football/data/dashboard.json
-            git commit -m "Actualizar datos intradía de Fútbol Edge"
+            git commit -m "Actualizar datos y predicción intradía de Fútbol Edge"
             if git push origin HEAD:main; then
               pushed=1
               break
