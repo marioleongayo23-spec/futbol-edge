@@ -8,6 +8,7 @@ export const FEED_URL =
 // (por ejemplo sin conexión, o antes de que el cron haya publicado en main).
 // BASE_URL es "/" en Vercel y "/futbol-edge/" en GitHub Pages.
 const FALLBACK_URL = (import.meta.env?.BASE_URL || "/") + "dashboard.json";
+const ESTIMATE_QUALITIES = new Set(["model_only", "statistical_fallback", "fallback_with_media"]);
 
 function normalizeAvailability(rows) {
   if (!Array.isArray(rows)) return rows;
@@ -54,9 +55,17 @@ export function normalizeFeedForDisplay(data) {
         normalized.formacion_local = null;
         normalized.formacion_visitante = null;
         normalized.status = "sin confirmar";
+        normalized.lineup_kind = "squad_only_withheld";
         normalized.provider = "Plantilla real · sin fuente fiable de once probable";
         normalized.display_withheld = true;
         normalized.display_warning = "La plantilla está disponible, pero aún no hay un once probable fiable.";
+      } else if (normalized.status !== "confirmado" && ESTIMATE_QUALITIES.has(normalized.source_quality)) {
+        // Barrera de compatibilidad para feeds antiguos: una salida model_only o
+        // fallback puede enseñarse como estimación, pero nunca llamarse probable.
+        normalized.status = "estimado";
+        normalized.lineup_kind = normalized.lineup_kind || "model_estimate";
+        normalized.display_warning = normalized.display_warning
+          || "XI estimado por modelo/fallback; no existe evidencia externa suficiente para llamarlo once probable.";
       }
       return { ...match, alineacion: normalized };
     }),
