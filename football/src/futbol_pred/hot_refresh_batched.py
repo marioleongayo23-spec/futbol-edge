@@ -1,12 +1,12 @@
-"""Hot-refresh optimizado para la cuota Free de API-Football.
+"""Hot-refresh optimizado para la cuota de API-Football.
 
 Mantiene la semántica del refresco ligero, pero evita una petición por partido:
 - resuelve y persiste el fixture id una sola vez por jornada;
 - actualiza estado/marcador/XI con ``/fixtures?ids=...`` en lotes de hasta 20;
 - consulta bajas con ``/injuries?ids=...`` también por lotes;
-- en vivo limita el polling de API-Football a ~20 min salvo que coincida una
-  ventana de XI, mientras el workflow puede seguir despertando cada 10 min para
-  clima, cobertura y otras fuentes gratuitas.
+- prioriza la frescura PREPARTIDO: XI cada ~5 min entre T-75 y T-10;
+- live se comprueba con menor frecuencia para preservar cuota;
+- si los headers del run anterior indican poca cuota, aumenta los intervalos.
 """
 from __future__ import annotations
 
@@ -20,42 +20,73 @@ from .feed_quality import load_feed, write_feed_safely
 from .ingest.api_football import ApiFootballClient
 from .ingest.api_football_quota import get_absences_batch
 
-# API-Football publica injuries con una cadencia mucho menor que los datos live.
-# Dos comprobaciones (T-6h y T-60) conservan utilidad y evitan quemar cuota Free.
-ABSENCE_TARGETS_MIN = (360, 60)
-# Con un scheduler nominal de 10 min, 18 min produce una llamada live cada ~20.
-LIVE_POLL_INTERVAL_MIN = 18
+# Injuries cambia bastante más lento que fixtures/lineups. Tres controles del día
+# cubren mañana, tarde y última hora sin malgastar la cuota de 100 requests/día.
+ABSENCE_TARGETS_MIN = (480, 240, 60)
+# XI oficial: máxima prioridad para predicción prepartido.
+LINEUP_FROM_MIN = 75
+LINEUP_UNTIL_MIN = 10
 # Estado/marcador: empezar 15 min antes y seguir hasta 3h después del kickoff.
 LIVE_FROM_MIN = 15
 LIVE_UNTIL_MIN = -180
 
 
-def _last_fixture_check_age_min(match: dict, now_local: datetime) -> float | None:
-    value = ((match.get("operational_checks") or {}).get("fixture_checked_at"))
+def _last_check_age_min(match: dict, key: str, now_local: datetime) -> float | None:
+    value = ((match.get("operational_checks") or {}).get(f"{key}_checked_at"))
     checked = legacy._parse(value)
     if checked is None:
         return None
     return max(0.0, (now_local - checked).total_seconds() / 60)
 
 
-def _poll_plan(match: dict, now_local: datetime) -> dict | None:
+def _quota_mode(payload: dict) -> str:
+    """Usa la telemetría persistida del run anterior para proteger el final del día."""
+    health = ((payload.get("source_health") or {}).get("api_football") or {})
+    try:
+        remaining = int(health.get("daily_remaining"))
+    except (TypeError, ValueError):
+        return "normal"
+    if remaining <= 15:
+        return "critical"
+    if remaining <= 35:
+        return "low"
+    return "normal"
+
+
+def _intervals(mode: str) -> tuple[int, int]:
+    """Devuelve (lineup_interval, live_interval) en minutos."""
+    if mode == "critical":
+        return 14, 29
+    if mode == "low":
+        return 9, 18
+    return 4, 9
+
+
+def _poll_plan(match: dict, now_local: datetime, quota_mode: str = "normal") -> dict | None:
     kickoff = legacy._parse(match.get("kickoff"))
     if kickoff is None or kickoff.date() != now_local.date():
         return None
     minutes = (kickoff - now_local).total_seconds() / 60
     finished = bool(match.get("finished"))
+    lineup_interval, live_interval = _intervals(quota_mode)
+
+    lineup_age = _last_check_age_min(match, "lineup", now_local)
+    lineup_window = LINEUP_UNTIL_MIN <= minutes <= LINEUP_FROM_MIN
     wants_lineup = (
         not finished
         and (match.get("alineacion") or {}).get("status") != "confirmado"
-        and legacy._near_target(minutes, legacy.LINEUP_TARGETS_MIN)
+        and lineup_window
+        and (lineup_age is None or lineup_age >= lineup_interval)
     )
+
     wants_absences = (
         not finished
         and legacy._near_target(minutes, ABSENCE_TARGETS_MIN)
     )
+
     live_window = not finished and LIVE_UNTIL_MIN <= minutes <= LIVE_FROM_MIN
-    age = _last_fixture_check_age_min(match, now_local)
-    wants_live = live_window and (age is None or age >= LIVE_POLL_INTERVAL_MIN)
+    live_age = _last_check_age_min(match, "fixture", now_local)
+    wants_live = live_window and (live_age is None or live_age >= live_interval)
     return {
         "kickoff": kickoff,
         "minutes": minutes,
@@ -63,6 +94,7 @@ def _poll_plan(match: dict, now_local: datetime) -> dict | None:
         "wants_lineup": wants_lineup,
         "wants_absences": wants_absences,
         "relevant": wants_live or wants_lineup or wants_absences,
+        "quota_mode": quota_mode,
     }
 
 
@@ -98,12 +130,7 @@ def _resolve_today_fixture_ids(
     plans: dict[int, dict],
     client: ApiFootballClient,
 ) -> tuple[bool, dict[int, dict]]:
-    """Resuelve todos los ids del día con una única caché ``fixtures?date``.
-
-    Solo se activa cuando al menos un partido necesita API-Football. Resolver el
-    resto de partidos del mismo día no añade HTTP: ``find_fixture`` reutiliza la
-    respuesta diaria del cliente y deja los ids preparados para horas después.
-    """
+    """Resuelve ids con una sola caché ``fixtures?date`` por ejecución."""
     relevant = [match for match in matches if (plans.get(id(match)) or {}).get("relevant")]
     if not relevant:
         return False, {}
@@ -184,13 +211,14 @@ def _refresh_api_batched(
     matches: list[dict],
     now_local: datetime,
     client: ApiFootballClient,
+    quota_mode: str = "normal",
 ) -> tuple[bool, dict]:
-    stats = {"fixture": 0, "lineup": 0, "absences": 0}
+    stats = {"fixture": 0, "lineup": 0, "absences": 0, "quota_mode": quota_mode}
     plans = {
         id(match): plan
         for match in matches
         if isinstance(match, dict)
-        for plan in [_poll_plan(match, now_local)]
+        for plan in [_poll_plan(match, now_local, quota_mode)]
         if plan is not None
     }
     if not any(plan["relevant"] for plan in plans.values()):
@@ -225,9 +253,6 @@ def _refresh_api_batched(
             continue
 
         touched_any = False
-        # Una llamada batch de fixtures sirve a la vez para live y XI. En una
-        # primera resolución T-6h, la respuesta por fecha también es evidencia
-        # real suficiente para estado/id sin añadir otra petición.
         raw = None
         if plan["wants_live"] or plan["wants_lineup"]:
             raw = details.get(fixture_id)
@@ -277,14 +302,17 @@ def refresh_payload(
     weather_client: WeatherClient | None = None,
     football_client: ApiFootballClient | None = None,
 ) -> tuple[bool, dict]:
-    """Muta un feed válido usando batches cuando el cliente es API-Football real."""
+    """Muta un feed válido usando batches y prioridades de cuota."""
     now_local = legacy._aware(now or datetime.now(timezone.utc)).astimezone(legacy.MADRID)
     weather = weather_client or WeatherClient()
     football = football_client or ApiFootballClient()
-    stats = {"weather": 0, "fixture": 0, "lineup": 0, "absences": 0}
+    mode = _quota_mode(payload)
+    stats = {"weather": 0, "fixture": 0, "lineup": 0, "absences": 0, "quota_mode": mode}
     changed = False
     matches = [match for match in (payload.get("matches") or []) if isinstance(match, dict)]
 
+    # Open-Meteo no comparte la cuota de API-Football: se intenta en cada wakeup
+    # de 5 min para recoger cuanto antes una nueva previsión del kickoff.
     for match in matches:
         weather_before = deepcopy(match.get("weather"))
         if legacy._refresh_weather(match, now_local, weather):
@@ -293,14 +321,14 @@ def refresh_payload(
                 stats["weather"] += 1
 
     if not getattr(football, "offline", True):
-        # Clientes de tests/terceros que no implementan el contrato batch siguen
-        # usando el comportamiento anterior, lo que mantiene compatibilidad.
         if isinstance(football, ApiFootballClient):
-            api_changed, api_stats = _refresh_api_batched(matches, now_local, football)
+            api_changed, api_stats = _refresh_api_batched(matches, now_local, football, mode)
             changed = api_changed or changed
             for key in ("fixture", "lineup", "absences"):
                 stats[key] += api_stats[key]
+            stats["quota_mode"] = api_stats.get("quota_mode", mode)
         else:
+            # Compatibilidad con dobles/fakes de tests que no implementan batch.
             for match in matches:
                 api_changed, touched = legacy._refresh_api_match(match, now_local, football)
                 changed = api_changed or changed
