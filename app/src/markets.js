@@ -21,7 +21,8 @@ export function marketMovementRows(odds) {
 
 export function marketMovementSourceLabel(odds) {
   const source = odds?.meta?.movement_source;
+  if (source === "the_odds_api_live") return "The Odds API · intradía";
   if (source === "market_average") return "media de mercado";
   if (source === "Bet365") return "Bet365 (fallback)";
-  return "mercado";
+  return odds?.meta?.provider || "mercado";
 }
