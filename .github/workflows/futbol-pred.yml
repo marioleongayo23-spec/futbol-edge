@@ -12,10 +12,10 @@ on:
     paths-ignore:
       - "football/data/dashboard.json"
   schedule:
-    # Cada 15 min: durante los partidos los resultados aparecen casi al momento.
-    # El commit solo se hace si cambia contenido deportivo/operativo real; los
-    # timestamps de generación por sí solos no provocan publicación.
-    - cron: "*/15 * * * *"
+    # Cada 15 min, escalonado respecto al hot-refresh y fuera del minuto 00.
+    # Además de recalcular el modelo actúa como segundo canal de actualización
+    # del feed si GitHub retrasa alguna ejecución del workflow ligero.
+    - cron: "5,20,35,50 * * * *"
   workflow_dispatch:
     inputs:
       force_ai:
@@ -68,8 +68,8 @@ jobs:
           ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           # IA: Gemini primero y Groq de fallback. El cron de resultados sigue
-          # cada 15 min; la IA solo refresca partidos del día a las 00:15 y
-          # 10:15 de Madrid, con caché entre ambas pasadas.
+          # cada 15 min; la IA solo refresca partidos del día en las ventanas
+          # 00:15-00:44 y 10:15-10:44 de Madrid, con caché entre ambas pasadas.
           AI_API_KEY: ${{ secrets.AI_API_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GEMINI_MODEL: ${{ secrets.GEMINI_MODEL }}

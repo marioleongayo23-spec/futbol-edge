@@ -4,11 +4,15 @@ name: futbol-edge hot refresh
 # modelo, no llama a IA y no sustituye al pipeline completo de 15 minutos.
 on:
   schedule:
-    # 06:00-23:50 UTC = 08:00-01:50 Madrid en verano y 07:00-00:50 en invierno.
-    # La lógica interna solo consulta cada fuente cuando el partido entra en su
-    # ventana útil, así ampliamos cobertura del día sin multiplicar llamadas
-    # indiscriminadamente a API-Football u Open-Meteo.
-    - cron: "*/10 6-23 * * *"
+    # GitHub documenta más retrasos/descartes al inicio de cada hora. Evitamos
+    # deliberadamente el minuto 00 y mantenemos una cadencia de 10 min.
+    # Usamos Europe/Madrid para que la ventana operativa sea estable con DST:
+    # 08:08-01:58 hora local. La lógica interna solo consulta cada fuente cuando
+    # el partido entra en su ventana útil, sin multiplicar llamadas indiscriminadas.
+    - cron: "8,18,28,38,48,58 8-23 * * *"
+      timezone: "Europe/Madrid"
+    - cron: "8,18,28,38,48,58 0-1 * * *"
+      timezone: "Europe/Madrid"
   workflow_dispatch:
 
 permissions:
