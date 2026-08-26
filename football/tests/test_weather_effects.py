@@ -35,10 +35,12 @@ def test_ajuste_modifica_xg_stats_mercados_y_value_sin_tocar_1x2():
             "source": "Open-Meteo",
             "forecast_for": "2026-08-25T21:00:00",
             "source_updated_at": "2026-08-25T10:15:00+02:00",
+            "temperature_c": 23.4,
+            "apparent_temperature_c": 24,
+            "humidity_pct": 68,
             "wind_kmh": 31,
             "precipitation_mm": 2.5,
             "precipitation_probability_pct": 90,
-            "apparent_temperature_c": 24,
         },
     }
     before_probs = list(match["probs"])
@@ -55,11 +57,18 @@ def test_ajuste_modifica_xg_stats_mercados_y_value_sin_tocar_1x2():
     assert match["value"][1]["modelProb"] != old_over_prob
     assert match["value"][1]["weather_adjusted"] is True
     assert match["value"][1]["edge"] == round(match["value"][1]["modelProb"] * 2.1 - 1, 3)
-    assert match["weather_adjustment"]["one_x_two_adjusted"] is False
-    assert match["weather_adjustment"]["xg"]["delta"][0] < 0
-    assert match["weather_adjustment"]["weather_source"] == "Open-Meteo"
-    assert match["weather_adjustment"]["weather_forecast_for"] == "2026-08-25T21:00:00"
-    assert match["weather_adjustment"]["weather_source_updated_at"] == "2026-08-25T10:15:00+02:00"
+    adjustment = match["weather_adjustment"]
+    assert adjustment["one_x_two_adjusted"] is False
+    assert adjustment["xg"]["delta"][0] < 0
+    assert adjustment["weather_source"] == "Open-Meteo"
+    assert adjustment["weather_forecast_for"] == "2026-08-25T21:00:00"
+    assert adjustment["weather_source_updated_at"] == "2026-08-25T10:15:00+02:00"
+    assert adjustment["weather_temperature_c"] == 23.4
+    assert adjustment["weather_apparent_temperature_c"] == 24
+    assert adjustment["weather_humidity_pct"] == 68
+    assert adjustment["weather_precipitation_mm"] == 2.5
+    assert adjustment["weather_precipitation_probability_pct"] == 90
+    assert adjustment["weather_wind_kmh"] == 31
 
 
 def test_mismo_forecast_no_se_aplica_dos_veces_sobre_el_mismo_xg():
@@ -113,9 +122,12 @@ def test_clima_neutro_no_altera_prediccion_y_conserva_trazabilidad():
             "source": "Open-Meteo",
             "forecast_for": "2026-08-25T20:00:00",
             "source_updated_at": "2026-08-25T12:00:00+02:00",
+            "temperature_c": 20,
+            "apparent_temperature_c": 20,
+            "humidity_pct": 52,
             "wind_kmh": 10,
             "precipitation_mm": 0,
-            "apparent_temperature_c": 20,
+            "precipitation_probability_pct": 5,
         },
     }
     assert apply_weather_adjustment(match) is False
@@ -125,3 +137,6 @@ def test_clima_neutro_no_altera_prediccion_y_conserva_trazabilidad():
     assert adjustment["weather_source"] == "Open-Meteo"
     assert adjustment["weather_forecast_for"] == "2026-08-25T20:00:00"
     assert adjustment["weather_source_updated_at"] == "2026-08-25T12:00:00+02:00"
+    assert adjustment["weather_temperature_c"] == 20
+    assert adjustment["weather_humidity_pct"] == 52
+    assert adjustment["weather_precipitation_probability_pct"] == 5
