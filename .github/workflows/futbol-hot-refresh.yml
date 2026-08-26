@@ -1,17 +1,24 @@
 name: futbol-edge hot refresh
 
-# Canal ligero para información que cambia cerca del partido. No reentrena el
-# modelo: prioriza latencia mínima para clima, estado, XI, bajas, cuotas y las
-# capas de predicción que dependen de esos datos.
+# Canal autoritativo de día de partido. GitHub Actions puede retrasar eventos
+# schedule, por eso cada arranque mantiene un bloque interno de cuatro ciclos a
+# 5 minutos. Además arranca tras cambios de código y al terminar el pipeline
+# pesado. El objetivo es no depender de un único cron para T-2h/T-75.
 on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "football/data/dashboard.json"
+  workflow_run:
+    workflows: ["futbol-pred (cron)"]
+    types: [completed]
+    branches: [main]
   schedule:
-    # Cada 5 min, evitando el minuto 00 donde GitHub documenta más retrasos.
-    # Europe/Madrid mantiene la ventana estable con DST: 08:03-01:58 local.
-    # La lógica interna decide si cada fuente necesita consulta y aplica guardas
-    # de cuota; despertarse cada 5 min NO implica gastar API en cada ejecución.
-    - cron: "3,8,13,18,23,28,33,38,43,48,53,58 8-23 * * *"
+    # Un arranque cada 20 min; dentro del job se ejecutan 4 ciclos separados 5 min.
+    # Evitamos minuto 00, donde los schedules suelen sufrir más retrasos.
+    - cron: "4,24,44 8-23 * * *"
       timezone: "Europe/Madrid"
-    - cron: "3,8,13,18,23,28,33,38,43,48,53,58 0-1 * * *"
+    - cron: "4,24,44 0-1 * * *"
       timezone: "Europe/Madrid"
   workflow_dispatch:
 
@@ -24,6 +31,8 @@ concurrency:
 
 jobs:
   refresh:
+    # Si nos dispara workflow_run, solo actuamos cuando el pipeline terminó bien.
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -34,53 +43,74 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Dependencia HTTP mínima
+      - name: Dependencias ligeras de matchday
         run: pip install requests
 
-      - name: Refrescar y publicar sobre la última main
+      - name: Refresco autoritativo T-2h y publicación
         env:
           API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
           ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
+          AI_API_KEY: ${{ secrets.AI_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: ${{ secrets.GEMINI_MODEL }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          GROQ_MODEL: ${{ secrets.GROQ_MODEL }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_BASE_URL: ${{ secrets.OPENAI_BASE_URL }}
+          OPENAI_MODEL: ${{ secrets.OPENAI_MODEL }}
+          LOCAL_AI_BASE_URL: ${{ secrets.LOCAL_AI_BASE_URL }}
+          LOCAL_AI_MODEL: ${{ secrets.LOCAL_AI_MODEL }}
+          LOCAL_AI_API_KEY: ${{ secrets.LOCAL_AI_API_KEY }}
+          AI_DAILY_CALL_BUDGET: "20"
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          pushed=0
-          for i in 1 2 3 4; do
-            # El pipeline pesado puede publicar en paralelo. Partimos SIEMPRE de
-            # la última main y, si hay carrera al hacer push, recalculamos sobre
-            # el feed ganador en vez de sobrescribirlo.
-            git fetch origin main
-            git reset --hard origin/main
 
-            # 1) API-Football: estado/XI/bajas con batching y telemetría de cuota.
-            PYTHONPATH=football/src python -m futbol_pred.hot_refresh_metered
+          for cycle in 1 2 3 4; do
+            echo "===== matchday cycle ${cycle}/4 ====="
+            pushed=0
+            for attempt in 1 2 3 4; do
+              # Siempre partimos de la main ganadora para convivir con el pipeline pesado.
+              git fetch origin main
+              git reset --hard origin/main
 
-            # 2) The Odds API: una llamada destacada por liga solo cuando vence
-            # el TTL dinámico. Actualiza 1X2/O-U/value y la calibración live.
-            PYTHONPATH=football/src python -m futbol_pred.matchday_market_refresh
+              # 1) Estado, XI oficial y bajas reales con batching/cuota dinámica.
+              PYTHONPATH=football/src python -m futbol_pred.hot_refresh_metered
 
-            # 3) Reacción predictiva inmediata: reaplica clima sobre xG base,
-            # sincroniza mercados de goles/value y recalcula confianza/no-pick
-            # tras cambios de XI/bajas. model_probs permanece inmutable.
-            PYTHONPATH=football/src python -m futbol_pred.matchday_prediction_refresh
+              # 2) T-2h: prensa reciente + continuidad oficial + props reales.
+              #    Si no hay partido crítico, es prácticamente un no-op.
+              PYTHONPATH=football/src python -m futbol_pred.matchday_probable_refresh
 
-            # 4) Cobertura operativa para estados de fuente claros.
-            PYTHONPATH=football/src python -m futbol_pred.coverage
+              # 3) Cuotas con TTL dinámico según proximidad y créditos.
+              PYTHONPATH=football/src python -m futbol_pred.matchday_market_refresh
 
-            if git diff --quiet -- football/data/dashboard.json; then
-              echo "Sin cambios rápidos sustantivos"
-              pushed=1
-              break
+              # 4) Reacción predictiva inmediata a clima/XI/bajas/mercado.
+              PYTHONPATH=football/src python -m futbol_pred.matchday_prediction_refresh
+
+              # 5) Matriz de cobertura/frescura visible.
+              PYTHONPATH=football/src python -m futbol_pred.coverage
+
+              if git diff --quiet -- football/data/dashboard.json; then
+                echo "Sin cambios sustantivos en este ciclo"
+                pushed=1
+                break
+              fi
+
+              git add football/data/dashboard.json
+              git commit -m "Actualizar datos y predicción intradía de Fútbol Edge"
+              if git push origin HEAD:main; then
+                pushed=1
+                break
+              fi
+
+              echo "Publicación concurrente; recalculando sobre main (intento ${attempt})…"
+              sleep $((attempt * 2))
+            done
+            [ "$pushed" = 1 ] || { echo "No se pudo publicar el ciclo ${cycle}"; exit 1; }
+
+            # Mantiene una cadencia real dentro del job aunque el siguiente cron
+            # schedule de GitHub llegue tarde. El cuarto ciclo cierra el bloque.
+            if [ "$cycle" -lt 4 ]; then
+              sleep 300
             fi
-
-            git add football/data/dashboard.json
-            git commit -m "Actualizar datos y predicción intradía de Fútbol Edge"
-            if git push origin HEAD:main; then
-              pushed=1
-              break
-            fi
-
-            echo "Publicación concurrente; recalculando sobre main (intento $i)…"
-            sleep $((i * 2))
           done
-          [ "$pushed" = 1 ] || { echo "No se pudo publicar el hot refresh"; exit 1; }
