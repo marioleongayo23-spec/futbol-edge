@@ -13,7 +13,7 @@ from typing import Callable
 
 import requests
 
-from . import hot_refresh
+from . import hot_refresh_batched as hot_refresh
 from .ingest.api_football import BASE_URL as API_FOOTBALL_BASE_URL
 
 
