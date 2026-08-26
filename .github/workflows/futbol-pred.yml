@@ -89,11 +89,14 @@ jobs:
           FORCE_AI: ${{ github.event_name == 'workflow_dispatch' && inputs.force_ai && '1' || '0' }}
         run: |
           python -m futbol_pred.dashboard
+          python -m futbol_pred.coverage
           python - <<'PY'
           import json
           d = json.load(open("data/dashboard.json", encoding="utf-8"))
           q = d.get("feed_quality", {})
+          a = d.get("content_audit", {})
           print("[feed] calidad:", q.get("score"), "| métricas:", q.get("metrics"))
+          print("[coverage]", a.get("status"), "| completos:", a.get("complete"), "/", a.get("matches_today"), "| resumen:", a.get("coverage_summary"))
           PY
 
       - name: Publicar feed actualizado en la rama
