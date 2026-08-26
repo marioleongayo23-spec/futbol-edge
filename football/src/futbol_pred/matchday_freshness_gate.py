@@ -149,23 +149,35 @@ def _audit_match(match, now_local, minutes):
         "required_now": official_due,
     }
 
+    # ``odds`` es un contrato legado: feeds antiguos pueden traer un string
+    # como ``pendiente_odds_api``. El gate nunca debe caerse por ese formato;
+    # lo interpreta como fuente de mercado no disponible y fuerza reintento.
     odds = match.get("odds")
+    odds_dict = odds if isinstance(odds, dict) else {}
+    odds_meta = odds_dict.get("meta") if isinstance(odds_dict.get("meta"), dict) else {}
     market = match.get("market_hot_refresh") if isinstance(match.get("market_hot_refresh"), dict) else {}
-    market_at = market.get("checked_at") or (((odds or {}).get("meta") or {}).get("checked_at") if isinstance(odds, dict) else None)
+    market_at = market.get("checked_at") or odds_meta.get("checked_at")
     market_age = _age(market_at, now_local)
     try:
-        market_ttl = int(market.get("ttl_minutes") or (((odds or {}).get("meta") or {}).get("ttl_minutes")) or 5)
+        market_ttl = int(market.get("ttl_minutes") or odds_meta.get("ttl_minutes") or 5)
     except (TypeError, ValueError):
         market_ttl = 5
-    odds_real = isinstance(odds, dict) and isinstance(odds.get("1x2"), dict)
+    odds_real = isinstance(odds_dict.get("1x2"), dict)
     market_ok = odds_real and market_age is not None and market_age <= max(7, market_ttl + 2)
+    if market_ok:
+        market_state = "fresh"
+    elif isinstance(odds, str):
+        market_state = "legacy_pending_or_unavailable"
+    else:
+        market_state = "missing_or_stale"
     audit["odds"] = {
         "ok": market_ok,
-        "state": "fresh" if market_ok else "missing_or_stale",
+        "state": market_state,
         "checked_at": market_at,
         "age_minutes": round(market_age, 1) if market_age is not None else None,
         "max_age_minutes": max(7, market_ttl + 2),
         "provider": market.get("provider"),
+        "raw_state": odds if isinstance(odds, str) else None,
     }
 
     props_at = lineup.get("player_props_checked_at") or checks.get("player_props_checked_at")
