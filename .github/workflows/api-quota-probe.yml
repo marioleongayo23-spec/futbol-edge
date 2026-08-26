@@ -1,0 +1,47 @@
+name: api-football quota probe
+
+on:
+  push:
+    branches: ["ops/api-quota-probe"]
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Consultar únicamente headers seguros de cuota
+        env:
+          API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
+        run: |
+          pip install -q requests
+          python - <<'PY'
+          import json
+          import os
+          import requests
+
+          key = os.environ.get("API_FOOTBALL_KEY")
+          if not key:
+              raise SystemExit("API_FOOTBALL_KEY no configurada")
+
+          response = requests.get(
+              "https://v3.football.api-sports.io/status",
+              headers={"x-apisports-key": key},
+              timeout=20,
+          )
+          headers = {str(k).lower(): v for k, v in response.headers.items()}
+          safe = {
+              "status_code": response.status_code,
+              "daily_limit": headers.get("x-ratelimit-requests-limit"),
+              "daily_remaining": headers.get("x-ratelimit-requests-remaining"),
+              "minute_limit": headers.get("x-ratelimit-limit"),
+              "minute_remaining": headers.get("x-ratelimit-remaining"),
+          }
+          print("API_FOOTBALL_QUOTA " + json.dumps(safe, sort_keys=True))
+          response.raise_for_status()
+          PY
