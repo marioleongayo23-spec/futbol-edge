@@ -68,7 +68,15 @@ export function normalizeFeedForDisplay(data) {
         normalized.display_warning = normalized.display_warning
           || "XI estimado por modelo/fallback; no existe evidencia externa suficiente para llamarlo once probable.";
       }
-      return { ...match, alineacion: normalized };
+
+      // Un check operativo antiguo podía marcar "published" si API-Football
+      // devolvía solo un equipo o una alineación incompleta. Hasta que tengamos
+      // 11+11 confirmados, la UI lo presenta como parcial, nunca como XI publicado.
+      const operationalChecks = { ...(match.operational_checks || {}) };
+      if (operationalChecks.lineup_check_result === "published" && normalized.status !== "confirmado") {
+        operationalChecks.lineup_check_result = "partial";
+      }
+      return { ...match, operational_checks: operationalChecks, alineacion: normalized };
     }),
   };
 }

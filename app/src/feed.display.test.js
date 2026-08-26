@@ -76,3 +76,46 @@ test("rebaja feeds antiguos model-only a estimado", () => {
   assert.equal(lineup.lineup_kind, "model_estimate");
   assert.match(lineup.display_warning, /no existe evidencia externa suficiente/i);
 });
+
+
+test("un check parcial de XI no se muestra como publicado", () => {
+  const feed = normalizeFeedForDisplay({
+    matches: [{
+      id: "m3",
+      operational_checks: {
+        lineup_checked_at: "2026-08-26T19:00:00+02:00",
+        lineup_check_result: "published",
+      },
+      alineacion: {
+        model: "fuente-real",
+        status: "probable",
+        source_quality: "media_grounded",
+        local: Array.from({ length: 11 }, (_, i) => `Local ${i}`),
+        visitante: Array.from({ length: 11 }, (_, i) => `Visitante ${i}`),
+      },
+    }],
+  });
+
+  assert.equal(feed.matches[0].operational_checks.lineup_check_result, "partial");
+});
+
+
+test("un XI confirmado conserva el resultado published", () => {
+  const feed = normalizeFeedForDisplay({
+    matches: [{
+      id: "m4",
+      operational_checks: {
+        lineup_checked_at: "2026-08-26T19:00:00+02:00",
+        lineup_check_result: "published",
+      },
+      alineacion: {
+        status: "confirmado",
+        lineup_kind: "official",
+        local: Array.from({ length: 11 }, (_, i) => `Local ${i}`),
+        visitante: Array.from({ length: 11 }, (_, i) => `Visitante ${i}`),
+      },
+    }],
+  });
+
+  assert.equal(feed.matches[0].operational_checks.lineup_check_result, "published");
+});
