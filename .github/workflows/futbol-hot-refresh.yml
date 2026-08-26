@@ -47,7 +47,9 @@ jobs:
             git fetch origin main
             git reset --hard origin/main
 
-            PYTHONPATH=football/src python -m futbol_pred.hot_refresh
+            # Igual que hot_refresh, pero deja en el log el número REAL de
+            # peticiones API-Football por endpoint y los headers de cuota.
+            PYTHONPATH=football/src python -m futbol_pred.hot_refresh_metered
             # La cobertura cambia también al cruzar ventanas T−24h/T−8h/T−6h/
             # T−3h/T−45 aunque la fuente todavía no haya publicado un dato.
             # Recalcularla aquí hace visible ese hueco sin reentrenar el modelo.
