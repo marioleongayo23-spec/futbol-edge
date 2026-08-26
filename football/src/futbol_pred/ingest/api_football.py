@@ -153,27 +153,94 @@ class ApiFootballClient:
         return best[1] if best and best[0] >= 0.72 else None
 
     @staticmethod
-    def _grid_position(grid: str | None, fallback: str | None = None) -> str:
-        """Traduce la cuadrícula oficial a demarcaciones compatibles con el campo."""
-
+    def _grid_coords(grid: str | None) -> tuple[int, int]:
         try:
             line, column = (int(value) for value in str(grid).split(":"))
+            return line, column
         except (TypeError, ValueError):
-            line = column = 0
+            return 0, 0
+
+    @classmethod
+    def _grid_position_contextual(
+        cls,
+        grid: str | None,
+        fallback: str | None = None,
+        *,
+        line_width: int | None = None,
+        max_line: int | None = None,
+    ) -> str:
+        """Convierte la cuadrícula oficial usando la geometría de ESA formación.
+
+        La implementación anterior asumía que cualquier ``2:1`` era LI y que
+        ``2:4`` o superior era LD. Eso rompe defensas de tres y varias líneas de
+        cinco. Aquí la lateralidad depende del número real de jugadores de la
+        línea; el ``grid`` oficial manda y el ``pos`` genérico solo es fallback.
+        """
+        line, column = cls._grid_coords(grid)
+        width = max(0, int(line_width or 0))
+        last = max(0, int(max_line or 0))
+
         if line == 1:
             return "POR"
-        if line == 2:
-            return "LI" if column == 1 else "LD" if column >= 4 else "DFC"
-        if line in {3, 4}:
+
+        # Primera línea de campo: 3 centrales si son tres; con cuatro/cinco,
+        # solo los extremos son laterales y el interior permanece como central.
+        if line == 2 and width:
+            if width <= 3:
+                return "DFC"
             if column == 1:
-                return "MI" if line == 3 else "EI"
-            if column >= 4:
-                return "MD" if line == 3 else "ED"
-            return "MCD" if line == 3 else "MP"
-        if line >= 5:
-            return "EI" if column == 1 else "ED" if column >= 3 else "DC"
+                return "LI"
+            if column == width:
+                return "LD"
+            return "DFC"
+
+        # Última línea: 1/2 puntas son DC; con tres o más distinguimos extremos.
+        if last and line == last and width:
+            if width <= 2:
+                return "DC"
+            if column == 1:
+                return "EI"
+            if column == width:
+                return "ED"
+            return "DC"
+
+        # Línea inmediatamente anterior al punta en 4-2-3-1/4-4-1-1: extremos
+        # abiertos y mediapunta(s) interiores.
+        if last >= 5 and line == last - 1 and width:
+            if width == 1:
+                return "MP"
+            if width >= 3 and column == 1:
+                return "EI"
+            if width >= 3 and column == width:
+                return "ED"
+            return "MP"
+
+        # Resto de líneas de medio: lateralidad solo si realmente hay anchura.
+        if line >= 3 and width:
+            if width == 1:
+                return "MC"
+            if width == 2:
+                return "MCD" if line == 3 else "MC"
+            if column == 1:
+                return "MI"
+            if column == width:
+                return "MD"
+            return "MCD" if line == 3 else "MC"
+
         raw = str(fallback or "").casefold()
         return "POR" if raw == "g" else "DFC" if raw == "d" else "MC" if raw == "m" else "DC"
+
+    @classmethod
+    def _grid_position(cls, grid: str | None, fallback: str | None = None) -> str:
+        """Compatibilidad para llamadas sin contexto de la formación."""
+        line, column = cls._grid_coords(grid)
+        inferred_width = 1 if line == 1 else max(column, 3 if line >= 2 else 0)
+        return cls._grid_position_contextual(
+            grid,
+            fallback,
+            line_width=inferred_width,
+            max_line=max(line, 1),
+        )
 
     def get_official_lineup(self, fixture_id: int) -> list[dict]:
         """Devuelve onces oficiales cuando ambos equipos publicaron 11 titulares."""
@@ -275,16 +342,33 @@ class ApiFootballClient:
     def _parse_lineups(cls, response: list[dict]) -> list[dict]:
         out = []
         for team in response:
+            raw_starters = team.get("startXI") or []
+            widths: dict[int, int] = {}
+            max_line = 0
+            for raw in raw_starters:
+                player = raw.get("player") or {}
+                line, column = cls._grid_coords(player.get("grid"))
+                if line > 0 and column > 0:
+                    widths[line] = max(widths.get(line, 0), column)
+                    max_line = max(max_line, line)
+
             starters = []
-            for raw in team.get("startXI") or []:
+            for raw in raw_starters:
                 player = raw.get("player") or {}
                 name = str(player.get("name") or "").strip()
-                if name:
-                    starters.append({
-                        "name": name,
-                        "position": cls._grid_position(player.get("grid"), player.get("pos")),
-                        "grid": player.get("grid"),
-                    })
+                if not name:
+                    continue
+                line, _column = cls._grid_coords(player.get("grid"))
+                starters.append({
+                    "name": name,
+                    "position": cls._grid_position_contextual(
+                        player.get("grid"),
+                        player.get("pos"),
+                        line_width=widths.get(line),
+                        max_line=max_line,
+                    ),
+                    "grid": player.get("grid"),
+                })
             if len(starters) == 11:
                 out.append({
                     "team": str((team.get("team") or {}).get("name") or ""),
