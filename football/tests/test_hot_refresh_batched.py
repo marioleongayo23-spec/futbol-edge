@@ -155,7 +155,9 @@ def test_lineup_no_publicado_se_reintenta_a_los_cinco_minutos_en_modo_normal():
         weather_client=NoWeather(),
         football_client=retry,
     )
-    assert retry.calls == [("fixtures", {"ids": "77-78"}), ("injuries", {"ids": "77-78"})]
+    # El XI sí se reintenta; injuries no, porque la ventana T−60 ya se consultó
+    # cinco minutos antes y tiene cooldown independiente.
+    assert retry.calls == [("fixtures", {"ids": "77-78"})]
     assert feed["matches"][0]["operational_checks"]["lineup_checked_at"] == "2026-08-26T19:00:00+02:00"
 
 
