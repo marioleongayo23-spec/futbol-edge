@@ -108,3 +108,48 @@ def test_fixture_context_normaliza_arbitro_y_estadisticas_clave_del_batch():
     assert away["yellows"] == 4
     assert away["reds"] == 1
     assert away["possession"] == 42.0
+
+
+def _lineup_team(name, formation, grids):
+    return {
+        "team": {"name": name},
+        "formation": formation,
+        "coach": {"name": "Coach"},
+        "startXI": [
+            {"player": {"name": f"{name} {i}", "grid": grid, "pos": "G" if i == 0 else "D"}}
+            for i, grid in enumerate(grids)
+        ],
+    }
+
+
+def test_parse_lineup_343_no_convierte_central_izquierdo_en_lateral():
+    grids = [
+        "1:1",
+        "2:1", "2:2", "2:3",
+        "3:1", "3:2", "3:3", "3:4",
+        "4:1", "4:2", "4:3",
+    ]
+    parsed = ApiFootballClient._parse_lineups([
+        _lineup_team("Home", "3-4-3", grids),
+        _lineup_team("Away", "3-4-3", grids),
+    ])
+
+    positions = [row["position"] for row in parsed[0]["starters"]]
+    assert positions == ["POR", "DFC", "DFC", "DFC", "MI", "MCD", "MCD", "MD", "EI", "DC", "ED"]
+
+
+def test_parse_lineup_4231_respeta_laterales_y_mediapunta():
+    grids = [
+        "1:1",
+        "2:1", "2:2", "2:3", "2:4",
+        "3:1", "3:2",
+        "4:1", "4:2", "4:3",
+        "5:1",
+    ]
+    parsed = ApiFootballClient._parse_lineups([
+        _lineup_team("Home", "4-2-3-1", grids),
+        _lineup_team("Away", "4-2-3-1", grids),
+    ])
+
+    positions = [row["position"] for row in parsed[0]["starters"]]
+    assert positions == ["POR", "LI", "DFC", "DFC", "LD", "MCD", "MCD", "EI", "MP", "ED", "DC"]
