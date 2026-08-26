@@ -1,5 +1,6 @@
 import { confidence } from "./insights";
 import { auditablePrediction, predictionTimelinePoints, strongestRealEdge } from "./predictionTimelineData";
+import { coverageRows, coverageStateLabel, coverageSymbol } from "./coverage";
 import "./match-timeline.css";
 
 const SERIES = [
@@ -23,69 +24,29 @@ function fmtOperationalTime(iso) {
   return time.toLocaleString("es-ES", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 }
 
-function latestAvailabilityStamp(lineup) {
-  const stamps = [
-    ...(lineup?.disponibilidad_local || []),
-    ...(lineup?.disponibilidad_visitante || []),
-  ]
-    .map((row) => new Date(row?.source_updated_at || "").getTime())
-    .filter(Number.isFinite);
-  return stamps.length ? new Date(Math.max(...stamps)).toISOString() : null;
-}
-
-function checkText(stamp, result, fallback, prefix = "comprob.") {
-  const formatted = fmtOperationalTime(stamp);
-  if (formatted) return `${prefix} ${formatted}${result ? ` · ${result}` : ""}`;
-  return fallback;
-}
-
 function OperationalFreshness({ m }) {
-  const lineup = m?.alineacion || {};
-  const checks = m?.operational_checks || {};
-  const absenceStamp = latestAvailabilityStamp(lineup);
-  const hasAvailability = Object.prototype.hasOwnProperty.call(lineup, "disponibilidad_local")
-    || Object.prototype.hasOwnProperty.call(lineup, "disponibilidad_visitante");
-  const weatherStamp = m?.weather?.source_updated_at;
-  const weatherFor = m?.weather?.forecast_for;
-  const lineupStamp = lineup.source_updated_at || lineup.generated_at || lineup.ts;
-  const absenceFallback = absenceStamp
-    ? `dato ${fmtOperationalTime(absenceStamp)}`
-    : hasAvailability ? "sin bajas reportadas" : "sin comprobación";
-  const weatherFallback = weatherStamp
-    ? `dato ${fmtOperationalTime(weatherStamp)}`
-    : weatherFor ? `previsión ${fmtOperationalTime(weatherFor)}` : "sin dato";
-  const lineupFallback = lineupStamp
-    ? `${lineup.status || "sin confirmar"} · dato ${fmtOperationalTime(lineupStamp)}`
-    : lineup.status || "sin confirmar";
-  const rows = [
-    {
-      label: "Partido",
-      ok: Boolean(checks.fixture_checked_at || m?.updatedAt),
-      text: checkText(checks.fixture_checked_at, checks.fixture_check_result, m?.updatedAt ? `último cambio ${fmtOperationalTime(m.updatedAt)}` : "sin refresco intradía"),
-    },
-    {
-      label: "Clima",
-      ok: Boolean(checks.weather_checked_at || m?.weather),
-      text: checkText(checks.weather_checked_at, checks.weather_check_result, weatherFallback),
-    },
-    {
-      label: "Bajas",
-      ok: Boolean(checks.absences_checked_at || hasAvailability),
-      text: checkText(checks.absences_checked_at, checks.absences_check_result, absenceFallback),
-    },
-    {
-      label: "XI",
-      ok: lineup.status === "confirmado" || lineup.status === "probable" || Boolean(checks.lineup_checked_at),
-      text: checkText(checks.lineup_checked_at, checks.lineup_check_result, lineupFallback),
-    },
-  ];
+  const coverage = coverageRows(m);
   return (
-    <div className="chips" style={{ marginTop: 10 }} aria-label="Estado operativo de datos del partido">
-      {rows.map((row) => (
-        <span className="chip" key={row.label}>
-          <b>{row.label}</b> {row.ok ? "✓" : "◷"} {row.text}
-        </span>
-      ))}
+    <div style={{ marginTop: 10 }} aria-label="Cobertura real de datos del partido">
+      <div className="row-between" style={{ gap: 8, marginBottom: 6 }}>
+        <small className="dim">Cobertura operativa · solo fuentes realmente disponibles</small>
+        <span className={"pill " + (coverage.complete ? "y" : "")}>{coverage.complete ? "completa ahora" : `${coverage.missingRequired.length} piezas pendientes`}</span>
+      </div>
+      <div className="chips">
+        {coverage.rows.map((row) => {
+          const checked = fmtOperationalTime(row.checkedAt);
+          const state = coverageStateLabel(row.state);
+          const text = checked
+            ? `comprob. ${checked}${row.detail ? ` · ${row.detail}` : ""}`
+            : row.detail || state;
+          return (
+            <span className="chip" key={row.key} title={[row.source, row.required ? "exigido en esta ventana" : "todavía no exigido"].filter(Boolean).join(" · ")}>
+              <b>{row.label}</b> {coverageSymbol(row.state)} {state} · {text}
+              {row.source ? <small className="dim"> · {row.source}</small> : null}
+            </span>
+          );
+        })}
+      </div>
     </div>
   );
 }
