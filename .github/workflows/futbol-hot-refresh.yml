@@ -1,17 +1,17 @@
 name: futbol-edge hot refresh
 
 # Canal ligero para información que cambia cerca del partido. No reentrena el
-# modelo, no llama a IA y no sustituye al pipeline completo de 15 minutos.
+# modelo ni sustituye al pipeline completo: prioriza latencia mínima para clima,
+# estado, XI oficial, bajas y cuotas del mismo día.
 on:
   schedule:
-    # GitHub documenta más retrasos/descartes al inicio de cada hora. Evitamos
-    # deliberadamente el minuto 00 y mantenemos una cadencia de 10 min.
-    # Usamos Europe/Madrid para que la ventana operativa sea estable con DST:
-    # 08:08-01:58 hora local. La lógica interna solo consulta cada fuente cuando
-    # el partido entra en su ventana útil, sin multiplicar llamadas indiscriminadas.
-    - cron: "8,18,28,38,48,58 8-23 * * *"
+    # Cada 5 min, evitando el minuto 00 donde GitHub documenta más retrasos.
+    # Europe/Madrid mantiene la ventana estable con DST: 08:03-01:58 local.
+    # La lógica interna decide si cada fuente necesita consulta y aplica guardas
+    # de cuota; despertarse cada 5 min NO implica gastar API en cada ejecución.
+    - cron: "3,8,13,18,23,28,33,38,43,48,53,58 8-23 * * *"
       timezone: "Europe/Madrid"
-    - cron: "8,18,28,38,48,58 0-1 * * *"
+    - cron: "3,8,13,18,23,28,33,38,43,48,53,58 0-1 * * *"
       timezone: "Europe/Madrid"
   workflow_dispatch:
 
@@ -40,23 +40,29 @@ jobs:
       - name: Refrescar y publicar sobre la última main
         env:
           API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
+          ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           pushed=0
           for i in 1 2 3 4; do
             # El pipeline pesado puede publicar en paralelo. Partimos SIEMPRE de
-            # la última main y, si hay carrera al hacer push, recalculamos el hot
-            # refresh sobre el feed ganador en vez de sobrescribirlo.
+            # la última main y, si hay carrera al hacer push, recalculamos sobre
+            # el feed ganador en vez de sobrescribirlo.
             git fetch origin main
             git reset --hard origin/main
 
-            # Igual que hot_refresh, pero deja en el log el número REAL de
-            # peticiones API-Football por endpoint y los headers de cuota.
+            # API-Football: estado/XI/bajas con batching y telemetría de cuota.
             PYTHONPATH=football/src python -m futbol_pred.hot_refresh_metered
-            # La cobertura cambia también al cruzar ventanas T−24h/T−8h/T−6h/
-            # T−3h/T−45 aunque la fuente todavía no haya publicado un dato.
-            # Recalcularla aquí hace visible ese hueco sin reentrenar el modelo.
+
+            # The Odds API: una llamada destacada por liga solo cuando vence el
+            # TTL dinámico del partido. Actualiza 1X2/O-U/value y recalibra la
+            # capa mercado↔modelo sin tocar model_probs.
+            PYTHONPATH=football/src python -m futbol_pred.matchday_market_refresh
+
+            # La cobertura cambia también al cruzar ventanas aunque la fuente
+            # todavía no haya publicado un dato; hacerlo visible evita "pendiente"
+            # ambiguo en el seguimiento operativo.
             PYTHONPATH=football/src python -m futbol_pred.coverage
 
             if git diff --quiet -- football/data/dashboard.json; then
