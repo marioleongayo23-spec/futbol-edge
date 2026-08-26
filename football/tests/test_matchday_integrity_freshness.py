@@ -163,3 +163,42 @@ def test_freshness_gate_can_reach_ready_when_every_critical_input_is_fresh():
     assert audit["requires_retry"] is False
     assert audit["missing_or_stale"] == []
     assert audit["hard_conflicts"] == []
+
+
+def test_freshness_gate_treats_legacy_odds_string_as_warning_not_crash():
+    now = datetime(2026, 8, 26, 20, 48, tzinfo=MADRID)
+    kickoff = now + timedelta(minutes=12)
+    match = {
+        "home": "Local",
+        "away": "Visitante",
+        "kickoff": kickoff.isoformat(),
+        "alineacion": {
+            "status": "confirmado",
+            "local": _names("L"),
+            "visitante": _names("V"),
+            "posiciones_local": POSITIONS,
+            "posiciones_visitante": POSITIONS,
+            "source_updated_at": now.isoformat(),
+            "official_poll_at": now.isoformat(),
+            "player_props_checked_at": now.isoformat(),
+            "clave_local": [{"jugador": f"L{i}"} for i in range(8)],
+            "clave_visitante": [{"jugador": f"V{i}"} for i in range(8)],
+            "disponibilidad_local": [],
+            "disponibilidad_visitante": [],
+        },
+        "operational_checks": {
+            "weather_checked_at": now.isoformat(),
+            "absences_checked_at": now.isoformat(),
+            "lineup_checked_at": now.isoformat(),
+        },
+        "weather": {"forecast_for": kickoff.isoformat(), "source_updated_at": now.isoformat()},
+        "odds": "pendiente_odds_api",
+        "prediction_live_refresh": {"checked_at": now.isoformat()},
+    }
+
+    audit = _audit_match(match, now, 12)
+    assert audit["status"] == "warning"
+    assert audit["checks"]["odds"]["ok"] is False
+    assert audit["checks"]["odds"]["state"] == "legacy_pending_or_unavailable"
+    assert audit["checks"]["odds"]["raw_state"] == "pendiente_odds_api"
+    assert audit["hard_conflicts"] == []
