@@ -2,7 +2,12 @@ from datetime import datetime, timedelta
 import json
 from types import SimpleNamespace
 
-from futbol_pred.prefinal_lineups import MADRID, in_prefinal_window, refresh_prefinal_lineups
+from futbol_pred.prefinal_lineups import (
+    MADRID,
+    _trusted_previous_xi,
+    in_prefinal_window,
+    refresh_prefinal_lineups,
+)
 
 
 POSITIONS = ["POR", "LI", "DFC", "DFC", "LD", "MC", "MCD", "MC", "EI", "DC", "ED"]
@@ -224,3 +229,28 @@ def test_historial_oficial_corrige_posicion_modelo_con_dos_antecedentes(monkeypa
     assert lineup["position_source"] == "official_history+model"
     assert lineup["position_history_overrides"] >= 1
     assert any(row["player"] == "L1" and row["to"] == "LI" for row in lineup["position_history_evidence"])
+
+
+def test_squad_only_no_puede_ser_semilla_del_probable():
+    lineup = {
+        "status": "estimado",
+        "model": "squad-only-v3",
+        "local": [f"Plantilla L{i}" for i in range(11)],
+        "visitante": [f"Plantilla V{i}" for i in range(11)],
+    }
+    local, visitor, quality = _trusted_previous_xi(lineup)
+    assert local == []
+    assert visitor == []
+    assert quality == "squad_only_rejected"
+
+
+def test_probable_grounded_anterior_si_puede_dar_continuidad():
+    lineup = {
+        "status": "probable",
+        "source_quality": "media_grounded",
+        "local": [f"L{i}" for i in range(11)],
+        "visitante": [f"V{i}" for i in range(11)],
+    }
+    local, visitor, quality = _trusted_previous_xi(lineup)
+    assert len(local) == len(visitor) == 11
+    assert quality == "trusted"
