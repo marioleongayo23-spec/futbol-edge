@@ -33,40 +33,50 @@ function latestAvailabilityStamp(lineup) {
   return stamps.length ? new Date(Math.max(...stamps)).toISOString() : null;
 }
 
+function checkText(stamp, result, fallback, prefix = "comprob.") {
+  const formatted = fmtOperationalTime(stamp);
+  if (formatted) return `${prefix} ${formatted}${result ? ` · ${result}` : ""}`;
+  return fallback;
+}
+
 function OperationalFreshness({ m }) {
   const lineup = m?.alineacion || {};
+  const checks = m?.operational_checks || {};
   const absenceStamp = latestAvailabilityStamp(lineup);
   const hasAvailability = Object.prototype.hasOwnProperty.call(lineup, "disponibilidad_local")
     || Object.prototype.hasOwnProperty.call(lineup, "disponibilidad_visitante");
   const weatherStamp = m?.weather?.source_updated_at;
   const weatherFor = m?.weather?.forecast_for;
   const lineupStamp = lineup.source_updated_at || lineup.generated_at || lineup.ts;
+  const absenceFallback = absenceStamp
+    ? `dato ${fmtOperationalTime(absenceStamp)}`
+    : hasAvailability ? "sin bajas reportadas" : "sin comprobación";
+  const weatherFallback = weatherStamp
+    ? `dato ${fmtOperationalTime(weatherStamp)}`
+    : weatherFor ? `previsión ${fmtOperationalTime(weatherFor)}` : "sin dato";
+  const lineupFallback = lineupStamp
+    ? `${lineup.status || "sin confirmar"} · dato ${fmtOperationalTime(lineupStamp)}`
+    : lineup.status || "sin confirmar";
   const rows = [
     {
       label: "Partido",
-      ok: Boolean(m?.updatedAt),
-      text: m?.updatedAt ? fmtOperationalTime(m.updatedAt) : "sin refresco intradía",
+      ok: Boolean(checks.fixture_checked_at || m?.updatedAt),
+      text: checkText(checks.fixture_checked_at, checks.fixture_check_result, m?.updatedAt ? `último cambio ${fmtOperationalTime(m.updatedAt)}` : "sin refresco intradía"),
     },
     {
       label: "Clima",
-      ok: Boolean(m?.weather),
-      text: weatherStamp
-        ? `act. ${fmtOperationalTime(weatherStamp)}`
-        : weatherFor ? `previsión ${fmtOperationalTime(weatherFor)}` : "sin dato",
+      ok: Boolean(checks.weather_checked_at || m?.weather),
+      text: checkText(checks.weather_checked_at, checks.weather_check_result, weatherFallback),
     },
     {
       label: "Bajas",
-      ok: hasAvailability,
-      text: absenceStamp
-        ? `act. ${fmtOperationalTime(absenceStamp)}`
-        : hasAvailability ? "sin bajas reportadas" : "sin comprobación",
+      ok: Boolean(checks.absences_checked_at || hasAvailability),
+      text: checkText(checks.absences_checked_at, checks.absences_check_result, absenceFallback),
     },
     {
       label: "XI",
-      ok: lineup.status === "confirmado" || lineup.status === "probable",
-      text: lineupStamp
-        ? `${lineup.status || "sin confirmar"} · ${fmtOperationalTime(lineupStamp)}`
-        : lineup.status || "sin confirmar",
+      ok: lineup.status === "confirmado" || lineup.status === "probable" || Boolean(checks.lineup_checked_at),
+      text: checkText(checks.lineup_checked_at, checks.lineup_check_result, lineupFallback),
     },
   ];
   return (
