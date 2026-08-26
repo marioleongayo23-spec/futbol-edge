@@ -23,6 +23,9 @@ from .ingest.api_football_quota import get_absences_batch
 # Injuries cambia bastante más lento que fixtures/lineups. Tres controles del día
 # cubren mañana, tarde y última hora sin malgastar la cuota de 100 requests/día.
 ABSENCE_TARGETS_MIN = (480, 240, 60)
+# Evita disparar dos veces la misma ventana cuando el cron de 5 min cae dentro
+# de la tolerancia ±6 min del objetivo.
+ABSENCE_COOLDOWN_MIN = 30
 # XI oficial: máxima prioridad para predicción prepartido.
 LINEUP_FROM_MIN = 75
 LINEUP_UNTIL_MIN = 10
@@ -79,9 +82,11 @@ def _poll_plan(match: dict, now_local: datetime, quota_mode: str = "normal") -> 
         and (lineup_age is None or lineup_age >= lineup_interval)
     )
 
+    absence_age = _last_check_age_min(match, "absences", now_local)
     wants_absences = (
         not finished
         and legacy._near_target(minutes, ABSENCE_TARGETS_MIN)
+        and (absence_age is None or absence_age >= ABSENCE_COOLDOWN_MIN)
     )
 
     live_window = not finished and LIVE_UNTIL_MIN <= minutes <= LIVE_FROM_MIN
