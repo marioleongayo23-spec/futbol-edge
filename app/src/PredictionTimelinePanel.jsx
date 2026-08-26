@@ -87,24 +87,62 @@ function HeroKpis({ m, audit, points }) {
   );
 }
 
-function VersionStrip({ points }) {
+function minutesToKickoff(m) {
+  const kickoff = new Date(m?.kickoff || "").getTime();
+  if (!Number.isFinite(kickoff)) return null;
+  return Math.round((kickoff - Date.now()) / 60000);
+}
+
+function missingVersionState(kind, m) {
+  const minutes = minutesToKickoff(m);
+  const lineup = m?.alineacion || {};
+  if (kind === "initial") {
+    return minutes != null && minutes <= 0
+      ? { label: "sin captura inicial", status: "no quedó snapshot INICIAL antes del saque" }
+      : { label: "primera captura", status: "esperando primera captura válida" };
+  }
+  if (kind === "prefinal") {
+    if (lineup.prefinal_attempt_at && minutes != null && minutes > 0) {
+      return { label: "T−3h procesada", status: "sin once probable suficientemente fiable" };
+    }
+    if (minutes == null) return { label: "objetivo T−3h", status: "sin hora de referencia" };
+    if (minutes > 200) return { label: "objetivo T−3h", status: "programada para la ventana T−3h" };
+    if (minutes > 150) return { label: "ventana T−3h", status: "actualizando fuentes y once probable" };
+    if (minutes > 0) return { label: "sin PRE-FINAL", status: "ventana T−3h superada sin fuente fiable" };
+    return { label: "sin PRE-FINAL", status: "no hubo PRE-FINAL fiable antes del saque" };
+  }
+  if (lineup.status === "confirmado") {
+    return minutes != null && minutes > 0
+      ? { label: "XI confirmado", status: "archivando la versión FINAL prepartido" }
+      : { label: "sin FINAL prepartido", status: "el XI oficial no quedó capturado antes del saque" };
+  }
+  if (minutes == null) return { label: "XI oficial T−60 / T−30", status: "sin hora de referencia" };
+  if (minutes > 75) return { label: "XI oficial T−60 / T−30", status: "esperando ventana de publicación oficial" };
+  if (minutes > 0) return { label: "esperando XI oficial", status: "API preparada para T−60 / T−30" };
+  return { label: "sin FINAL prepartido", status: "no se capturó XI oficial antes del saque" };
+}
+
+function VersionStrip({ points, m }) {
   const initial = points.find((point) => point.window === "initial");
   const prefinal = points.find((point) => point.window === "pre_final_T-3h");
   const final = points.find((point) => point.window === "final_T-60_official" || point.window === "final_T-30_official");
-  const cell = (kind, title, point, fallback) => (
-    <div className={`betting-version ${kind} ${point ? "ready" : "pending"}`}>
-      <small>{title}</small>
-      <b>{point ? point.label : fallback}</b>
-      <span>{point ? `${point.probs[0].toFixed(0)} / ${point.probs[1].toFixed(0)} / ${point.probs[2].toFixed(0)} · ${point.lead || ""}` : "pendiente"}</span>
-      {point?.sourceQuality === "media_grounded" && <em>medios + modelo</em>}
-      {point?.officialPollWindow && <em>API-Football · {point.officialPollWindow}</em>}
-    </div>
-  );
+  const cell = (kind, title, point) => {
+    const missing = point ? null : missingVersionState(kind, m);
+    return (
+      <div className={`betting-version ${kind} ${point ? "ready" : "pending"}`}>
+        <small>{title}</small>
+        <b>{point ? point.label : missing.label}</b>
+        <span>{point ? `${point.probs[0].toFixed(0)} / ${point.probs[1].toFixed(0)} / ${point.probs[2].toFixed(0)} · ${point.lead || ""}` : missing.status}</span>
+        {point?.sourceQuality === "media_grounded" && <em>medios + modelo</em>}
+        {point?.officialPollWindow && <em>API-Football · {point.officialPollWindow}</em>}
+      </div>
+    );
+  };
   return (
     <div className="betting-version-strip" aria-label="Versiones de predicción para apostar">
-      {cell("initial", "INICIAL", initial, "primera captura")}
-      {cell("prefinal", "PRE-FINAL", prefinal, "objetivo T−3h")}
-      {cell("final", "FINAL", final, "XI oficial T−60 / T−30")}
+      {cell("initial", "INICIAL", initial)}
+      {cell("prefinal", "PRE-FINAL", prefinal)}
+      {cell("final", "FINAL", final)}
     </div>
   );
 }
@@ -154,7 +192,7 @@ export default function PredictionTimelinePanel({ m }) {
       </div>
 
       <HeroKpis m={m} audit={audit} points={points} />
-      <VersionStrip points={points} />
+      <VersionStrip points={points} m={m} />
 
       {points.length > 0 ? (
         <>
