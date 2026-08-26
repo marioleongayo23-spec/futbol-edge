@@ -1,19 +1,21 @@
-"""Hot-refresh con telemetría de cuota de API-Football.
+"""Hot-refresh con telemetría persistente de cuota de API-Football.
 
-La frecuencia del refresco no debe decidirse por estimaciones. Este wrapper
-mide únicamente las peticiones HTTP reales a API-Football, conserva el último
-estado de los headers de rate-limit y deja un resumen estructurado en el log de
-GitHub Actions. Open-Meteo y otras fuentes no entran en el contador.
+Mide las peticiones HTTP reales, conserva los headers de rate-limit y persiste
+la última cuota conocida en ``source_health.api_football``. El siguiente run
+puede así reducir polling antes de agotar el plan diario.
 """
 from __future__ import annotations
 
 from collections import Counter
+from copy import deepcopy
+from datetime import datetime, timezone
 import json
 from typing import Callable
 
 import requests
 
 from . import hot_refresh_batched as hot_refresh
+from .feed_quality import load_feed, write_feed_safely
 from .ingest.api_football import BASE_URL as API_FOOTBALL_BASE_URL
 
 
@@ -73,8 +75,27 @@ class ApiFootballUsageMeter:
         }
 
 
+def _persist_usage(usage: dict) -> tuple[bool, list]:
+    if not usage.get("requests_total"):
+        return False, []
+    path = hot_refresh.legacy.OUTPUT
+    previous = load_feed(path)
+    if not previous:
+        return False, []
+    candidate = deepcopy(previous)
+    health = dict(candidate.get("source_health") or {})
+    health["api_football"] = {
+        **usage,
+        "checked_at": datetime.now(timezone.utc).isoformat(),
+        "policy": "polling prepartido prioritario + backoff por cuota restante",
+    }
+    candidate["source_health"] = health
+    ok, report = write_feed_safely(path, candidate, previous=previous)
+    return bool(ok), report.get("issues") or []
+
+
 def run_metered() -> tuple[bool, dict, dict]:
-    """Ejecuta el hot-refresh restaurando siempre ``requests.get`` al terminar."""
+    """Ejecuta el hot-refresh y guarda la cuota observada para la siguiente pasada."""
     original_get = requests.get
     meter = ApiFootballUsageMeter(original_get)
     requests.get = meter.request
@@ -82,7 +103,14 @@ def run_metered() -> tuple[bool, dict, dict]:
         ok, stats = hot_refresh.run()
     finally:
         requests.get = original_get
-    return ok, stats, meter.snapshot()
+    usage = meter.snapshot()
+    persisted, issues = _persist_usage(usage)
+    if persisted:
+        ok = True
+    if issues:
+        stats["feed_issues"] = list(dict.fromkeys((stats.get("feed_issues") or []) + issues))
+    stats["usage_persisted"] = persisted
+    return ok, stats, usage
 
 
 def main() -> int:
