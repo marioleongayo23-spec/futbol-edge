@@ -1,26 +1,25 @@
 name: futbol-pred (cron)
 
-# Ejecuta el pipeline de predicción y publica el feed que consume Fútbol Edge.
-# Las claves se configuran como Secrets del repo:
-#   FOOTBALL_DATA_API_KEY, API_FOOTBALL_KEY, ODDS_API_KEY, DATABASE_URL (opcional)
+# Pipeline pesado: refresca históricos, calendario, modelos y artefactos globales.
+# El modo partido de 5 min vive en futbol-hot-refresh.yml y reacciona a clima,
+# XI, bajas y cuotas sin repetir ingestas/entrenamientos caros.
+# Secrets: FOOTBALL_DATA_API_KEY, API_FOOTBALL_KEY, ODDS_API_KEY, DATABASE_URL.
 
 on:
-  # Valida y materializa el feed con el código recién fusionado. Se ignoran los
-  # commits automáticos que solo cambian el propio feed para evitar un bucle.
   push:
     branches: [main]
     paths-ignore:
       - "football/data/dashboard.json"
   schedule:
-    # MODO PARTIDO: recálculo predictivo cada 10 min entre 08:01 y 01:51 Madrid.
-    # El hot-refresh despierta cada 5 min entre medias, por lo que contexto y
-    # mercado pueden ser aún más frescos sin reentrenar todo en cada pasada.
-    - cron: "1,11,21,31,41,51 8-23 * * *"
+    # Base/modelo: cada 30 min en horario operativo. Es suficiente para datos
+    # históricos que no cambian cada 5 min; el hot-refresh mantiene el partido
+    # actual y su predicción derivada a una cadencia mucho menor.
+    - cron: "6,36 8-23 * * *"
       timezone: "Europe/Madrid"
-    - cron: "1,11,21,31,41,51 0-1 * * *"
+    - cron: "6,36 0-1 * * *"
       timezone: "Europe/Madrid"
-    # Madrugada sin fútbol español: basta con mantener calendario/fuentes vivos.
-    - cron: "6,36 2-7 * * *"
+    # Madrugada: una vez por hora para calendario/backfills.
+    - cron: "16 2-7 * * *"
       timezone: "Europe/Madrid"
   workflow_dispatch:
     inputs:
@@ -52,9 +51,8 @@ jobs:
           pip install -r requirements.txt
           pip install -e .
 
-      # En cron frecuente no repetimos 277 tests cada 10 min: los gates se
-      # ejecutan en cada cambio de código/PR. Esto reduce minutos y, sobre todo,
-      # el retraso entre una fuente nueva y la predicción publicada.
+      # Los gates completos se ejecutan al cambiar código. El cron de datos no
+      # necesita repetir toda la suite cada media hora.
       - name: Tests (fail-fast antes de predecir)
         if: github.event_name != 'schedule'
         run: pytest -q
@@ -77,20 +75,14 @@ jobs:
           API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
           ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          # IA: Gemini primero y Groq de fallback. El pipeline completo se
-          # recalcula cada 10 min en horario de partido; la IA mantiene ventanas
-          # controladas y los onces probables tienen sus hitos T-8/T-3/T-90.
           AI_API_KEY: ${{ secrets.AI_API_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GEMINI_MODEL: ${{ secrets.GEMINI_MODEL }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           GROQ_MODEL: ${{ secrets.GROQ_MODEL }}
-          # Compatibilidad con la configuración Groq genérica anterior.
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENAI_BASE_URL: ${{ secrets.OPENAI_BASE_URL }}
           OPENAI_MODEL: ${{ secrets.OPENAI_MODEL }}
-          # Tercer nivel opcional: endpoint gratuito/local OpenAI-compatible
-          # (Ollama, vLLM o LM Studio). Después queda el motor determinista.
           LOCAL_AI_BASE_URL: ${{ secrets.LOCAL_AI_BASE_URL }}
           LOCAL_AI_MODEL: ${{ secrets.LOCAL_AI_MODEL }}
           LOCAL_AI_API_KEY: ${{ secrets.LOCAL_AI_API_KEY }}
@@ -113,9 +105,6 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          # Separa el JSON generado del checkout del job. Si otro cron publica
-          # mientras calculamos, reaplicamos este artefacto sobre la última main
-          # en un worktree limpio: no hay rebase del JSON ni falsos positivos.
           generated="${RUNNER_TEMP}/dashboard.generated.json"
           publish_root="${RUNNER_TEMP}/feed-publish"
           cp data/dashboard.json "$generated"
@@ -126,10 +115,6 @@ jobs:
             git -C "$publish_root" fetch origin "${GITHUB_REF_NAME}"
             git -C "$publish_root" checkout --detach "origin/${GITHUB_REF_NAME}"
             current="$publish_root/football/data/dashboard.json"
-            # generated_at y matches[*].updatedAt cambian en cada ejecución.
-            # Comparamos una huella que elimina SOLO esos campos volátiles; un
-            # cambio en resultado, cuota, once, clima, estadística, snapshot,
-            # calibración o cualquier otro dato sigue provocando publicación.
             if [ -f "$current" ]; then
               current_hash="$(python -m futbol_pred.feed_semantic "$current")"
               generated_hash="$(python -m futbol_pred.feed_semantic "$generated")"
