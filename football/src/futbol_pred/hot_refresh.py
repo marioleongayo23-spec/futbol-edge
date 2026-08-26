@@ -71,6 +71,25 @@ def _availability_core(rows) -> list[dict]:
     return out
 
 
+def _record_check(match: dict, key: str, now_local: datetime, result: str | None = None) -> bool:
+    """Registra una comprobación real, aunque la fuente no haya cambiado.
+
+    ``updatedAt`` sigue significando último cambio de contenido. Esta metadata
+    separada permite a la UI mostrar cuándo se consultó de verdad cada fuente.
+    """
+    checks = dict(match.get("operational_checks") or {})
+    stamp_key = f"{key}_checked_at"
+    stamp = now_local.isoformat()
+    changed = checks.get(stamp_key) != stamp
+    checks[stamp_key] = stamp
+    if result is not None:
+        result_key = f"{key}_check_result"
+        changed = changed or checks.get(result_key) != result
+        checks[result_key] = result
+    match["operational_checks"] = checks
+    return changed
+
+
 def _official_by_side(official: list[dict], match: dict) -> dict[str, dict]:
     sides = {}
     for team in official or []:
@@ -137,6 +156,7 @@ def _merge_official_lineup(match: dict, official: list[dict], fixture_id: int,
         ],
         "status": "confirmado",
         "phase": "final",
+        "lineup_kind": "official",
         "provider": "API-Football",
         "model": "alineación oficial",
         "fuente": f"API-Football · hot refresh · {poll_window}",
@@ -166,20 +186,23 @@ def _merge_official_lineup(match: dict, official: list[dict], fixture_id: int,
 def _merge_absences(match: dict, absences: list[dict], now_local: datetime) -> bool:
     lineup = match.get("alineacion")
     # Crear un bloque de alineación vacío haría fallar el contrato de calidad.
-    if not isinstance(lineup, dict) or not absences:
+    if not isinstance(lineup, dict):
         return False
     changed = False
     stamp = now_local.isoformat()
     for side, team in (("local", match.get("home")), ("visitante", match.get("away"))):
         rows = [
             {**item, "source_updated_at": stamp}
-            for item in absences
+            for item in (absences or [])
             if isinstance(item, dict) and _same_team(item.get("team"), team)
         ]
-        if not rows:
-            continue
         field = f"disponibilidad_{side}"
-        if _availability_core(lineup.get(field)) == _availability_core(rows):
+        old_rows = lineup.get(field)
+        # Si el endpoint devuelve 0 bajas para un lado, limpiamos una baja antigua
+        # si existía. No fabricamos un campo vacío si nunca hubo datos previos.
+        if not rows and old_rows is None:
+            continue
+        if _availability_core(old_rows) == _availability_core(rows):
             continue
         lineup[field] = rows
         lineup[f"bajas_{side}"] = [
@@ -200,15 +223,21 @@ def _refresh_weather(match: dict, now_local: datetime, client: WeatherClient) ->
     venue = venue_for(match.get("home", ""))
     if not venue:
         return False
+
     forecast = client.forecast(venue, kickoff)
+    check_changed = _record_check(
+        match, "weather", now_local, "ok" if forecast else "unavailable"
+    )
     if not forecast:
-        return False
+        return check_changed
+
     match["venue"] = venue["name"]
     match["venue_meta"] = venue
     if _without_refresh_stamp(match.get("weather")) == _without_refresh_stamp(forecast):
-        return False
+        return check_changed
     forecast["source_updated_at"] = now_local.isoformat()
     match["weather"] = forecast
+    match["updatedAt"] = now_local.isoformat()
     return True
 
 
@@ -230,11 +259,13 @@ def _refresh_api_match(match: dict, now_local: datetime, client: ApiFootballClie
     raw = client.find_fixture(match.get("home", ""), match.get("away", ""), kickoff)
     fixture = (raw or {}).get("fixture") or {}
     fixture_id = fixture.get("id")
-    if not fixture_id:
-        return False, {"fixture": False, "lineup": False, "absences": False}
-
-    changed = False
+    changed = _record_check(
+        match, "fixture", now_local, "ok" if fixture_id else "not_found"
+    )
     touched = {"fixture": False, "lineup": False, "absences": False}
+    if not fixture_id:
+        return changed, touched
+
     status = str((fixture.get("status") or {}).get("short") or match.get("status") or "")
     goals = (raw or {}).get("goals") or {}
     home_goals, away_goals = goals.get("home"), goals.get("away")
@@ -256,15 +287,22 @@ def _refresh_api_match(match: dict, now_local: datetime, client: ApiFootballClie
 
     if wants_absences:
         absences = client.get_absences(int(fixture_id))
-        if _merge_absences(match, absences, now_local):
+        changed = _record_check(
+            match, "absences", now_local, "ok" if absences is not None else "unavailable"
+        ) or changed
+        if absences is not None and _merge_absences(match, absences, now_local):
             changed = touched["absences"] = True
 
     if wants_lineup:
         official = client.get_official_lineup(int(fixture_id))
-        if _merge_official_lineup(match, official, int(fixture_id), now_local, minutes):
+        published = bool(_official_by_side(official or [], match))
+        changed = _record_check(
+            match, "lineup", now_local, "published" if published else "not_published"
+        ) or changed
+        if _merge_official_lineup(match, official or [], int(fixture_id), now_local, minutes):
             changed = touched["lineup"] = True
 
-    if changed:
+    if any(touched.values()):
         match["updatedAt"] = now_local.isoformat()
     return changed, touched
 
@@ -282,10 +320,11 @@ def refresh_payload(payload: dict, now: datetime | None = None,
     for match in payload.get("matches") or []:
         if not isinstance(match, dict):
             continue
+        weather_before = deepcopy(match.get("weather"))
         if _refresh_weather(match, now_local, weather):
-            stats["weather"] += 1
-            match["updatedAt"] = now_local.isoformat()
             changed = True
+            if match.get("weather") != weather_before:
+                stats["weather"] += 1
         if not football.offline:
             api_changed, touched = _refresh_api_match(match, now_local, football)
             changed = changed or api_changed
