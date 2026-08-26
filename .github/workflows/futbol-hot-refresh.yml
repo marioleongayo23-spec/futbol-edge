@@ -1,0 +1,67 @@
+name: futbol-edge hot refresh
+
+# Canal ligero para información que cambia cerca del partido. No reentrena el
+# modelo, no llama a IA y no sustituye al pipeline completo de 15 minutos.
+on:
+  schedule:
+    # 11:00-22:50 UTC = 13:00-00:50 Madrid en horario de verano y
+    # 12:00-23:50 en invierno. Cubre las franjas habituales de fútbol español
+    # sin gastar ejecuciones/API durante toda la madrugada y la mañana.
+    - cron: "*/10 11-22 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: futbol-edge-hot-refresh
+  cancel-in-progress: true
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Dependencia HTTP mínima
+        run: pip install requests
+
+      - name: Refrescar y publicar sobre la última main
+        env:
+          API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          pushed=0
+          for i in 1 2 3 4; do
+            # El pipeline pesado puede publicar en paralelo. Partimos SIEMPRE de
+            # la última main y, si hay carrera al hacer push, recalculamos el hot
+            # refresh sobre el feed ganador en vez de sobrescribirlo.
+            git fetch origin main
+            git reset --hard origin/main
+
+            PYTHONPATH=football/src python -m futbol_pred.hot_refresh
+
+            if git diff --quiet -- football/data/dashboard.json; then
+              echo "Sin cambios rápidos sustantivos"
+              pushed=1
+              break
+            fi
+
+            git add football/data/dashboard.json
+            git commit -m "Actualizar datos intradía de Fútbol Edge"
+            if git push origin HEAD:main; then
+              pushed=1
+              break
+            fi
+
+            echo "Publicación concurrente; recalculando sobre main (intento $i)…"
+            sleep $((i * 2))
+          done
+          [ "$pushed" = 1 ] || { echo "No se pudo publicar el hot refresh"; exit 1; }
