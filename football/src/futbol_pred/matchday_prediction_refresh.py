@@ -101,12 +101,12 @@ def _weather_base_xg(match: dict, previous: dict) -> list[float] | None:
     return [float(xg[0]), float(xg[1])]
 
 
-def _base_stat(row: dict, previous_factor: float, previous_applied: bool) -> tuple[float, float] | None:
+def _base_stat(row: dict, previous_factor: float, previous_applied_to_current: bool) -> tuple[float, float] | None:
     try:
         home, away = float(row["home"]), float(row["away"])
     except (KeyError, TypeError, ValueError):
         return None
-    if previous_applied and previous_factor and abs(previous_factor - 1.0) > 1e-9:
+    if previous_applied_to_current and previous_factor and abs(previous_factor - 1.0) > 1e-9:
         home /= previous_factor
         away /= previous_factor
     return home, away
@@ -169,6 +169,14 @@ def _apply_weather(match: dict, now_local: datetime) -> bool:
     if match.get("finished") or not isinstance(weather, dict):
         return False
     previous = match.get("weather_adjustment") if isinstance(match.get("weather_adjustment"), dict) else {}
+    old_xg = previous.get("xg") if isinstance(previous.get("xg"), dict) else {}
+    # Solo deshacemos el multiplicador anterior de stats si el xG actual coincide
+    # con el AFTER anterior. Si el pipeline pesado ya reconstruyó el xG base,
+    # asumimos que también reconstruyó las stats base y NO dividimos otra vez.
+    previous_applied_to_current = bool(
+        previous.get("applied")
+        and _same_pair(match.get("xg"), old_xg.get("after"))
+    )
     base_xg = _weather_base_xg(match, previous)
     if not base_xg:
         return False
@@ -187,7 +195,7 @@ def _apply_weather(match: dict, now_local: datetime) -> bool:
         if not isinstance(row, dict):
             continue
         previous_factor = _num(old_mult.get(factor_key), 1.0)
-        base = _base_stat(row, previous_factor, bool(previous.get("applied")))
+        base = _base_stat(row, previous_factor, previous_applied_to_current)
         if not base:
             continue
         if key == "goals":
