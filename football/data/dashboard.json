@@ -1,6 +1,6 @@
 {
   "schema_version": 7,
-  "generated_at": "2026-08-26T13:17:48.966141+02:00",
+  "generated_at": "2026-08-26T13:48:05.402344+02:00",
   "season": 2026,
   "quiniela": {
     "jornada": "3",
@@ -12300,7 +12300,7 @@
   },
   "content_audit": {
     "window": "continuo",
-    "checked_at": "2026-08-26T13:20:30.938550+02:00",
+    "checked_at": "2026-08-26T13:48:06.444736+02:00",
     "matches_today": 1,
     "complete": 0,
     "incomplete": [
@@ -12308,7 +12308,6 @@
         "id": "football_data-564631",
         "partido": "Real Madrid CF - Real Sociedad de Fútbol",
         "missing": [
-          "clima",
           "cuotas"
         ]
       }
@@ -12339,7 +12338,7 @@
         "ok": 1
       },
       "weather": {
-        "missing": 1
+        "ok": 1
       },
       "absences": {
         "ok": 1
@@ -21794,7 +21793,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T13:17:48.966141+02:00",
+      "updatedAt": "2026-08-26T13:48:05.402344+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -22674,14 +22673,16 @@
           "fixture": {
             "state": "ok",
             "required": true,
-            "checked_at": "2026-08-26T13:17:48.966141+02:00",
+            "checked_at": "2026-08-26T13:48:05.402344+02:00",
             "source": "football_data",
             "detail": "calendario cargado"
           },
           "weather": {
-            "state": "missing",
+            "state": "ok",
             "required": true,
-            "detail": "sin previsión"
+            "checked_at": "2026-08-26T13:48:05.402344+02:00",
+            "source": "Open-Meteo",
+            "detail": "ok"
           },
           "absences": {
             "state": "ok",
@@ -22708,9 +22709,32 @@
           }
         },
         "missing_required": [
-          "weather",
           "odds"
         ]
+      },
+      "operational_checks": {
+        "weather_checked_at": "2026-08-26T13:48:05.402344+02:00",
+        "weather_check_result": "ok"
+      },
+      "weather": {
+        "forecast_for": "2026-08-26T21:00:00",
+        "temperature_c": 22.1,
+        "apparent_temperature_c": 20.4,
+        "humidity_pct": 50,
+        "precipitation_mm": 0.0,
+        "precipitation_probability_pct": 3,
+        "wind_kmh": 13.9,
+        "weather_code": 3,
+        "heat_stress": {
+          "level": "bajo",
+          "index": 22.1,
+          "method": "temperatura aparente + humedad; no es WBGT"
+        },
+        "source": "Open-Meteo",
+        "source_url": "https://open-meteo.com/",
+        "license": "CC BY 4.0",
+        "model_use": "ajuste_cuantitativo_contextual",
+        "source_updated_at": "2026-08-26T13:48:05.402344+02:00"
       }
     },
     {
