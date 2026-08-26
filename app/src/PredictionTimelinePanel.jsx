@@ -16,6 +16,80 @@ function fmtTime(iso) {
   }
 }
 
+function fmtOperationalTime(iso) {
+  if (!iso) return null;
+  const time = new Date(iso);
+  if (Number.isNaN(time.getTime())) return null;
+  return time.toLocaleString("es-ES", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+}
+
+function latestAvailabilityStamp(lineup) {
+  const stamps = [
+    ...(lineup?.disponibilidad_local || []),
+    ...(lineup?.disponibilidad_visitante || []),
+  ]
+    .map((row) => new Date(row?.source_updated_at || "").getTime())
+    .filter(Number.isFinite);
+  return stamps.length ? new Date(Math.max(...stamps)).toISOString() : null;
+}
+
+function checkText(stamp, result, fallback, prefix = "comprob.") {
+  const formatted = fmtOperationalTime(stamp);
+  if (formatted) return `${prefix} ${formatted}${result ? ` · ${result}` : ""}`;
+  return fallback;
+}
+
+function OperationalFreshness({ m }) {
+  const lineup = m?.alineacion || {};
+  const checks = m?.operational_checks || {};
+  const absenceStamp = latestAvailabilityStamp(lineup);
+  const hasAvailability = Object.prototype.hasOwnProperty.call(lineup, "disponibilidad_local")
+    || Object.prototype.hasOwnProperty.call(lineup, "disponibilidad_visitante");
+  const weatherStamp = m?.weather?.source_updated_at;
+  const weatherFor = m?.weather?.forecast_for;
+  const lineupStamp = lineup.source_updated_at || lineup.generated_at || lineup.ts;
+  const absenceFallback = absenceStamp
+    ? `dato ${fmtOperationalTime(absenceStamp)}`
+    : hasAvailability ? "sin bajas reportadas" : "sin comprobación";
+  const weatherFallback = weatherStamp
+    ? `dato ${fmtOperationalTime(weatherStamp)}`
+    : weatherFor ? `previsión ${fmtOperationalTime(weatherFor)}` : "sin dato";
+  const lineupFallback = lineupStamp
+    ? `${lineup.status || "sin confirmar"} · dato ${fmtOperationalTime(lineupStamp)}`
+    : lineup.status || "sin confirmar";
+  const rows = [
+    {
+      label: "Partido",
+      ok: Boolean(checks.fixture_checked_at || m?.updatedAt),
+      text: checkText(checks.fixture_checked_at, checks.fixture_check_result, m?.updatedAt ? `último cambio ${fmtOperationalTime(m.updatedAt)}` : "sin refresco intradía"),
+    },
+    {
+      label: "Clima",
+      ok: Boolean(checks.weather_checked_at || m?.weather),
+      text: checkText(checks.weather_checked_at, checks.weather_check_result, weatherFallback),
+    },
+    {
+      label: "Bajas",
+      ok: Boolean(checks.absences_checked_at || hasAvailability),
+      text: checkText(checks.absences_checked_at, checks.absences_check_result, absenceFallback),
+    },
+    {
+      label: "XI",
+      ok: lineup.status === "confirmado" || lineup.status === "probable" || Boolean(checks.lineup_checked_at),
+      text: checkText(checks.lineup_checked_at, checks.lineup_check_result, lineupFallback),
+    },
+  ];
+  return (
+    <div className="chips" style={{ marginTop: 10 }} aria-label="Estado operativo de datos del partido">
+      {rows.map((row) => (
+        <span className="chip" key={row.label}>
+          <b>{row.label}</b> {row.ok ? "✓" : "◷"} {row.text}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 function ProbabilityTimeline({ points, home, away }) {
   if (!points.length) return null;
   const width = 720;
@@ -87,24 +161,62 @@ function HeroKpis({ m, audit, points }) {
   );
 }
 
-function VersionStrip({ points }) {
+function minutesToKickoff(m) {
+  const kickoff = new Date(m?.kickoff || "").getTime();
+  if (!Number.isFinite(kickoff)) return null;
+  return Math.round((kickoff - Date.now()) / 60000);
+}
+
+function missingVersionState(kind, m) {
+  const minutes = minutesToKickoff(m);
+  const lineup = m?.alineacion || {};
+  if (kind === "initial") {
+    return minutes != null && minutes <= 0
+      ? { label: "sin captura inicial", status: "no quedó snapshot INICIAL antes del saque" }
+      : { label: "primera captura", status: "esperando primera captura válida" };
+  }
+  if (kind === "prefinal") {
+    if (lineup.prefinal_attempt_at && minutes != null && minutes > 0) {
+      return { label: "T−3h procesada", status: "sin once probable suficientemente fiable" };
+    }
+    if (minutes == null) return { label: "objetivo T−3h", status: "sin hora de referencia" };
+    if (minutes > 200) return { label: "objetivo T−3h", status: "programada para la ventana T−3h" };
+    if (minutes > 150) return { label: "ventana T−3h", status: "actualizando fuentes y once probable" };
+    if (minutes > 0) return { label: "sin PRE-FINAL", status: "ventana T−3h superada sin fuente fiable" };
+    return { label: "sin PRE-FINAL", status: "no hubo PRE-FINAL fiable antes del saque" };
+  }
+  if (lineup.status === "confirmado") {
+    return minutes != null && minutes > 0
+      ? { label: "XI confirmado", status: "archivando la versión FINAL prepartido" }
+      : { label: "sin FINAL prepartido", status: "el XI oficial no quedó capturado antes del saque" };
+  }
+  if (minutes == null) return { label: "XI oficial T−60 / T−30", status: "sin hora de referencia" };
+  if (minutes > 75) return { label: "XI oficial T−60 / T−30", status: "esperando ventana de publicación oficial" };
+  if (minutes > 0) return { label: "esperando XI oficial", status: "API preparada para T−60 / T−30" };
+  return { label: "sin FINAL prepartido", status: "no se capturó XI oficial antes del saque" };
+}
+
+function VersionStrip({ points, m }) {
   const initial = points.find((point) => point.window === "initial");
   const prefinal = points.find((point) => point.window === "pre_final_T-3h");
   const final = points.find((point) => point.window === "final_T-60_official" || point.window === "final_T-30_official");
-  const cell = (kind, title, point, fallback) => (
-    <div className={`betting-version ${kind} ${point ? "ready" : "pending"}`}>
-      <small>{title}</small>
-      <b>{point ? point.label : fallback}</b>
-      <span>{point ? `${point.probs[0].toFixed(0)} / ${point.probs[1].toFixed(0)} / ${point.probs[2].toFixed(0)} · ${point.lead || ""}` : "pendiente"}</span>
-      {point?.sourceQuality === "media_grounded" && <em>medios + modelo</em>}
-      {point?.officialPollWindow && <em>API-Football · {point.officialPollWindow}</em>}
-    </div>
-  );
+  const cell = (kind, title, point) => {
+    const missing = point ? null : missingVersionState(kind, m);
+    return (
+      <div className={`betting-version ${kind} ${point ? "ready" : "pending"}`}>
+        <small>{title}</small>
+        <b>{point ? point.label : missing.label}</b>
+        <span>{point ? `${point.probs[0].toFixed(0)} / ${point.probs[1].toFixed(0)} / ${point.probs[2].toFixed(0)} · ${point.lead || ""}` : missing.status}</span>
+        {point?.sourceQuality === "media_grounded" && <em>medios + modelo</em>}
+        {point?.officialPollWindow && <em>API-Football · {point.officialPollWindow}</em>}
+      </div>
+    );
+  };
   return (
     <div className="betting-version-strip" aria-label="Versiones de predicción para apostar">
-      {cell("initial", "INICIAL", initial, "primera captura")}
-      {cell("prefinal", "PRE-FINAL", prefinal, "objetivo T−3h")}
-      {cell("final", "FINAL", final, "XI oficial T−60 / T−30")}
+      {cell("initial", "INICIAL", initial)}
+      {cell("prefinal", "PRE-FINAL", prefinal)}
+      {cell("final", "FINAL", final)}
     </div>
   );
 }
@@ -153,8 +265,9 @@ export default function PredictionTimelinePanel({ m }) {
         <span className="pill">NO LEAKAGE</span>
       </div>
 
+      <OperationalFreshness m={m} />
       <HeroKpis m={m} audit={audit} points={points} />
-      <VersionStrip points={points} />
+      <VersionStrip points={points} m={m} />
 
       {points.length > 0 ? (
         <>

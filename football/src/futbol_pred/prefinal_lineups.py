@@ -1,7 +1,9 @@
 """Alineación PRE-FINAL a T-3h.
 
-La pre-final representa lo que un usuario razonable podría conocer varias horas
-antes de apostar: once probable actualizado, bajas conocidas y señales de medios.
+La PRE-FINAL solo se considera once probable cuando está apoyada por evidencia
+externa reciente. Si no hay medios/fuente suficiente, el sistema puede conservar
+o producir una estimación para análisis interno, pero queda marcada como
+``estimado`` y nunca se promociona visualmente como once probable.
 No sustituye a la alineación oficial T-60/T-30 y no altera 1X2 sin validación.
 """
 from __future__ import annotations
@@ -73,8 +75,10 @@ def _prompt(candidates: list[dict]) -> str:
         })
     return (
         "Actúas como analista prepartido de fútbol español. Son aproximadamente T-3h. "
-        "Construye la PRE-FINAL probable usando SOLO la evidencia suministrada, el once previo "
-        "y conocimiento táctico razonable; la prensa es evidencia, no confirmación oficial. "
+        "Construye una propuesta de XI usando SOLO la evidencia suministrada, el once previo "
+        "y contexto táctico razonable. La prensa es evidencia, no confirmación oficial. "
+        "Si evidencia_medios está vacía, el resultado será tratado por el sistema únicamente "
+        "como ESTIMACIÓN de modelo, nunca como once probable respaldado por fuentes. "
         "No inventes lesiones ni digas que un once es oficial. Si una noticia contradice otra, "
         "prioriza la más reciente y explica la incertidumbre solo mediante las bajas/dudas. "
         "Para cada partido devuelve EXACTAMENTE 11 jugadores únicos por lado, ordenados POR→DEF→MED→ATA. "
@@ -91,19 +95,22 @@ def _apply_result(match: dict, result: dict, media: list[dict], now: datetime, p
     stamp = _aware(now).astimezone(MADRID).isoformat()
     local_props = _filter_real_props(old.get("clave_local"), result["local"])
     visitor_props = _filter_real_props(old.get("clave_visitante"), result["visitante"])
+    grounded = bool(media)
     merged = {
         **old,
         **result,
         "clave_local": local_props,
         "clave_visitante": visitor_props,
         "best_props": [],
-        "status": "probable",
-        "phase": "pre_final",
+        "status": "probable" if grounded else "estimado",
+        "phase": "pre_final" if grounded else "pre_final_estimate",
+        "lineup_kind": "source_grounded_probable" if grounded else "model_estimate",
         "provider": provider,
         "model": model,
-        "fuente": "Pre-final T-3h · medios recientes + IA" if media else "Pre-final T-3h · IA + once previo",
+        "fuente": "Pre-final T-3h · medios recientes + IA" if grounded else "Estimación T-3h · IA + once previo · sin fuente externa suficiente",
         "media_sources": media,
-        "source_quality": "media_grounded" if media else "model_only",
+        "source_quality": "media_grounded" if grounded else "model_only",
+        "display_warning": None if grounded else "XI estimado por modelo; no existe una fuente externa suficiente para llamarlo once probable.",
         "prefinal_refresh_at": stamp,
         "source_updated_at": stamp,
         "generated_at": stamp,
@@ -122,23 +129,30 @@ def _mark_fallback(match: dict, media: list[dict], now: datetime) -> bool:
     if not _valid_xi(lineup):
         match["alineacion"] = lineup
         return False
-    lineup["phase"] = "pre_final"
+    lineup["status"] = "estimado"
+    lineup["phase"] = "pre_final_estimate"
+    lineup["lineup_kind"] = "fallback_estimate"
     lineup["prefinal_refresh_at"] = stamp
     lineup["source_quality"] = "fallback_with_media" if media else "statistical_fallback"
     lineup["fuente"] = (
-        "Pre-final T-3h · once previo + señales de medios (fallback)"
-        if media else "Pre-final T-3h · motor/once previo (fallback)"
+        "Estimación T-3h · once previo + señales de medios no integradas (fallback)"
+        if media else "Estimación T-3h · motor/once previo (fallback)"
+    )
+    lineup["display_warning"] = (
+        "Hay señales de medios, pero no se pudo construir un once probable validado; se conserva una estimación previa."
+        if media else "XI estimado sin una fuente externa fiable de once probable."
     )
     match["alineacion"] = lineup
     return True
 
 
 def refresh_prefinal_lineups(matches: list[dict], now: datetime, limit: int = 8) -> dict:
-    """Refresca una vez el once probable en la ventana T-3h.
+    """Refresca una vez el XI en la ventana T-3h.
 
-    Devuelve métricas operativas para que el feed pueda auditar cobertura y
-    grounding. Si IA falla, conserva el mejor once previo válido y lo marca como
-    fallback; nunca rellena nombres para alcanzar 11.
+    Devuelve métricas operativas para auditar cobertura y grounding. Solo una
+    respuesta con evidencia externa se etiqueta como PRE-FINAL probable. Si IA
+    falla o no hay grounding suficiente, conserva el mejor XI previo válido como
+    estimación; nunca rellena nombres para alcanzar 11 ni lo vende como probable.
     """
     now_local = _aware(now).astimezone(MADRID)
     candidates = []

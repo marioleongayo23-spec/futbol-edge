@@ -1,4 +1,4 @@
-// Carga del feed real (resultados cada 15 min; IA/completitud dos veces al día).
+// Carga del feed real. Los datos rápidos y el pipeline pesado pueden tener cadencias distintas.
 
 export const FEED_URL =
   import.meta.env?.VITE_FEED_URL ||
@@ -8,13 +8,77 @@ export const FEED_URL =
 // (por ejemplo sin conexión, o antes de que el cron haya publicado en main).
 // BASE_URL es "/" en Vercel y "/futbol-edge/" en GitHub Pages.
 const FALLBACK_URL = (import.meta.env?.BASE_URL || "/") + "dashboard.json";
+const ESTIMATE_QUALITIES = new Set(["model_only", "statistical_fallback", "fallback_with_media"]);
+
+function normalizeAvailability(rows) {
+  if (!Array.isArray(rows)) return rows;
+  return rows.map((raw) => {
+    if (!raw || typeof raw !== "object") return raw;
+    const player = raw.jugador || raw.player || raw.name || "";
+    const detail = raw.detalle || raw.reason || raw.descripcion || "";
+    if (!player) return raw;
+    const stateParts = [raw.estado, detail && detail !== player ? detail : null]
+      .filter(Boolean)
+      .filter((value, index, values) => values.indexOf(value) === index);
+    return {
+      ...raw,
+      // Canonizamos identidad: la UI siempre recibe `jugador`, aunque el
+      // proveedor original lo llame player/name, y nunca usa la lesión como nombre.
+      jugador: player,
+      detalle: player,
+      estado: stateParts.join(" · ") || raw.estado,
+      raw_detalle: detail && detail !== player ? detail : undefined,
+    };
+  });
+}
+
+export function normalizeFeedForDisplay(data) {
+  if (!data || !Array.isArray(data.matches)) return data;
+  return {
+    ...data,
+    matches: data.matches.map((match) => {
+      const lineup = match?.alineacion;
+      if (!lineup || typeof lineup !== "object") return match;
+      const normalized = {
+        ...lineup,
+        disponibilidad_local: normalizeAvailability(lineup.disponibilidad_local),
+        disponibilidad_visitante: normalizeAvailability(lineup.disponibilidad_visitante),
+      };
+
+      // squad-only-v3 no es un once probable: son 11 nombres escogidos por grupo
+      // posicional dentro de la plantilla. Se conserva el bloque en el backend
+      // para trazabilidad, pero la UI no debe dibujarlo como una predicción real.
+      if (normalized.model === "squad-only-v3" && normalized.status !== "confirmado") {
+        normalized.local = [];
+        normalized.visitante = [];
+        normalized.posiciones_local = [];
+        normalized.posiciones_visitante = [];
+        normalized.formacion_local = null;
+        normalized.formacion_visitante = null;
+        normalized.status = "sin confirmar";
+        normalized.lineup_kind = "squad_only_withheld";
+        normalized.provider = "Plantilla real · sin fuente fiable de once probable";
+        normalized.display_withheld = true;
+        normalized.display_warning = "La plantilla está disponible, pero aún no hay un once probable fiable.";
+      } else if (normalized.status !== "confirmado" && ESTIMATE_QUALITIES.has(normalized.source_quality)) {
+        // Barrera de compatibilidad para feeds antiguos: una salida model_only o
+        // fallback puede enseñarse como estimación, pero nunca llamarse probable.
+        normalized.status = "estimado";
+        normalized.lineup_kind = normalized.lineup_kind || "model_estimate";
+        normalized.display_warning = normalized.display_warning
+          || "XI estimado por modelo/fallback; no existe evidencia externa suficiente para llamarlo once probable.";
+      }
+      return { ...match, alineacion: normalized };
+    }),
+  };
+}
 
 async function fetchJson(url) {
   const r = await fetch(url + (url.includes("?") ? "&" : "?") + "t=" + Date.now());
   if (!r.ok) throw new Error("HTTP " + r.status);
   const data = await r.json();
   if (!isUsableFeed(data)) throw new Error("Feed incompleto o regresivo");
-  return data;
+  return normalizeFeedForDisplay(data);
 }
 
 // Segunda barrera: aunque GitHub responda 200, nunca renderizamos un JSON vacío,
@@ -27,8 +91,9 @@ export function isUsableFeed(data) {
 }
 
 export async function loadFeed() {
-  // Feed embebido (preview autocontenida / offline duro): si existe, se usa.
-  if (typeof window !== "undefined" && window.__FEED__) return window.__FEED__;
+  // Feed embebido (preview autocontenida / offline duro): si existe, se normaliza
+  // igual que el remoto para no mostrar formatos antiguos de bajas/onces.
+  if (typeof window !== "undefined" && window.__FEED__) return normalizeFeedForDisplay(window.__FEED__);
   try {
     return await fetchJson(FEED_URL);
   } catch (e) {

@@ -9,11 +9,13 @@ from __future__ import annotations
 
 from datetime import datetime
 import math
+from zoneinfo import ZoneInfo
 
 import requests
 
 FORECAST_URL = "https://api.open-meteo.com/v1/forecast"
 HISTORICAL_FORECAST_URL = "https://historical-forecast-api.open-meteo.com/v1/forecast"
+MADRID = ZoneInfo("Europe/Madrid")
 
 
 def _heat_context(temperature: float, apparent: float, humidity: float) -> dict:
@@ -27,10 +29,17 @@ def _heat_context(temperature: float, apparent: float, humidity: float) -> dict:
 
 
 def _nearest_hour(hourly: dict, target: datetime, tolerance_hours: int = 2) -> tuple[int, list[datetime]] | None:
+    """Busca la hora de Open-Meteo en la misma zona temporal que su respuesta.
+
+    La API se solicita con ``timezone=Europe/Madrid`` y devuelve timestamps sin
+    offset. Si el saque inicial llega en UTC u otra zona, se convierte primero a
+    Madrid; quitar el tzinfo directamente desplazaría la selección 1-2 horas.
+    """
     times = [datetime.fromisoformat(value) for value in hourly.get("time") or []]
     if not times:
         return None
-    naive_target = target.replace(tzinfo=None)
+    local_target = target.astimezone(MADRID) if target.tzinfo is not None else target
+    naive_target = local_target.replace(tzinfo=None)
     index = min(range(len(times)), key=lambda idx: abs((times[idx] - naive_target).total_seconds()))
     if abs((times[index] - naive_target).total_seconds()) > tolerance_hours * 3600:
         return None

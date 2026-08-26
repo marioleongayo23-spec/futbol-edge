@@ -32,6 +32,8 @@ def test_ajuste_modifica_xg_stats_mercados_y_value_sin_tocar_1x2():
             "yellows": {"home": 2.0, "away": 2.4, "total": 4.4},
         },
         "weather": {
+            "source": "Open-Meteo",
+            "forecast_for": "2026-08-25T21:00:00",
             "source_updated_at": "2026-08-25T10:15:00+02:00",
             "wind_kmh": 31,
             "precipitation_mm": 2.5,
@@ -55,6 +57,9 @@ def test_ajuste_modifica_xg_stats_mercados_y_value_sin_tocar_1x2():
     assert match["value"][1]["edge"] == round(match["value"][1]["modelProb"] * 2.1 - 1, 3)
     assert match["weather_adjustment"]["one_x_two_adjusted"] is False
     assert match["weather_adjustment"]["xg"]["delta"][0] < 0
+    assert match["weather_adjustment"]["weather_source"] == "Open-Meteo"
+    assert match["weather_adjustment"]["weather_forecast_for"] == "2026-08-25T21:00:00"
+    assert match["weather_adjustment"]["weather_source_updated_at"] == "2026-08-25T10:15:00+02:00"
 
 
 def test_mismo_forecast_no_se_aplica_dos_veces_sobre_el_mismo_xg():
@@ -98,14 +103,25 @@ def test_mismo_forecast_se_reaplica_si_el_cron_reconstruye_xg_base():
     assert rebuilt["weather_adjustment"]["xg"]["before"] == [1.5, 1.0]
 
 
-def test_clima_neutro_no_altera_prediccion():
+def test_clima_neutro_no_altera_prediccion_y_conserva_trazabilidad():
     match = {
         "finished": False,
         "xg": [1.5, 1.0],
         "stats": {"shots": {"home": 10, "away": 8, "total": 18}},
         "markets": {"over_2_5": 0.5},
-        "weather": {"source_updated_at": "stamp", "wind_kmh": 10, "precipitation_mm": 0, "apparent_temperature_c": 20},
+        "weather": {
+            "source": "Open-Meteo",
+            "forecast_for": "2026-08-25T20:00:00",
+            "source_updated_at": "2026-08-25T12:00:00+02:00",
+            "wind_kmh": 10,
+            "precipitation_mm": 0,
+            "apparent_temperature_c": 20,
+        },
     }
     assert apply_weather_adjustment(match) is False
     assert match["xg"] == [1.5, 1.0]
-    assert match["weather_adjustment"]["applied"] is False
+    adjustment = match["weather_adjustment"]
+    assert adjustment["applied"] is False
+    assert adjustment["weather_source"] == "Open-Meteo"
+    assert adjustment["weather_forecast_for"] == "2026-08-25T20:00:00"
+    assert adjustment["weather_source_updated_at"] == "2026-08-25T12:00:00+02:00"

@@ -127,6 +127,11 @@ def apply_weather_adjustment(match: dict, now: datetime | None = None) -> bool:
         return False
     weather = match["weather"]
     source_stamp = weather.get("source_updated_at") or weather.get("forecast_for")
+    source_meta = {
+        "weather_source_updated_at": source_stamp,
+        "weather_forecast_for": weather.get("forecast_for"),
+        "weather_source": weather.get("source"),
+    }
     previous = match.get("weather_adjustment") or {}
     # El dashboard se reconstruye desde el modelo en cada cron. Por eso "mismo
     # forecast" no implica que el xG actual ya esté ajustado: solo saltamos si
@@ -143,7 +148,8 @@ def apply_weather_adjustment(match: dict, now: datetime | None = None) -> bool:
     if not mult["reasons"]:
         match["weather_adjustment"] = {
             "applied": False,
-            "weather_source_updated_at": source_stamp,
+            **source_meta,
+            "applied_at": (now.isoformat() if now else None),
             "reason": "condiciones dentro de umbrales neutros",
             "multipliers": {k: mult[k] for k in ("goals", "shots", "fouls", "cards")},
             "one_x_two_adjusted": False,
@@ -186,7 +192,7 @@ def apply_weather_adjustment(match: dict, now: datetime | None = None) -> bool:
     _sync_ou25_value(match, p_over_25)
     match["weather_adjustment"] = {
         "applied": True,
-        "weather_source_updated_at": source_stamp,
+        **source_meta,
         "applied_at": (now.isoformat() if now else None),
         "reasons": mult["reasons"],
         "multipliers": {k: mult[k] for k in ("goals", "shots", "fouls", "cards")},

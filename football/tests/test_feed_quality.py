@@ -1,13 +1,13 @@
 """Contrato, last-known-good y escritura atómica del feed."""
 
 from copy import deepcopy
-from datetime import datetime, timezone
 import json
 
 from futbol_pred.feed_quality import evaluate_feed, preserve_last_known_good, write_feed_safely
 
 
 def _feed(n=20):
+    """Feed sintético con reloj fijo para que los tests no caduquen al día siguiente."""
     matches = [
         {
             "id": f"src-{i}",
@@ -27,7 +27,10 @@ def _feed(n=20):
     ]
     return {
         "schema_version": 3,
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        # 00:00 UTC = 02:00 en Madrid. Mantiene la mayoría de fixtures dentro
+        # de la ventana en la que schema >=4 exige previa y once, sin depender
+        # de datetime.now().
+        "generated_at": "2026-08-25T00:00:00+00:00",
         "season": 2026,
         "counts": {"total": n, "jugados": 0, "proximos": n, "con_prediccion": n},
         "matches": matches,
