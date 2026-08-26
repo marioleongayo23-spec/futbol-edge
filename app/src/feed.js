@@ -22,11 +22,12 @@ function normalizeAvailability(rows) {
       .filter((value, index, values) => values.indexOf(value) === index);
     return {
       ...raw,
-      // MatchDetail prioriza `detalle`: para UI debe ser la identidad del jugador,
-      // no un texto suelto como "Hamstring Injury".
+      // Canonizamos identidad: la UI siempre recibe `jugador`, aunque el
+      // proveedor original lo llame player/name, y nunca usa la lesión como nombre.
+      jugador: player,
       detalle: player,
       estado: stateParts.join(" · ") || raw.estado,
-      raw_detalle: detail || undefined,
+      raw_detalle: detail && detail !== player ? detail : undefined,
     };
   });
 }
