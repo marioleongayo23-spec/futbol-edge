@@ -24,9 +24,10 @@ class _Weather:
 class _Football:
     offline = False
 
-    def __init__(self, status="NS", goals=None):
+    def __init__(self, status="NS", goals=None, absences=None):
         self.status = status
         self.goals = goals or {"home": None, "away": None}
+        self.absences = absences
 
     def find_fixture(self, _home, _away, _kickoff):
         return {
@@ -35,6 +36,8 @@ class _Football:
         }
 
     def get_absences(self, _fixture_id):
+        if self.absences is not None:
+            return self.absences
         return [{
             "jugador": "Lesionado Real",
             "team": "Real Madrid",
@@ -119,7 +122,67 @@ def test_hot_refresh_actualiza_clima_bajas_y_once_oficial_en_t60():
     assert match["alineacion"]["provider"] == "API-Football"
     assert match["alineacion"]["local"][0] == "RM 0"
     assert match["alineacion"]["disponibilidad_local"][0]["jugador"] == "Lesionado Real"
+    checks = match["operational_checks"]
+    assert checks["weather_checked_at"] == "2026-08-26T19:00:00+02:00"
+    assert checks["fixture_checked_at"] == "2026-08-26T19:00:00+02:00"
+    assert checks["absences_checked_at"] == "2026-08-26T19:00:00+02:00"
+    assert checks["lineup_checked_at"] == "2026-08-26T19:00:00+02:00"
+    assert checks["lineup_check_result"] == "published"
     assert feed["generated_at"] == "2026-08-26T19:00:00+02:00"
+
+
+def test_hot_refresh_registra_comprobacion_aunque_el_dato_no_cambie():
+    feed = _feed()
+    refresh_payload(
+        feed,
+        now=datetime.fromisoformat("2026-08-26T19:00:00+02:00"),
+        weather_client=_Weather(),
+        football_client=_Football(),
+    )
+    first_lineup_check = feed["matches"][0]["operational_checks"]["lineup_checked_at"]
+
+    changed, stats = refresh_payload(
+        feed,
+        now=datetime.fromisoformat("2026-08-26T19:10:00+02:00"),
+        weather_client=_Weather(),
+        football_client=_Football(),
+    )
+
+    match = feed["matches"][0]
+    checks = match["operational_checks"]
+    assert changed is True
+    assert stats == {"weather": 0, "fixture": 0, "lineup": 0, "absences": 0}
+    assert checks["weather_checked_at"] == "2026-08-26T19:10:00+02:00"
+    assert checks["fixture_checked_at"] == "2026-08-26T19:10:00+02:00"
+    # En T-50 la alineación ya estaba confirmada: no se llama otra vez al endpoint.
+    assert checks["lineup_checked_at"] == first_lineup_check
+    assert feed["generated_at"] == "2026-08-26T19:10:00+02:00"
+
+
+def test_hot_refresh_limpia_baja_antigua_si_la_fuente_ya_no_la_reporta():
+    feed = _feed()
+    match = feed["matches"][0]
+    match["alineacion"]["disponibilidad_local"] = [{
+        "jugador": "Ya Recuperado",
+        "team": "Real Madrid",
+        "estado": "injury",
+        "detalle": "Old injury",
+        "source": "API-Football",
+    }]
+    match["alineacion"]["bajas_local"] = ["Ya Recuperado (Old injury)"]
+
+    changed, stats = refresh_payload(
+        feed,
+        now=datetime.fromisoformat("2026-08-26T19:00:00+02:00"),
+        weather_client=_Weather(),
+        football_client=_Football(absences=[]),
+    )
+
+    assert changed is True
+    assert stats["absences"] == 1
+    assert match["alineacion"]["disponibilidad_local"] == []
+    assert match["alineacion"]["bajas_local"] == []
+    assert match["operational_checks"]["absences_check_result"] == "ok"
 
 
 def test_hot_refresh_cierra_resultado_sin_reentrenar_modelo():
@@ -138,5 +201,6 @@ def test_hot_refresh_cierra_resultado_sin_reentrenar_modelo():
     assert match["finished"] is True
     assert match["result"] == [2, 1]
     assert match["engine"] == "resultado-real"
+    assert match["operational_checks"]["fixture_checked_at"] == "2026-08-26T19:00:00+02:00"
     assert feed["counts"]["jugados"] == 1
     assert feed["counts"]["proximos"] == 19
