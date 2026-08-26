@@ -36,12 +36,17 @@ export function coverageRows(m, now = Date.now()) {
   const availabilityStamp = latestAvailabilityStamp(lineup);
   const weather = m?.weather || null;
   const oddsOk = !pending(m?.odds);
+  const predictionOk = Array.isArray(m?.probs) && m.probs.length === 3;
+  const marketMeta = typeof m?.odds === "object" ? (m.odds?.meta || {}) : {};
+  const marketRefresh = m?.market_hot_refresh || {};
+  const predictionRefresh = m?.prediction_live_refresh || {};
 
   const weatherRequired = minutes == null || minutes <= 8 * 60;
-  const absencesRequired = minutes == null || minutes <= 6 * 60;
-  const probableRequired = minutes == null || minutes <= 3 * 60;
-  const officialRequired = minutes == null || minutes <= 45;
+  const absencesRequired = minutes == null || minutes <= 8 * 60;
+  const probableRequired = minutes == null || minutes <= 8 * 60;
+  const officialRequired = minutes == null || minutes <= 75;
   const oddsRequired = minutes == null || minutes <= 24 * 60;
+  const predictionRequired = predictionOk && (minutes == null || minutes <= 18 * 60);
 
   const fixtureOk = Boolean(m?.id && m?.status);
   const weatherOk = Boolean(weather);
@@ -64,26 +69,34 @@ export function coverageRows(m, now = Date.now()) {
     row("weather", "Clima", weatherOk ? "ok" : !weatherRequired ? "scheduled" : weatherResult === "unavailable" ? "unavailable" : "missing", weatherRequired, {
       checkedAt: checks.weather_checked_at || weather?.source_updated_at,
       source: weather?.source || (weatherOk ? "Open-Meteo" : null),
-      detail: weatherResult || (weatherOk ? "previsión disponible" : !weatherRequired ? "programado T−8h" : "sin previsión"),
+      detail: weatherResult || (weatherOk ? `previsión para ${weather?.forecast_for || "kickoff"}` : !weatherRequired ? "programado T−8h" : "sin previsión"),
     }),
     row("absences", "Bajas", absencesOk ? "ok" : !absencesRequired ? "scheduled" : absenceResult === "unavailable" ? "unavailable" : "missing", absencesRequired, {
       checkedAt: checks.absences_checked_at || availabilityStamp,
       source: absencesOk ? "API-Football" : null,
-      detail: absenceResult || (absencesOk ? "comprobado; 0 o más incidencias" : !absencesRequired ? "programado T−6h" : "sin comprobación"),
+      detail: absenceResult || (absencesOk ? "comprobado; 0 o más incidencias" : !absencesRequired ? "programado T−8h/T−4h/T−1h" : "sin comprobación"),
     }),
     row("lineup_probable", "XI probable", probableOk ? "ok" : !probableRequired ? "scheduled" : status === "estimado" ? "estimated" : "missing", probableRequired, {
-      checkedAt: lineup.prefinal_attempt_at || lineupStamp,
+      checkedAt: lineup.prefinal_attempt_at || lineup.prefinal_refresh_at || lineupStamp,
       source: lineup.provider || lineup.fuente,
-      detail: probableOk ? "respaldado por fuente" : !probableRequired ? "programado T−3h" : status === "estimado" ? "solo estimación" : "sin fuente fiable",
+      detail: probableOk ? "respaldado por fuente" : !probableRequired ? "refrescos T−8h/T−3h/T−90" : status === "estimado" ? "solo estimación" : "sin fuente fiable",
     }),
     row("lineup_official", "XI oficial", officialOk ? "ok" : !officialRequired ? "scheduled" : ["partial", "published"].includes(lineupResult) ? "partial" : lineupResult === "not_published" ? "waiting" : "missing", officialRequired, {
       checkedAt: checks.lineup_checked_at || lineup.official_poll_at,
       source: officialOk || checks.lineup_checked_at ? "API-Football" : null,
-      detail: officialOk ? "11+11 confirmado" : !officialRequired ? "esperando T−60/T−30" : ["partial", "published"].includes(lineupResult) ? "respuesta parcial" : lineupResult === "not_published" ? "aún no publicado" : "sin comprobación oficial",
+      detail: officialOk ? "11+11 confirmado" : !officialRequired ? "polling intensivo desde T−75" : ["partial", "published"].includes(lineupResult) ? "respuesta parcial" : lineupResult === "not_published" ? "aún no publicado" : "sin comprobación oficial",
     }),
     row("odds", "Cuotas", oddsOk ? "ok" : !oddsRequired ? "scheduled" : "missing", oddsRequired, {
-      source: typeof m?.odds === "object" ? m.odds?.source : null,
-      detail: oddsOk ? "cuotas reales disponibles" : !oddsRequired ? "fuera de ventana" : "faltan cuotas reales",
+      checkedAt: marketRefresh.checked_at || marketMeta.checked_at || marketMeta.source_updated_at,
+      source: marketMeta.provider || (oddsOk ? "mercado real" : null),
+      detail: oddsOk ? `cuotas reales${marketMeta.ttl_minutes ? ` · TTL ${marketMeta.ttl_minutes} min` : ""}` : !oddsRequired ? "fuera de ventana" : "faltan cuotas reales",
+    }),
+    row("prediction", "Predicción", predictionOk ? "ok" : predictionRequired ? "missing" : "scheduled", predictionRequired, {
+      checkedAt: predictionRefresh.checked_at || m?.prediction_snapshot?.generated_at || m?.updatedAt,
+      source: predictionRefresh.checked_at ? "Fútbol Edge · recálculo intradía" : m?.model_meta?.provider || m?.engine,
+      detail: predictionRefresh.checked_at
+        ? `reacciona cada ${predictionRefresh.cadence_target_minutes || 5} min a clima/XI/bajas/mercado`
+        : predictionOk ? "predicción disponible; esperando próximo ciclo intradía" : "sin predicción calculable",
     }),
   ];
 
