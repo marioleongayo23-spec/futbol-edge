@@ -153,3 +153,19 @@ def test_parse_lineup_4231_respeta_laterales_y_mediapunta():
 
     positions = [row["position"] for row in parsed[0]["starters"]]
     assert positions == ["POR", "LI", "DFC", "DFC", "LD", "MCD", "MCD", "EI", "MP", "ED", "DC"]
+
+
+def test_parse_lineup_433_no_confunde_interiores_con_extremos_de_banda():
+    grids = [
+        "1:1",
+        "2:1", "2:2", "2:3", "2:4",
+        "3:1", "3:2", "3:3",
+        "4:1", "4:2", "4:3",
+    ]
+    parsed = ApiFootballClient._parse_lineups([
+        _lineup_team("Home", "4-3-3", grids),
+        _lineup_team("Away", "4-3-3", grids),
+    ])
+
+    positions = [row["position"] for row in parsed[0]["starters"]]
+    assert positions == ["POR", "LI", "DFC", "DFC", "LD", "MC", "MCD", "MC", "EI", "DC", "ED"]
