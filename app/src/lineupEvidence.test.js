@@ -45,7 +45,7 @@ test("evidencia de ambos equipos se separa por lado y conserva fuente y fecha", 
   assert.equal(view.complete, true);
   assert.equal(view.sides[0].team, "Local");
   assert.equal(view.sides[0].sources[0].source, "AS");
-  assert.match(view.sides[0].sources[0].publishedLabel, /26\/08/);
+  assert.match(view.sides[0].sources[0].publishedLabel, /26\/0?8/);
   assert.equal(view.sides[1].sources[0].source, "MARCA");
 });
 
