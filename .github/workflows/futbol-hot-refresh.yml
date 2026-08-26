@@ -27,7 +27,9 @@ permissions:
 
 concurrency:
   group: futbol-edge-hot-refresh
-  cancel-in-progress: true
+  # Un trigger nuevo no debe matar el bloque de cuatro ciclos que ya está
+  # protegiendo un partido. Los triggers adicionales quedan en cola.
+  cancel-in-progress: false
 
 jobs:
   refresh:
@@ -74,21 +76,33 @@ jobs:
               git fetch origin main
               git reset --hard origin/main
 
-              # 1) Estado, XI oficial y bajas reales con batching/cuota dinámica.
+              # 1) Estado, XI oficial y meteo con batching/cuota dinámica.
               PYTHONPATH=football/src python -m futbol_pred.hot_refresh_metered
 
-              # 2) T-2h: prensa reciente + continuidad oficial + props reales.
+              # 2) T-2h: fuerza una foto reciente de bajas y la deduplica.
+              PYTHONPATH=football/src python -m futbol_pred.matchday_absence_refresh
+
+              # 3) T-2h: prensa reciente + continuidad oficial + props reales.
               #    Si no hay partido crítico, es prácticamente un no-op.
               PYTHONPATH=football/src python -m futbol_pred.matchday_probable_refresh
 
-              # 3) Cuotas con TTL dinámico según proximidad y créditos.
+              # 4) Última barrera: un probable no puede contener una baja oficial.
+              PYTHONPATH=football/src python -m futbol_pred.matchday_lineup_integrity
+
+              # 5) Cuotas con TTL dinámico según proximidad y créditos.
               PYTHONPATH=football/src python -m futbol_pred.matchday_market_refresh
 
-              # 4) Reacción predictiva inmediata a clima/XI/bajas/mercado.
+              # 6) Reacción predictiva inmediata a clima/XI/bajas/mercado.
               PYTHONPATH=football/src python -m futbol_pred.matchday_prediction_refresh
 
-              # 5) Matriz de cobertura/frescura visible.
+              # 7) Certifica frescura/coherencia; warning/critical obliga a reintento.
+              PYTHONPATH=football/src python -m futbol_pred.matchday_freshness_gate
+
+              # 8) Matriz de cobertura/frescura visible.
               PYTHONPATH=football/src python -m futbol_pred.coverage
+
+              # Diagnóstico legible en Actions, sin secretos ni cuerpo de artículos.
+              PYTHONPATH=football/src python -m futbol_pred.matchday_diagnose
 
               if git diff --quiet -- football/data/dashboard.json; then
                 echo "Sin cambios sustantivos en este ciclo"
