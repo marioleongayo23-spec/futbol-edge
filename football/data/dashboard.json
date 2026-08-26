@@ -1,6 +1,6 @@
 {
   "schema_version": 7,
-  "generated_at": "2026-08-26T16:25:25.652074+02:00",
+  "generated_at": "2026-08-26T18:59:50.122526+02:00",
   "season": 2026,
   "quiniela": {
     "jornada": "3",
@@ -11107,17 +11107,17 @@
         "accepted": false,
         "validation": {
           "n": 105,
-          "log_loss": 0.9900512360488781,
-          "brier": 0.5909366026511643,
-          "rps": 0.21524514037139278,
+          "log_loss": 0.9900512709107303,
+          "brier": 0.5909366219789021,
+          "rps": 0.21524514596171593,
           "accuracy": 0.5142857142857142
         },
         "validation_baselines": {
           "dixon_coles": {
             "n": 105,
-            "log_loss": 1.005213973820072,
-            "brier": 0.5957871172174831,
-            "rps": 0.21579761293182523,
+            "log_loss": 1.0052140243531662,
+            "brier": 0.595787155765586,
+            "rps": 0.21579762391640006,
             "accuracy": 0.5714285714285714
           },
           "elo": {
@@ -11154,17 +11154,17 @@
         "n_validation": 105,
         "validation": {
           "n": 105,
-          "log_loss": 0.9990023145185005,
-          "brier": 0.596618016265442,
-          "rps": 0.21767453873953352,
+          "log_loss": 0.9990021439766067,
+          "brier": 0.5966178954053559,
+          "rps": 0.21767447785863897,
           "accuracy": 0.44761904761904764
         },
         "validation_baselines": {
           "dixon_coles": {
             "n": 105,
-            "log_loss": 1.005213973820072,
-            "brier": 0.5957871172174831,
-            "rps": 0.21579761293182523,
+            "log_loss": 1.0052140243531662,
+            "brier": 0.595787155765586,
+            "rps": 0.21579762391640006,
             "accuracy": 0.5714285714285714
           },
           "elo": {
@@ -11185,43 +11185,43 @@
         "production": {
           "weights": [
             [
-              0.11485706,
-              -0.07868731,
-              0.18682801,
-              -0.01127801,
-              -0.21310178,
-              -0.20672904
+              0.11485675,
+              -0.07868688,
+              0.18682754,
+              -0.01127871,
+              -0.21310074,
+              -0.20672745
             ],
             [
-              -0.09407542,
-              0.00526027,
-              -0.19242883,
-              0.08522149,
-              0.00987407,
-              0.119407
+              -0.0940751,
+              0.00526045,
+              -0.19242889,
+              0.0852215,
+              0.00987386,
+              0.11940944
             ],
             [
-              -0.02078177,
-              0.07342745,
-              0.00560077,
-              -0.07394319,
-              0.20322708,
-              0.08732186
+              -0.02078225,
+              0.07342644,
+              0.00560145,
+              -0.0739429,
+              0.20322682,
+              0.08731863
             ]
           ],
           "feature_mean": [
-            -0.00575997,
-            0.03443733,
-            -0.02867736,
-            0.1675751,
-            0.87468901
+            -0.00576005,
+            0.03443726,
+            -0.02867721,
+            0.16757487,
+            0.87468916
           ],
           "feature_scale": [
-            0.10334031,
-            0.04994757,
-            0.10640259,
-            0.35881712,
-            0.1489941
+            0.10334011,
+            0.04994755,
+            0.10640264,
+            0.35881695,
+            0.1489939
           ],
           "l2": 0.12,
           "converged": true
@@ -12300,7 +12300,7 @@
   },
   "content_audit": {
     "window": "continuo",
-    "checked_at": "2026-08-26T16:12:01.674195+02:00",
+    "checked_at": "2026-08-26T19:01:33.077350+02:00",
     "matches_today": 1,
     "complete": 0,
     "incomplete": [
@@ -12308,6 +12308,7 @@
         "id": "football_data-564631",
         "partido": "Real Madrid CF - Real Sociedad de Fútbol",
         "missing": [
+          "once_probable",
           "cuotas"
         ]
       }
@@ -12344,7 +12345,7 @@
         "ok": 1
       },
       "lineup_probable": {
-        "scheduled": 1
+        "estimated": 1
       },
       "lineup_official": {
         "scheduled": 1
@@ -12369,7 +12370,7 @@
       "severity": "warning",
       "code": "previous_feed_stale",
       "message": "El feed anterior tenía más de 2 horas de antigüedad",
-      "at": "2026-08-26T16:09:23.986247+02:00"
+      "at": "2026-08-26T18:59:50.122526+02:00"
     }
   ],
   "engine": "ensemble",
@@ -12411,7 +12412,7 @@
       "finished": true,
       "source": "football_data_uk",
       "engine": "resultado-real",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "h2h": [
         {
@@ -12517,7 +12518,7 @@
       "finished": true,
       "source": "football_data_uk",
       "engine": "resultado-real",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "h2h": [
         {
@@ -12623,7 +12624,7 @@
       "finished": true,
       "source": "football_data_uk",
       "engine": "resultado-real",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "h2h": [
         {
@@ -12729,7 +12730,7 @@
       "finished": true,
       "source": "football_data_uk",
       "engine": "resultado-real",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "h2h": [
         {
@@ -12849,7 +12850,7 @@
       "finished": true,
       "source": "football_data",
       "engine": "resultado-real",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "h2h": [
         {
@@ -12983,7 +12984,7 @@
       "finished": true,
       "source": "football_data_uk",
       "engine": "resultado-real",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "h2h": [
         {
@@ -13089,7 +13090,7 @@
       "finished": true,
       "source": "football_data",
       "engine": "resultado-real",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "h2h": [
         {
@@ -13223,7 +13224,7 @@
       "finished": true,
       "source": "football_data_uk",
       "engine": "resultado-real",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "h2h": [
         {
@@ -13343,7 +13344,7 @@
       "finished": true,
       "source": "football_data",
       "engine": "resultado-real",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "h2h": [
         {
@@ -13449,7 +13450,7 @@
       "finished": true,
       "source": "football_data_uk",
       "engine": "resultado-real",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "h2h": [
         {
@@ -13569,7 +13570,7 @@
       "finished": true,
       "source": "football_data_uk",
       "engine": "resultado-real",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "h2h": [
         {
@@ -13675,7 +13676,7 @@
       "finished": true,
       "source": "football_data",
       "engine": "resultado-real",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "h2h": [
         {
@@ -13795,7 +13796,7 @@
       "finished": true,
       "source": "football_data_uk",
       "engine": "resultado-real",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "h2h": [
         {
@@ -13901,7 +13902,7 @@
       "finished": true,
       "source": "football_data_uk",
       "engine": "resultado-real",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "h2h": [
         {
@@ -14007,7 +14008,7 @@
       "finished": true,
       "source": "football_data_uk",
       "engine": "resultado-real",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "h2h": [
         {
@@ -14127,7 +14128,7 @@
       "finished": true,
       "source": "football_data",
       "engine": "resultado-real",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "h2h": [
         {
@@ -14233,7 +14234,7 @@
       "finished": true,
       "source": "football_data",
       "engine": "resultado-real",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "h2h": [
         {
@@ -14339,7 +14340,7 @@
       "finished": true,
       "source": "football_data",
       "engine": "resultado-real",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "h2h": [
         {
@@ -14473,7 +14474,7 @@
       "finished": true,
       "source": "football_data_uk",
       "engine": "resultado-real",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "h2h": [
         {
@@ -14588,7 +14589,7 @@
       "finished": true,
       "source": "football_data",
       "engine": "resultado-real",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "h2h": [
         {
@@ -14722,7 +14723,7 @@
       "finished": true,
       "source": "football_data_uk",
       "engine": "resultado-real",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "h2h": [
         {
@@ -14837,7 +14838,7 @@
       "finished": true,
       "source": "football_data",
       "engine": "resultado-real",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "h2h": [
         {
@@ -14971,7 +14972,7 @@
       "finished": true,
       "source": "football_data_uk",
       "engine": "resultado-real",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "h2h": [
         {
@@ -15086,7 +15087,7 @@
       "finished": true,
       "source": "football_data_uk",
       "engine": "resultado-real",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "h2h": [
         {
@@ -15201,7 +15202,7 @@
       "finished": true,
       "source": "football_data",
       "engine": "resultado-real",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "h2h": [
         {
@@ -15335,7 +15336,7 @@
       "finished": true,
       "source": "football_data_uk",
       "engine": "resultado-real",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "h2h": [
         {
@@ -15464,7 +15465,7 @@
       "finished": true,
       "source": "football_data",
       "engine": "resultado-real",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "h2h": [
         {
@@ -15598,7 +15599,7 @@
       "finished": true,
       "source": "football_data_uk",
       "engine": "resultado-real",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "h2h": [
         {
@@ -15713,7 +15714,7 @@
       "finished": true,
       "source": "football_data",
       "engine": "resultado-real",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "h2h": [
         {
@@ -15847,7 +15848,7 @@
       "finished": true,
       "source": "football_data_uk",
       "engine": "resultado-real",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "h2h": [
         {
@@ -15962,7 +15963,7 @@
       "finished": true,
       "source": "football_data_uk",
       "engine": "resultado-real",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "h2h": [
         {
@@ -16091,7 +16092,7 @@
       "finished": true,
       "source": "football_data",
       "engine": "resultado-real",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "h2h": [
         {
@@ -16197,7 +16198,7 @@
       "finished": true,
       "source": "football_data_uk",
       "engine": "resultado-real",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "h2h": [
         {
@@ -16326,7 +16327,7 @@
       "finished": true,
       "source": "football_data",
       "engine": "resultado-real",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "h2h": [
         {
@@ -16446,7 +16447,7 @@
       "finished": true,
       "source": "football_data_uk",
       "engine": "resultado-real",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": {
         "1x2": {
@@ -16600,7 +16601,7 @@
           },
           {
             "score": "3-1",
-            "probability": 0.0745
+            "probability": 0.0746
           },
           {
             "score": "2-2",
@@ -16608,7 +16609,7 @@
           },
           {
             "score": "1-1",
-            "probability": 0.0579
+            "probability": 0.0578
           },
           {
             "score": "3-2",
@@ -16619,7 +16620,7 @@
             "probability": 0.0544
           }
         ],
-        "top_six_probability": 0.3835,
+        "top_six_probability": 0.3834,
         "method": "distribución Dixon-Coles completa; sin muestreo Monte Carlo"
       },
       "stats": {
@@ -17523,7 +17524,7 @@
       "finished": true,
       "source": "football_data",
       "engine": "resultado-real",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": {
         "1x2": {
@@ -18619,7 +18620,7 @@
       "finished": true,
       "source": "football_data_uk",
       "engine": "resultado-real",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": {
         "1x2": {
@@ -19656,7 +19657,7 @@
       "finished": true,
       "source": "football_data",
       "engine": "resultado-real",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": {
         "1x2": {
@@ -19810,11 +19811,11 @@
           },
           {
             "score": "0-1",
-            "probability": 0.1446
+            "probability": 0.1445
           },
           {
             "score": "0-0",
-            "probability": 0.1441
+            "probability": 0.144
           },
           {
             "score": "1-1",
@@ -19826,7 +19827,7 @@
           },
           {
             "score": "0-2",
-            "probability": 0.0668
+            "probability": 0.0667
           }
         ],
         "top_six_probability": 0.7009,
@@ -20693,7 +20694,7 @@
       "finished": true,
       "source": "football_data",
       "engine": "resultado-real",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -21800,7 +21801,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:25:25.652074+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -22581,6 +22582,27 @@
         "model_use": "ajuste_cuantitativo_contextual",
         "source_updated_at": "2026-08-26T16:25:25.652074+02:00"
       },
+      "weather_adjustment": {
+        "applied": false,
+        "weather_source_updated_at": "2026-08-26T16:25:25.652074+02:00",
+        "weather_forecast_for": "2026-08-26T21:00:00",
+        "weather_source": "Open-Meteo",
+        "weather_temperature_c": 23.3,
+        "weather_apparent_temperature_c": 21.3,
+        "weather_humidity_pct": 41,
+        "weather_precipitation_mm": 0.0,
+        "weather_precipitation_probability_pct": 3,
+        "weather_wind_kmh": 13.1,
+        "applied_at": "2026-08-26T16:59:50.122526+00:00",
+        "reason": "condiciones dentro de umbrales neutros",
+        "multipliers": {
+          "goals": 1.0,
+          "shots": 1.0,
+          "fouls": 1.0,
+          "cards": 1.0
+        },
+        "one_x_two_adjusted": false
+      },
       "prediction_confidence": {
         "score": 100,
         "level": "alta",
@@ -22622,7 +22644,7 @@
         {
           "factor": "clima",
           "impact": "monitorizado",
-          "detail": "22.1 °C, sensación 20.4 °C, viento 13.9 km/h · estrés térmico bajo"
+          "detail": "23.3 °C, sensación 21.3 °C, viento 13.1 km/h · estrés térmico bajo"
         },
         {
           "factor": "bajas y sanciones",
@@ -22635,27 +22657,6 @@
         "label": "Pronóstico publicable",
         "reasons": [],
         "policy": "abstención automática por incertidumbre o falta de evidencia"
-      },
-      "weather_adjustment": {
-        "applied": false,
-        "weather_source_updated_at": "2026-08-26T13:48:05.402344+02:00",
-        "weather_forecast_for": "2026-08-26T21:00:00",
-        "weather_source": "Open-Meteo",
-        "weather_temperature_c": 22.1,
-        "weather_apparent_temperature_c": 20.4,
-        "weather_humidity_pct": 50,
-        "weather_precipitation_mm": 0.0,
-        "weather_precipitation_probability_pct": 3,
-        "weather_wind_kmh": 13.9,
-        "applied_at": "2026-08-26T14:09:23.986247+00:00",
-        "reason": "condiciones dentro de umbrales neutros",
-        "multipliers": {
-          "goals": 1.0,
-          "shots": 1.0,
-          "fouls": 1.0,
-          "cards": 1.0
-        },
-        "one_x_two_adjusted": false
       },
       "state_simulation": {
         "method": "monte_carlo_5min_game_state_v1",
@@ -22682,7 +22683,7 @@
           6
         ],
         "assumptions": {
-          "temperature_c": 22.1,
+          "temperature_c": 23.3,
           "pace_multiplier": 1.0,
           "estimated_goal_delta_vs_neutral": 0.0,
           "red_card_probability": 0.058,
@@ -22721,7 +22722,7 @@
           "fixture": {
             "state": "ok",
             "required": true,
-            "checked_at": "2026-08-26T16:25:25.652074+02:00",
+            "checked_at": "2026-08-26T18:59:50.122526+02:00",
             "source": "football_data",
             "detail": "calendario cargado"
           },
@@ -22730,7 +22731,7 @@
             "required": true,
             "checked_at": "2026-08-26T16:25:25.652074+02:00",
             "source": "Open-Meteo",
-            "detail": "ok"
+            "detail": "previsión disponible"
           },
           "absences": {
             "state": "ok",
@@ -22739,11 +22740,11 @@
             "detail": "comprobado; 0 o más incidencias"
           },
           "lineup_probable": {
-            "state": "scheduled",
-            "required": false,
+            "state": "estimated",
+            "required": true,
             "checked_at": "2026-08-26T12:50:52.707089+02:00",
             "source": "Gemini",
-            "detail": "ventana T−3h"
+            "detail": "solo estimación"
           },
           "lineup_official": {
             "state": "scheduled",
@@ -22757,12 +22758,9 @@
           }
         },
         "missing_required": [
+          "lineup_probable",
           "odds"
         ]
-      },
-      "operational_checks": {
-        "weather_checked_at": "2026-08-26T16:25:25.652074+02:00",
-        "weather_check_result": "ok"
       }
     },
     {
@@ -22785,7 +22783,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -23642,7 +23640,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -24499,7 +24497,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -24569,7 +24567,7 @@
           },
           {
             "score": "1-0",
-            "probability": 0.1017
+            "probability": 0.1018
           },
           {
             "score": "2-1",
@@ -25290,7 +25288,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -26105,7 +26103,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -26911,7 +26909,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -27732,7 +27730,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -28546,7 +28544,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -28616,7 +28614,7 @@
           },
           {
             "score": "1-0",
-            "probability": 0.1379
+            "probability": 0.1378
           },
           {
             "score": "3-0",
@@ -29336,7 +29334,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -30121,7 +30119,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -30935,7 +30933,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -31756,7 +31754,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -32570,7 +32568,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -33384,7 +33382,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -34198,7 +34196,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -35012,7 +35010,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -35078,7 +35076,7 @@
         "top_scores": [
           {
             "score": "1-0",
-            "probability": 0.1403
+            "probability": 0.1404
           },
           {
             "score": "1-1",
@@ -35797,7 +35795,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -36581,7 +36579,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -37395,7 +37393,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -38210,7 +38208,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -38288,7 +38286,7 @@
           },
           {
             "score": "0-0",
-            "probability": 0.1018
+            "probability": 0.1017
           },
           {
             "score": "1-2",
@@ -38994,7 +38992,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -39819,7 +39817,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -40634,7 +40632,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -41434,7 +41432,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -42225,7 +42223,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -43039,7 +43037,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -43835,7 +43833,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -44649,7 +44647,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -44719,7 +44717,7 @@
           },
           {
             "score": "2-0",
-            "probability": 0.1319
+            "probability": 0.1318
           },
           {
             "score": "1-1",
@@ -44731,7 +44729,7 @@
           },
           {
             "score": "0-0",
-            "probability": 0.0879
+            "probability": 0.0878
           },
           {
             "score": "3-0",
@@ -45433,7 +45431,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -46254,7 +46252,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -47068,7 +47066,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -47874,7 +47872,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -48674,7 +48672,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -49488,7 +49486,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -50308,7 +50306,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -51099,7 +51097,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -51913,7 +51911,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -52719,7 +52717,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -52808,7 +52806,7 @@
             "probability": 0.074
           }
         ],
-        "top_six_probability": 0.5901,
+        "top_six_probability": 0.59,
         "method": "distribución Dixon-Coles completa; sin muestreo Monte Carlo"
       },
       "stats": {
@@ -53503,7 +53501,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -54317,7 +54315,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -55123,7 +55121,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -55937,7 +55935,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -56721,7 +56719,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -57535,7 +57533,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -57635,7 +57633,7 @@
           },
           {
             "score": "1-0",
-            "probability": 0.1106
+            "probability": 0.1107
           },
           {
             "score": "2-1",
@@ -58349,7 +58347,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -59163,7 +59161,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -59978,7 +59976,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -60784,7 +60782,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -61605,7 +61603,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -62390,7 +62388,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -63175,7 +63173,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -63981,7 +63979,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -64051,7 +64049,7 @@
           },
           {
             "score": "0-0",
-            "probability": 0.1885
+            "probability": 0.1884
           },
           {
             "score": "2-0",
@@ -64067,7 +64065,7 @@
           },
           {
             "score": "2-1",
-            "probability": 0.0639
+            "probability": 0.064
           }
         ],
         "top_six_probability": 0.8057,
@@ -64765,7 +64763,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -65579,7 +65577,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -65675,7 +65673,7 @@
         "top_scores": [
           {
             "score": "1-1",
-            "probability": 0.1224
+            "probability": 0.1223
           },
           {
             "score": "0-1",
@@ -66393,7 +66391,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -67207,7 +67205,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -68021,7 +68019,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -68835,7 +68833,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -69635,7 +69633,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -69717,7 +69715,7 @@
         "top_scores": [
           {
             "score": "1-1",
-            "probability": 0.1161
+            "probability": 0.116
           },
           {
             "score": "1-0",
@@ -70441,7 +70439,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -71225,7 +71223,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -71307,14 +71305,14 @@
           },
           {
             "score": "0-2",
-            "probability": 0.0737
+            "probability": 0.0736
           },
           {
             "score": "1-2",
             "probability": 0.0725
           }
         ],
-        "top_six_probability": 0.6718,
+        "top_six_probability": 0.6717,
         "method": "distribución Dixon-Coles completa; sin muestreo Monte Carlo"
       },
       "stats": {
@@ -72011,7 +72009,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -72801,7 +72799,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -73601,7 +73599,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -74415,7 +74413,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -75235,7 +75233,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -76049,7 +76047,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -76864,7 +76862,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -77678,7 +77676,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -77767,7 +77765,7 @@
             "probability": 0.0765
           }
         ],
-        "top_six_probability": 0.6232,
+        "top_six_probability": 0.6231,
         "method": "distribución Dixon-Coles completa; sin muestreo Monte Carlo"
       },
       "stats": {
@@ -78462,7 +78460,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -79253,7 +79251,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -80038,7 +80036,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -80859,7 +80857,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -81659,7 +81657,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -82443,7 +82441,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -83258,7 +83256,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -84073,7 +84071,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -84887,7 +84885,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -85701,7 +85699,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -85779,7 +85777,7 @@
           },
           {
             "score": "2-1",
-            "probability": 0.0944
+            "probability": 0.0945
           },
           {
             "score": "3-0",
@@ -86485,7 +86483,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -87299,7 +87297,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -88099,7 +88097,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -88185,7 +88183,7 @@
           },
           {
             "score": "0-0",
-            "probability": 0.0748
+            "probability": 0.0749
           }
         ],
         "top_six_probability": 0.5753,
@@ -88895,7 +88893,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -89685,7 +89683,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -90505,7 +90503,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -91305,7 +91303,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -92125,7 +92123,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -92931,7 +92929,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -93716,7 +93714,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -94530,7 +94528,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -94646,7 +94644,7 @@
           },
           {
             "score": "2-1",
-            "probability": 0.0752
+            "probability": 0.0753
           }
         ],
         "top_six_probability": 0.6971,
@@ -95351,7 +95349,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -95440,7 +95438,7 @@
             "probability": 0.0585
           }
         ],
-        "top_six_probability": 0.5317,
+        "top_six_probability": 0.5318,
         "method": "distribución Dixon-Coles completa; sin muestreo Monte Carlo"
       },
       "stats": {
@@ -96141,7 +96139,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -96955,7 +96953,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -97761,7 +97759,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -98575,7 +98573,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -99396,7 +99394,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -100210,7 +100208,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -101010,7 +101008,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -101831,7 +101829,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -101905,7 +101903,7 @@
           },
           {
             "score": "1-0",
-            "probability": 0.1246
+            "probability": 0.1245
           },
           {
             "score": "0-0",
@@ -102616,7 +102614,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -103406,7 +103404,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -104220,7 +104218,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -105035,7 +105033,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -105855,7 +105853,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -106669,7 +106667,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -107465,7 +107463,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -108279,7 +108277,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -108361,7 +108359,7 @@
           },
           {
             "score": "2-1",
-            "probability": 0.0859
+            "probability": 0.086
           },
           {
             "score": "0-1",
@@ -109063,7 +109061,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -109167,7 +109165,7 @@
           },
           {
             "score": "1-1",
-            "probability": 0.1294
+            "probability": 0.1293
           },
           {
             "score": "1-0",
@@ -109877,7 +109875,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -110691,7 +110689,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -111481,7 +111479,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -112295,7 +112293,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -113095,7 +113093,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -113909,7 +113907,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -114715,7 +114713,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -115529,7 +115527,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -116343,7 +116341,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -117157,7 +117155,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -117978,7 +117976,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -118799,7 +118797,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -118877,7 +118875,7 @@
           },
           {
             "score": "0-1",
-            "probability": 0.0854
+            "probability": 0.0855
           },
           {
             "score": "2-0",
@@ -119584,7 +119582,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -120368,7 +120366,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -121154,7 +121152,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -121960,7 +121958,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -122026,7 +122024,7 @@
         "top_scores": [
           {
             "score": "1-0",
-            "probability": 0.1546
+            "probability": 0.1545
           },
           {
             "score": "1-1",
@@ -122049,7 +122047,7 @@
             "probability": 0.0836
           }
         ],
-        "top_six_probability": 0.6554,
+        "top_six_probability": 0.6553,
         "method": "distribución Dixon-Coles completa; sin muestreo Monte Carlo"
       },
       "stats": {
@@ -122744,7 +122742,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -123565,7 +123563,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -124379,7 +124377,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -124445,7 +124443,7 @@
         "top_scores": [
           {
             "score": "1-0",
-            "probability": 0.1338
+            "probability": 0.1339
           },
           {
             "score": "1-1",
@@ -125169,7 +125167,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -125983,7 +125981,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -126797,7 +126795,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -127611,7 +127609,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -128431,7 +128429,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -129237,7 +129235,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -130051,7 +130049,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -130835,7 +130833,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -131649,7 +131647,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -132434,7 +132432,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -133241,7 +133239,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -134047,7 +134045,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -134861,7 +134859,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -134927,7 +134925,7 @@
         "top_scores": [
           {
             "score": "1-0",
-            "probability": 0.1146
+            "probability": 0.1147
           },
           {
             "score": "1-1",
@@ -135646,7 +135644,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -135746,7 +135744,7 @@
           },
           {
             "score": "1-1",
-            "probability": 0.127
+            "probability": 0.1269
           },
           {
             "score": "0-0",
@@ -136467,7 +136465,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -137281,7 +137279,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -138095,7 +138093,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -138185,7 +138183,7 @@
           },
           {
             "score": "1-1",
-            "probability": 0.1283
+            "probability": 0.1282
           },
           {
             "score": "0-1",
@@ -138895,7 +138893,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -139702,7 +139700,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -140516,7 +140514,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -141330,7 +141328,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -142150,7 +142148,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -142964,7 +142962,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -143030,7 +143028,7 @@
         "top_scores": [
           {
             "score": "1-0",
-            "probability": 0.1875
+            "probability": 0.1874
           },
           {
             "score": "2-0",
@@ -143754,7 +143752,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -144538,7 +144536,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -144627,7 +144625,7 @@
             "probability": 0.0691
           }
         ],
-        "top_six_probability": 0.5547,
+        "top_six_probability": 0.5548,
         "method": "distribución Dixon-Coles completa; sin muestreo Monte Carlo"
       },
       "stats": {
@@ -145329,7 +145327,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -146143,7 +146141,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -146958,7 +146956,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -147758,7 +147756,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -147828,7 +147826,7 @@
           },
           {
             "score": "1-0",
-            "probability": 0.111
+            "probability": 0.1111
           },
           {
             "score": "0-1",
@@ -148549,7 +148547,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -148638,7 +148636,7 @@
             "probability": 0.075
           }
         ],
-        "top_six_probability": 0.6124,
+        "top_six_probability": 0.6123,
         "method": "distribución Dixon-Coles completa; sin muestreo Monte Carlo"
       },
       "stats": {
@@ -149333,7 +149331,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -150147,7 +150145,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -150931,7 +150929,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -151751,7 +151749,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -152565,7 +152563,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -153379,7 +153377,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -154193,7 +154191,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -154994,7 +154992,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -155800,7 +155798,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -156614,7 +156612,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -157405,7 +157403,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -158190,7 +158188,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -159011,7 +159009,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -159826,7 +159824,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -160646,7 +160644,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -161430,7 +161428,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -161519,7 +161517,7 @@
             "probability": 0.076
           }
         ],
-        "top_six_probability": 0.6405,
+        "top_six_probability": 0.6404,
         "method": "distribución Dixon-Coles completa; sin muestreo Monte Carlo"
       },
       "stats": {
@@ -162214,7 +162212,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -163021,7 +163019,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -163836,7 +163834,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -164621,7 +164619,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -165434,7 +165432,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -166255,7 +166253,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -166374,7 +166372,7 @@
             "probability": 0.0684
           }
         ],
-        "top_six_probability": 0.7172,
+        "top_six_probability": 0.7171,
         "method": "distribución Dixon-Coles completa; sin muestreo Monte Carlo"
       },
       "stats": {
@@ -167070,7 +167068,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -167891,7 +167889,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -168675,7 +168673,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -169495,7 +169493,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -170309,7 +170307,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -171124,7 +171122,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -171938,7 +171936,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -172745,7 +172743,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -173559,7 +173557,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -173625,7 +173623,7 @@
         "top_scores": [
           {
             "score": "1-0",
-            "probability": 0.1496
+            "probability": 0.1495
           },
           {
             "score": "2-0",
@@ -173641,14 +173639,14 @@
           },
           {
             "score": "0-0",
-            "probability": 0.0871
+            "probability": 0.087
           },
           {
             "score": "0-1",
             "probability": 0.0746
           }
         ],
-        "top_six_probability": 0.6339,
+        "top_six_probability": 0.6338,
         "method": "distribución Dixon-Coles completa; sin muestreo Monte Carlo"
       },
       "stats": {
@@ -174343,7 +174341,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -175127,7 +175125,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -175933,7 +175931,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -176753,7 +176751,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -177538,7 +177536,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -178338,7 +178336,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -179152,7 +179150,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -179972,7 +179970,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -180787,7 +180785,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -180885,7 +180883,7 @@
             "probability": 0.0706
           }
         ],
-        "top_six_probability": 0.513,
+        "top_six_probability": 0.5131,
         "method": "distribución Dixon-Coles completa; sin muestreo Monte Carlo"
       },
       "stats": {
@@ -181581,7 +181579,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -182387,7 +182385,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -183201,7 +183199,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -184023,7 +184021,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -184813,7 +184811,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -184879,7 +184877,7 @@
         "top_scores": [
           {
             "score": "0-1",
-            "probability": 0.141
+            "probability": 0.1409
           },
           {
             "score": "1-1",
@@ -184891,7 +184889,7 @@
           },
           {
             "score": "0-0",
-            "probability": 0.1185
+            "probability": 0.1184
           },
           {
             "score": "0-2",
@@ -185598,7 +185596,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -186412,7 +186410,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -187227,7 +187225,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -188041,7 +188039,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -188841,7 +188839,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -189667,7 +189665,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -190482,7 +190480,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -190580,7 +190578,7 @@
             "probability": 0.0785
           }
         ],
-        "top_six_probability": 0.7281,
+        "top_six_probability": 0.728,
         "method": "distribución Dixon-Coles completa; sin muestreo Monte Carlo"
       },
       "stats": {
@@ -191276,7 +191274,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -192090,7 +192088,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -192875,7 +192873,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -193689,7 +193687,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -194510,7 +194508,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -195324,7 +195322,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -196138,7 +196136,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -196952,7 +196950,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -197773,7 +197771,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -198566,7 +198564,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -199381,7 +199379,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -199470,7 +199468,7 @@
             "probability": 0.086
           }
         ],
-        "top_six_probability": 0.6515,
+        "top_six_probability": 0.6514,
         "method": "distribución Dixon-Coles completa; sin muestreo Monte Carlo"
       },
       "stats": {
@@ -200171,7 +200169,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -200971,7 +200969,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -201785,7 +201783,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -202576,7 +202574,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -203360,7 +203358,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -204174,7 +204172,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -204980,7 +204978,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -205794,7 +205792,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -206608,7 +206606,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -207422,7 +207420,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -208222,7 +208220,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -209013,7 +209011,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -209828,7 +209826,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -210642,7 +210640,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -211426,7 +211424,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -212219,7 +212217,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -213039,7 +213037,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -213853,7 +213851,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -214681,7 +214679,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -215495,7 +215493,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -215584,7 +215582,7 @@
             "probability": 0.0759
           }
         ],
-        "top_six_probability": 0.6157,
+        "top_six_probability": 0.6158,
         "method": "distribución Dixon-Coles completa; sin muestreo Monte Carlo"
       },
       "stats": {
@@ -216291,7 +216289,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -217105,7 +217103,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -217912,7 +217910,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -218726,7 +218724,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -218815,7 +218813,7 @@
             "probability": 0.079
           }
         ],
-        "top_six_probability": 0.6282,
+        "top_six_probability": 0.6281,
         "method": "distribución Dixon-Coles completa; sin muestreo Monte Carlo"
       },
       "stats": {
@@ -219510,7 +219508,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -220325,7 +220323,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -221139,7 +221137,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -221960,7 +221958,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -222774,7 +222772,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -223588,7 +223586,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -224388,7 +224386,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -224477,7 +224475,7 @@
             "probability": 0.0605
           }
         ],
-        "top_six_probability": 0.7592,
+        "top_six_probability": 0.7591,
         "method": "distribución Dixon-Coles completa; sin muestreo Monte Carlo"
       },
       "stats": {
@@ -225179,7 +225177,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -225268,7 +225266,7 @@
             "probability": 0.0787
           }
         ],
-        "top_six_probability": 0.5864,
+        "top_six_probability": 0.5865,
         "method": "distribución Dixon-Coles completa; sin muestreo Monte Carlo"
       },
       "stats": {
@@ -225970,7 +225968,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -226784,7 +226782,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -227590,7 +227588,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -228411,7 +228409,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -229225,7 +229223,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -230031,7 +230029,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -230821,7 +230819,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -231605,7 +231603,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -232426,7 +232424,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -233210,7 +233208,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -234037,7 +234035,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -234827,7 +234825,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -235634,7 +235632,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -236441,7 +236439,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -237255,7 +237253,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -238069,7 +238067,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -238890,7 +238888,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -239710,7 +239708,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -240500,7 +240498,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -241284,7 +241282,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -242098,7 +242096,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -242905,7 +242903,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -243719,7 +243717,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -243801,14 +243799,14 @@
           },
           {
             "score": "0-2",
-            "probability": 0.0779
+            "probability": 0.0778
           },
           {
             "score": "1-2",
             "probability": 0.073
           }
         ],
-        "top_six_probability": 0.6854,
+        "top_six_probability": 0.6853,
         "method": "distribución Dixon-Coles completa; sin muestreo Monte Carlo"
       },
       "stats": {
@@ -244505,7 +244503,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -244587,7 +244585,7 @@
           },
           {
             "score": "0-1",
-            "probability": 0.0835
+            "probability": 0.0836
           },
           {
             "score": "0-0",
@@ -245290,7 +245288,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -246075,7 +246073,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -246889,7 +246887,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -247696,7 +247694,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -248510,7 +248508,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -249331,7 +249329,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -250145,7 +250143,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -250965,7 +250963,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -251043,7 +251041,7 @@
           },
           {
             "score": "0-0",
-            "probability": 0.1137
+            "probability": 0.1136
           },
           {
             "score": "0-1",
@@ -251749,7 +251747,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -252563,7 +252561,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -253377,7 +253375,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -254192,7 +254190,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -254278,7 +254276,7 @@
           },
           {
             "score": "0-0",
-            "probability": 0.088
+            "probability": 0.0879
           }
         ],
         "top_six_probability": 0.6158,
@@ -254982,7 +254980,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -255782,7 +255780,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -256572,7 +256570,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -257386,7 +257384,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -258192,7 +258190,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -259006,7 +259004,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -259826,7 +259824,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -260632,7 +260630,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -261423,7 +261421,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -262207,7 +262205,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -262992,7 +262990,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -263086,7 +263084,7 @@
           },
           {
             "score": "0-1",
-            "probability": 0.0873
+            "probability": 0.0874
           },
           {
             "score": "2-0",
@@ -263792,7 +263790,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -264620,7 +264618,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -265434,7 +265432,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -266248,7 +266246,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -267062,7 +267060,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -267877,7 +267875,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -268691,7 +268689,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -268810,7 +268808,7 @@
             "probability": 0.0834
           }
         ],
-        "top_six_probability": 0.5993,
+        "top_six_probability": 0.5994,
         "method": "distribución Dixon-Coles completa; sin muestreo Monte Carlo"
       },
       "stats": {
@@ -269512,7 +269510,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -270312,7 +270310,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -271096,7 +271094,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -271162,7 +271160,7 @@
         "top_scores": [
           {
             "score": "1-0",
-            "probability": 0.1582
+            "probability": 0.1581
           },
           {
             "score": "1-1",
@@ -271185,7 +271183,7 @@
             "probability": 0.0868
           }
         ],
-        "top_six_probability": 0.6666,
+        "top_six_probability": 0.6665,
         "method": "distribución Dixon-Coles completa; sin muestreo Monte Carlo"
       },
       "stats": {
@@ -271886,7 +271884,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -272707,7 +272705,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -273507,7 +273505,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -274327,7 +274325,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -274416,7 +274414,7 @@
             "probability": 0.0786
           }
         ],
-        "top_six_probability": 0.6216,
+        "top_six_probability": 0.6217,
         "method": "distribución Dixon-Coles completa; sin muestreo Monte Carlo"
       },
       "stats": {
@@ -275118,7 +275116,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -275932,7 +275930,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -276747,7 +276745,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -277561,7 +277559,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -277661,7 +277659,7 @@
           },
           {
             "score": "0-1",
-            "probability": 0.0976
+            "probability": 0.0977
           },
           {
             "score": "1-0",
@@ -278375,7 +278373,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -278449,7 +278447,7 @@
           },
           {
             "score": "1-0",
-            "probability": 0.1566
+            "probability": 0.1565
           },
           {
             "score": "1-1",
@@ -279162,7 +279160,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -279983,7 +279981,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -280783,7 +280781,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -281589,7 +281587,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -282403,7 +282401,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -283217,7 +283215,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -284037,7 +284035,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -284837,7 +284835,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -284926,7 +284924,7 @@
             "probability": 0.0798
           }
         ],
-        "top_six_probability": 0.6794,
+        "top_six_probability": 0.6793,
         "method": "distribución Dixon-Coles completa; sin muestreo Monte Carlo"
       },
       "stats": {
@@ -285627,7 +285625,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -285697,7 +285695,7 @@
           },
           {
             "score": "1-0",
-            "probability": 0.1053
+            "probability": 0.1054
           },
           {
             "score": "2-1",
@@ -286423,7 +286421,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -287207,7 +287205,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -288027,7 +288025,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -288841,7 +288839,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -289648,7 +289646,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -290462,7 +290460,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -291276,7 +291274,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -292090,7 +292088,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -292904,7 +292902,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -293710,7 +293708,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -293776,7 +293774,7 @@
         "top_scores": [
           {
             "score": "0-1",
-            "probability": 0.1428
+            "probability": 0.1427
           },
           {
             "score": "1-1",
@@ -293788,7 +293786,7 @@
           },
           {
             "score": "0-0",
-            "probability": 0.103
+            "probability": 0.1029
           },
           {
             "score": "0-2",
@@ -294494,7 +294492,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -295285,7 +295283,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -296086,7 +296084,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -296900,7 +296898,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -297684,7 +297682,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -298498,7 +298496,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -299312,7 +299310,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -300126,7 +300124,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -300947,7 +300945,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -301761,7 +301759,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -302551,7 +302549,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -303342,7 +303340,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -304156,7 +304154,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -304946,7 +304944,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -305746,7 +305744,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -306560,7 +306558,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -307360,7 +307358,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -308144,7 +308142,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -308958,7 +308956,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -309772,7 +309770,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -309850,7 +309848,7 @@
           },
           {
             "score": "0-0",
-            "probability": 0.1028
+            "probability": 0.1027
           },
           {
             "score": "1-2",
@@ -309861,7 +309859,7 @@
             "probability": 0.0725
           }
         ],
-        "top_six_probability": 0.629,
+        "top_six_probability": 0.6289,
         "method": "distribución Dixon-Coles completa; sin muestreo Monte Carlo"
       },
       "stats": {
@@ -310556,7 +310554,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -310626,7 +310624,7 @@
           },
           {
             "score": "1-0",
-            "probability": 0.1025
+            "probability": 0.1026
           },
           {
             "score": "2-1",
@@ -311341,7 +311339,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -312156,7 +312154,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -312982,7 +312980,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -313796,7 +313794,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T16:09:23.986247+02:00",
+      "updatedAt": "2026-08-26T18:59:50.122526+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
