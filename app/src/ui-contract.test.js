@@ -6,6 +6,7 @@ const SOURCES = ["App.jsx", "MatchDetail.jsx"].map((name) => ({
   name,
   source: readFileSync(new URL(`./${name}`, import.meta.url), "utf8"),
 }));
+const WEATHER_SOURCE = readFileSync(new URL("./WeatherAdjustmentPanel.jsx", import.meta.url), "utf8");
 
 function tags(source, tag) {
   return [...source.matchAll(new RegExp(`<${tag}\\b[\\s\\S]*?(?:/>|>)`, "g"))].map((match) => match[0]);
@@ -49,4 +50,13 @@ test("las filas interactivas son utilizables con teclado", () => {
       assert.match(row, /onClick=/, `${name}: fila interactiva sin clic`);
     }
   }
+});
+
+test("el clima identifica explícitamente la previsión usada a la hora del partido", () => {
+  assert.match(WEATHER_SOURCE, /Previsión para la hora del partido/);
+  assert.match(WEATHER_SOURCE, /weather_forecast_for/);
+  assert.match(WEATHER_SOURCE, /weather_temperature_c/);
+  assert.match(WEATHER_SOURCE, /weather_precipitation_probability_pct/);
+  assert.match(WEATHER_SOURCE, /weather_wind_kmh/);
+  assert.match(WEATHER_SOURCE, /última consulta/);
 });

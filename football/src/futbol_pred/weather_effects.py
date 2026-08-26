@@ -131,6 +131,15 @@ def apply_weather_adjustment(match: dict, now: datetime | None = None) -> bool:
         "weather_source_updated_at": source_stamp,
         "weather_forecast_for": weather.get("forecast_for"),
         "weather_source": weather.get("source"),
+        # Congelamos en el ajuste la previsión exacta que alimentó el modelo.
+        # Así la UI puede mostrar la hora del partido y sus condiciones sin
+        # confundirlas con el tiempo actual ni con una lectura posterior.
+        "weather_temperature_c": weather.get("temperature_c"),
+        "weather_apparent_temperature_c": weather.get("apparent_temperature_c"),
+        "weather_humidity_pct": weather.get("humidity_pct"),
+        "weather_precipitation_mm": weather.get("precipitation_mm"),
+        "weather_precipitation_probability_pct": weather.get("precipitation_probability_pct"),
+        "weather_wind_kmh": weather.get("wind_kmh"),
     }
     previous = match.get("weather_adjustment") or {}
     # El dashboard se reconstruye desde el modelo en cada cron. Por eso "mismo

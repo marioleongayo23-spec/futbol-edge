@@ -17,6 +17,42 @@ function fmtWeatherTime(value) {
   return date.toLocaleString("es-ES", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 }
 
+function WeatherForecastSummary({ adjustment }) {
+  const source = adjustment.weather_source || "Open-Meteo";
+  const forecast = fmtWeatherTime(adjustment.weather_forecast_for);
+  const refreshed = fmtWeatherTime(adjustment.weather_source_updated_at);
+  const temp = adjustment.weather_temperature_c;
+  const apparent = adjustment.weather_apparent_temperature_c;
+  const rainProb = adjustment.weather_precipitation_probability_pct;
+  const rainMm = adjustment.weather_precipitation_mm;
+  const wind = adjustment.weather_wind_kmh;
+  const humidity = adjustment.weather_humidity_pct;
+  const hasSnapshot = [temp, apparent, rainProb, rainMm, wind, humidity].some((value) => value != null);
+
+  return (
+    <div style={{ marginTop: 10, marginBottom: 10 }} data-testid="kickoff-weather-forecast">
+      <div className="row-between">
+        <div>
+          <div className="lbl">Previsión para la hora del partido</div>
+          <div className="mut">No es el tiempo actual: es la previsión usada para el saque inicial.</div>
+        </div>
+        {forecast && <span className="pill y">{forecast}</span>}
+      </div>
+      {hasSnapshot && (
+        <div className="chips" style={{ marginTop: 8 }}>
+          {temp != null && <span className="chip">🌡 <b>{temp} °C</b>{apparent != null ? ` · sensación ${apparent} °C` : ""}</span>}
+          {(rainProb != null || rainMm != null) && <span className="chip">🌧 <b>{rainProb ?? "—"}%</b>{rainMm != null ? ` · ${rainMm} mm` : ""}</span>}
+          {wind != null && <span className="chip">💨 <b>{wind} km/h</b></span>}
+          {humidity != null && <span className="chip">Humedad <b>{humidity}%</b></span>}
+        </div>
+      )}
+      <div className="mut" style={{ marginTop: 6 }}>
+        {source}{refreshed ? ` · última consulta ${refreshed}` : ""} · zona Europe/Madrid
+      </div>
+    </div>
+  );
+}
+
 function WeatherSource({ adjustment }) {
   const source = adjustment.weather_source || "Open-Meteo";
   const forecast = fmtWeatherTime(adjustment.weather_forecast_for);
@@ -49,6 +85,7 @@ export default function WeatherAdjustmentPanel({ adjustment }) {
           <div className="lbl">Ajuste cuantificado por clima</div>
           <span className="pill">NEUTRO</span>
         </div>
+        <WeatherForecastSummary adjustment={adjustment} />
         <div className="note">Sin ajuste: {adjustment.reason || "condiciones dentro de umbrales neutros"}.</div>
         <WeatherSource adjustment={adjustment} />
       </div>
@@ -65,6 +102,8 @@ export default function WeatherAdjustmentPanel({ adjustment }) {
         </div>
         <span className="pill">PREPARTIDO</span>
       </div>
+
+      <WeatherForecastSummary adjustment={adjustment} />
 
       <div className="fe-impact-grid">
         <ImpactTile label="Goles/xG" value={mult.goals} />

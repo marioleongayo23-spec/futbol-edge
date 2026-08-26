@@ -2,7 +2,12 @@ from datetime import datetime, timedelta
 import json
 from types import SimpleNamespace
 
-from futbol_pred.prefinal_lineups import MADRID, in_prefinal_window, refresh_prefinal_lineups
+from futbol_pred.prefinal_lineups import (
+    MADRID,
+    _trusted_previous_xi,
+    in_prefinal_window,
+    refresh_prefinal_lineups,
+)
 
 
 POSITIONS = ["POR", "LI", "DFC", "DFC", "LD", "MC", "MCD", "MC", "EI", "DC", "ED"]
@@ -22,10 +27,11 @@ def _baseline(kickoff):
     }
 
 
-def _ai_response():
+def _ai_response(local_positions=None):
+    local_positions = local_positions or POSITIONS
     return [{
         "partido": "Local - Visitante",
-        "local": [{"j": f"L{i}", "pos": POSITIONS[i]} for i in range(11)],
+        "local": [{"j": f"L{i}", "pos": local_positions[i]} for i in range(11)],
         "visitante": [{"j": f"V{i}", "pos": POSITIONS[i]} for i in range(11)],
         "bajas_local": ["Duda Uno (duda: molestias)"],
         "bajas_visitante": [],
@@ -49,12 +55,32 @@ def _media(now, sides=("local", "visitante")):
     return rows
 
 
-def _mock_ai(monkeypatch):
+def _mock_ai(monkeypatch, response=None):
     monkeypatch.setattr("futbol_pred.prefinal_lineups.available", lambda: True)
     monkeypatch.setattr(
         "futbol_pred.prefinal_lineups.chat",
-        lambda *_a, **_k: SimpleNamespace(text=json.dumps(_ai_response()), provider="Gemini", model="test-model"),
+        lambda *_a, **_k: SimpleNamespace(
+            text=json.dumps(response or _ai_response()), provider="Gemini", model="test-model"
+        ),
     )
+
+
+def _official_history_match(kickoff, suffix):
+    return {
+        "id": f"old-{suffix}",
+        "home": "Local",
+        "away": f"Rival {suffix}",
+        "kickoff": kickoff.isoformat(),
+        "finished": True,
+        "result": [1, 0],
+        "alineacion": {
+            "status": "confirmado",
+            "local": [f"L{i}" for i in range(11)],
+            "visitante": [f"R{suffix}-{i}" for i in range(11)],
+            "posiciones_local": POSITIONS,
+            "posiciones_visitante": POSITIONS,
+        },
+    }
 
 
 def test_ventana_prefinal_esta_centrada_en_t3():
@@ -86,6 +112,7 @@ def test_prefinal_solo_es_probable_con_evidencia_de_ambos_equipos(monkeypatch):
     assert lineup["lineup_evidence"]["policy"] == "both_sides_required_for_probable"
     assert len(lineup["local"]) == len(lineup["visitante"]) == 11
     assert lineup["provider"] == "Gemini"
+    assert lineup["probable_refresh_window_last"] == "T-3h"
 
 
 def test_una_noticia_solo_del_local_no_respalda_el_once_visitante(monkeypatch):
@@ -163,3 +190,67 @@ def test_prefinal_conserva_once_valido_si_falla_la_ia_como_estimacion(monkeypatc
     assert lineup["lineup_kind"] == "fallback_estimate"
     assert lineup["source_quality"] == "statistical_fallback"
     assert len(lineup["local"]) == 11
+
+
+def test_refresca_probable_t8_y_t90_sin_repetir_misma_ventana(monkeypatch):
+    kickoff = datetime(2026, 8, 24, 21, tzinfo=MADRID)
+    match = _baseline(kickoff)
+    monkeypatch.setattr("futbol_pred.prefinal_lineups.collect_probable_lineup_media", lambda *_a, **_k: _media(kickoff))
+    _mock_ai(monkeypatch)
+
+    report_t8 = refresh_prefinal_lineups([match], kickoff - timedelta(hours=8))
+    assert report_t8["windows"] == {"T-8h": 1}
+    assert match["alineacion"]["phase"] == "same_day_probable"
+    assert match["alineacion"]["probable_refresh_windows"].get("T-8h")
+
+    repeated = refresh_prefinal_lineups([match], kickoff - timedelta(hours=8))
+    assert repeated["candidates"] == 0
+
+    report_t90 = refresh_prefinal_lineups([match], kickoff - timedelta(minutes=90))
+    assert report_t90["windows"] == {"T-90m": 1}
+    assert match["alineacion"]["probable_refresh_windows"].get("T-90m")
+
+
+def test_historial_oficial_corrige_posicion_modelo_con_dos_antecedentes(monkeypatch):
+    kickoff = datetime(2026, 8, 24, 21, tzinfo=MADRID)
+    now = kickoff - timedelta(hours=3)
+    target = _baseline(kickoff)
+    old1 = _official_history_match(kickoff - timedelta(days=7), "a")
+    old2 = _official_history_match(kickoff - timedelta(days=14), "b")
+
+    wrong = list(POSITIONS)
+    wrong[1] = "DFC"  # L1 es LI en dos XI oficiales previos.
+    monkeypatch.setattr("futbol_pred.prefinal_lineups.collect_probable_lineup_media", lambda *_a, **_k: _media(now))
+    _mock_ai(monkeypatch, _ai_response(wrong))
+
+    refresh_prefinal_lineups([old2, old1, target], now)
+    lineup = target["alineacion"]
+    assert lineup["posiciones_local"][1] == "LI"
+    assert lineup["position_source"] == "official_history+model"
+    assert lineup["position_history_overrides"] >= 1
+    assert any(row["player"] == "L1" and row["to"] == "LI" for row in lineup["position_history_evidence"])
+
+
+def test_squad_only_no_puede_ser_semilla_del_probable():
+    lineup = {
+        "status": "estimado",
+        "model": "squad-only-v3",
+        "local": [f"Plantilla L{i}" for i in range(11)],
+        "visitante": [f"Plantilla V{i}" for i in range(11)],
+    }
+    local, visitor, quality = _trusted_previous_xi(lineup)
+    assert local == []
+    assert visitor == []
+    assert quality == "squad_only_rejected"
+
+
+def test_probable_grounded_anterior_si_puede_dar_continuidad():
+    lineup = {
+        "status": "probable",
+        "source_quality": "media_grounded",
+        "local": [f"L{i}" for i in range(11)],
+        "visitante": [f"V{i}" for i in range(11)],
+    }
+    local, visitor, quality = _trusted_previous_xi(lineup)
+    assert len(local) == len(visitor) == 11
+    assert quality == "trusted"
