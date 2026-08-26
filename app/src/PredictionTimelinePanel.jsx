@@ -16,6 +16,70 @@ function fmtTime(iso) {
   }
 }
 
+function fmtOperationalTime(iso) {
+  if (!iso) return null;
+  const time = new Date(iso);
+  if (Number.isNaN(time.getTime())) return null;
+  return time.toLocaleString("es-ES", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+}
+
+function latestAvailabilityStamp(lineup) {
+  const stamps = [
+    ...(lineup?.disponibilidad_local || []),
+    ...(lineup?.disponibilidad_visitante || []),
+  ]
+    .map((row) => new Date(row?.source_updated_at || "").getTime())
+    .filter(Number.isFinite);
+  return stamps.length ? new Date(Math.max(...stamps)).toISOString() : null;
+}
+
+function OperationalFreshness({ m }) {
+  const lineup = m?.alineacion || {};
+  const absenceStamp = latestAvailabilityStamp(lineup);
+  const hasAvailability = Object.prototype.hasOwnProperty.call(lineup, "disponibilidad_local")
+    || Object.prototype.hasOwnProperty.call(lineup, "disponibilidad_visitante");
+  const weatherStamp = m?.weather?.source_updated_at;
+  const weatherFor = m?.weather?.forecast_for;
+  const lineupStamp = lineup.source_updated_at || lineup.generated_at || lineup.ts;
+  const rows = [
+    {
+      label: "Partido",
+      ok: Boolean(m?.updatedAt),
+      text: m?.updatedAt ? fmtOperationalTime(m.updatedAt) : "sin refresco intradía",
+    },
+    {
+      label: "Clima",
+      ok: Boolean(m?.weather),
+      text: weatherStamp
+        ? `act. ${fmtOperationalTime(weatherStamp)}`
+        : weatherFor ? `previsión ${fmtOperationalTime(weatherFor)}` : "sin dato",
+    },
+    {
+      label: "Bajas",
+      ok: hasAvailability,
+      text: absenceStamp
+        ? `act. ${fmtOperationalTime(absenceStamp)}`
+        : hasAvailability ? "sin bajas reportadas" : "sin comprobación",
+    },
+    {
+      label: "XI",
+      ok: lineup.status === "confirmado" || lineup.status === "probable",
+      text: lineupStamp
+        ? `${lineup.status || "sin confirmar"} · ${fmtOperationalTime(lineupStamp)}`
+        : lineup.status || "sin confirmar",
+    },
+  ];
+  return (
+    <div className="chips" style={{ marginTop: 10 }} aria-label="Estado operativo de datos del partido">
+      {rows.map((row) => (
+        <span className="chip" key={row.label}>
+          <b>{row.label}</b> {row.ok ? "✓" : "◷"} {row.text}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 function ProbabilityTimeline({ points, home, away }) {
   if (!points.length) return null;
   const width = 720;
@@ -191,6 +255,7 @@ export default function PredictionTimelinePanel({ m }) {
         <span className="pill">NO LEAKAGE</span>
       </div>
 
+      <OperationalFreshness m={m} />
       <HeroKpis m={m} audit={audit} points={points} />
       <VersionStrip points={points} m={m} />
 
