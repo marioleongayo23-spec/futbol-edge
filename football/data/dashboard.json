@@ -1,6 +1,6 @@
 {
   "schema_version": 7,
-  "generated_at": "2026-08-26T20:54:21.299863+02:00",
+  "generated_at": "2026-08-26T20:57:37.633029+02:00",
   "season": 2026,
   "quiniela": {
     "jornada": "3",
@@ -21845,7 +21845,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-26T20:54:21.299863+02:00",
+      "updatedAt": "2026-08-26T20:57:32.337425+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -21926,10 +21926,10 @@
         }
       },
       "markets": {
-        "over_2_5": 0.631,
-        "over_1_5": 0.833,
-        "over_3_5": 0.41,
-        "btts": 0.534,
+        "over_2_5": 0.632,
+        "over_1_5": 0.836,
+        "over_3_5": 0.411,
+        "btts": 0.537,
         "marcador": "2-0"
       },
       "score_distribution": {
@@ -22191,15 +22191,19 @@
           "market": "ou25",
           "selection": "under",
           "odds": 2.73,
-          "modelProb": 0.343,
-          "edge": -0.063
+          "modelProb": 0.3675,
+          "edge": -0.063,
+          "weather_adjusted": true,
+          "prediction_refreshed_at": "2026-08-26T20:57:36.863878+02:00"
         },
         {
           "market": "ou25",
           "selection": "over",
           "odds": 1.42,
-          "modelProb": 0.657,
-          "edge": -0.068
+          "modelProb": 0.6325,
+          "edge": -0.068,
+          "weather_adjusted": true,
+          "prediction_refreshed_at": "2026-08-26T20:57:36.863878+02:00"
         },
         {
           "market": "1x2",
@@ -23202,44 +23206,96 @@
       },
       "weather": {
         "forecast_for": "2026-08-26T21:00:00",
-        "temperature_c": 23.3,
-        "apparent_temperature_c": 21.3,
-        "humidity_pct": 41,
+        "temperature_c": 23.9,
+        "apparent_temperature_c": 21.8,
+        "humidity_pct": 40,
         "precipitation_mm": 0.0,
-        "precipitation_probability_pct": 3,
-        "wind_kmh": 13.1,
+        "precipitation_probability_pct": 0,
+        "wind_kmh": 13.4,
         "weather_code": 3,
         "heat_stress": {
           "level": "bajo",
-          "index": 23.3,
+          "index": 23.9,
           "method": "temperatura aparente + humedad; no es WBGT"
         },
         "source": "Open-Meteo",
         "source_url": "https://open-meteo.com/",
         "license": "CC BY 4.0",
         "model_use": "ajuste_cuantitativo_contextual",
-        "source_updated_at": "2026-08-26T16:25:25.652074+02:00"
+        "source_updated_at": "2026-08-26T20:57:32.337425+02:00"
       },
       "weather_adjustment": {
         "applied": false,
-        "weather_source_updated_at": "2026-08-26T16:25:25.652074+02:00",
+        "weather_source_updated_at": "2026-08-26T20:57:32.337425+02:00",
         "weather_forecast_for": "2026-08-26T21:00:00",
         "weather_source": "Open-Meteo",
-        "weather_temperature_c": 23.3,
-        "weather_apparent_temperature_c": 21.3,
-        "weather_humidity_pct": 41,
-        "weather_precipitation_mm": 0.0,
-        "weather_precipitation_probability_pct": 3,
-        "weather_wind_kmh": 13.1,
-        "applied_at": "2026-08-26T18:28:35.825609+00:00",
+        "weather_snapshot": {
+          "forecast_for": "2026-08-26T21:00:00",
+          "temperature_c": 23.9,
+          "apparent_temperature_c": 21.8,
+          "humidity_pct": 40,
+          "precipitation_mm": 0.0,
+          "precipitation_probability_pct": 0,
+          "wind_kmh": 13.4,
+          "weather_code": 3
+        },
+        "applied_at": "2026-08-26T20:57:36.863878+02:00",
         "reason": "condiciones dentro de umbrales neutros",
+        "reasons": [],
         "multipliers": {
           "goals": 1.0,
           "shots": 1.0,
           "fouls": 1.0,
           "cards": 1.0
         },
-        "one_x_two_adjusted": false
+        "xg": {
+          "before": [
+            2.36,
+            0.9
+          ],
+          "after": [
+            2.36,
+            0.9
+          ],
+          "delta": [
+            0.0,
+            0.0
+          ]
+        },
+        "stats": {
+          "goals": {
+            "before": 3.26,
+            "after": 3.26,
+            "delta": -0.0
+          },
+          "shots": {
+            "before": 26.9,
+            "after": 26.9,
+            "delta": -0.0
+          },
+          "sot": {
+            "before": 9.4,
+            "after": 9.4,
+            "delta": 0.0
+          },
+          "fouls": {
+            "before": 23.7,
+            "after": 23.7,
+            "delta": 0.0
+          },
+          "yellows": {
+            "before": 4.14,
+            "after": 4.14,
+            "delta": 0.0
+          },
+          "reds": {
+            "before": 0.28,
+            "after": 0.28,
+            "delta": 0.0
+          }
+        },
+        "one_x_two_adjusted": false,
+        "method": "recálculo intradía conservador; 1X2 puro intacto hasta gate histórico"
       },
       "alineacion": {
         "local": [
@@ -23268,30 +23324,8 @@
           "Job Ochieng",
           "Mikel Oyarzabal"
         ],
-        "bajas_local": [
-          "R. Asencio (Muscle Injury)",
-          "Eder Militao (Hamstring Injury)",
-          "Endrick (Muscle Injury)",
-          "F. Mendy (Hip Injury)",
-          "T. Pitarch (Knee Injury)",
-          "Rodrygo (Knee Injury)",
-          "A. Tchouameni (Muscle Injury)",
-          "R. Asencio (Muscle Injury)",
-          "Eder Militao (Hamstring Injury)",
-          "Endrick (Muscle Injury)",
-          "F. Mendy (Hip Injury)",
-          "T. Pitarch (Knee Injury)",
-          "Rodrygo (Knee Injury)",
-          "A. Tchouameni (Muscle Injury)"
-        ],
-        "bajas_visitante": [
-          "J. Gorrotxategi (Groin Injury)",
-          "P. Marin (Injury)",
-          "A. Odriozola (Knee Injury)",
-          "J. Gorrotxategi (Groin Injury)",
-          "P. Marin (Injury)",
-          "A. Odriozola (Knee Injury)"
-        ],
+        "bajas_local": [],
+        "bajas_visitante": [],
         "clave_local": [],
         "clave_visitante": [],
         "provider": "API-Football",
@@ -23341,190 +23375,8 @@
         "positions_inferred": false,
         "cache_status": "recuperado_de_cache",
         "status": "confirmado",
-        "disponibilidad_local": [
-          {
-            "jugador": "R. Asencio",
-            "team": "Real Madrid",
-            "estado": "missing fixture",
-            "detalle": "Muscle Injury",
-            "source": "API-Football",
-            "official": true,
-            "source_updated_at": "2026-08-26T20:28:35.825609+02:00"
-          },
-          {
-            "jugador": "Eder Militao",
-            "team": "Real Madrid",
-            "estado": "missing fixture",
-            "detalle": "Hamstring Injury",
-            "source": "API-Football",
-            "official": true,
-            "source_updated_at": "2026-08-26T20:28:35.825609+02:00"
-          },
-          {
-            "jugador": "Endrick",
-            "team": "Real Madrid",
-            "estado": "missing fixture",
-            "detalle": "Muscle Injury",
-            "source": "API-Football",
-            "official": true,
-            "source_updated_at": "2026-08-26T20:28:35.825609+02:00"
-          },
-          {
-            "jugador": "F. Mendy",
-            "team": "Real Madrid",
-            "estado": "missing fixture",
-            "detalle": "Hip Injury",
-            "source": "API-Football",
-            "official": true,
-            "source_updated_at": "2026-08-26T20:28:35.825609+02:00"
-          },
-          {
-            "jugador": "T. Pitarch",
-            "team": "Real Madrid",
-            "estado": "missing fixture",
-            "detalle": "Knee Injury",
-            "source": "API-Football",
-            "official": true,
-            "source_updated_at": "2026-08-26T20:28:35.825609+02:00"
-          },
-          {
-            "jugador": "Rodrygo",
-            "team": "Real Madrid",
-            "estado": "missing fixture",
-            "detalle": "Knee Injury",
-            "source": "API-Football",
-            "official": true,
-            "source_updated_at": "2026-08-26T20:28:35.825609+02:00"
-          },
-          {
-            "jugador": "A. Tchouameni",
-            "team": "Real Madrid",
-            "estado": "missing fixture",
-            "detalle": "Muscle Injury",
-            "source": "API-Football",
-            "official": true,
-            "source_updated_at": "2026-08-26T20:28:35.825609+02:00"
-          },
-          {
-            "jugador": "R. Asencio",
-            "team": "Real Madrid",
-            "estado": "missing fixture",
-            "detalle": "Muscle Injury",
-            "source": "API-Football",
-            "official": true,
-            "source_updated_at": "2026-08-26T20:28:35.825609+02:00"
-          },
-          {
-            "jugador": "Eder Militao",
-            "team": "Real Madrid",
-            "estado": "missing fixture",
-            "detalle": "Hamstring Injury",
-            "source": "API-Football",
-            "official": true,
-            "source_updated_at": "2026-08-26T20:28:35.825609+02:00"
-          },
-          {
-            "jugador": "Endrick",
-            "team": "Real Madrid",
-            "estado": "missing fixture",
-            "detalle": "Muscle Injury",
-            "source": "API-Football",
-            "official": true,
-            "source_updated_at": "2026-08-26T20:28:35.825609+02:00"
-          },
-          {
-            "jugador": "F. Mendy",
-            "team": "Real Madrid",
-            "estado": "missing fixture",
-            "detalle": "Hip Injury",
-            "source": "API-Football",
-            "official": true,
-            "source_updated_at": "2026-08-26T20:28:35.825609+02:00"
-          },
-          {
-            "jugador": "T. Pitarch",
-            "team": "Real Madrid",
-            "estado": "missing fixture",
-            "detalle": "Knee Injury",
-            "source": "API-Football",
-            "official": true,
-            "source_updated_at": "2026-08-26T20:28:35.825609+02:00"
-          },
-          {
-            "jugador": "Rodrygo",
-            "team": "Real Madrid",
-            "estado": "missing fixture",
-            "detalle": "Knee Injury",
-            "source": "API-Football",
-            "official": true,
-            "source_updated_at": "2026-08-26T20:28:35.825609+02:00"
-          },
-          {
-            "jugador": "A. Tchouameni",
-            "team": "Real Madrid",
-            "estado": "missing fixture",
-            "detalle": "Muscle Injury",
-            "source": "API-Football",
-            "official": true,
-            "source_updated_at": "2026-08-26T20:28:35.825609+02:00"
-          }
-        ],
-        "disponibilidad_visitante": [
-          {
-            "jugador": "J. Gorrotxategi",
-            "team": "Real Sociedad",
-            "estado": "missing fixture",
-            "detalle": "Groin Injury",
-            "source": "API-Football",
-            "official": true,
-            "source_updated_at": "2026-08-26T20:28:35.825609+02:00"
-          },
-          {
-            "jugador": "P. Marin",
-            "team": "Real Sociedad",
-            "estado": "missing fixture",
-            "detalle": "Injury",
-            "source": "API-Football",
-            "official": true,
-            "source_updated_at": "2026-08-26T20:28:35.825609+02:00"
-          },
-          {
-            "jugador": "A. Odriozola",
-            "team": "Real Sociedad",
-            "estado": "missing fixture",
-            "detalle": "Knee Injury",
-            "source": "API-Football",
-            "official": true,
-            "source_updated_at": "2026-08-26T20:28:35.825609+02:00"
-          },
-          {
-            "jugador": "J. Gorrotxategi",
-            "team": "Real Sociedad",
-            "estado": "missing fixture",
-            "detalle": "Groin Injury",
-            "source": "API-Football",
-            "official": true,
-            "source_updated_at": "2026-08-26T20:28:35.825609+02:00"
-          },
-          {
-            "jugador": "P. Marin",
-            "team": "Real Sociedad",
-            "estado": "missing fixture",
-            "detalle": "Injury",
-            "source": "API-Football",
-            "official": true,
-            "source_updated_at": "2026-08-26T20:28:35.825609+02:00"
-          },
-          {
-            "jugador": "A. Odriozola",
-            "team": "Real Sociedad",
-            "estado": "missing fixture",
-            "detalle": "Knee Injury",
-            "source": "API-Football",
-            "official": true,
-            "source_updated_at": "2026-08-26T20:28:35.825609+02:00"
-          }
-        ],
+        "disponibilidad_local": [],
+        "disponibilidad_visitante": [],
         "best_props": [],
         "numeric_props_source": "pending_real_data",
         "position_source": "model_unverified",
@@ -23585,23 +23437,23 @@
           "expected_minutes_avg": null,
           "starter_probability_avg_pct": null,
           "attack_presence_index": null,
-          "listed_absences": 14,
-          "official_absences": 14,
-          "confidence_penalty_pp": 12.0
+          "listed_absences": 0,
+          "official_absences": 0,
+          "confidence_penalty_pp": 0.0
         },
         "away": {
           "key_players": 0,
           "expected_minutes_avg": null,
           "starter_probability_avg_pct": null,
           "attack_presence_index": null,
-          "listed_absences": 6,
-          "official_absences": 6,
-          "confidence_penalty_pp": 12.0
+          "listed_absences": 0,
+          "official_absences": 0,
+          "confidence_penalty_pp": 0.0
         },
         "attack_presence_edge": null,
-        "confidence_penalty_pp": 20.0,
+        "confidence_penalty_pp": 0.0,
         "probability_adjustment": "not_applied",
-        "method": "minutos × probabilidad de titularidad × producción observada; las bajas oficiales penalizan confianza. No altera el 1X2 sin validación histórica."
+        "method": "actualización intradía de minutos/producción/bajas; no altera 1X2 puro sin gate histórico"
       },
       "state_simulation": {
         "method": "monte_carlo_5min_game_state_v1",
@@ -23636,10 +23488,10 @@
         }
       },
       "prediction_confidence": {
-        "score": 86,
+        "score": 100,
         "level": "alta",
         "model_disagreement_pp": 8.9,
-        "availability_penalty_pp": 20,
+        "availability_penalty_pp": 0.0,
         "data_completeness_pct": 95,
         "evidence": {
           "probabilities": true,
@@ -23650,7 +23502,8 @@
           "official_lineup": true,
           "weather": true,
           "market_odds": false
-        }
+        },
+        "refreshed_at": "2026-08-26T20:57:36.863878+02:00"
       },
       "prediction_factors": [
         {
@@ -23693,7 +23546,8 @@
         "decision": "eligible",
         "label": "Pronóstico publicable",
         "reasons": [],
-        "policy": "abstención automática por incertidumbre o falta de evidencia"
+        "policy": "abstención automática por incertidumbre o falta de evidencia",
+        "refreshed_at": "2026-08-26T20:57:36.863878+02:00"
       },
       "prediction_snapshot": {
         "generated_at": "2026-08-26T20:28:35.825609+02:00",
@@ -24556,22 +24410,23 @@
           "fixture": {
             "state": "ok",
             "required": true,
-            "checked_at": "2026-08-26T20:54:21.299863+02:00",
+            "checked_at": "2026-08-26T20:57:32.337425+02:00",
             "source": "football_data",
-            "detail": "calendario cargado"
+            "detail": "unavailable"
           },
           "weather": {
             "state": "ok",
             "required": true,
-            "checked_at": "2026-08-26T16:25:25.652074+02:00",
+            "checked_at": "2026-08-26T20:57:32.337425+02:00",
             "source": "Open-Meteo",
-            "detail": "previsión disponible"
+            "detail": "ok"
           },
           "absences": {
             "state": "ok",
             "required": true,
+            "checked_at": "2026-08-26T20:57:34.434716+02:00",
             "source": "API-Football",
-            "detail": "comprobado; 0 o más incidencias"
+            "detail": "ok"
           },
           "lineup_probable": {
             "state": "ok",
@@ -24596,6 +24451,101 @@
         "missing_required": [
           "odds"
         ]
+      },
+      "operational_checks": {
+        "weather_checked_at": "2026-08-26T20:57:32.337425+02:00",
+        "weather_check_result": "ok",
+        "fixture_checked_at": "2026-08-26T20:57:32.337425+02:00",
+        "fixture_check_result": "unavailable",
+        "absences_checked_at": "2026-08-26T20:57:34.434716+02:00",
+        "absences_check_result": "ok"
+      },
+      "api_football_fixture_id": 1570340,
+      "prediction_live_refresh": {
+        "checked_at": "2026-08-26T20:57:36.863878+02:00",
+        "cadence_target_minutes": 5,
+        "model_retrained": false,
+        "pure_model_probs_changed": false,
+        "reacts_to": [
+          "weather",
+          "lineup",
+          "absences",
+          "market"
+        ]
+      },
+      "matchday_freshness": {
+        "status": "warning",
+        "checked_at": "2026-08-26T20:57:37.633029+02:00",
+        "minutes_to_kickoff": 2.4,
+        "all_fresh": false,
+        "requires_retry": true,
+        "missing_or_stale": [
+          "weather",
+          "official_lineup",
+          "odds",
+          "player_props"
+        ],
+        "hard_conflicts": [],
+        "checks": {
+          "weather": {
+            "ok": false,
+            "state": "stale_or_wrong_hour",
+            "checked_at": "2026-08-26T20:57:32.337425+02:00",
+            "age_minutes": 0.1,
+            "max_age_minutes": 10,
+            "forecast_for": "2026-08-26T21:00:00"
+          },
+          "absences": {
+            "ok": true,
+            "state": "fresh",
+            "checked_at": "2026-08-26T20:57:34.434716+02:00",
+            "age_minutes": 0.1,
+            "max_age_minutes": 95
+          },
+          "probable_lineup": {
+            "ok": true,
+            "state": "superseded_by_official",
+            "checked_at": "2026-08-26T20:28:35.825609+02:00",
+            "age_minutes": 29.0,
+            "max_age_minutes": 15,
+            "lineup_status": "confirmado",
+            "source_quality": "model_only"
+          },
+          "official_lineup": {
+            "ok": false,
+            "state": "confirmed",
+            "checked_at": "2026-08-26T20:28:35.825609+02:00",
+            "age_minutes": 29.0,
+            "max_age_minutes": 10,
+            "required_now": true
+          },
+          "odds": {
+            "ok": false,
+            "state": "legacy_pending_or_unavailable",
+            "checked_at": null,
+            "age_minutes": null,
+            "max_age_minutes": 7,
+            "provider": null,
+            "raw_state": "pendiente_odds_api"
+          },
+          "player_props": {
+            "ok": false,
+            "state": "missing_stale_or_low_sample",
+            "checked_at": null,
+            "age_minutes": null,
+            "max_age_minutes": 20,
+            "real_players": 0,
+            "target_players": 22
+          },
+          "prediction": {
+            "ok": true,
+            "state": "fresh",
+            "checked_at": "2026-08-26T20:57:36.863878+02:00",
+            "age_minutes": 0.0,
+            "max_age_minutes": 10
+          }
+        },
+        "policy": "T-2h: weather/predicción <=10m, probable <=15m, XI oficial <=10m desde T-75, bajas <=95m, odds según TTL, props >=16/22 y <=20m"
       }
     },
     {
@@ -318343,6 +318293,20 @@
         "LaLiga Hypermotion"
       ],
       "evaluable_predictions": 5
+    }
+  },
+  "source_health": {
+    "api_football": {
+      "requests_total": 1,
+      "requests_by_endpoint": {
+        "fixtures": 1
+      },
+      "daily_limit": null,
+      "daily_remaining": null,
+      "minute_limit": null,
+      "minute_remaining": null,
+      "checked_at": "2026-08-26T18:57:33.691006+00:00",
+      "policy": "polling prepartido prioritario + backoff por cuota restante"
     }
   }
 }
