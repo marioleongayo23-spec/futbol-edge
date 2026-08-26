@@ -244,17 +244,44 @@ def _evidence_summary(match: dict, media: list[dict]) -> dict:
     }
 
 
+def _trusted_previous_xi(current: dict) -> tuple[list[str], list[str], str]:
+    """Solo deja pasar un XI previo que ya tuviera respaldo externo real.
+
+    ``squad-only-v3``, model-only y fallbacks son candidatos plausibles de una
+    plantilla, no continuidad fiable. No deben convertirse en verdad por
+    repetición al alimentar el siguiente prompt intradía.
+    """
+    if not isinstance(current, dict):
+        return [], [], "none"
+    if current.get("model") == "squad-only-v3":
+        return [], [], "squad_only_rejected"
+    trusted = (
+        current.get("status") == "confirmado"
+        or current.get("source_quality") == "media_grounded"
+        or current.get("lineup_kind") == "source_grounded_probable"
+    )
+    if not trusted:
+        return [], [], "untrusted_estimate_rejected"
+    local = list(current.get("local") or [])
+    visitor = list(current.get("visitante") or [])
+    if len(local) != 11 or len(visitor) != 11:
+        return [], [], "incomplete_rejected"
+    return local, visitor, "trusted"
+
+
 def _prompt(candidates: list[dict]) -> str:
     payload = []
     for item in candidates:
         match = item["match"]
         current = match.get("alineacion") or {}
+        prev_local, prev_visitor, previous_quality = _trusted_previous_xi(current)
         payload.append({
             "partido": item["partido"],
             "ventana": item["window"],
             "kickoff": match.get("kickoff"),
-            "once_previo_local": current.get("local") or [],
-            "once_previo_visitante": current.get("visitante") or [],
+            "once_previo_local": prev_local,
+            "once_previo_visitante": prev_visitor,
+            "calidad_once_previo": previous_quality,
             "ultimos_onces_oficiales": item.get("official_history") or {},
             "bajas_previas_local": current.get("bajas_local") or [],
             "bajas_previas_visitante": current.get("bajas_visitante") or [],
@@ -264,8 +291,9 @@ def _prompt(candidates: list[dict]) -> str:
     return (
         "Actúas como analista prepartido de fútbol español durante el mismo día del partido. "
         "Construye una propuesta de XI usando SOLO la evidencia suministrada, los últimos XI oficiales, "
-        "el once previo y contexto táctico razonable. NO uses un jugador solo porque figure en la plantilla: "
-        "si no existe una señal nueva que justifique un cambio, prioriza continuidad de los últimos XI oficiales. "
+        "y, únicamente si se facilita, un once previo ya respaldado. NO uses un jugador solo porque figure "
+        "en la plantilla: si no existe una señal nueva que justifique un cambio, prioriza continuidad de los "
+        "últimos XI oficiales. Una lista de plantilla o una estimación model-only NO es evidencia de titularidad. "
         "La prensa es evidencia, no confirmación oficial. La evidencia se atribuye por equipo: jamás uses una "
         "noticia del local como respaldo del XI visitante, ni al revés. Si falta evidencia de un lado, ese XI será "
         "tratado por el sistema como estimación aunque puedas proponerlo. No inventes lesiones ni digas que un once "
@@ -324,7 +352,7 @@ def _apply_result(
         source_quality = "model_only"
         lineup_kind = "model_estimate"
         status = "estimado"
-        fuente = f"Estimación {window} · continuidad oficial/once previo + IA · sin fuente externa suficiente"
+        fuente = f"Estimación {window} · continuidad oficial + IA · sin fuente externa suficiente"
         warning = "XI estimado por modelo; no existe evidencia externa suficiente para ambos equipos."
 
     merged = {
