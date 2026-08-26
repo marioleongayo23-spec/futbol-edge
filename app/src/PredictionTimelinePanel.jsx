@@ -1,6 +1,7 @@
 import { confidence } from "./insights";
 import { auditablePrediction, predictionTimelinePoints, strongestRealEdge } from "./predictionTimelineData";
 import { coverageRows, coverageStateLabel, coverageSymbol } from "./coverage";
+import { evidenceSymbol, lineupEvidenceView } from "./lineupEvidence";
 import "./match-timeline.css";
 
 const SERIES = [
@@ -47,6 +48,38 @@ function OperationalFreshness({ m }) {
           );
         })}
       </div>
+    </div>
+  );
+}
+
+function LineupEvidence({ m }) {
+  const view = lineupEvidenceView(m);
+  const hasLineup = Boolean(m?.alineacion && typeof m.alineacion === "object");
+  if (!hasLineup) return null;
+  return (
+    <div style={{ marginTop: 12 }} aria-label="Evidencia y fuentes del once">
+      <div className="row-between" style={{ gap: 8, marginBottom: 6 }}>
+        <small className="dim">Evidencia del XI · oficial &gt; medios recientes &gt; estimación</small>
+        <span className={"pill " + (view.complete ? "y" : "")}>{view.levelLabel}</span>
+      </div>
+      <div className="xi-grid">
+        {view.sides.map((side) => (
+          <div className="xi-bajas" key={side.side}>
+            <b>{side.team || (side.side === "local" ? "Local" : "Visitante")} · {evidenceSymbol(side)} {side.label}</b>
+            {side.sources.length ? side.sources.map((source, index) => (
+              <div key={`${source.source}-${source.title || index}`} style={{ marginTop: 4 }}>
+                <span>{source.source}</span>
+                {source.publishedLabel && <span className="dim"> · {source.publishedLabel}</span>}
+                {source.title && <div className="dim" style={{ marginTop: 2 }}>{source.title}</div>}
+                {source.url && <a className="mini" href={source.url} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 3 }}>Ver fuente ↗</a>}
+              </div>
+            )) : <div className="dim" style={{ marginTop: 4 }}>{side.state === "official" ? `${view.provider}${view.checkedLabel ? ` · comprobado ${view.checkedLabel}` : ""}` : "No hay una fuente externa atribuida a este equipo."}</div>}
+          </div>
+        ))}
+      </div>
+      <p className="note source-note" style={{ marginTop: 6 }}>
+        Política: para llamar <b>probable</b> al XI pre-final se exige evidencia reciente para ambos equipos. {view.mode === "official" ? "El XI oficial de API-Football prevalece sobre cualquier evidencia previa." : view.checkedLabel ? `Última elaboración/comprobación ${view.checkedLabel} · ${view.provider}.` : `Proveedor ${view.provider}.`}
+      </p>
     </div>
   );
 }
@@ -229,6 +262,7 @@ export default function PredictionTimelinePanel({ m }) {
       <OperationalFreshness m={m} />
       <HeroKpis m={m} audit={audit} points={points} />
       <VersionStrip points={points} m={m} />
+      <LineupEvidence m={m} />
 
       {points.length > 0 ? (
         <>
