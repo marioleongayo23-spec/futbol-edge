@@ -1,9 +1,9 @@
 name: futbol-edge hot refresh
 
 # Canal autoritativo de día de partido. GitHub Actions puede retrasar eventos
-# schedule, por eso cada arranque mantiene un bloque interno de cuatro ciclos a
-# 5 minutos. Además arranca tras cambios de código y al terminar el pipeline
-# pesado. El objetivo es no depender de un único cron para T-2h/T-75.
+# schedule, por eso los arranques programados mantienen un bloque interno de
+# cuatro ciclos a 5 minutos. Los triggers auxiliares hacen un único ciclo para
+# sincronizar sin crear una cola creciente de bloques antiguos.
 on:
   push:
     branches: [main]
@@ -14,7 +14,7 @@ on:
     types: [completed]
     branches: [main]
   schedule:
-    # Un arranque cada 20 min; dentro del job se ejecutan 4 ciclos separados 5 min.
+    # Un bloque cada 20 min; dentro del job se ejecutan 4 ciclos separados 5 min.
     # Evitamos minuto 00, donde los schedules suelen sufrir más retrasos.
     - cron: "4,24,44 8-23 * * *"
       timezone: "Europe/Madrid"
@@ -27,8 +27,8 @@ permissions:
 
 concurrency:
   group: futbol-edge-hot-refresh
-  # Un trigger nuevo no debe matar el bloque de cuatro ciclos que ya está
-  # protegiendo un partido. Los triggers adicionales quedan en cola.
+  # Nunca matamos un bloque que ya protege un partido. Los triggers auxiliares
+  # son de un solo ciclo, así que la cola se vacía rápido.
   cancel-in-progress: false
 
 jobs:
@@ -68,8 +68,14 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          for cycle in 1 2 3 4; do
-            echo "===== matchday cycle ${cycle}/4 ====="
+          cycles=1
+          if [ "$GITHUB_EVENT_NAME" = "schedule" ] || [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
+            cycles=4
+          fi
+          echo "Evento ${GITHUB_EVENT_NAME}: ${cycles} ciclo(s) de matchday"
+
+          for cycle in $(seq 1 "$cycles"); do
+            echo "===== matchday cycle ${cycle}/${cycles} ====="
             pushed=0
             for attempt in 1 2 3 4; do
               # Siempre partimos de la main ganadora para convivir con el pipeline pesado.
@@ -122,9 +128,9 @@ jobs:
             done
             [ "$pushed" = 1 ] || { echo "No se pudo publicar el ciclo ${cycle}"; exit 1; }
 
-            # Mantiene una cadencia real dentro del job aunque el siguiente cron
-            # schedule de GitHub llegue tarde. El cuarto ciclo cierra el bloque.
-            if [ "$cycle" -lt 4 ]; then
+            # Solo el schedule/manual mantiene la ventana de 4 ciclos. Los triggers
+            # auxiliares terminan tras el ciclo 1 y no acumulan trabajo obsoleto.
+            if [ "$cycle" -lt "$cycles" ]; then
               sleep 300
             fi
           done
