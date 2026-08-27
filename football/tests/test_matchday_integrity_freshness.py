@@ -281,12 +281,12 @@ class _LastMileClient:
             {
                 "team": "Local",
                 "formation": "4-3-3",
-                "starters": [{"name": f"L{i}", "position": POSITIONS[i]} for i in range(11)],
+                "starters": [{"name": f"L {i}", "position": POSITIONS[i]} for i in range(11)],
             },
             {
                 "team": "Visitante",
                 "formation": "4-3-3",
-                "starters": [{"name": f"V{i}", "position": POSITIONS[i]} for i in range(11)],
+                "starters": [{"name": f"V {i}", "position": POSITIONS[i]} for i in range(11)],
             },
         ]
 
