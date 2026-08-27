@@ -72,8 +72,8 @@ test("LI queda visualmente a la izquierda y LD a la derecha también en el visit
   await gotoMatch(page, target);
 
   const away = page.locator(".pitch-half.away");
-  const li = away.locator(".player").filter({ hasText: "Izquierdo" }).filter({ hasText: "LI" }).first();
-  const ld = away.locator(".player").filter({ hasText: "Derecho" }).filter({ hasText: "LD" }).first();
+  const li = away.locator('.player[title$="· LI"]').first();
+  const ld = away.locator('.player[title$="· LD"]').first();
   await expect(li).toBeVisible();
   await expect(ld).toBeVisible();
   const liBox = await li.boundingBox();
