@@ -14,8 +14,6 @@ on:
     types: [completed]
     branches: [main]
   schedule:
-    # Un bloque cada 20 min; dentro del job se ejecutan 4 ciclos separados 5 min.
-    # Evitamos minuto 00, donde los schedules suelen sufrir más retrasos.
     - cron: "4,24,44 8-23 * * *"
       timezone: "Europe/Madrid"
     - cron: "4,24,44 0-1 * * *"
@@ -27,13 +25,10 @@ permissions:
 
 concurrency:
   group: futbol-edge-hot-refresh
-  # Nunca matamos un bloque que ya protege un partido. Los triggers auxiliares
-  # son de un solo ciclo, así que la cola se vacía rápido.
   cancel-in-progress: false
 
 jobs:
   refresh:
-    # Si nos dispara workflow_run, solo actuamos cuando el pipeline terminó bien.
     if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     steps:
@@ -78,7 +73,6 @@ jobs:
             echo "===== matchday cycle ${cycle}/${cycles} ====="
             pushed=0
             for attempt in 1 2 3 4; do
-              # Siempre partimos de la main ganadora para convivir con el pipeline pesado.
               git fetch origin main
               git reset --hard origin/main
 
@@ -94,26 +88,28 @@ jobs:
               # 4) T-2h: fuerza una foto reciente de bajas y la deduplica.
               PYTHONPATH=football/src python -m futbol_pred.matchday_absence_refresh
 
-              # 5) T-2h: prensa reciente + continuidad oficial + props reales.
-              #    Si no hay partido crítico, es prácticamente un no-op.
+              # 5) T-2h: prensa reciente + continuidad oficial + muestra real disponible.
               PYTHONPATH=football/src python -m futbol_pred.matchday_probable_refresh
 
-              # 6) Última barrera: un probable no puede contener una baja oficial.
+              # 6) Un probable no puede contener una baja oficial.
               PYTHONPATH=football/src python -m futbol_pred.matchday_lineup_integrity
 
-              # 7) Cuotas con TTL dinámico según proximidad y créditos.
+              # 7) Cobertura 22/22 de predicciones individuales: real cuando existe,
+              #    estimación explícita por rol/equipo solo para huecos sin muestra.
+              PYTHONPATH=football/src python -m futbol_pred.matchday_player_props_fill
+
+              # 8) Cuotas con TTL dinámico según proximidad y créditos.
               PYTHONPATH=football/src python -m futbol_pred.matchday_market_refresh
 
-              # 8) Reacción predictiva inmediata a clima/XI/bajas/mercado.
+              # 9) Reacción predictiva inmediata a clima/XI/bajas/mercado.
               PYTHONPATH=football/src python -m futbol_pred.matchday_prediction_refresh
 
-              # 9) Certifica autoridad/frescura y bloquea apuestas si no está ready.
+              # 10) Certifica autoridad/frescura y bloquea apuestas si no está ready.
               PYTHONPATH=football/src python -m futbol_pred.matchday_freshness_gate
 
-              # 10) Matriz de cobertura/frescura visible.
+              # 11) Matriz de cobertura/frescura visible.
               PYTHONPATH=football/src python -m futbol_pred.coverage
 
-              # Diagnóstico legible en Actions, sin secretos ni cuerpo de artículos.
               PYTHONPATH=football/src python -m futbol_pred.matchday_diagnose
 
               if git diff --quiet -- football/data/dashboard.json; then
@@ -134,8 +130,6 @@ jobs:
             done
             [ "$pushed" = 1 ] || { echo "No se pudo publicar el ciclo ${cycle}"; exit 1; }
 
-            # Solo el schedule/manual mantiene la ventana de 4 ciclos. Los triggers
-            # auxiliares terminan tras el ciclo 1 y no acumulan trabajo obsoleto.
             if [ "$cycle" -lt "$cycles" ]; then
               sleep 300
             fi
