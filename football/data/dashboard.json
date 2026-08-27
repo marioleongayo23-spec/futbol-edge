@@ -1,6 +1,6 @@
 {
   "schema_version": 7,
-  "generated_at": "2026-08-26T20:57:37.633029+02:00",
+  "generated_at": "2026-08-27T09:52:50.434205+02:00",
   "season": 2026,
   "quiniela": {
     "jornada": "3",
@@ -12352,13 +12352,20 @@
   },
   "content_audit": {
     "window": "continuo",
-    "checked_at": "2026-08-26T20:57:06.611968+02:00",
-    "matches_today": 1,
+    "checked_at": "2026-08-27T09:52:51.036393+02:00",
+    "matches_today": 2,
     "complete": 0,
     "incomplete": [
       {
-        "id": "football_data-564631",
-        "partido": "Real Madrid CF - Real Sociedad de Fútbol",
+        "id": "football_data-564636",
+        "partido": "RC Celta de Vigo - CA Osasuna",
+        "missing": [
+          "cuotas"
+        ]
+      },
+      {
+        "id": "football_data-564630",
+        "partido": "FC Barcelona - Athletic Club",
         "missing": [
           "cuotas"
         ]
@@ -12387,22 +12394,22 @@
     "state_simulations": 363,
     "coverage_summary": {
       "fixture": {
-        "ok": 1
+        "ok": 2
       },
       "weather": {
-        "ok": 1
+        "scheduled": 2
       },
       "absences": {
-        "ok": 1
+        "ok": 2
       },
       "lineup_probable": {
-        "ok": 1
+        "scheduled": 2
       },
       "lineup_official": {
-        "ok": 1
+        "scheduled": 2
       },
       "odds": {
-        "missing": 1
+        "missing": 2
       }
     }
   },
@@ -25717,7 +25724,7 @@
         "attack_presence_edge": null,
         "confidence_penalty_pp": 5.0,
         "probability_adjustment": "not_applied",
-        "method": "minutos × probabilidad de titularidad × producción observada; las bajas oficiales penalizan confianza. No altera el 1X2 sin validación histórica."
+        "method": "actualización intradía de minutos/producción/bajas; no altera 1X2 puro sin gate histórico"
       },
       "state_simulation": {
         "method": "monte_carlo_5min_game_state_v1",
@@ -25766,7 +25773,8 @@
           "official_lineup": false,
           "weather": false,
           "market_odds": false
-        }
+        },
+        "refreshed_at": "2026-08-27T09:52:50.434205+02:00"
       },
       "prediction_factors": [
         {
@@ -25804,7 +25812,8 @@
         "decision": "eligible",
         "label": "Pronóstico publicable",
         "reasons": [],
-        "policy": "abstención automática por incertidumbre o falta de evidencia"
+        "policy": "abstención automática por incertidumbre o falta de evidencia",
+        "refreshed_at": "2026-08-27T09:52:50.434205+02:00"
       },
       "prediction_snapshot": {
         "generated_at": "2026-08-26T20:09:48.753039+02:00",
@@ -26354,6 +26363,61 @@
         "quality": 0.82,
         "provisional": true,
         "cache_status": "recuperado_de_cache"
+      },
+      "prediction_live_refresh": {
+        "checked_at": "2026-08-27T09:52:50.434205+02:00",
+        "cadence_target_minutes": 5,
+        "model_retrained": false,
+        "pure_model_probs_changed": false,
+        "reacts_to": [
+          "weather",
+          "lineup",
+          "absences",
+          "market"
+        ]
+      },
+      "coverage": {
+        "complete": false,
+        "items": {
+          "fixture": {
+            "state": "ok",
+            "required": true,
+            "checked_at": "2026-08-26T20:54:21.299863+02:00",
+            "source": "football_data",
+            "detail": "calendario cargado"
+          },
+          "weather": {
+            "state": "scheduled",
+            "required": false,
+            "detail": "ventana T−8h"
+          },
+          "absences": {
+            "state": "ok",
+            "required": false,
+            "source": "API-Football",
+            "detail": "comprobado; 0 o más incidencias"
+          },
+          "lineup_probable": {
+            "state": "scheduled",
+            "required": false,
+            "checked_at": "2026-08-24T11:09:43.628912+00:00",
+            "source": "Motor estadístico local",
+            "detail": "ventana T−3h"
+          },
+          "lineup_official": {
+            "state": "scheduled",
+            "required": false,
+            "detail": "ventana T−60/T−30"
+          },
+          "odds": {
+            "state": "missing",
+            "required": true,
+            "detail": "se exige en las 24 h previas"
+          }
+        },
+        "missing_required": [
+          "odds"
+        ]
       }
     },
     {
@@ -27525,7 +27589,7 @@
         "attack_presence_edge": null,
         "confidence_penalty_pp": 5.0,
         "probability_adjustment": "not_applied",
-        "method": "minutos × probabilidad de titularidad × producción observada; las bajas oficiales penalizan confianza. No altera el 1X2 sin validación histórica."
+        "method": "actualización intradía de minutos/producción/bajas; no altera 1X2 puro sin gate histórico"
       },
       "state_simulation": {
         "method": "monte_carlo_5min_game_state_v1",
@@ -27574,7 +27638,8 @@
           "official_lineup": false,
           "weather": false,
           "market_odds": false
-        }
+        },
+        "refreshed_at": "2026-08-27T09:52:50.434205+02:00"
       },
       "prediction_factors": [
         {
@@ -27612,7 +27677,8 @@
         "decision": "eligible",
         "label": "Pronóstico publicable",
         "reasons": [],
-        "policy": "abstención automática por incertidumbre o falta de evidencia"
+        "policy": "abstención automática por incertidumbre o falta de evidencia",
+        "refreshed_at": "2026-08-27T09:52:50.434205+02:00"
       },
       "prediction_snapshot": {
         "generated_at": "2026-08-26T20:42:28.663746+02:00",
@@ -28162,6 +28228,61 @@
         "quality": 0.82,
         "provisional": true,
         "cache_status": "recuperado_de_cache"
+      },
+      "prediction_live_refresh": {
+        "checked_at": "2026-08-27T09:52:50.434205+02:00",
+        "cadence_target_minutes": 5,
+        "model_retrained": false,
+        "pure_model_probs_changed": false,
+        "reacts_to": [
+          "weather",
+          "lineup",
+          "absences",
+          "market"
+        ]
+      },
+      "coverage": {
+        "complete": false,
+        "items": {
+          "fixture": {
+            "state": "ok",
+            "required": true,
+            "checked_at": "2026-08-26T20:54:21.299863+02:00",
+            "source": "football_data",
+            "detail": "calendario cargado"
+          },
+          "weather": {
+            "state": "scheduled",
+            "required": false,
+            "detail": "ventana T−8h"
+          },
+          "absences": {
+            "state": "ok",
+            "required": false,
+            "source": "API-Football",
+            "detail": "comprobado; 0 o más incidencias"
+          },
+          "lineup_probable": {
+            "state": "scheduled",
+            "required": false,
+            "checked_at": "2026-08-24T11:09:43.628912+00:00",
+            "source": "Motor estadístico local",
+            "detail": "ventana T−3h"
+          },
+          "lineup_official": {
+            "state": "scheduled",
+            "required": false,
+            "detail": "ventana T−60/T−30"
+          },
+          "odds": {
+            "state": "missing",
+            "required": true,
+            "detail": "se exige en las 24 h previas"
+          }
+        },
+        "missing_required": [
+          "odds"
+        ]
       }
     },
     {
@@ -318286,7 +318407,7 @@
       "predictions": 368,
       "previews": 377,
       "lineups": 368,
-      "upcoming_content_required": 363,
+      "upcoming_content_required": 362,
       "blank_matches": 0,
       "leagues": [
         "LaLiga",
