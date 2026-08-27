@@ -2,9 +2,9 @@
 
 La prioridad es siempre una proyección basada en muestra individual REAL de
 API-Football. Cuando uno de los 22 titulares/probables todavía no tiene muestra
-suficiente, NO dejamos la UI vacía: repartimos las expectativas de equipo entre
-los once según su rol táctico y lo etiquetamos explícitamente como estimación de
-modelo. Nunca se presenta una estimación como dato real.
+suficiente, NO dejamos la UI vacía: repartimos el RESIDUAL de las expectativas
+de equipo entre los huecos según su rol táctico y lo etiquetamos explícitamente
+como estimación de modelo. Nunca se presenta una estimación como dato real.
 """
 from __future__ import annotations
 
@@ -23,9 +23,8 @@ FROM_MIN = 120
 UNTIL_MIN = -5
 MODEL_SOURCE = "Modelo · rol + predicción de equipo"
 REAL_SOURCE_PREFIX = "API-Football"
+METRICS = ("g", "a", "r", "rp", "fc", "fr", "t")
 
-# Pesos relativos por rol. Se normalizan dentro del XI real/probable, de modo que
-# la suma de las props de jugadores permanece coherente con el total del equipo.
 ROLE_WEIGHTS = {
     "POR": {"g": .01, "a": .02, "r": .01, "rp": .01, "fc": .18, "fr": .08, "t": .10},
     "LI":  {"g": .12, "a": .50, "r": .38, "rp": .25, "fc": .85, "fr": .65, "t": .85},
@@ -78,7 +77,6 @@ def _team_totals(match: dict, side: str) -> dict[str, float]:
     opp = "visitante" if side == "local" else "local"
     fouls_received = max(6.0, _side_stat(match, "fouls", opp, 12.0))
     yellows = max(.5, _side_stat(match, "yellows", side, 2.2))
-    # Las asistencias no pueden superar razonablemente los goles esperados.
     assists = max(.08, goal_total * .72)
     return {
         "g": goal_total,
@@ -94,7 +92,12 @@ def _team_totals(match: dict, side: str) -> dict[str, float]:
 def _allocate(total: float, positions: list[str], metric: str) -> list[float]:
     weights = [ROLE_WEIGHTS[_position(pos)][metric] for pos in positions]
     denom = sum(weights) or 1.0
-    return [round(total * weight / denom, 2) for weight in weights]
+    raw = [total * weight / denom for weight in weights]
+    rounded = [round(value, 2) for value in raw]
+    # Corrige el pequeño error de redondeo en la última fila para mantener suma.
+    if rounded:
+        rounded[-1] = round(max(0.0, rounded[-1] + round(total - sum(rounded), 2)), 2)
+    return rounded
 
 
 def _real_row(row: dict | None) -> bool:
@@ -111,6 +114,31 @@ def _real_from_cache(match: dict, side: str, names: list[str]) -> list[dict]:
     return player_api.props_for_official_starters(names, rates, limit=11)
 
 
+def _residual_allocations(
+    totals: dict[str, float],
+    names: list[str],
+    positions: list[str],
+    real_by_key: dict[str, dict],
+) -> dict[str, list[float]]:
+    missing_indices = [i for i, name in enumerate(names) if _key(name) not in real_by_key]
+    allocations = {metric: [0.0] * len(names) for metric in METRICS}
+    if not missing_indices:
+        return allocations
+
+    missing_positions = [positions[i] for i in missing_indices]
+    for metric in METRICS:
+        real_sum = sum(
+            max(0.0, _num(row.get(metric), 0.0))
+            for key, row in real_by_key.items()
+            if key in {_key(name) for name in names}
+        )
+        residual = max(0.0, totals[metric] - real_sum)
+        pieces = _allocate(residual, missing_positions, metric)
+        for idx, value in zip(missing_indices, pieces):
+            allocations[metric][idx] = value
+    return allocations
+
+
 def _hybrid_side(match: dict, lineup: dict, side: str) -> tuple[list[dict], int]:
     names = list(lineup.get(side) or [])
     positions = list(lineup.get(f"posiciones_{side}") or [])
@@ -118,19 +146,17 @@ def _hybrid_side(match: dict, lineup: dict, side: str) -> tuple[list[dict], int]
         return [], 0
     positions = [(positions[i] if i < len(positions) else "UNK") for i in range(11)]
 
-    # 1) Preservar cualquier proyección ya sustentada por historia individual real.
     existing = {
         _key(row.get("jugador")): dict(row)
         for row in (lineup.get(f"clave_{side}") or [])
         if _real_row(row)
     }
-    # 2) Explotar el caché intradía real si el probable/official cambió después.
     for row in _real_from_cache(match, side, names):
         if _real_row(row):
             existing[_key(row.get("jugador"))] = dict(row)
 
     totals = _team_totals(match, side)
-    allocations = {metric: _allocate(total, positions, metric) for metric, total in totals.items()}
+    allocations = _residual_allocations(totals, names, positions, existing)
     official = is_authoritative_official_lineup(lineup)
     status = str(lineup.get("status") or "estimado").casefold()
     starter_probability = 1.0 if official else .88 if status == "probable" else .74
@@ -165,7 +191,7 @@ def _hybrid_side(match: dict, lineup: dict, side: str) -> tuple[list[dict], int]
             "sample_quality": "sin_muestra_individual",
             "source": MODEL_SOURCE,
             "evidence_type": "model_estimate",
-            "prediction_kind": "role_team_allocation",
+            "prediction_kind": "role_team_residual_allocation",
             "team_prediction_totals": {k: round(v, 2) for k, v in totals.items()},
         }
         rows.append(row)
