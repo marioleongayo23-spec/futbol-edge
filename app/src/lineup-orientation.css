@@ -1,0 +1,6 @@
+/* MatchDetail ya invierte el orden horizontal del XI visitante en el DOM.
+   Esta segunda inversión visual restaura la lateralidad semántica real:
+   LI/CAI quedan a la izquierda del campo y LD/CAD a la derecha. */
+.pitch-half.away .pitch-line {
+  flex-direction: row-reverse;
+}

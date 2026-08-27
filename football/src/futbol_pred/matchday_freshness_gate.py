@@ -1,9 +1,9 @@
-"""Gate de frescura/coherencia para partidos en T-2h.
+"""Gate T-2h de frescura, autoridad y publicabilidad.
 
-No sustituye a los refreshers: certifica si el feed publicado usa inputs lo
-bastante recientes para una decisión prepartido y deja una razón explícita para
-cada pieza. Un dato puede estar disponible pero no ser fresco; son estados
-distintos.
+Certifica que un partido usa inputs recientes y coherentes. También actúa como
+última barrera de publicación: si el gate no está ``ready`` conserva las
+probabilidades del modelo, pero fuerza ``no_pick`` para no presentar una apuesta
+como publicable con datos críticos incompletos.
 """
 from __future__ import annotations
 
@@ -14,8 +14,10 @@ import json
 from .config import DATA_DIR
 from .feed_quality import load_feed, write_feed_safely
 from .hot_refresh import MADRID, _aware, _parse
+from .lineup_authority import is_authoritative_official_lineup
 
 OUTPUT = DATA_DIR / "dashboard.json"
+TRUSTED_PROBABLE_QUALITIES = {"media_grounded", "official"}
 
 
 def _age(value, now_local):
@@ -25,23 +27,20 @@ def _age(value, now_local):
     return max(0.0, (now_local - stamp).total_seconds() / 60.0)
 
 
-def _row(ok, state, checked_at=None, max_age=None, detail=None):
-    return {
-        "ok": bool(ok),
-        "state": state,
-        "checked_at": checked_at,
-        "age_minutes": round(_age(checked_at, _NOW), 1) if checked_at and _age(checked_at, _NOW) is not None else None,
-        "max_age_minutes": max_age,
-        "detail": detail,
-    }
+def _parse_forecast_local(value) -> datetime | None:
+    """Open-Meteo devuelve la hora solicitada en Europe/Madrid sin offset.
 
-
-def _names(rows):
-    return {
-        str(row.get("jugador") or row.get("player") or row.get("name") or "").strip().casefold()
-        for row in rows or [] if isinstance(row, dict)
-        and (row.get("jugador") or row.get("player") or row.get("name"))
-    }
+    Los timestamps operativos del feed sí suelen venir con offset/UTC. Por eso
+    ``forecast_for`` necesita una semántica distinta a ``hot_refresh._parse``:
+    una fecha naive se interpreta como hora local de Madrid, no como UTC.
+    """
+    try:
+        parsed = datetime.fromisoformat(str(value))
+    except (TypeError, ValueError):
+        return None
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=MADRID)
+    return parsed.astimezone(MADRID)
 
 
 def _official_absence_names(lineup, side):
@@ -51,7 +50,6 @@ def _official_absence_names(lineup, side):
         if not isinstance(row, dict) or not row.get("official"):
             continue
         state = str(row.get("estado") or row.get("status") or "").casefold()
-        # Duda/questionable no se trata como baja segura; missing fixture/injury/suspended sí.
         if any(word in state for word in ("question", "duda", "doubt")):
             continue
         name = str(row.get("jugador") or row.get("player") or "").strip().casefold()
@@ -79,12 +77,24 @@ def _duplicate_absence_count(lineup):
 
 def _forecast_matches_kickoff(weather, kickoff):
     try:
-        forecast = _parse(weather.get("forecast_for"))
+        forecast = _parse_forecast_local(weather.get("forecast_for"))
     except AttributeError:
         forecast = None
     if not forecast or not kickoff:
         return False
-    return abs((forecast - kickoff).total_seconds()) <= 65 * 60
+    return abs((forecast - kickoff.astimezone(MADRID)).total_seconds()) <= 65 * 60
+
+
+def _trusted_probable(lineup: dict) -> bool:
+    quality = str(lineup.get("source_quality") or "").casefold()
+    kind = str(lineup.get("lineup_kind") or "").casefold()
+    status = str(lineup.get("status") or "").casefold()
+    return (
+        status == "probable"
+        and len(lineup.get("local") or []) == 11
+        and len(lineup.get("visitante") or []) == 11
+        and (quality in TRUSTED_PROBABLE_QUALITIES or kind == "source_grounded_probable")
+    )
 
 
 def _audit_match(match, now_local, minutes):
@@ -93,17 +103,20 @@ def _audit_match(match, now_local, minutes):
     weather = match.get("weather") if isinstance(match.get("weather"), dict) else {}
     kickoff = _parse(match.get("kickoff"))
     audit = {}
+    authoritative_official = is_authoritative_official_lineup(lineup)
 
     weather_at = checks.get("weather_checked_at") or weather.get("source_updated_at")
     weather_age = _age(weather_at, now_local)
-    weather_ok = weather_age is not None and weather_age <= 10 and _forecast_matches_kickoff(weather, kickoff)
+    weather_hour_ok = _forecast_matches_kickoff(weather, kickoff)
+    weather_ok = weather_age is not None and weather_age <= 10 and weather_hour_ok
     audit["weather"] = {
         "ok": weather_ok,
-        "state": "fresh_kickoff_forecast" if weather_ok else "stale_or_wrong_hour",
+        "state": "fresh_kickoff_forecast" if weather_ok else ("wrong_kickoff_hour" if weather_age is not None and weather_age <= 10 else "stale_or_unchecked"),
         "checked_at": weather_at,
         "age_minutes": round(weather_age, 1) if weather_age is not None else None,
         "max_age_minutes": 10,
         "forecast_for": weather.get("forecast_for"),
+        "kickoff_hour_match": weather_hour_ok,
     }
 
     abs_at = checks.get("absences_checked_at")
@@ -120,12 +133,23 @@ def _audit_match(match, now_local, minutes):
     status = lineup.get("status") or "sin confirmar"
     probable_at = lineup.get("critical_probable_checked_at") or lineup.get("source_updated_at")
     probable_age = _age(probable_at, now_local)
-    if status == "confirmado":
+    if authoritative_official:
         probable_ok = True
-        probable_state = "superseded_by_official"
+        probable_state = "superseded_by_authoritative_official"
     else:
-        probable_ok = probable_age is not None and probable_age <= 15
-        probable_state = "fresh" if probable_ok else "stale_probable"
+        probable_ok = (
+            probable_age is not None
+            and probable_age <= 15
+            and _trusted_probable(lineup)
+        )
+        if status == "confirmado":
+            probable_state = "invalid_confirmation_provenance"
+        elif probable_ok:
+            probable_state = "fresh_source_grounded_probable"
+        elif probable_age is not None and probable_age <= 15:
+            probable_state = "fresh_but_untrusted_estimate"
+        else:
+            probable_state = "stale_or_untrusted_probable"
     audit["probable_lineup"] = {
         "ok": probable_ok,
         "state": probable_state,
@@ -134,24 +158,43 @@ def _audit_match(match, now_local, minutes):
         "max_age_minutes": 15,
         "lineup_status": status,
         "source_quality": lineup.get("source_quality"),
+        "lineup_kind": lineup.get("lineup_kind"),
+        "authoritative_official": authoritative_official,
     }
 
     lineup_at = checks.get("lineup_checked_at") or lineup.get("official_poll_at")
     lineup_age = _age(lineup_at, now_local)
-    official_due = minutes <= 75
-    official_ok = (not official_due) or (lineup_age is not None and lineup_age <= 10)
+    poll_due = minutes <= 75
+    official_mandatory = minutes <= 15
+    if authoritative_official:
+        official_ok = True
+        official_state = "confirmed_authoritative"
+        official_max_age = None  # un XI oficial no caduca por no volver a consultarlo
+    elif official_mandatory:
+        official_ok = False
+        official_state = "official_missing_last_mile" if status != "confirmado" else "invalid_confirmation_provenance"
+        official_max_age = 10
+    elif poll_due:
+        official_ok = lineup_age is not None and lineup_age <= 10
+        official_state = "fresh_poll_no_xi_yet" if official_ok else "stale_poll"
+        official_max_age = 10
+    else:
+        official_ok = True
+        official_state = "awaiting_official_window"
+        official_max_age = None
     audit["official_lineup"] = {
         "ok": official_ok,
-        "state": "confirmed" if status == "confirmado" else ("fresh_poll_no_xi_yet" if official_ok and official_due else "awaiting_window" if not official_due else "stale_poll"),
+        "state": official_state,
         "checked_at": lineup_at,
         "age_minutes": round(lineup_age, 1) if lineup_age is not None else None,
-        "max_age_minutes": 10 if official_due else None,
-        "required_now": official_due,
+        "max_age_minutes": official_max_age,
+        "poll_required_now": poll_due,
+        "official_required_now": official_mandatory,
+        "authoritative": authoritative_official,
+        "provider": lineup.get("provider"),
+        "official_fixture_id": lineup.get("official_fixture_id"),
     }
 
-    # ``odds`` es un contrato legado: feeds antiguos pueden traer un string
-    # como ``pendiente_odds_api``. El gate nunca debe caerse por ese formato;
-    # lo interpreta como fuente de mercado no disponible y fuerza reintento.
     odds = match.get("odds")
     odds_dict = odds if isinstance(odds, dict) else {}
     odds_meta = odds_dict.get("meta") if isinstance(odds_dict.get("meta"), dict) else {}
@@ -207,6 +250,8 @@ def _audit_match(match, now_local, minutes):
     }
 
     conflicts = []
+    if status == "confirmado" and not authoritative_official:
+        conflicts.append("XI marcado como confirmado sin procedencia oficial verificable")
     for side in ("local", "visitante"):
         starters = {str(name).strip().casefold(): str(name) for name in lineup.get(side) or []}
         blocked = _official_absence_names(lineup, side)
@@ -232,16 +277,88 @@ def _audit_match(match, now_local, minutes):
         "missing_or_stale": missing,
         "hard_conflicts": conflicts,
         "checks": audit,
-        "policy": "T-2h: weather/predicción <=10m, probable <=15m, XI oficial <=10m desde T-75, bajas <=95m, odds según TTL, props >=16/22 y <=20m",
+        "policy": "T-2h: meteo/predicción <=10m, probable fiable <=15m, polling oficial <=10m desde T-75, XI oficial obligatorio desde T-15, bajas <=95m, odds según TTL, props >=16/22 y <=20m",
+    }
+
+
+def _apply_publication_gate(match: dict, result: dict, now_local: datetime) -> bool:
+    """Bloquea una recomendación si los datos T-2h no están listos.
+
+    No toca ``probs`` ni ``model_probs``. Solo limita la confianza publicada y
+    la elegibilidad de apuesta; el siguiente ciclo predictivo puede recalcularla
+    cuando el gate vuelva a ``ready``.
+    """
+    before = deepcopy({
+        "prediction_confidence": match.get("prediction_confidence"),
+        "recommendation": match.get("recommendation"),
+    })
+    confidence = dict(match.get("prediction_confidence") or {})
+    recommendation = dict(match.get("recommendation") or {})
+
+    if result.get("status") == "ready":
+        for key in (
+            "data_freshness_gate_applied",
+            "data_freshness_gate_status",
+            "raw_score_before_freshness_gate",
+            "data_freshness_missing",
+            "data_freshness_conflicts",
+        ):
+            confidence.pop(key, None)
+        recommendation.pop("data_freshness_gate", None)
+        match["prediction_confidence"] = confidence
+        match["recommendation"] = recommendation
+        return before != {
+            "prediction_confidence": match.get("prediction_confidence"),
+            "recommendation": match.get("recommendation"),
+        }
+
+    raw_score = confidence.get("score")
+    try:
+        raw_score_num = float(raw_score)
+    except (TypeError, ValueError):
+        raw_score_num = None
+    cap = 35 if result.get("status") == "critical" else 54
+    if raw_score_num is not None:
+        confidence["raw_score_before_freshness_gate"] = round(raw_score_num, 1)
+        confidence["score"] = min(cap, int(round(raw_score_num)))
+        confidence["level"] = "baja" if confidence["score"] < 55 else "media"
+    confidence["data_freshness_gate_applied"] = True
+    confidence["data_freshness_gate_status"] = result.get("status")
+    confidence["data_freshness_missing"] = list(result.get("missing_or_stale") or [])
+    confidence["data_freshness_conflicts"] = list(result.get("hard_conflicts") or [])
+
+    gate_reason = "gate T-2h no listo"
+    details = list(result.get("missing_or_stale") or []) + list(result.get("hard_conflicts") or [])
+    if details:
+        gate_reason += ": " + ", ".join(details)
+    reasons = [str(reason) for reason in (recommendation.get("reasons") or []) if reason]
+    if gate_reason not in reasons:
+        reasons.append(gate_reason)
+    recommendation.update({
+        "decision": "no_pick",
+        "label": "Sin apuesta recomendada · datos por completar",
+        "reasons": reasons,
+        "policy": "abstención automática: el gate T-2h debe estar ready para publicar apuesta",
+        "refreshed_at": now_local.isoformat(),
+        "data_freshness_gate": {
+            "status": result.get("status"),
+            "checked_at": result.get("checked_at"),
+            "missing_or_stale": list(result.get("missing_or_stale") or []),
+            "hard_conflicts": list(result.get("hard_conflicts") or []),
+        },
+    })
+    match["prediction_confidence"] = confidence
+    match["recommendation"] = recommendation
+    return before != {
+        "prediction_confidence": match.get("prediction_confidence"),
+        "recommendation": match.get("recommendation"),
     }
 
 
 def refresh_payload(payload: dict, now: datetime | None = None):
-    global _NOW
     now_local = _aware(now or datetime.now(timezone.utc)).astimezone(MADRID)
-    _NOW = now_local
     changed = False
-    summary = {"audited": 0, "ready": 0, "warning": 0, "critical": 0}
+    summary = {"audited": 0, "ready": 0, "warning": 0, "critical": 0, "publication_blocked": 0}
     for match in payload.get("matches") or []:
         if not isinstance(match, dict) or match.get("finished"):
             continue
@@ -255,6 +372,10 @@ def refresh_payload(payload: dict, now: datetime | None = None):
         if match.get("matchday_freshness") != result:
             match["matchday_freshness"] = result
             changed = True
+        if _apply_publication_gate(match, result, now_local):
+            changed = True
+        if result["status"] != "ready":
+            summary["publication_blocked"] += 1
         summary["audited"] += 1
         summary[result["status"]] += 1
     if changed:
@@ -281,8 +402,6 @@ def main():
     print(json.dumps({"written": ok, **stats}, ensure_ascii=False, sort_keys=True))
     return 0 if not stats.get("feed_issues") else 1
 
-
-_NOW = datetime.now(timezone.utc).astimezone(MADRID)
 
 if __name__ == "__main__":
     raise SystemExit(main())
