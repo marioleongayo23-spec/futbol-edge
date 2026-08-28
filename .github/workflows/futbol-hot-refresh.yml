@@ -1,9 +1,11 @@
 name: futbol-edge hot refresh
 
-# Canal autoritativo de día de partido. GitHub Actions puede retrasar eventos
-# schedule, por eso los arranques programados mantienen un bloque interno de
-# cuatro ciclos a 5 minutos. Los triggers auxiliares hacen un único ciclo para
-# sincronizar sin crear una cola creciente de bloques antiguos.
+# Canal autoritativo de día de partido. GitHub Actions puede retrasar o saltarse
+# eventos schedule, por eso cada arranque automático mantiene un heartbeat
+# autosostenido de 12 ciclos separados 5 minutos (~55 min de cobertura).
+# Los push de código hacen solo un ciclo inmediato; schedule, workflow_run y
+# manual sostienen el bloque. La concurrencia conserva un job en curso y como
+# máximo un pendiente reciente, evitando una cola creciente de bloques viejos.
 on:
   push:
     branches: [main]
@@ -31,6 +33,7 @@ jobs:
   refresh:
     if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
+    timeout-minutes: 75
     steps:
       - uses: actions/checkout@v4
         with:
@@ -64,8 +67,8 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
           cycles=1
-          if [ "$GITHUB_EVENT_NAME" = "schedule" ] || [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
-            cycles=4
+          if [ "$GITHUB_EVENT_NAME" = "schedule" ] || [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ] || [ "$GITHUB_EVENT_NAME" = "workflow_run" ]; then
+            cycles=12
           fi
           echo "Evento ${GITHUB_EVENT_NAME}: ${cycles} ciclo(s) de matchday"
 
