@@ -1,14 +1,16 @@
-"""Preparación temprana de XI probable y props desde T-8h.
+"""Preparación temprana de XI probable y props desde T-24h.
 
-El refresco crítico T-2h sigue siendo la autoridad cerca del kickoff. Este módulo
-adelanta la primera foto operable para que la app no permanezca vacía durante la
-mañana/tarde del partido:
+El refresco crítico T-2h sigue siendo la autoridad cerca del kickoff. Esta capa
+empieza a buscar señales de alineación desde el día anterior para que la app vaya
+cambiando automáticamente en cuanto aparezcan novedades:
 
-- T-8h .. T-4h: revisa probable como máximo cada 45 min.
-- T-4h .. T-2h: revisa probable como máximo cada 20 min.
+- T-24h .. T-8h: revisa probable como máximo cada 120 min;
+- T-8h .. T-4h: revisa probable como máximo cada 45 min;
+- T-4h .. T-2h: revisa probable como máximo cada 20 min;
 - reutiliza el estimador/media/continuidad del refresco T-2h;
-- completa 22/22 props predictivas si ya existe un XI de 11+11;
-- las tasas individuales reales siguen su TTL normal y no se descargan cada 5 min.
+- completa props predictivas si ya existe un XI de 11+11;
+- el baseline autoritativo posterior evita que una salida model-only sustituya
+  al último XI oficial cuando todavía no hay evidencia externa nueva.
 
 No convierte una estimación temprana en XI oficial ni la etiqueta como certeza.
 """
@@ -23,19 +25,23 @@ from .hot_refresh import MADRID, OUTPUT, _aware, _parse
 from . import matchday_probable_refresh as probable
 from . import matchday_player_props_fill as props_fill
 
-EARLY_FROM_MIN = 8 * 60
+EARLY_FROM_MIN = 24 * 60
 EARLY_TO_MIN = 120
 
 
 def _cooldown(minutes_to_kickoff: float) -> int:
-    return 45 if minutes_to_kickoff > 4 * 60 else 20
+    if minutes_to_kickoff > 8 * 60:
+        return 120
+    if minutes_to_kickoff > 4 * 60:
+        return 45
+    return 20
 
 
 def _eligible(match: dict, now_local: datetime) -> tuple[bool, float]:
     if not isinstance(match, dict) or match.get("finished"):
         return False, 0.0
     kickoff = _parse(match.get("kickoff"))
-    if not kickoff or kickoff.date() != now_local.date():
+    if not kickoff:
         return False, 0.0
     minutes = (kickoff - now_local).total_seconds() / 60.0
     return EARLY_TO_MIN < minutes <= EARLY_FROM_MIN, minutes
