@@ -1,6 +1,6 @@
 {
   "schema_version": 7,
-  "generated_at": "2026-08-28T07:36:29.409362+02:00",
+  "generated_at": "2026-08-28T07:39:40.753967+02:00",
   "season": 2026,
   "quiniela": {
     "jornada": "3",
@@ -29775,7 +29775,8 @@
           "official_lineup": false,
           "weather": false,
           "market_odds": false
-        }
+        },
+        "refreshed_at": "2026-08-28T07:39:40.753967+02:00"
       },
       "prediction_factors": [
         {
@@ -29813,7 +29814,8 @@
         "decision": "eligible",
         "label": "Pronóstico publicable",
         "reasons": [],
-        "policy": "abstención automática por incertidumbre o falta de evidencia"
+        "policy": "abstención automática por incertidumbre o falta de evidencia",
+        "refreshed_at": "2026-08-28T07:39:40.753967+02:00"
       },
       "state_simulation": {
         "method": "monte_carlo_5min_game_state_v1",
@@ -29871,7 +29873,7 @@
         "attack_presence_edge": null,
         "confidence_penalty_pp": 5.0,
         "probability_adjustment": "not_applied",
-        "method": "minutos × probabilidad de titularidad × producción observada; las bajas oficiales penalizan confianza. No altera el 1X2 sin validación histórica."
+        "method": "actualización intradía de minutos/producción/bajas; no altera 1X2 puro sin gate histórico"
       },
       "coverage": {
         "complete": false,
@@ -29914,6 +29916,18 @@
         },
         "missing_required": [
           "odds"
+        ]
+      },
+      "prediction_live_refresh": {
+        "checked_at": "2026-08-28T07:39:40.753967+02:00",
+        "cadence_target_minutes": 5,
+        "model_retrained": false,
+        "pure_model_probs_changed": false,
+        "reacts_to": [
+          "weather",
+          "lineup",
+          "absences",
+          "market"
         ]
       }
     },
@@ -30633,7 +30647,8 @@
           "official_lineup": false,
           "weather": false,
           "market_odds": false
-        }
+        },
+        "refreshed_at": "2026-08-28T07:39:40.753967+02:00"
       },
       "prediction_factors": [
         {
@@ -30671,7 +30686,8 @@
         "decision": "eligible",
         "label": "Pronóstico publicable",
         "reasons": [],
-        "policy": "abstención automática por incertidumbre o falta de evidencia"
+        "policy": "abstención automática por incertidumbre o falta de evidencia",
+        "refreshed_at": "2026-08-28T07:39:40.753967+02:00"
       },
       "state_simulation": {
         "method": "monte_carlo_5min_game_state_v1",
@@ -30729,7 +30745,7 @@
         "attack_presence_edge": null,
         "confidence_penalty_pp": 5.0,
         "probability_adjustment": "not_applied",
-        "method": "minutos × probabilidad de titularidad × producción observada; las bajas oficiales penalizan confianza. No altera el 1X2 sin validación histórica."
+        "method": "actualización intradía de minutos/producción/bajas; no altera 1X2 puro sin gate histórico"
       },
       "coverage": {
         "complete": false,
@@ -30772,6 +30788,18 @@
         },
         "missing_required": [
           "odds"
+        ]
+      },
+      "prediction_live_refresh": {
+        "checked_at": "2026-08-28T07:39:40.753967+02:00",
+        "cadence_target_minutes": 5,
+        "model_retrained": false,
+        "pure_model_probs_changed": false,
+        "reacts_to": [
+          "weather",
+          "lineup",
+          "absences",
+          "market"
         ]
       }
     },
