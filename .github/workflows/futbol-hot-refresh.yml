@@ -1,9 +1,9 @@
 name: futbol-edge hot refresh
 
-# Canal autoritativo de día de partido. Los ticks programados son independientes
-# para que un schedule retrasado/descartado por GitHub no deje una hora completa
-# sin refresco. workflow_run y manual mantienen además un heartbeat de respaldo
-# de 12 ciclos separados 5 minutos (~55 min de cobertura).
+# Canal autoritativo continuo de matchday. El cron cada 5 minutos queda como
+# respaldo independiente; además, cada bloque largo se rearma a sí mismo por
+# workflow_dispatch para no depender de que el scheduler de GitHub entregue
+# todos los ticks. La concurrencia garantiza un único escritor del feed.
 on:
   push:
     branches: [main]
@@ -14,16 +14,15 @@ on:
     types: [completed]
     branches: [main]
   schedule:
-    # Desplazado dos minutos del inicio de hora para evitar la franja de mayor
-    # carga de GitHub Actions. Intervalo mínimo soportado por GitHub: 5 minutos.
-    - cron: "2-57/5 8-23 * * *"
-      timezone: "Europe/Madrid"
-    - cron: "2-57/5 0-1 * * *"
-      timezone: "Europe/Madrid"
+    # UTC y 24/7 a propósito: evita depender del soporte timezone del scheduler.
+    # Las propias capas aplican TTL/ventanas, así que fuera de partido no gastan
+    # llamadas caras aunque el heartbeat siga vivo.
+    - cron: "2-57/5 * * * *"
   workflow_dispatch:
 
 permissions:
   contents: write
+  actions: write
 
 concurrency:
   group: futbol-edge-hot-refresh
@@ -66,9 +65,8 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          # Un schedule normal hace exactamente un tick: GitHub vuelve a lanzar
-          # otro a los 5 minutos. workflow_run/manual sostienen un bloque de
-          # respaldo para cubrir huecos si GitHub retrasa algún schedule.
+          # schedule/push hacen un tick inmediato. workflow_dispatch/workflow_run
+          # mantienen un bloque de ~55 min; al finalizar se rearma otro bloque.
           cycles=1
           if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ] || [ "$GITHUB_EVENT_NAME" = "workflow_run" ]; then
             cycles=12
@@ -151,3 +149,14 @@ jobs:
               sleep 300
             fi
           done
+
+      - name: Rearmar heartbeat autónomo
+        # workflow_dispatch es una excepción documentada a la protección de
+        # recursión de GITHUB_TOKEN. Si el paso principal falla, este always()
+        # vuelve a lanzar un bloque limpio; el cron sigue siendo respaldo.
+        if: always() && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "Rearmando el siguiente bloque continuo de hot refresh"
+          gh workflow run futbol-hot-refresh.yml --ref main
