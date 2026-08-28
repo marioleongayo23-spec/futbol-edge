@@ -158,5 +158,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          # El bloque largo autogenerado actúa también como reloj del pipeline
+          # pesado: aproximadamente una vez por hora refresca calendario/modelos.
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
+            echo "Disparando también el refresh pesado periódico"
+            gh workflow run futbol-pred.yml --ref main
+          fi
           echo "Rearmando el siguiente bloque continuo de hot refresh"
           gh workflow run futbol-hot-refresh.yml --ref main
