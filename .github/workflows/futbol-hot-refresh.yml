@@ -1,11 +1,9 @@
 name: futbol-edge hot refresh
 
-# Canal autoritativo de día de partido. GitHub Actions puede retrasar o saltarse
-# eventos schedule, por eso cada arranque automático mantiene un heartbeat
-# autosostenido de 12 ciclos separados 5 minutos (~55 min de cobertura).
-# Los push de código hacen solo un ciclo inmediato; schedule, workflow_run y
-# manual sostienen el bloque. La concurrencia conserva un job en curso y como
-# máximo un pendiente reciente, evitando una cola creciente de bloques viejos.
+# Canal autoritativo de día de partido. Los ticks programados son independientes
+# para que un schedule retrasado/descartado por GitHub no deje una hora completa
+# sin refresco. workflow_run y manual mantienen además un heartbeat de respaldo
+# de 12 ciclos separados 5 minutos (~55 min de cobertura).
 on:
   push:
     branches: [main]
@@ -16,9 +14,11 @@ on:
     types: [completed]
     branches: [main]
   schedule:
-    - cron: "4,24,44 8-23 * * *"
+    # Desplazado dos minutos del inicio de hora para evitar la franja de mayor
+    # carga de GitHub Actions. Intervalo mínimo soportado por GitHub: 5 minutos.
+    - cron: "2-57/5 8-23 * * *"
       timezone: "Europe/Madrid"
-    - cron: "4,24,44 0-1 * * *"
+    - cron: "2-57/5 0-1 * * *"
       timezone: "Europe/Madrid"
   workflow_dispatch:
 
@@ -66,8 +66,11 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
+          # Un schedule normal hace exactamente un tick: GitHub vuelve a lanzar
+          # otro a los 5 minutos. workflow_run/manual sostienen un bloque de
+          # respaldo para cubrir huecos si GitHub retrasa algún schedule.
           cycles=1
-          if [ "$GITHUB_EVENT_NAME" = "schedule" ] || [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ] || [ "$GITHUB_EVENT_NAME" = "workflow_run" ]; then
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ] || [ "$GITHUB_EVENT_NAME" = "workflow_run" ]; then
             cycles=12
           fi
           echo "Evento ${GITHUB_EVENT_NAME}: ${cycles} ciclo(s) de matchday"
