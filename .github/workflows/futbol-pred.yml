@@ -92,13 +92,16 @@ jobs:
         run: |
           python -m futbol_pred.dashboard
           python -m futbol_pred.coverage
+          python -m futbol_pred.feature_truth
           python - <<'PY'
           import json
           d = json.load(open("data/dashboard.json", encoding="utf-8"))
           q = d.get("feed_quality", {})
           a = d.get("content_audit", {})
+          t = d.get("feature_truth_table", {})
           print("[feed] calidad:", q.get("score"), "| métricas:", q.get("metrics"))
           print("[coverage]", a.get("status"), "| completos:", a.get("complete"), "/", a.get("matches_today"), "| resumen:", a.get("coverage_summary"))
+          print("[feature-truth]", len(t.get("features") or []), "features | elegibles:", t.get("eligible_matches"))
           PY
 
       - name: Publicar feed actualizado en la rama
