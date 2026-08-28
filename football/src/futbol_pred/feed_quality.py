@@ -102,9 +102,6 @@ def preserve_last_known_good(candidate: dict, previous: dict | None) -> dict:
             if _missing(match.get(field)) and not _missing(old.get(field)):
                 match[field] = deepcopy(old[field])
                 restored_fields.add(field)
-        # Los feeds previos no guardaban el proveedor real. Se conservan como
-        # LKG, pero se etiquetan honestamente como caché anterior en vez de
-        # atribuirlos a Gemini cuando quizá ya procedían del fallback.
         if match.get("preview") and not (match.get("preview_meta") or {}).get("provider"):
             match["preview_meta"] = {"provider": "IA (caché anterior)", "legacy": True}
         if match.get("alineacion") and not match["alineacion"].get("provider"):
@@ -113,7 +110,6 @@ def preserve_last_known_good(candidate: dict, previous: dict | None) -> dict:
             match["alineacion"]["cache_status"] = "recuperado_de_cache"
         if "preview" in restored_fields and match.get("preview_meta"):
             match["preview_meta"]["cache_status"] = "recuperado_de_cache"
-        # Conserva el motor predictivo si acabamos de recuperar su predicción.
         if match.get("probs") and match.get("engine") in {None, "calendar-only", "datos-insuficientes"}:
             if old.get("engine") in {"dixon-coles", "ensemble", "residual", "resultado-real"}:
                 match["engine"] = old["engine"]
@@ -180,8 +176,18 @@ def _ai_complete(match: dict, issues: list[str], schema_version: int = 5) -> Non
                 sample = float(row.get("sample_minutes") or 0)
             except (TypeError, ValueError):
                 sample = 0
-            if not str(row.get("source") or "").startswith("API-Football") or sample <= 0:
-                issues.append(f"props_sin_fuente_real:{match.get('id')}")
+            source = str(row.get("source") or "")
+            evidence_type = str(row.get("evidence_type") or "")
+            prediction_kind = str(row.get("prediction_kind") or "")
+            real_projection = source.startswith("API-Football") and sample > 0
+            explicit_model_estimate = (
+                source.startswith("Modelo")
+                and sample <= 0
+                and evidence_type == "model_estimate"
+                and bool(prediction_kind)
+            )
+            if not (real_projection or explicit_model_estimate):
+                issues.append(f"props_sin_fuente_trazable:{match.get('id')}")
                 break
     if schema_version >= 6 and lineup.get("status") not in {"confirmado", "probable", "estimado"}:
         issues.append(f"once_sin_estado:{match.get('id')}")
@@ -256,8 +262,6 @@ def evaluate_feed(candidate: dict, previous: dict | None = None) -> dict:
                 delta = datetime.fromisoformat(str(match.get("kickoff"))) - generated_at
             except (TypeError, ValueError):
                 delta = None
-            # Alguna fuente deja partidos pasados como SCHEDULED. No se les
-            # genera contenido retrospectivo; sí se exige desde 3 h antes de ahora.
             if delta is not None and delta.total_seconds() >= -3 * 3600:
                 required_ai_count += 1
                 if not match.get("preview"):
