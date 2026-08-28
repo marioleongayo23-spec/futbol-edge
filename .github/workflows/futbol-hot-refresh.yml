@@ -117,6 +117,9 @@ jobs:
               # 12) Matriz de cobertura/frescura visible.
               PYTHONPATH=football/src python -m futbol_pred.coverage
 
+              # 13) P0: verdad operacional de cada señal y su gate anti-leakage.
+              PYTHONPATH=football/src python -m futbol_pred.feature_truth
+
               PYTHONPATH=football/src python -m futbol_pred.matchday_diagnose
 
               if git diff --quiet -- football/data/dashboard.json; then
