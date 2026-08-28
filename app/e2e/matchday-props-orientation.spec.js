@@ -39,6 +39,15 @@ function matchdayFeed() {
     best_props: [],
     status: "probable",
     provider: "Prensa + modelo",
+    source_quality: "media_grounded",
+    lineup_kind: "source_grounded_probable",
+    evidence_scope: "trusted_media_both_sides",
+    lineup_evidence: {
+      policy: "both_sides_required_for_probable",
+      level: "trusted_media_both_sides",
+      local: { grounded: true, sources: [{ source: "Fuente test", published_at: "2026-08-28T10:00:00Z" }] },
+      visitante: { grounded: true, sources: [{ source: "Fuente test", published_at: "2026-08-28T10:00:00Z" }] },
+    },
     player_props_source: "Predictivo híbrido · 0/22 con muestra individual real",
     quality: { complete: true, predicted_player_props: 22, real_player_props: 0, props_players: 22 },
   };
