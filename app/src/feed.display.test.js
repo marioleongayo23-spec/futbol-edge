@@ -57,7 +57,7 @@ test("no dibuja un once squad-only como probable", () => {
 });
 
 
-test("rebaja feeds antiguos model-only a estimado", () => {
+test("oculta feeds model-only sin evidencia externa", () => {
   const feed = normalizeFeedForDisplay({
     matches: [{
       id: "m2",
@@ -72,9 +72,12 @@ test("rebaja feeds antiguos model-only a estimado", () => {
   });
 
   const lineup = feed.matches[0].alineacion;
-  assert.equal(lineup.status, "estimado");
-  assert.equal(lineup.lineup_kind, "model_estimate");
-  assert.match(lineup.display_warning, /no existe evidencia externa suficiente/i);
+  assert.equal(lineup.status, "sin confirmar");
+  assert.equal(lineup.display_withheld, true);
+  assert.equal(lineup.lineup_kind, "ungrounded_estimate_withheld");
+  assert.deepEqual(lineup.local, []);
+  assert.deepEqual(lineup.visitante, []);
+  assert.match(lineup.display_warning, /no hay una fuente externa reciente suficiente/i);
 });
 
 
