@@ -11,15 +11,14 @@ on:
     paths-ignore:
       - "football/data/dashboard.json"
   schedule:
-    # Base/modelo: cada 30 min en horario operativo. Es suficiente para datos
-    # históricos que no cambian cada 5 min; el hot-refresh mantiene el partido
-    # actual y su predicción derivada a una cadencia mucho menor.
-    - cron: "6,36 8-23 * * *"
+    # Base/modelo: cada 30 min en horario operativo. Minutos desplazados del
+    # inicio de hora para reducir retrasos/drop de schedule bajo carga en GitHub.
+    - cron: "13,43 8-23 * * *"
       timezone: "Europe/Madrid"
-    - cron: "6,36 0-1 * * *"
+    - cron: "13,43 0-1 * * *"
       timezone: "Europe/Madrid"
     # Madrugada: una vez por hora para calendario/backfills.
-    - cron: "16 2-7 * * *"
+    - cron: "23 2-7 * * *"
       timezone: "Europe/Madrid"
   workflow_dispatch:
     inputs:
