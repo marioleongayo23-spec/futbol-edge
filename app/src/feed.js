@@ -8,7 +8,8 @@ export const FEED_URL =
 // (por ejemplo sin conexión, o antes de que el cron haya publicado en main).
 // BASE_URL es "/" en Vercel y "/futbol-edge/" en GitHub Pages.
 const FALLBACK_URL = (import.meta.env?.BASE_URL || "/") + "dashboard.json";
-const ESTIMATE_QUALITIES = new Set(["model_only", "statistical_fallback", "fallback_with_media"]);
+const WITHHELD_QUALITIES = new Set(["model_only", "statistical_fallback"]);
+const ESTIMATE_QUALITIES = new Set(["fallback_with_media", "media_partial"]);
 const LIVE_REFRESH_MS = 60_000;
 
 // App.jsx consume loadFeed() con `.then(setData)`. Conservamos esa API y usamos
@@ -66,10 +67,14 @@ export function normalizeFeedForDisplay(data) {
         disponibilidad_visitante: normalizeAvailability(lineup.disponibilidad_visitante),
       };
 
-      // squad-only-v3 no es un once probable: son 11 nombres escogidos por grupo
-      // posicional dentro de la plantilla. Se conserva el bloque en el backend
-      // para trazabilidad, pero la UI no debe dibujarlo como una predicción real.
-      if (normalized.model === "squad-only-v3" && normalized.status !== "confirmado") {
+      // Una plantilla o una salida model-only no es un once probable. Se conserva
+      // en backend para trazabilidad, pero nunca se dibujan 11 nombres si no hay
+      // evidencia externa reciente o un XI oficial. Esto evita arrastrar onces de
+      // la temporada anterior cuando el modelo no encuentra fuentes del partido.
+      if (
+        normalized.status !== "confirmado"
+        && (normalized.model === "squad-only-v3" || WITHHELD_QUALITIES.has(normalized.source_quality))
+      ) {
         normalized.local = [];
         normalized.visitante = [];
         normalized.posiciones_local = [];
@@ -77,17 +82,20 @@ export function normalizeFeedForDisplay(data) {
         normalized.formacion_local = null;
         normalized.formacion_visitante = null;
         normalized.status = "sin confirmar";
-        normalized.lineup_kind = "squad_only_withheld";
-        normalized.provider = "Plantilla real · sin fuente fiable de once probable";
+        normalized.lineup_kind = normalized.model === "squad-only-v3"
+          ? "squad_only_withheld"
+          : "ungrounded_estimate_withheld";
+        normalized.provider = normalized.model === "squad-only-v3"
+          ? "Plantilla real · sin fuente fiable de once probable"
+          : "Sin fuente externa reciente · XI oculto";
         normalized.display_withheld = true;
-        normalized.display_warning = "La plantilla está disponible, pero aún no hay un once probable fiable.";
+        normalized.display_warning = "No hay una fuente externa reciente suficiente para mostrar un once probable fiable.";
       } else if (normalized.status !== "confirmado" && ESTIMATE_QUALITIES.has(normalized.source_quality)) {
-        // Barrera de compatibilidad para feeds antiguos: una salida model_only o
-        // fallback puede enseñarse como estimación, pero nunca llamarse probable.
+        // Con evidencia parcial puede mostrarse como estimación, nunca como probable.
         normalized.status = "estimado";
-        normalized.lineup_kind = normalized.lineup_kind || "model_estimate";
+        normalized.lineup_kind = normalized.lineup_kind || "partially_grounded_estimate";
         normalized.display_warning = normalized.display_warning
-          || "XI estimado por modelo/fallback; no existe evidencia externa suficiente para llamarlo once probable.";
+          || "XI estimado con evidencia parcial; todavía no existe respaldo suficiente para llamarlo once probable.";
       }
 
       // Un check operativo antiguo podía marcar "published" si API-Football
