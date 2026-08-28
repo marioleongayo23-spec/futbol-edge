@@ -46,7 +46,7 @@ jobs:
       - name: Dependencias ligeras de matchday
         run: pip install requests
 
-      - name: Refresco autoritativo T-2h y publicación
+      - name: Refresco autoritativo de matchday y publicación
         env:
           API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
           ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
@@ -91,26 +91,30 @@ jobs:
               # 4) T-2h: fuerza una foto reciente de bajas y la deduplica.
               PYTHONPATH=football/src python -m futbol_pred.matchday_absence_refresh
 
-              # 5) T-2h: prensa reciente + continuidad oficial + muestra real disponible.
+              # 5) T-8h..T-2h: construye/refresca el probable con antelación y
+              #    genera props predictivas en cuanto haya 11+11 plausibles.
+              PYTHONPATH=football/src python -m futbol_pred.matchday_early_probable_refresh
+
+              # 6) T-2h: prensa reciente + continuidad oficial + muestra real disponible.
               PYTHONPATH=football/src python -m futbol_pred.matchday_probable_refresh
 
-              # 6) Un probable no puede contener una baja oficial.
+              # 7) Un probable no puede contener una baja oficial.
               PYTHONPATH=football/src python -m futbol_pred.matchday_lineup_integrity
 
-              # 7) Cobertura 22/22 de predicciones individuales: real cuando existe,
+              # 8) Cobertura 22/22 de predicciones individuales: real cuando existe,
               #    estimación explícita por rol/equipo solo para huecos sin muestra.
               PYTHONPATH=football/src python -m futbol_pred.matchday_player_props_fill
 
-              # 8) Cuotas con TTL dinámico según proximidad y créditos.
+              # 9) Cuotas con TTL dinámico según proximidad y créditos.
               PYTHONPATH=football/src python -m futbol_pred.matchday_market_refresh
 
-              # 9) Reacción predictiva inmediata a clima/XI/bajas/mercado.
+              # 10) Reacción predictiva inmediata a clima/XI/bajas/mercado.
               PYTHONPATH=football/src python -m futbol_pred.matchday_prediction_refresh
 
-              # 10) Certifica autoridad/frescura y bloquea apuestas si no está ready.
+              # 11) Certifica autoridad/frescura y bloquea apuestas si no está ready.
               PYTHONPATH=football/src python -m futbol_pred.matchday_freshness_gate
 
-              # 11) Matriz de cobertura/frescura visible.
+              # 12) Matriz de cobertura/frescura visible.
               PYTHONPATH=football/src python -m futbol_pred.coverage
 
               PYTHONPATH=football/src python -m futbol_pred.matchday_diagnose
