@@ -9,6 +9,27 @@ export const FEED_URL =
 // BASE_URL es "/" en Vercel y "/futbol-edge/" en GitHub Pages.
 const FALLBACK_URL = (import.meta.env?.BASE_URL || "/") + "dashboard.json";
 const ESTIMATE_QUALITIES = new Set(["model_only", "statistical_fallback", "fallback_with_media"]);
+const LIVE_REFRESH_MS = 60_000;
+
+// App.jsx consume loadFeed() con `.then(setData)`. Conservamos esa API y usamos
+// ese setter como suscriptor del feed para que una pestaña abierta reciba cambios
+// de dashboard.json sin F5 ni redeploy. Solo publicamos al React state cuando el
+// fingerprint cambia; si el remoto falla, se conserva el último feed bueno.
+let liveSubscriber = null;
+let liveTimer = null;
+let liveSignature = null;
+let liveRefreshInFlight = false;
+
+function feedSignature(data) {
+  if (!data || typeof data !== "object") return "";
+  const market = data.source_health?.the_odds_api || {};
+  return [
+    data.generated_at || "",
+    data.feed_quality?.score ?? "",
+    market.checked_at || "",
+    market.remaining ?? "",
+  ].join("|");
+}
 
 function normalizeAvailability(rows) {
   if (!Array.isArray(rows)) return rows;
@@ -98,7 +119,7 @@ export function isUsableFeed(data) {
   return data.matches.every((m) => m && m.id && m.home && m.away && m.league && m.kickoff);
 }
 
-export async function loadFeed() {
+async function loadFeedOnce() {
   // Feed embebido (preview autocontenida / offline duro): si existe, se normaliza
   // igual que el remoto para no mostrar formatos antiguos de bajas/onces.
   if (typeof window !== "undefined" && window.__FEED__) return normalizeFeedForDisplay(window.__FEED__);
@@ -117,6 +138,53 @@ export async function loadFeed() {
     }
     throw e;
   }
+}
+
+async function refreshLiveFeed() {
+  if (!liveSubscriber || liveRefreshInFlight || typeof window === "undefined") return;
+  liveRefreshInFlight = true;
+  try {
+    const data = await loadFeedOnce();
+    const signature = feedSignature(data);
+    if (signature && signature !== liveSignature) {
+      liveSignature = signature;
+      liveSubscriber(data);
+    }
+  } catch {
+    // Background refresh es best-effort: la UI conserva el último feed válido.
+  } finally {
+    liveRefreshInFlight = false;
+  }
+}
+
+function startLiveRefresh(subscriber) {
+  if (typeof window === "undefined" || typeof subscriber !== "function") return;
+  liveSubscriber = subscriber;
+  if (liveTimer) return;
+
+  liveTimer = window.setInterval(refreshLiveFeed, LIVE_REFRESH_MS);
+  window.addEventListener("focus", refreshLiveFeed);
+  if (typeof document !== "undefined") {
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") refreshLiveFeed();
+    });
+  }
+}
+
+export function loadFeed() {
+  const promise = loadFeedOnce();
+  // Interceptamos el `.then(setData)` ya existente de App.jsx sin romper los
+  // consumidores que hacen `await loadFeed()`: estos siguen recibiendo un Promise.
+  const nativeThen = promise.then.bind(promise);
+  promise.then = (onFulfilled, onRejected) => {
+    if (typeof onFulfilled !== "function") return nativeThen(onFulfilled, onRejected);
+    startLiveRefresh(onFulfilled);
+    return nativeThen((data) => {
+      liveSignature = feedSignature(data);
+      return onFulfilled(data);
+    }, onRejected);
+  };
+  return promise;
 }
 
 // Devuelve la antigüedad del feed en horas (o null si no hay fecha).
