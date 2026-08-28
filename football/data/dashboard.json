@@ -1,6 +1,6 @@
 {
   "schema_version": 7,
-  "generated_at": "2026-08-28T10:52:00.393553+02:00",
+  "generated_at": "2026-08-28T10:57:09.927875+02:00",
   "season": 2026,
   "quiniela": {
     "jornada": "3",
@@ -25347,7 +25347,8 @@
         "data_type": "modelo_operativo_historico_horario",
         "model_use": "validacion_historica_sin_impacto_en_prediccion",
         "source_updated_at": "2026-08-27T09:56:47.440316+02:00"
-      }
+      },
+      "api_football_fixture_id": 1570340
     },
     {
       "id": "football_data-564636",
@@ -29139,11 +29140,11 @@
       "awayColors": "White / Green",
       "league": "LaLiga",
       "venue": "El Sardinero",
-      "status": "TIMED",
+      "status": "NS",
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-08-28T09:48:31.134565+02:00",
+      "updatedAt": "2026-08-28T10:57:04.972810+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -29816,7 +29817,7 @@
           "weather": false,
           "market_odds": false
         },
-        "refreshed_at": "2026-08-28T10:52:00.393553+02:00"
+        "refreshed_at": "2026-08-28T10:57:09.927875+02:00"
       },
       "prediction_factors": [
         {
@@ -29855,7 +29856,7 @@
         "label": "Pronóstico publicable",
         "reasons": [],
         "policy": "abstención automática por incertidumbre o falta de evidencia",
-        "refreshed_at": "2026-08-28T10:52:00.393553+02:00"
+        "refreshed_at": "2026-08-28T10:57:09.927875+02:00"
       },
       "state_simulation": {
         "method": "monte_carlo_5min_game_state_v1",
@@ -29921,9 +29922,9 @@
           "fixture": {
             "state": "ok",
             "required": true,
-            "checked_at": "2026-08-28T09:48:31.134565+02:00",
+            "checked_at": "2026-08-28T10:57:04.972810+02:00",
             "source": "football_data",
-            "detail": "calendario cargado"
+            "detail": "ok"
           },
           "weather": {
             "state": "scheduled",
@@ -29933,8 +29934,9 @@
           "absences": {
             "state": "ok",
             "required": false,
+            "checked_at": "2026-08-28T10:57:04.972810+02:00",
             "source": "API-Football",
-            "detail": "comprobado; 0 o más incidencias"
+            "detail": "ok"
           },
           "lineup_probable": {
             "state": "scheduled",
@@ -29959,7 +29961,7 @@
         ]
       },
       "prediction_live_refresh": {
-        "checked_at": "2026-08-28T10:52:00.393553+02:00",
+        "checked_at": "2026-08-28T10:57:09.927875+02:00",
         "cadence_target_minutes": 5,
         "model_retrained": false,
         "pure_model_probs_changed": false,
@@ -29969,6 +29971,13 @@
           "absences",
           "market"
         ]
+      },
+      "api_football_fixture_id": 1570359,
+      "operational_checks": {
+        "fixture_checked_at": "2026-08-28T10:57:04.972810+02:00",
+        "fixture_check_result": "ok",
+        "absences_checked_at": "2026-08-28T10:57:04.972810+02:00",
+        "absences_check_result": "ok"
       }
     },
     {
@@ -31106,7 +31115,7 @@
           "weather": false,
           "market_odds": false
         },
-        "refreshed_at": "2026-08-28T10:52:00.393553+02:00"
+        "refreshed_at": "2026-08-28T10:57:09.927875+02:00"
       },
       "prediction_factors": [
         {
@@ -31145,7 +31154,7 @@
         "label": "Pronóstico publicable",
         "reasons": [],
         "policy": "abstención automática por incertidumbre o falta de evidencia",
-        "refreshed_at": "2026-08-28T10:52:00.393553+02:00"
+        "refreshed_at": "2026-08-28T10:57:09.927875+02:00"
       },
       "prediction_snapshot": {
         "generated_at": "2026-08-28T09:31:55.123855+02:00",
@@ -31698,7 +31707,7 @@
         ]
       },
       "prediction_live_refresh": {
-        "checked_at": "2026-08-28T10:52:00.393553+02:00",
+        "checked_at": "2026-08-28T10:57:09.927875+02:00",
         "cadence_target_minutes": 5,
         "model_retrained": false,
         "pure_model_probs_changed": false,
@@ -31708,7 +31717,8 @@
           "absences",
           "market"
         ]
-      }
+      },
+      "api_football_fixture_id": 1570353
     },
     {
       "id": "football_data-564655",
@@ -320252,6 +320262,21 @@
         "LaLiga Hypermotion"
       ],
       "evaluable_predictions": 8
+    }
+  },
+  "source_health": {
+    "api_football": {
+      "requests_total": 2,
+      "requests_by_endpoint": {
+        "fixtures": 1,
+        "injuries": 1
+      },
+      "daily_limit": 100,
+      "daily_remaining": 91,
+      "minute_limit": 10,
+      "minute_remaining": 9,
+      "checked_at": "2026-08-28T08:57:06.122478+00:00",
+      "policy": "polling prepartido prioritario + backoff por cuota restante"
     }
   }
 }
