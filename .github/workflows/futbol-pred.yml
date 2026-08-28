@@ -89,7 +89,16 @@ jobs:
           AI_REFRESH_RUN: ${{ github.event_name == 'schedule' && '1' || '0' }}
           FORCE_AI: ${{ github.event_name == 'workflow_dispatch' && inputs.force_ai && '1' || '0' }}
         run: |
+          # El dashboard pesado puede regenerar bloques de XI. Inmediatamente
+          # después restauramos la jerarquía autoritativa para que nunca publique
+          # model-only por encima de un último XI oficial real.
           python -m futbol_pred.dashboard
+          python -m futbol_pred.matchday_lineup_baseline
+          python -m futbol_pred.matchday_absence_refresh
+          python -m futbol_pred.matchday_early_probable_refresh
+          python -m futbol_pred.matchday_probable_refresh
+          python -m futbol_pred.matchday_lineup_baseline
+          python -m futbol_pred.matchday_lineup_integrity
           python -m futbol_pred.coverage
           python - <<'PY'
           import json
