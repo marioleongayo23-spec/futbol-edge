@@ -20,6 +20,14 @@ from .api_football import ApiFootballClient
 
 MIN_PLAYER_MINUTES = 270
 
+FAIR_LINE_GRIDS = {
+    "r": (0.5, 1.5, 2.5, 3.5, 4.5),
+    "rp": (0.5, 1.5, 2.5),
+    "fc": (0.5, 1.5, 2.5, 3.5),
+    "fr": (0.5, 1.5, 2.5, 3.5),
+    "t": (0.5,),
+}
+
 
 def _key(value: str) -> str:
     text = unicodedata.normalize("NFKD", str(value or ""))
@@ -102,6 +110,44 @@ def _profile(player: dict) -> dict:
         "birth_place": birth.get("place"),
         "birth_country": birth.get("country"),
     }
+
+
+def _poisson_over(mean: float, line: float) -> float:
+    """P(X > line) para un baseline Poisson de conteos individuales."""
+
+    lam = max(0.0, _number(mean))
+    cutoff = max(0, int(math.floor(float(line))))
+    term = math.exp(-lam)
+    cdf = term
+    for k in range(1, cutoff + 1):
+        term *= lam / k
+        cdf += term
+    return max(0.0, min(1.0, 1.0 - cdf))
+
+
+def _fair_odds(probability: float) -> float | None:
+    return round(1.0 / probability, 2) if probability > 0 else None
+
+
+def _fair_lines_for_prop(prop: dict) -> dict[str, list[dict]]:
+    """Líneas teóricas sin vig; no representan cuotas disponibles de una casa."""
+
+    out: dict[str, list[dict]] = {}
+    for metric, lines in FAIR_LINE_GRIDS.items():
+        mean = max(0.0, _number(prop.get(metric)))
+        rows = []
+        for line in lines:
+            over_raw = _poisson_over(mean, line)
+            under_raw = 1.0 - over_raw
+            rows.append({
+                "line": line,
+                "over": round(over_raw, 4),
+                "under": round(under_raw, 4),
+                "fair_over_odds": _fair_odds(over_raw),
+                "fair_under_odds": _fair_odds(under_raw),
+            })
+        out[metric] = rows
+    return out
 
 
 def _normalise_player(item: dict, league_id: int | None) -> dict | None:
@@ -301,6 +347,8 @@ def props_for_official_starters(
             + 0.6 * prop["fc"] + 0.6 * prop["fr"] + prop["t"],
             3,
         )
+        prop["fair_lines"] = _fair_lines_for_prop(prop)
+        prop["fair_model"] = "poisson_baseline"
         candidates.append(prop)
 
     max_rows = max(0, int(limit))

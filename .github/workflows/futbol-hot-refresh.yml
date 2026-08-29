@@ -136,6 +136,10 @@ jobs:
 
               # 16) Matriz de cobertura/frescura visible.
               PYTHONPATH=football/src python -m futbol_pred.coverage
+
+              # 17) P0: verdad operacional de cada señal y su gate anti-leakage.
+              PYTHONPATH=football/src python -m futbol_pred.feature_truth
+
               PYTHONPATH=football/src python -m futbol_pred.matchday_diagnose
 
               # Canal paralelo sin commits: se actualiza en cada ciclo aunque el

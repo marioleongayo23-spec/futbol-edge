@@ -31,13 +31,35 @@ RUN_LOCAL_AUDIT_KEYS = {
     "state_simulations",
 }
 
+# Estas features usan el generated_at del dashboard como marca de disponibilidad
+# visible. Es útil en el feed, pero no representa un cambio deportivo.
+FEATURES_TIMESTAMPED_AT_GENERATION = {
+    "dixon_coles_score_model",
+    "elo",
+    "team_stat_model",
+    "tactical_matchup",
+}
+
 
 def semantic_feed(payload: dict) -> dict:
     """Devuelve una copia del feed sin metadata puramente volátil."""
 
     normalized = copy.deepcopy(payload)
-    normalized.pop("generated_at", None)
+    generated_at = normalized.pop("generated_at", None)
     normalized.pop("postmatch_stats_updates", None)
+
+    truth_table = normalized.get("feature_truth_table")
+    if isinstance(truth_table, dict):
+        truth_table.pop("generated_at", None)
+        features = truth_table.get("features")
+        if generated_at is not None and isinstance(features, list):
+            for feature in features:
+                if (
+                    isinstance(feature, dict)
+                    and feature.get("feature") in FEATURES_TIMESTAMPED_AT_GENERATION
+                    and feature.get("available_at") == generated_at
+                ):
+                    feature.pop("available_at", None)
 
     audit = normalized.get("content_audit")
     if isinstance(audit, dict):

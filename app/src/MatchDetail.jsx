@@ -5,6 +5,7 @@ import { confidence, countdown, isSurprise } from "./insights";
 import { marketMovementRows, marketMovementSourceLabel } from "./markets";
 import OfficialStatsPanel from "./OfficialStatsPanel";
 import WeatherAdjustmentPanel from "./WeatherAdjustmentPanel";
+import PlayerFairLines from "./PlayerFairLines";
 import { teamSquad } from "./teams";
 import PredictionTimelinePanel from "./PredictionTimelinePanel";
 import { hasAccess } from "./plans";
@@ -528,6 +529,7 @@ export default function MatchDetail({ m, bankroll, onBack, onTeam, players, plan
       <OfficialStatsPanel match={m} />
 
       {m.alineacion && <div className="section-anchor" id="match-lineup"><Alineacion m={m} a={m.alineacion} canProps={canProps} onUpgrade={onUpgrade} /></div>}
+      <PlayerFairLines match={m} />
       <LineupImpact impact={m.lineup_impact} home={m.home} away={m.away} />
 
       {(players || m.alineacion) && (() => {

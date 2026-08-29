@@ -80,3 +80,37 @@ def test_no_elimina_timestamps_de_snapshots_reales():
 
     normalized = semantic_feed(feed)
     assert normalized["matches"][0]["closing_odds"]["captured_at"] == "2026-08-25T18:00:00+02:00"
+
+
+def test_feature_truth_generation_times_do_not_change_the_digest():
+    first = _feed()
+    second = _feed()
+    second["generated_at"] = "2026-08-25T10:30:00+02:00"
+
+    market_stamp = "2026-08-25T10:00:00+02:00"
+    for feed in (first, second):
+        generated_at = feed["generated_at"]
+        feed["feature_truth_table"] = {
+            "generated_at": generated_at,
+            "features": [
+                {
+                    "feature": "dixon_coles_score_model",
+                    "available_at": generated_at,
+                    "coverage": {"covered": 1, "eligible": 1},
+                },
+                {
+                    "feature": "market_odds",
+                    "available_at": market_stamp,
+                    "coverage": {"covered": 1, "eligible": 1},
+                },
+            ],
+        }
+
+    assert semantic_digest(first) == semantic_digest(second)
+
+    normalized = semantic_feed(second)
+    truth_table = normalized["feature_truth_table"]
+    by_feature = {row["feature"]: row for row in truth_table["features"]}
+    assert "generated_at" not in truth_table
+    assert "available_at" not in by_feature["dixon_coles_score_model"]
+    assert by_feature["market_odds"]["available_at"] == market_stamp
