@@ -1,39 +1,33 @@
 """Plantillas actuales como fuente autoritativa del feed.
 
-La plantilla de un club NO se deriva de ``previous.players``. Para LaLiga y
-Segunda se recorre toda la temporada actual y se sincroniza incrementalmente
-contra API-Football ``/players/squads`` (plantilla registrada actual, sin
-parámetro season). Champions se consulta para los equipos con partido próximo.
+La plantilla de un club NO se deriva de ``previous.players``. LaLiga y Segunda
+se sincronizan de una vez desde football-data.org ``competitions/{code}/teams``
+(que incluye ``squad`` de la temporada solicitada). API-Football queda como
+fallback para equipos próximos si esa fuente no devuelve plantilla y como
+contraste del XI oficial cerca del kickoff.
 
-Principios:
-- equipos con partido próximo siempre tienen prioridad;
-- LaLiga/Segunda completas se sanea en segundo plano;
-- una plantilla real conserva la hora REAL de consulta: reutilizarla no renueva
-  artificialmente su TTL;
-- ids de club se cachean 24h para no pagar ``/teams`` en cada ciclo;
-- ningún XI no oficial puede publicar un jugador fuera de la plantilla actual;
-- se reserva cuota API-Football para XI oficial/bajas de la ventana crítica.
+La reutilización de una plantilla cacheada conserva la hora REAL de la consulta:
+no se rejuvenece una foto vieja solo por leerla de nuevo.
 """
 from __future__ import annotations
 
 from copy import deepcopy
 from datetime import datetime, timezone
-from difflib import SequenceMatcher
 import json
 
-from .config import DATA_DIR, LEAGUES
+from .config import DATA_DIR
 from .feed_quality import load_feed, write_feed_safely
 from .hot_refresh import MADRID, _aware, _parse
 from .ingest.api_football import ApiFootballClient
+from .ingest.football_data import FootballDataClient
 
 OUTPUT = DATA_DIR / "dashboard.json"
 ROSTER_TTL_HOURS = 24
-TEAM_ID_TTL_HOURS = 24
 WINDOW_PAST_HOURS = 3
 WINDOW_FUTURE_HOURS = 36
-MAX_NEW_TEAMS_PER_CYCLE = 6
-API_RESERVE = 30
 GLOBAL_LEAGUES = {"laliga", "segunda"}
+API_FALLBACK_MAX_TEAMS = 4
+API_RESERVE = 30
 
 
 def _season_start(now_local: datetime) -> int:
@@ -69,63 +63,16 @@ def _age_hours(value, now_local: datetime) -> float | None:
     return max(0.0, (now_local - stamp).total_seconds() / 3600.0)
 
 
-def _target_matches(payload: dict, now_local: datetime) -> list[dict]:
-    out = []
-    for match in payload.get("matches") or []:
-        if not isinstance(match, dict) or match.get("finished"):
-            continue
-        kickoff = _parse(match.get("kickoff"))
-        if kickoff is None:
-            continue
-        hours = (kickoff - now_local).total_seconds() / 3600.0
-        if -WINDOW_PAST_HOURS <= hours <= WINDOW_FUTURE_HOURS:
-            out.append(match)
-    return sorted(out, key=lambda row: _parse(row.get("kickoff")) or now_local)
-
-
-def _team_order(payload: dict, now_local: datetime) -> list[tuple[str, str]]:
-    """Próximos primero; después todos los clubes de LaLiga/Segunda actuales."""
-    out: list[tuple[str, str]] = []
-    seen = set()
-
-    def add(league: str, team) -> None:
-        team = str(team or "").strip()
-        key = (league, _key(team))
-        if team and key not in seen:
-            seen.add(key)
-            out.append((league, team))
-
-    for match in _target_matches(payload, now_local):
-        league = _league_key(match.get("league"))
-        add(league, match.get("home"))
-        add(league, match.get("away"))
-
-    season_matches = []
-    for match in payload.get("matches") or []:
-        if not isinstance(match, dict):
-            continue
-        league = _league_key(match.get("league"))
-        if league not in GLOBAL_LEAGUES:
-            continue
-        kickoff = _parse(match.get("kickoff"))
-        season_matches.append((kickoff or now_local, league, match))
-    season_matches.sort(key=lambda row: row[0])
-    for _, league, match in season_matches:
-        add(league, match.get("home"))
-        add(league, match.get("away"))
-    return out
-
-
 def _bucket(payload: dict, league: str) -> dict:
     labels = {"laliga": "LaLiga", "segunda": "LaLiga Hypermotion", "champions": "Champions League"}
-    players = payload.setdefault("players", {})
-    return players.setdefault(league, {"label": labels.get(league, league), "rankings": {}, "players": []})
+    return payload.setdefault("players", {}).setdefault(
+        league, {"label": labels.get(league, league), "rankings": {}, "players": []}
+    )
 
 
 def _cached_squad(payload: dict, league: str, team: str, now_local: datetime) -> tuple[list[dict], str | None]:
     rows = _bucket(payload, league).get("players") or []
-    squad = []
-    stamps = []
+    squad, stamps = [], []
     for row in rows:
         if not isinstance(row, dict) or not _same_team(row.get("team"), team):
             continue
@@ -149,93 +96,57 @@ def _cached_squad(payload: dict, league: str, team: str, now_local: datetime) ->
     return [], None
 
 
-def _remaining(payload: dict) -> int | None:
-    try:
-        return int(((payload.get("source_health") or {}).get("api_football") or {}).get("daily_remaining"))
-    except (TypeError, ValueError):
-        return None
-
-
-def _load_team_id_cache(payload: dict, now_local: datetime, season: int) -> dict[str, dict[str, int]]:
-    block = ((payload.get("source_health") or {}).get("current_squads") or {})
-    if block.get("season_context") != season:
-        return {}
-    age = _age_hours(block.get("team_ids_checked_at"), now_local)
-    if age is None or age > TEAM_ID_TTL_HOURS:
-        return {}
-    raw = block.get("team_ids") or {}
-    out = {}
-    for league, mapping in raw.items():
-        if not isinstance(mapping, dict):
-            continue
-        cleaned = {}
-        for name, team_id in mapping.items():
-            try:
-                cleaned[str(name)] = int(team_id)
-            except (TypeError, ValueError):
-                pass
-        if cleaned:
-            out[league] = cleaned
-    return out
-
-
-def _fetch_league_team_ids(client: ApiFootballClient, league: str, season: int) -> dict[str, int]:
-    if client.offline:
-        return {}
-    try:
-        rows = client._get("teams", {"league": LEAGUES[league], "season": season}).get("response") or []
-    except Exception:
-        return {}
-    out = {}
-    for row in rows:
-        team = row.get("team") or {}
-        if team.get("id") and team.get("name"):
-            out[str(team["name"])] = int(team["id"])
-    return out
-
-
-def _resolve_team_id(team: str, candidates: dict[str, int]) -> int | None:
-    wanted = _key(team)
-    for name, team_id in candidates.items():
-        if _key(name) == wanted:
-            return team_id
-    best = None
-    for name, team_id in candidates.items():
-        score = SequenceMatcher(None, wanted, _key(name)).ratio()
-        if best is None or score > best[0]:
-            best = (score, team_id)
-    return best[1] if best and best[0] >= 0.68 else None
-
-
-def _fetch_squad(client: ApiFootballClient, team_id: int) -> list[dict]:
-    try:
-        response = client._get("players/squads", {"team": int(team_id)}).get("response") or []
-    except Exception:
-        return []
-    players = (response[0].get("players") or []) if response else []
+def _target_matches(payload: dict, now_local: datetime) -> list[dict]:
     out = []
-    for raw in players:
-        name = str(raw.get("name") or "").strip()
-        if not name:
+    for match in payload.get("matches") or []:
+        if not isinstance(match, dict) or match.get("finished"):
             continue
-        out.append({
-            "name": name,
-            "position": str(raw.get("position") or "").strip(),
-            "player_id": raw.get("id"),
-            "number": raw.get("number"),
-            "age": raw.get("age"),
-            "photo": raw.get("photo"),
-        })
+        kickoff = _parse(match.get("kickoff"))
+        if kickoff is None:
+            continue
+        hours = (kickoff - now_local).total_seconds() / 3600.0
+        if -WINDOW_PAST_HOURS <= hours <= WINDOW_FUTURE_HOURS:
+            out.append(match)
+    return sorted(out, key=lambda row: _parse(row.get("kickoff")) or now_local)
+
+
+def _league_teams(payload: dict, league: str) -> list[str]:
+    out, seen = [], set()
+    for match in payload.get("matches") or []:
+        if _league_key(match.get("league")) != league:
+            continue
+        for team in (match.get("home"), match.get("away")):
+            team = str(team or "").strip()
+            key = _key(team)
+            if team and key not in seen:
+                seen.add(key)
+                out.append(team)
     return out
 
 
-def _sync_team_players(payload: dict, league: str, team: str, squad: list[dict], checked_at: str, season: int) -> tuple[int, int, int]:
+def _find_named_squad(squads: dict[str, list[dict]], wanted: str) -> tuple[str | None, list[dict]]:
+    for name, squad in squads.items():
+        if _same_team(name, wanted):
+            return name, squad
+    return None, []
+
+
+def _sync_team_players(
+    payload: dict,
+    league: str,
+    team: str,
+    squad: list[dict],
+    checked_at: str,
+    season: int,
+    source_label: str,
+) -> tuple[int, int, int]:
     bucket = _bucket(payload, league)
     flat = list(bucket.get("players") or [])
     allowed = {_name_key(row.get("name")): row for row in squad if row.get("name")}
     kept = []
     purged = added = updated = 0
     existing = set()
+
     for row in flat:
         if not isinstance(row, dict) or not _same_team(row.get("team"), team):
             kept.append(row)
@@ -244,41 +155,44 @@ def _sync_team_players(payload: dict, league: str, team: str, squad: list[dict],
         if key not in allowed:
             purged += 1
             continue
-        source = allowed[key]
+        raw = allowed[key]
         current = dict(row)
-        current["current_squad_member"] = True
-        current["current_squad_checked_at"] = checked_at
-        current["current_squad_source"] = "API-Football · players/squads"
-        current["current_squad_season_context"] = season
-        current["player_id"] = current.get("player_id") or source.get("player_id")
-        current["number"] = source.get("number")
-        current["position"] = source.get("position") or current.get("position") or ""
-        if source.get("photo"):
+        current.update({
+            "current_squad_member": True,
+            "current_squad_checked_at": checked_at,
+            "current_squad_source": source_label,
+            "current_squad_season_context": season,
+        })
+        if raw.get("position"):
+            current["position"] = raw.get("position")
+        if raw.get("player_id") is not None:
+            current["player_id"] = raw.get("player_id")
+        if raw.get("number") is not None:
+            current["number"] = raw.get("number")
+        if raw.get("photo"):
             profile = dict(current.get("profile") or {})
-            profile["photo"] = source.get("photo")
-            if source.get("age") is not None:
-                profile["age"] = source.get("age")
+            profile["photo"] = raw.get("photo")
+            if raw.get("age") is not None:
+                profile["age"] = raw.get("age")
             current["profile"] = profile
         if current != row:
             updated += 1
         kept.append(current)
         existing.add(key)
 
-    for key, source in allowed.items():
+    for key, raw in allowed.items():
         if key in existing:
             continue
         kept.append({
-            "player": source["name"],
-            "team": team,
-            "position": source.get("position") or "",
-            "player_id": source.get("player_id"),
-            "number": source.get("number"),
-            "profile": {"photo": source.get("photo"), "age": source.get("age")},
+            "player": raw["name"], "team": team,
+            "position": raw.get("position") or "",
+            "player_id": raw.get("player_id"), "number": raw.get("number"),
+            "profile": {"photo": raw.get("photo"), "age": raw.get("age")},
             "goals": 0, "assists": 0, "shots": 0, "yc": 0, "min": 0,
-            "source": "API-Football · current squad",
+            "source": source_label,
             "current_squad_member": True,
             "current_squad_checked_at": checked_at,
-            "current_squad_source": "API-Football · players/squads",
+            "current_squad_source": source_label,
             "current_squad_season_context": season,
         })
         added += 1
@@ -311,94 +225,141 @@ def _validate_lineup(match: dict, local_squad: list[dict], visitor_squad: list[d
             conflicts[side] = bad
     if not conflicts:
         return 0
-    lineup["status"] = "estimado"
-    lineup["source_quality"] = "model_only"
-    lineup["lineup_kind"] = "roster_conflict_withheld"
-    lineup["current_squad_validated_at"] = stamp
-    lineup["current_squad_conflicts"] = conflicts
-    lineup["display_warning"] = (
-        "XI oculto: contiene jugadores que no pertenecen a la plantilla registrada actual. "
-        "Se reconstruirá con plantilla vigente, prensa reciente y continuidad de 2026/27."
-    )
+    lineup.update({
+        "status": "estimado",
+        "source_quality": "model_only",
+        "lineup_kind": "roster_conflict_withheld",
+        "current_squad_validated_at": stamp,
+        "current_squad_conflicts": conflicts,
+        "display_warning": (
+            "XI oculto: contiene jugadores que no pertenecen a la plantilla registrada actual. "
+            "Se reconstruirá con plantilla vigente, prensa reciente y continuidad de 2026/27."
+        ),
+    })
     lineup.pop("critical_probable_checked_at", None)
     match["alineacion"] = lineup
     return sum(len(rows) for rows in conflicts.values())
 
 
-def refresh_payload(payload: dict, now: datetime | None = None, football_client: ApiFootballClient | None = None) -> tuple[bool, dict]:
+def _remaining(payload: dict) -> int | None:
+    try:
+        return int(((payload.get("source_health") or {}).get("api_football") or {}).get("daily_remaining"))
+    except (TypeError, ValueError):
+        return None
+
+
+def _api_fallback_squad(client, team: str) -> list[dict]:
+    if getattr(client, "offline", False):
+        return []
+    if hasattr(client, "get_squad"):
+        try:
+            return client.get_squad(team) or []
+        except Exception:
+            return []
+    # Compatibilidad con fakes de tests.
+    try:
+        rows = client._get("teams", {"search": team}).get("response") or []
+        chosen = next((row for row in rows if _same_team((row.get("team") or {}).get("name"), team)), rows[0] if rows else None)
+        team_id = ((chosen or {}).get("team") or {}).get("id")
+        if not team_id:
+            return []
+        response = client._get("players/squads", {"team": team_id}).get("response") or []
+        return (response[0].get("players") or []) if response else []
+    except Exception:
+        return []
+
+
+def refresh_payload(
+    payload: dict,
+    now: datetime | None = None,
+    football_client: ApiFootballClient | None = None,
+    football_data_client: FootballDataClient | None = None,
+) -> tuple[bool, dict]:
     now_local = _aware(now or datetime.now(timezone.utc)).astimezone(MADRID)
     stamp = now_local.isoformat()
     season = _season_start(now_local)
-    target_matches = _target_matches(payload, now_local)
-    client = football_client or ApiFootballClient()
-    order = _team_order(payload, now_local)
+    targets = _target_matches(payload, now_local)
+    api = football_client or ApiFootballClient()
+    fd = football_data_client or FootballDataClient()
 
-    health_root = dict(payload.get("source_health") or {})
-    previous_health = dict(health_root.get("current_squads") or {})
-    team_ids = _load_team_id_cache(payload, now_local, season)
-    ids_changed = False
-
-    rosters: dict[tuple[str, str], tuple[list[dict], str]] = {}
-    requested: list[tuple[str, str]] = []
-    for league, team in order:
-        squad, checked_at = _cached_squad(payload, league, team, now_local)
-        if squad and checked_at:
-            rosters[(league, team)] = (squad, checked_at)
-        else:
-            requested.append((league, team))
-
-    remaining = _remaining(payload)
-    slots = MAX_NEW_TEAMS_PER_CYCLE
-    if remaining is not None:
-        slots = min(slots, max(0, remaining - API_RESERVE))
-
-    fetched = 0
-    api_calls_estimate = 0
-    for league, team in requested:
-        if fetched >= slots:
-            break
-        candidates = team_ids.get(league)
-        if not candidates:
-            if remaining is not None and remaining - api_calls_estimate <= API_RESERVE + 1:
-                break
-            candidates = _fetch_league_team_ids(client, league, season)
-            api_calls_estimate += 1
-            if not candidates:
-                continue
-            team_ids[league] = candidates
-            ids_changed = True
-        team_id = _resolve_team_id(team, candidates)
-        if not team_id:
-            continue
-        if remaining is not None and remaining - api_calls_estimate <= API_RESERVE:
-            break
-        squad = _fetch_squad(client, team_id)
-        api_calls_estimate += 1
-        if len(squad) < 11:
-            continue
-        rosters[(league, team)] = (squad, stamp)
-        fetched += 1
-
-    changed = ids_changed
+    changed = False
     purged = added = updated = conflicts = 0
-    for (league, team), (squad, checked_at) in rosters.items():
-        p, a, u = _sync_team_players(payload, league, team, squad, checked_at, season)
-        purged += p
-        added += a
-        updated += u
-        changed = changed or bool(p or a or u)
+    fd_refreshed = []
+    api_fetched = 0
+    rosters: dict[tuple[str, str], tuple[list[dict], str, str]] = {}
 
-    for match in target_matches:
+    # 1) LaLiga y Segunda completas: una petición por competición cuando falta
+    #    alguna plantilla o ha caducado la foto de 24h.
+    for league in ("laliga", "segunda"):
+        teams = _league_teams(payload, league)
+        stale = []
+        for team in teams:
+            squad, checked = _cached_squad(payload, league, team, now_local)
+            if squad and checked:
+                rosters[(league, team)] = (squad, checked, "cache current squad")
+            else:
+                stale.append(team)
+        if not stale or getattr(fd, "offline", False):
+            continue
+        try:
+            meta = fd.get_team_meta(league, season)
+        except Exception:
+            meta = {}
+        if not meta:
+            continue
+        fd_refreshed.append(league)
+        for team in teams:
+            api_name, squad = _find_named_squad(
+                {name: info.get("squad") or [] for name, info in meta.items()}, team
+            )
+            if len(squad) < 11:
+                continue
+            source = "football-data.org · current season squad"
+            p, a, u = _sync_team_players(payload, league, team, squad, stamp, season, source)
+            purged += p; added += a; updated += u
+            changed = changed or bool(p or a or u)
+            rosters[(league, team)] = (squad, stamp, source)
+
+    # 2) Equipos próximos aún sin roster: fallback API-Football, con reserva de
+    #    cuota para bajas/XI oficial.
+    remaining = _remaining(payload)
+    fallback_budget = API_FALLBACK_MAX_TEAMS
+    if remaining is not None:
+        fallback_budget = min(fallback_budget, max(0, (remaining - API_RESERVE) // 2))
+    for match in targets:
+        league = _league_key(match.get("league"))
+        for team in (str(match.get("home") or ""), str(match.get("away") or "")):
+            if not team or (league, team) in rosters or api_fetched >= fallback_budget:
+                continue
+            squad = _api_fallback_squad(api, team)
+            if len(squad) < 11:
+                continue
+            source = "API-Football · players/squads"
+            p, a, u = _sync_team_players(payload, league, team, squad, stamp, season, source)
+            purged += p; added += a; updated += u
+            changed = changed or bool(p or a or u)
+            rosters[(league, team)] = (squad, stamp, source)
+            api_fetched += 1
+
+    # 3) Estado por partido + barrera de coherencia de XI.
+    for match in targets:
         league = _league_key(match.get("league"))
         local_pair = rosters.get((league, str(match.get("home"))))
         visitor_pair = rosters.get((league, str(match.get("away"))))
-        local, local_at = local_pair or _cached_squad(payload, league, str(match.get("home")), now_local)
-        visitor, visitor_at = visitor_pair or _cached_squad(payload, league, str(match.get("away")), now_local)
+        if local_pair:
+            local, local_at, local_source = local_pair
+        else:
+            local, local_at = _cached_squad(payload, league, str(match.get("home")), now_local)
+            local_source = "cache current squad"
+        if visitor_pair:
+            visitor, visitor_at, visitor_source = visitor_pair
+        else:
+            visitor, visitor_at = _cached_squad(payload, league, str(match.get("away")), now_local)
+            visitor_source = "cache current squad"
         block = {
-            "source": "API-Football · players/squads",
             "season_context": season,
-            "local": {"team": match.get("home"), "checked_at": local_at, "players": local} if local else None,
-            "visitante": {"team": match.get("away"), "checked_at": visitor_at, "players": visitor} if visitor else None,
+            "local": {"team": match.get("home"), "source": local_source, "checked_at": local_at, "players": local} if local else None,
+            "visitante": {"team": match.get("away"), "source": visitor_source, "checked_at": visitor_at, "players": visitor} if visitor else None,
         }
         if match.get("current_squads") != block:
             match["current_squads"] = block
@@ -407,25 +368,21 @@ def refresh_payload(payload: dict, now: datetime | None = None, football_client:
         conflicts += c
         changed = changed or bool(c)
 
+    health_root = dict(payload.get("source_health") or {})
     health = {
         "checked_at": stamp,
-        "source": "API-Football · players/squads",
         "season_context": season,
-        "scope": "LaLiga+Segunda completas; Champions bajo demanda",
+        "scope": "LaLiga+Segunda completas; Champions/próximos por fallback",
         "roster_ttl_hours": ROSTER_TTL_HOURS,
-        "target_matches": len(target_matches),
-        "teams_total_target": len(order),
-        "teams_cached_or_fetched": len(rosters),
-        "teams_fetched": fetched,
+        "target_matches": len(targets),
+        "football_data_leagues_refreshed": fd_refreshed,
+        "api_fallback_teams_fetched": api_fetched,
         "stale_players_purged": purged,
         "players_added": added,
         "players_metadata_updated": updated,
         "lineup_conflicts": conflicts,
-        "api_calls_estimate": api_calls_estimate,
-        "quota_remaining_before": remaining,
-        "quota_reserve": API_RESERVE,
-        "team_ids": team_ids,
-        "team_ids_checked_at": stamp if ids_changed or not previous_health.get("team_ids_checked_at") else previous_health.get("team_ids_checked_at"),
+        "api_quota_remaining_before": remaining,
+        "api_quota_reserve": API_RESERVE,
     }
     health_root["current_squads"] = health
     payload["source_health"] = health_root
