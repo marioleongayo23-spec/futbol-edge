@@ -1,9 +1,9 @@
 name: futbol-edge hot refresh
 
-# Canal autoritativo continuo de matchday. El cron cada 5 minutos queda como
-# respaldo independiente; además, cada bloque largo se rearma a sí mismo por
-# workflow_dispatch para no depender de que el scheduler de GitHub entregue
-# todos los ticks. La concurrencia garantiza un único escritor del feed.
+# Canal autoritativo de día de partido.
+# La continuidad NO depende del cron: cada bloque activo se auto-despacha al terminar.
+# El schedule y workflow_run son solo watchdogs para recuperar el heartbeat si GitHub
+# o una incidencia externa interrumpen la cadena.
 on:
   push:
     branches: [main]
@@ -14,10 +14,11 @@ on:
     types: [completed]
     branches: [main]
   schedule:
-    # UTC y 24/7 a propósito: evita depender del soporte timezone del scheduler.
-    # Las propias capas aplican TTL/ventanas, así que fuera de partido no gastan
-    # llamadas caras aunque el heartbeat siga vivo.
-    - cron: "2-57/5 * * * *"
+    # Watchdog cada 30 min, desplazado del inicio de hora.
+    - cron: "7,37 8-23 * * *"
+      timezone: "Europe/Madrid"
+    - cron: "7,37 0-1 * * *"
+      timezone: "Europe/Madrid"
   workflow_dispatch:
 
 permissions:
@@ -65,10 +66,10 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          # schedule/push hacen un tick inmediato. workflow_dispatch/workflow_run
-          # mantienen un bloque de ~55 min; al finalizar se rearma otro bloque.
+          # Push de código: un tick inmediato. El resto de disparadores sostienen
+          # aproximadamente una hora completa de ciclos de 5 minutos.
           cycles=1
-          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ] || [ "$GITHUB_EVENT_NAME" = "workflow_run" ]; then
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ] || [ "$GITHUB_EVENT_NAME" = "workflow_run" ] || [ "$GITHUB_EVENT_NAME" = "schedule" ]; then
             cycles=12
           fi
           echo "Evento ${GITHUB_EVENT_NAME}: ${cycles} ciclo(s) de matchday"
@@ -89,25 +90,23 @@ jobs:
               # 3) Última milla: si el XI llega muy tarde seguimos buscándolo.
               PYTHONPATH=football/src python -m futbol_pred.matchday_official_last_mile
 
-              # 4) Base universal: último XI oficial de cada equipo mientras no
-              #    exista un probable fiable. Recupera/cacha el histórico si falta.
+              # 4) Base universal: último XI oficial mientras no haya probable fiable.
               PYTHONPATH=football/src python -m futbol_pred.matchday_lineup_baseline
 
-              # 5) Bajas/sanciones desde T-24h, con cadencia mayor al acercarse.
+              # 5) Lesiones/sanciones desde T-24h con cadencia adaptativa.
               PYTHONPATH=football/src python -m futbol_pred.matchday_absence_refresh
 
-              # 6) T-24h..T-2h: busca prensa/onces probables de forma incremental.
+              # 6) T-24h..T-2h: recolector incremental de probables.
               PYTHONPATH=football/src python -m futbol_pred.matchday_early_probable_refresh
 
-              # 7) T-2h: prensa reciente + continuidad oficial + muestra real disponible.
+              # 7) T-2h: prensa reciente + continuidad oficial + muestra real.
               PYTHONPATH=football/src python -m futbol_pred.matchday_probable_refresh
 
               # 8) Reconciliación universal: model-only vuelve al último XI oficial;
-              #    evidencia parcial crea híbrido seguro; grounded/oficial prevalece.
-              #    También sanea titulares con bajas/sanciones oficiales.
+              #    evidencia parcial crea híbrido y grounded/oficial prevalece.
               PYTHONPATH=football/src python -m futbol_pred.matchday_lineup_baseline
 
-              # 9) Barrera final crítica: ningún XI no oficial contiene una baja segura.
+              # 9) Barrera final: ningún XI no oficial puede contener una baja segura.
               PYTHONPATH=football/src python -m futbol_pred.matchday_lineup_integrity
 
               # 10) Cobertura de predicciones individuales sobre el XI vigente.
@@ -150,19 +149,24 @@ jobs:
             fi
           done
 
-      - name: Rearmar heartbeat autónomo
-        # workflow_dispatch es una excepción documentada a la protección de
-        # recursión de GITHUB_TOKEN. Si el paso principal falla, este always()
-        # vuelve a lanzar un bloque limpio; el cron sigue siendo respaldo.
-        if: always() && github.ref == 'refs/heads/main'
+      - name: Mantener vivo el heartbeat de matchday
+        if: always()
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          # El bloque largo autogenerado actúa también como reloj del pipeline
-          # pesado: aproximadamente una vez por hora refresca calendario/modelos.
-          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
-            echo "Disparando también el refresh pesado periódico"
-            gh workflow run futbol-pred.yml --ref main
-          fi
-          echo "Rearmando el siguiente bloque continuo de hot refresh"
-          gh workflow run futbol-hot-refresh.yml --ref main
+          hour=$(TZ=Europe/Madrid date +%H)
+          hour=$((10#$hour))
+
+          # Ventana operativa: 08:00-01:59 Madrid. Fuera de ella paramos la cadena;
+          # el watchdog del día siguiente la vuelve a arrancar.
+          if [ "$hour" -ge 8 ] || [ "$hour" -le 1 ]; then
+            echo "Autoencadenando siguiente bloque de refresco…"
+            curl --fail-with-body --retry 3 --retry-all-errors \
+              -L -X POST \
+              -H "Accept: application/vnd.github+json" \
+              -H "Authorization: Bearer ${GH_TOKEN}" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/workflows/futbol-hot-refresh.yml/dispatches" \
+              -d '{"ref":"main"}'
+          else
+            echo "Fuera de ventana matchday; no se autoencadena."
