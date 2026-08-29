@@ -11,6 +11,7 @@ on:
       - "football/**"
       - "!football/data/dashboard.json"
       - ".github/workflows/futbol-hot-refresh.yml"
+      - "scripts/publish_live_feed.sh"
   workflow_run:
     workflows: ["futbol-pred (cron)"]
     types: [completed]
@@ -67,6 +68,7 @@ jobs:
           LOCAL_AI_MODEL: ${{ secrets.LOCAL_AI_MODEL }}
           LOCAL_AI_API_KEY: ${{ secrets.LOCAL_AI_API_KEY }}
           AI_DAILY_CALL_BUDGET: "20"
+          GH_TOKEN: ${{ github.token }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -135,6 +137,11 @@ jobs:
               # 16) Matriz de cobertura/frescura visible.
               PYTHONPATH=football/src python -m futbol_pred.coverage
               PYTHONPATH=football/src python -m futbol_pred.matchday_diagnose
+
+              # Canal paralelo sin commits: se actualiza en cada ciclo aunque el
+              # cambio sea solo volátil. Durante la transición mantenemos también
+              # el commit de dashboard.json para que el frontend actual siga vivo.
+              bash scripts/publish_live_feed.sh football/data/dashboard.json
 
               if git diff --quiet -- football/data/dashboard.json; then
                 echo "Sin cambios sustantivos en este ciclo"

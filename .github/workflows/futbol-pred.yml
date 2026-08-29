@@ -12,6 +12,7 @@ on:
       - "football/**"
       - "!football/data/dashboard.json"
       - ".github/workflows/futbol-pred.yml"
+      - "scripts/publish_live_feed.sh"
   schedule:
     - cron: "13,43 8-23 * * *"
       timezone: "Europe/Madrid"
@@ -120,6 +121,11 @@ jobs:
           print("[coverage]", a.get("status"), "| completos:", a.get("complete"), "/", a.get("matches_today"), "| resumen:", a.get("coverage_summary"))
           print("[squads]", {k:s.get(k) for k in ("season_context","football_data_leagues_refreshed","stale_players_purged","players_added","lineup_conflicts")})
           PY
+
+      - name: Publicar canal vivo sin commits
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash ../scripts/publish_live_feed.sh data/dashboard.json
 
       - name: Publicar feed actualizado en la rama
         run: |
