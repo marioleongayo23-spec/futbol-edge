@@ -118,7 +118,7 @@ test("oculta feeds model-only sin evidencia externa", () => {
   assert.equal(lineup.lineup_kind, "ungrounded_estimate_withheld");
   assert.deepEqual(lineup.local, []);
   assert.deepEqual(lineup.visitante, []);
-  assert.match(lineup.display_warning, /no hay una fuente externa reciente suficiente/i);
+  assert.match(lineup.display_warning, /a[úu]n no hay un once fiable/i);
 });
 
 
