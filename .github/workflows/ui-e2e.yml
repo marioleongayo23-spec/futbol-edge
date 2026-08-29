@@ -13,15 +13,19 @@ permissions:
 jobs:
   ui:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
           cache: npm
           cache-dependency-path: app/package-lock.json
       - name: Instalar dependencias
         run: npm ci
+        working-directory: app
+      - name: Auditar dependencias runtime
+        run: npm audit --omit=dev --audit-level=high
         working-directory: app
       - name: Instalar Chromium
         run: npx playwright install --with-deps chromium
@@ -35,6 +39,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: playwright-report
+          name: playwright-report-${{ github.run_id }}
           path: app/playwright-report
           if-no-files-found: ignore
+          retention-days: 7
