@@ -68,8 +68,17 @@ class OpenFootballClient:
         out: list[Fixture] = []
         fid = 1
         for m in data.get("matches", []):
-            score = m.get("score") or {}
-            ft = score.get("ft")
+            # football.json ha usado ambos formatos en distintas temporadas:
+            #   {"score": {"ft": [2, 1]}}
+            #   {"score": [2, 1]}
+            # El parser debe aceptar ambos sin tumbar todo el cron de Segunda.
+            score = m.get("score")
+            if isinstance(score, dict):
+                ft = score.get("ft")
+            elif isinstance(score, list):
+                ft = score
+            else:
+                ft = None
             hg = ag = None
             if isinstance(ft, list) and len(ft) == 2:
                 hg, ag = ft[0], ft[1]

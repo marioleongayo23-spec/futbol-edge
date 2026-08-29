@@ -1,9 +1,14 @@
-"""Control autoritativo de bajas al entrar en T-2h.
+"""Control autoritativo de bajas durante las 24 h previas al partido.
 
-El endpoint de lesiones cambia más lento que XI/clima, pero un partido no puede
-entrar en su ventana crítica con una foto de la mañana. Esta capa fuerza una
-consulta agrupada cuando la última comprobación supera 90 minutos y deduplica la
-respuesta antes de sustituir el bloque de disponibilidad.
+Las lesiones/sanciones ya no esperan a T-2h. Se consulta por lotes con una
+cadencia adaptativa para no quemar cuota:
+- T-24h..T-6h: como máximo cada 180 min;
+- T-6h..T-2h: como máximo cada 90 min;
+- T-2h..kickoff: como máximo cada 45 min.
+
+La respuesta se deduplica antes de sustituir el bloque de disponibilidad. El
+último XI oficial visible se sanea después por matchday_lineup_baseline y por la
+barrera de integridad crítica.
 """
 from __future__ import annotations
 
@@ -19,7 +24,7 @@ from .ingest.api_football_quota import get_absences_batch
 
 OUTPUT = DATA_DIR / "dashboard.json"
 MADRID = legacy.MADRID
-MAX_AGE_MIN = 90
+LOOKAHEAD_MIN = 24 * 60
 
 
 def _parse(value):
@@ -31,6 +36,14 @@ def _age_min(value, now_local):
     if not stamp:
         return None
     return max(0.0, (now_local - stamp).total_seconds() / 60.0)
+
+
+def _max_age_min(minutes_to_kickoff: float) -> int:
+    if minutes_to_kickoff <= 120:
+        return 45
+    if minutes_to_kickoff <= 360:
+        return 90
+    return 180
 
 
 def _fixture_id(match):
@@ -76,21 +89,23 @@ def refresh_payload(payload: dict, now: datetime | None = None, client: ApiFootb
     client = client or ApiFootballClient()
     due = []
     changed = False
-    stats = {"critical": 0, "queried": 0, "refreshed": 0, "resolved_fixture_ids": 0}
+    stats = {"tracked": 0, "critical": 0, "queried": 0, "refreshed": 0, "resolved_fixture_ids": 0}
 
     for match in payload.get("matches") or []:
         if not isinstance(match, dict) or match.get("finished"):
             continue
         kickoff = _parse(match.get("kickoff"))
-        if not kickoff or kickoff.date() != now_local.date():
+        if not kickoff:
             continue
         minutes = (kickoff - now_local).total_seconds() / 60.0
-        if not -5 <= minutes <= 120:
+        if not -5 <= minutes <= LOOKAHEAD_MIN:
             continue
-        stats["critical"] += 1
+        stats["tracked"] += 1
+        if minutes <= 120:
+            stats["critical"] += 1
         last = ((match.get("operational_checks") or {}).get("absences_checked_at"))
         age = _age_min(last, now_local)
-        if age is not None and age < MAX_AGE_MIN:
+        if age is not None and age < _max_age_min(minutes):
             continue
         due.append(match)
 
@@ -131,7 +146,12 @@ def refresh_payload(payload: dict, now: datetime | None = None, client: ApiFootb
         raw_by_id = get_absences_batch(client, ids)
         stats["queried"] = 1
         for fixture_id, match in by_id.items():
-            rows = _dedupe(raw_by_id.get(fixture_id) or [])
+            raw_rows = raw_by_id.get(fixture_id)
+            if raw_rows is None:
+                if legacy._record_check(match, "absences", now_local, "unavailable"):
+                    changed = True
+                continue
+            rows = _dedupe(raw_rows)
             if legacy._merge_absences(match, rows, now_local):
                 changed = True
             if legacy._record_check(match, "absences", now_local, "ok"):

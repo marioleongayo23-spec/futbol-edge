@@ -89,7 +89,18 @@ jobs:
           AI_REFRESH_RUN: ${{ github.event_name == 'schedule' && '1' || '0' }}
           FORCE_AI: ${{ github.event_name == 'workflow_dispatch' && inputs.force_ai && '1' || '0' }}
         run: |
-          python -m futbol_pred.dashboard
+          # Importante: el generador seguro aplica el último XI oficial ANTES del
+          # guard de calidad. Si una fuente externa regresa temporalmente, conserva
+          # el last-known-good sin convertir esa protección en un Run failed.
+          python -m futbol_pred.dashboard_lineup_safe
+
+          # Sobre el feed ya válido seguimos incorporando información cambiante.
+          python -m futbol_pred.matchday_lineup_baseline
+          python -m futbol_pred.matchday_absence_refresh
+          python -m futbol_pred.matchday_early_probable_refresh
+          python -m futbol_pred.matchday_probable_refresh
+          python -m futbol_pred.matchday_lineup_baseline
+          python -m futbol_pred.matchday_lineup_integrity
           python -m futbol_pred.coverage
           python - <<'PY'
           import json
