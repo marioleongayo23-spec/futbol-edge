@@ -8,8 +8,10 @@ name: futbol-pred (cron)
 on:
   push:
     branches: [main]
-    paths-ignore:
-      - "football/data/dashboard.json"
+    paths:
+      - "football/**"
+      - "!football/data/dashboard.json"
+      - ".github/workflows/futbol-pred.yml"
   schedule:
     - cron: "13,43 8-23 * * *"
       timezone: "Europe/Madrid"
