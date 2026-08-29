@@ -13,13 +13,36 @@ import json
 from .pipeline import run_backtest, run_pipeline, value_report
 
 
+def _skip_if_no_matches(league: str, exc: ValueError) -> bool:
+    """Una competición sin partidos jugados aún (p. ej. Champions fuera de
+    temporada) es un estado válido, no un error: se informa y se sale con éxito."""
+    if "partidos jugados" in str(exc):
+        print(json.dumps({
+            "league": league,
+            "status": "sin_datos",
+            "detail": "La competición aún no tiene partidos jugados; nada que ajustar todavía.",
+        }, indent=2, ensure_ascii=False))
+        return True
+    return False
+
+
 def _cmd_run(args) -> None:
-    report = run_pipeline(league=args.league, season=args.season)
+    try:
+        report = run_pipeline(league=args.league, season=args.season)
+    except ValueError as exc:
+        if _skip_if_no_matches(args.league, exc):
+            return
+        raise
     print(json.dumps(report, indent=2, ensure_ascii=False))
 
 
 def _cmd_backtest(args) -> None:
-    report = run_backtest(league=args.league, season=args.season)
+    try:
+        report = run_backtest(league=args.league, season=args.season)
+    except ValueError as exc:
+        if _skip_if_no_matches(args.league, exc):
+            return
+        raise
     print(json.dumps(report, indent=2, ensure_ascii=False))
 
 
