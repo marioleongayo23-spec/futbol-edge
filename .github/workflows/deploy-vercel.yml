@@ -70,24 +70,36 @@ jobs:
       - name: Construir (SPA + feed empaquetado + build-version)
         run: vercel build --prod --token="${{ secrets.VERCEL_TOKEN }}"
 
-      - name: Desplegar a producción
-        run: |
-          url="$(vercel deploy --prebuilt --prod --token="${{ secrets.VERCEL_TOKEN }}")"
-          echo "Desplegado en: $url"
-
-      - name: Verificar que producción sirve este commit
+      - name: Validar build-version antes de publicar
         run: |
           set -euo pipefail
           expected="${{ github.sha }}"
-          echo "Esperando commit en producción: $expected"
-          for attempt in $(seq 1 24); do
-            body="$(curl -fsS --max-time 15 "https://futbol-edge-porra1.vercel.app/build-version.json?t=$(date +%s)" || true)"
-            deployed="$(printf '%s' "$body" | python3 -c 'import json,sys; raw=sys.stdin.read().strip(); print((json.loads(raw).get("commit") if raw else "") or "")' 2>/dev/null || true)"
-            if [ "$deployed" = "$expected" ]; then
-              echo "Producción sincronizada con $expected"
-              exit 0
-            fi
-            echo "Intento $attempt/24: producción=${deployed:-sin build-version}"
-            sleep 10
-          done
-          echo "::warning::El deploy se subió pero producción aún no reporta el commit; puede tardar unos minutos en propagar."
+          test -f app/dist/build-version.json
+          built="$(python3 -c 'import json; print(json.load(open("app/dist/build-version.json"))["commit"])')"
+          if [ "$built" != "$expected" ]; then
+            echo "::error::build-version.json contiene $built y se esperaba $expected"
+            exit 1
+          fi
+          echo "Artefacto validado para $expected"
+
+      - name: Desplegar a producción
+        id: deploy
+        run: |
+          set -euo pipefail
+          url="$(vercel deploy --prebuilt --prod --token="${{ secrets.VERCEL_TOKEN }}")"
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "Desplegado en: $url"
+
+      - name: Verificar deployment autenticado
+        run: |
+          set -euo pipefail
+          url="${{ steps.deploy.outputs.url }}"
+          if [ -z "$url" ]; then
+            echo "::error::Vercel no devolvió URL de deployment"
+            exit 1
+          fi
+          # El dominio de producción está protegido por Vercel Authentication y
+          # responde 302 a peticiones anónimas. Verificamos por CLI autenticada
+          # para no confundir la protección SSO con un fallo de despliegue.
+          vercel inspect "$url" --token="${{ secrets.VERCEL_TOKEN }}"
+          echo "Deployment de producción verificado: $url"
