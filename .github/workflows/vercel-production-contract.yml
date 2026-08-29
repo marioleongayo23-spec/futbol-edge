@@ -69,11 +69,13 @@ jobs:
           set -euo pipefail
           curl -fsS --max-time 20 \
             "https://raw.githubusercontent.com/marioleongayo23-spec/futbol-edge/main/football/data/dashboard.json?t=$(date +%s)" \
-            | python - <<'PY'
-          import json, sys
+            -o /tmp/dashboard.json
+          python - <<'PY'
+          import json
           from datetime import datetime, timezone
 
-          d = json.load(sys.stdin)
+          with open('/tmp/dashboard.json', encoding='utf-8') as fh:
+              d = json.load(fh)
           assert d.get('feed_quality', {}).get('valid') is True, 'feed_quality.valid != true'
           assert len(d.get('matches', [])) >= 20, 'Feed sin cobertura mínima de partidos'
           generated = d.get('generated_at')
