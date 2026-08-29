@@ -9,6 +9,10 @@ export const FEED_URL =
 // BASE_URL es "/" en Vercel y "/futbol-edge/" en GitHub Pages.
 const FALLBACK_URL = (import.meta.env?.BASE_URL || "/") + "dashboard.json";
 const WITHHELD_QUALITIES = new Set(["model_only", "statistical_fallback"]);
+// Modelos que NO son un once probable fiable: plantilla actual sin fuente
+// externa (squad-only-v3) y el legacy squad-stats-v1 (construido con estadísticas
+// de temporadas anteriores, arrastraba jugadores que ya no están en el club).
+const WITHHELD_MODELS = new Set(["squad-only-v3", "squad-stats-v1"]);
 const ESTIMATE_QUALITIES = new Set(["fallback_with_media", "media_partial"]);
 const LIVE_REFRESH_MS = 60_000;
 
@@ -73,7 +77,7 @@ export function normalizeFeedForDisplay(data) {
       // la temporada anterior cuando el modelo no encuentra fuentes del partido.
       if (
         normalized.status !== "confirmado"
-        && (normalized.model === "squad-only-v3" || WITHHELD_QUALITIES.has(normalized.source_quality))
+        && (WITHHELD_MODELS.has(normalized.model) || WITHHELD_QUALITIES.has(normalized.source_quality))
       ) {
         normalized.local = [];
         normalized.visitante = [];

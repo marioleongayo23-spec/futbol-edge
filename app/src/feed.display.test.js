@@ -56,6 +56,47 @@ test("no dibuja un once squad-only como probable", () => {
   assert.match(lineup.provider, /sin fuente fiable/i);
 });
 
+test("oculta onces legacy squad-stats-v1 (jugadores de temporadas pasadas)", () => {
+  const feed = normalizeFeedForDisplay({
+    matches: [{
+      id: "m1",
+      alineacion: {
+        model: "squad-stats-v1",
+        status: "estimado",
+        local: Array.from({ length: 11 }, (_, i) => `Viejo ${i}`),
+        visitante: Array.from({ length: 11 }, (_, i) => `Otro ${i}`),
+        posiciones_local: Array(11).fill("MC"),
+        posiciones_visitante: Array(11).fill("MC"),
+      },
+    }],
+  });
+
+  const lineup = feed.matches[0].alineacion;
+  assert.equal(lineup.display_withheld, true);
+  assert.deepEqual(lineup.local, []);
+  assert.deepEqual(lineup.visitante, []);
+});
+
+test("un XI confirmado con modelo legacy NO se oculta (histórico)", () => {
+  const feed = normalizeFeedForDisplay({
+    matches: [{
+      id: "m1",
+      alineacion: {
+        model: "squad-stats-v1",
+        status: "confirmado",
+        local: Array.from({ length: 11 }, (_, i) => `Real ${i}`),
+        visitante: Array.from({ length: 11 }, (_, i) => `Rival ${i}`),
+        posiciones_local: Array(11).fill("MC"),
+        posiciones_visitante: Array(11).fill("MC"),
+      },
+    }],
+  });
+
+  const lineup = feed.matches[0].alineacion;
+  assert.notEqual(lineup.display_withheld, true);
+  assert.equal(lineup.local.length, 11);
+});
+
 
 test("oculta feeds model-only sin evidencia externa", () => {
   const feed = normalizeFeedForDisplay({
