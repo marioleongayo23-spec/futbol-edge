@@ -16,7 +16,7 @@ fi
 changed="$(git diff --name-only HEAD^ HEAD)"
 printf '%s\n' "$changed" | sed 's/^/[vercel] changed: /'
 
-if printf '%s\n' "$changed" | grep -Eq '^(app/|vercel\.json$|scripts/vercel-ignore-build\.sh$|\.nvmrc$)'; then
+if printf '%s\n' "$changed" | grep -Eq '^(app/|vercel\.json$|scripts/vercel-(ignore-build|build)\.sh$|\.nvmrc$)'; then
   echo "[vercel] Cambio relevante para producción: construir"
   exit 1
 fi
