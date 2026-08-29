@@ -7,8 +7,10 @@ name: futbol-edge hot refresh
 on:
   push:
     branches: [main]
-    paths-ignore:
-      - "football/data/dashboard.json"
+    paths:
+      - "football/**"
+      - "!football/data/dashboard.json"
+      - ".github/workflows/futbol-hot-refresh.yml"
   workflow_run:
     workflows: ["futbol-pred (cron)"]
     types: [completed]
