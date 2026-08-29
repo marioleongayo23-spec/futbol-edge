@@ -1,24 +1,31 @@
 name: vercel production contract
 
-# Garantiza que cada cambio real de SPA/configuración termina servido por producción.
-# Durante una contención explícita por cuota, git.deploymentEnabled=false evita
-# consumir más deployments; el contrato sigue validando build y feed sin exigir
-# una promoción que Vercel no puede aceptar todavía.
+# Contrato de producción para cambios de SPA/configuración.
+# La integración Git de Vercel está desactivada para no consumir la cuota Hobby
+# con commits de datos. El despliegue real lo hace deploy-vercel.yml por CLI.
 on:
   push:
     branches: [main]
     paths:
       - "app/**"
       - "vercel.json"
-      - "scripts/vercel-ignore-build.sh"
+      - "scripts/**"
       - ".nvmrc"
+      - ".github/workflows/vercel-production-contract.yml"
+  pull_request:
+    paths:
+      - "app/**"
+      - "vercel.json"
+      - "scripts/**"
+      - ".nvmrc"
+      - ".github/workflows/vercel-production-contract.yml"
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: vercel-production-contract-main
+  group: vercel-production-contract-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -28,23 +35,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Detectar modo de auto-deploy Git
-        id: gitdeploy
-        run: |
-          enabled="$(python - <<'PY'
-          import json
-          cfg = json.load(open('vercel.json', encoding='utf-8'))
-          print('false' if cfg.get('git', {}).get('deploymentEnabled') is False else 'true')
-          PY
-          )"
-          echo "enabled=${enabled}" >> "$GITHUB_OUTPUT"
-          echo "Auto-deploy Git de Vercel: ${enabled}"
-
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
           cache: npm
           cache-dependency-path: app/package-lock.json
+
+      - name: Validar configuración de despliegue
+        run: |
+          python - <<'PY'
+          import json
+          cfg = json.load(open('vercel.json', encoding='utf-8'))
+          assert cfg.get('git', {}).get('deploymentEnabled') is False, 'El auto-deploy Git debe permanecer desactivado para evitar churn de cuota'
+          assert cfg.get('buildCommand') == 'bash scripts/vercel-build.sh'
+          assert cfg.get('outputDirectory') == 'app/dist'
+          print('Configuración de Vercel OK')
+          PY
 
       - name: Validar frontend
         working-directory: app
@@ -54,36 +60,39 @@ jobs:
           npm run lint
           npm run build
 
-      - name: Verificar que Vercel sirve exactamente este commit
-        if: steps.gitdeploy.outputs.enabled == 'true'
-        env:
-          EXPECTED_SHA: ${{ github.sha }}
-        run: |
-          set -euo pipefail
-          echo "Esperando commit de producción: ${EXPECTED_SHA}"
-
-          for attempt in $(seq 1 36); do
-            body="$(curl -fsS --max-time 15 "https://futbol-edge-snowy.vercel.app/build-version.json?t=$(date +%s)" || true)"
-            deployed="$(printf '%s' "$body" | python -c 'import json,sys; raw=sys.stdin.read().strip(); print((json.loads(raw).get("commit") if raw else "") or "")' 2>/dev/null || true)"
-
-            if [ "$deployed" = "$EXPECTED_SHA" ]; then
-              echo "Producción sincronizada con ${EXPECTED_SHA}"
-              exit 0
-            fi
-
-            echo "Intento ${attempt}/36: producción=${deployed:-sin build-version}; esperado=${EXPECTED_SHA}"
-            sleep 10
-          done
-
-          echo "Vercel no promovió a producción el commit esperado"
-          exit 1
-
-      - name: Registrar contención de cuota
-        if: steps.gitdeploy.outputs.enabled == 'false'
-        run: echo "Auto-deploy Git pausado para no seguir consumiendo la cuota Hobby de Vercel."
+      - name: Verificar runtime production-only sin vulnerabilidades altas
+        working-directory: app
+        run: npm audit --omit=dev --audit-level=high
 
       - name: Verificar canal de datos vivo
         run: |
+          set -euo pipefail
           curl -fsS --max-time 20 \
             "https://raw.githubusercontent.com/marioleongayo23-spec/futbol-edge/main/football/data/dashboard.json?t=$(date +%s)" \
-            | python -c 'import json,sys; d=json.load(sys.stdin); assert d.get("feed_quality",{}).get("valid") is True; assert len(d.get("matches",[])) >= 20; print("Feed vivo OK:", d.get("generated_at"))'
+            | python - <<'PY'
+          import json, sys
+          from datetime import datetime, timezone
+
+          d = json.load(sys.stdin)
+          assert d.get('feed_quality', {}).get('valid') is True, 'feed_quality.valid != true'
+          assert len(d.get('matches', [])) >= 20, 'Feed sin cobertura mínima de partidos'
+          generated = d.get('generated_at')
+          assert generated, 'generated_at ausente'
+          ts = datetime.fromisoformat(generated.replace('Z', '+00:00'))
+          age_h = (datetime.now(timezone.utc) - ts.astimezone(timezone.utc)).total_seconds() / 3600
+          assert age_h < 3, f'Feed demasiado antiguo: {age_h:.1f} h'
+          print(f'Feed vivo OK: {generated} · edad={age_h:.2f} h · partidos={len(d.get("matches", []))}')
+          PY
+
+      - name: Verificar alias de producción si responde públicamente
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          code="$(curl -L -sS -o /tmp/build-version.json -w '%{http_code}' --max-time 20 \
+            'https://futbol-edge-porra1.vercel.app/build-version.json?t='"$(date +%s)" || true)"
+          echo "HTTP producción: ${code}"
+          if [ "$code" = "200" ]; then
+            python -c 'import json; d=json.load(open("/tmp/build-version.json")); assert d.get("commit"); print("Producción pública responde build-version:", d.get("commit"))'
+          else
+            echo "Producción protegida/no pública; la verificación fuerte se hace en deploy-vercel.yml con VERCEL_TOKEN."
+          fi
