@@ -2,7 +2,7 @@ name: futbol-pred (cron)
 
 # Pipeline pesado: refresca históricos, calendario, modelos y artefactos globales.
 # El modo partido de 5 min vive en futbol-hot-refresh.yml y reacciona a clima,
-# XI, bajas y cuotas sin repetir ingestas/entrenamientos caros.
+# XI, bajas, plantillas y cuotas sin repetir ingestas/entrenamientos caros.
 # Secrets: FOOTBALL_DATA_API_KEY, API_FOOTBALL_KEY, ODDS_API_KEY, DATABASE_URL.
 
 on:
@@ -11,13 +11,10 @@ on:
     paths-ignore:
       - "football/data/dashboard.json"
   schedule:
-    # Base/modelo: cada 30 min en horario operativo. Minutos desplazados del
-    # inicio de hora para reducir retrasos/drop de schedule bajo carga en GitHub.
     - cron: "13,43 8-23 * * *"
       timezone: "Europe/Madrid"
     - cron: "13,43 0-1 * * *"
       timezone: "Europe/Madrid"
-    # Madrugada: una vez por hora para calendario/backfills.
     - cron: "23 2-7 * * *"
       timezone: "Europe/Madrid"
   workflow_dispatch:
@@ -50,8 +47,6 @@ jobs:
           pip install -r requirements.txt
           pip install -e .
 
-      # Los gates completos se ejecutan al cambiar código. El cron de datos no
-      # necesita repetir toda la suite cada media hora.
       - name: Tests (fail-fast antes de predecir)
         if: github.event_name != 'schedule'
         run: pytest -q
@@ -89,26 +84,39 @@ jobs:
           AI_REFRESH_RUN: ${{ github.event_name == 'schedule' && '1' || '0' }}
           FORCE_AI: ${{ github.event_name == 'workflow_dispatch' && inputs.force_ai && '1' || '0' }}
         run: |
-          # Importante: el generador seguro aplica el último XI oficial ANTES del
-          # guard de calidad. Si una fuente externa regresa temporalmente, conserva
-          # el last-known-good sin convertir esa protección en un Run failed.
+          # 1) Genera la base pesada: históricos, calendario y modelos.
           python -m futbol_pred.dashboard_lineup_safe
 
-          # Sobre el feed ya válido seguimos incorporando información cambiante.
+          # 2) CRÍTICO: antes de publicar, rebase autoritativo de todas las
+          # variables volátiles. El pipeline pesado nunca puede reintroducir una
+          # plantilla antigua ni pisar un XI/clima/prop más fresco.
+          python -m futbol_pred.matchday_confirmation_guard
+          python -m futbol_pred.hot_refresh_metered
+          python -m futbol_pred.matchday_current_squads
+          python -m futbol_pred.matchday_official_last_mile
           python -m futbol_pred.matchday_lineup_baseline
           python -m futbol_pred.matchday_absence_refresh
           python -m futbol_pred.matchday_early_probable_refresh
           python -m futbol_pred.matchday_probable_refresh
           python -m futbol_pred.matchday_lineup_baseline
+          python -m futbol_pred.matchday_current_squads
           python -m futbol_pred.matchday_lineup_integrity
+          python -m futbol_pred.matchday_player_props_fill
+          python -m futbol_pred.matchday_market_refresh
+          python -m futbol_pred.matchday_prediction_refresh
+          python -m futbol_pred.matchday_freshness_gate
           python -m futbol_pred.coverage
+          python -m futbol_pred.matchday_diagnose
+
           python - <<'PY'
           import json
           d = json.load(open("data/dashboard.json", encoding="utf-8"))
           q = d.get("feed_quality", {})
           a = d.get("content_audit", {})
+          s = (d.get("source_health") or {}).get("current_squads") or {}
           print("[feed] calidad:", q.get("score"), "| métricas:", q.get("metrics"))
           print("[coverage]", a.get("status"), "| completos:", a.get("complete"), "/", a.get("matches_today"), "| resumen:", a.get("coverage_summary"))
+          print("[squads]", {k:s.get(k) for k in ("season_context","football_data_leagues_refreshed","stale_players_purged","players_added","lineup_conflicts")})
           PY
 
       - name: Publicar feed actualizado en la rama
@@ -146,7 +154,7 @@ jobs:
               pushed=1
               break
             fi
-            echo "push concurrente, reaplicando feed sobre main (intento $i)…"
+            echo "push concurrente, regenerará de nuevo en el próximo ciclo matchday (intento $i)…"
             sleep $((i * 3))
           done
           [ "$pushed" = 1 ] || { echo "No se pudo publicar el feed tras cinco intentos limpios"; exit 1; }
