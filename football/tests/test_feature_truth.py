@@ -69,3 +69,22 @@ def test_refresh_payload_is_idempotent():
     first = payload["feature_truth_table"]
     assert refresh_payload(payload) is False
     assert payload["feature_truth_table"] == first
+
+
+def test_weather_stamp_compares_naive_madrid_and_aware_values():
+    payload = {
+        "generated_at": "2026-08-28T21:30:00+02:00",
+        "matches": [
+            _match(
+                weather={
+                    "source_updated_at": "2026-08-28T19:15:00+00:00",
+                    "forecast_for": "2026-08-28T21:00:00",
+                }
+            )
+        ],
+    }
+
+    table = build_feature_truth_table(payload)
+    weather = next(row for row in table["features"] if row["feature"] == "weather_forecast")
+
+    assert weather["available_at"] == "2026-08-28T19:15:00+00:00"
