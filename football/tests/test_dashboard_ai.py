@@ -113,3 +113,30 @@ def test_fuera_de_ventana_no_consume_ia_si_falta_once(monkeypatch):
     _attach_lineups([match], now, squads={})
     assert "alineacion" not in match
     assert calls == []
+
+
+def test_descarta_once_legacy_squad_stats_v1(monkeypatch):
+    """Un once cacheado de un modelo legacy (plantilla de temporadas pasadas)
+    se descarta para reconstruirlo; un once oficial confirmado se conserva."""
+    now = datetime(2026, 8, 29, 9, 0, tzinfo=MADRID)
+    monkeypatch.setattr(client, "available", lambda: False)
+
+    legacy = _match(now)
+    legacy["alineacion"] = {
+        "model": "squad-stats-v1", "status": "estimado",
+        "local": [f"Viejo{i}" for i in range(11)], "visitante": [f"V{i}" for i in range(11)],
+    }
+    official = _match(now)
+    official["id"] = "m-2"
+    official["alineacion"] = {
+        "model": "squad-stats-v1", "status": "confirmado",
+        "local": [f"Real{i}" for i in range(11)], "visitante": [f"W{i}" for i in range(11)],
+    }
+
+    _attach_lineups([legacy, official], now, squads={})
+
+    # El once legacy no confirmado se descarta (no arrastra jugadores viejos).
+    assert (legacy.get("alineacion") or {}).get("model") != "squad-stats-v1"
+    # El once oficial confirmado se conserva intacto (histórico para "último XI").
+    assert official["alineacion"]["status"] == "confirmado"
+    assert official["alineacion"]["local"][0] == "Real0"

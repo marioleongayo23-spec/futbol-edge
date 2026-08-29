@@ -643,6 +643,11 @@ def _attach_previews(
             }
 
 
+# Modelos de once que produjeron versiones antiguas del pipeline y que ya no
+# son fiables (plantillas de temporadas pasadas). Se reconstruyen desde cero.
+_LEGACY_LINEUP_MODELS = {"squad-stats-v1"}
+
+
 def _attach_lineups(
     matches: list[dict],
     now: datetime,
@@ -658,6 +663,16 @@ def _attach_lineups(
         from .ingest.lineups_ai import build_statistical_lineup, ensure_position_metadata, fetch_lineups
     except Exception:
         return
+
+    # Invalida onces de modelos legacy que el código actual ya no genera (p. ej.
+    # "squad-stats-v1", construido con estadísticas de temporadas anteriores y que
+    # arrastraba jugadores que ya no están en el club). Se descartan para que se
+    # reconstruyan más abajo desde la PLANTILLA ACTUAL. Nunca se descarta un once
+    # oficial confirmado: es histórico valioso para el "último XI oficial".
+    for match in matches:
+        lineup = match.get("alineacion")
+        if lineup and lineup.get("model") in _LEGACY_LINEUP_MODELS and lineup.get("status") != "confirmado":
+            match["alineacion"] = None
 
     # Migra onces cacheados del formato anterior. Se muestran completos desde ya,
     # pero se refrescan con posiciones reales en la siguiente pasada IA.
