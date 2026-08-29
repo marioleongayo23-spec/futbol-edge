@@ -7,6 +7,7 @@ import OfficialStatsPanel from "./OfficialStatsPanel";
 import WeatherAdjustmentPanel from "./WeatherAdjustmentPanel";
 import { teamSquad } from "./teams";
 import PredictionTimelinePanel from "./PredictionTimelinePanel";
+import { hasAccess } from "./plans";
 
 function Teams({ m, onTeam }) {
   return (
@@ -256,7 +257,7 @@ function Availability({ title, rows, legacy }) {
 }
 
 /* Once probable sobre el campo + bajas + jugadores clave con props (IA). */
-function Alineacion({ m, a }) {
+function Alineacion({ m, a, canProps = true, onUpgrade }) {
   const provider = a.provider || a.fuente || "IA";
   const completeness = a.quality?.score != null ? ` · completitud ${Math.round(a.quality.score * 100)}%` : "";
   const status = a.status || (provider === "Motor estadístico local" ? "estimado" : "probable");
@@ -289,15 +290,21 @@ function Alineacion({ m, a }) {
           <Availability title={`Disponibilidad ${m.away}`} rows={a.disponibilidad_visitante} legacy={a.bajas_visitante} />
         </div>
       )}
-      {(a.best_props || []).length > 0 && (
-        <div className="chips" style={{ marginTop: 10 }}>
-          {(a.best_props || []).map((item) => <span className="chip" key={`${item.lado}-${item.jugador}`} title="Ventaja estadística interna; no incluye cuota de casa">★ {item.jugador} · {item.motivo}</span>)}
-        </div>
-      )}
-      {((a.clave_local || []).length > 0 || (a.clave_visitante || []).length > 0) ? <div className="xi-grid" style={{ marginTop: 10 }}>
-        <PropsTable title={m.home} clave={a.clave_local} best={a.best_props} />
-        <PropsTable title={m.away} clave={a.clave_visitante} best={a.best_props} />
-      </div> : <div className="note" style={{ marginTop: 10 }}>Props numéricos: sin datos reales suficientes. La IA no rellena estimaciones individuales.</div>}
+      {!canProps ? (
+        <button type="button" className="props-locked" onClick={onUpgrade}>
+          🔒 Player props (goles, tiros, tarjetas por jugador) · función <b>Pro</b> — pulsa para desbloquear
+        </button>
+      ) : <>
+        {(a.best_props || []).length > 0 && (
+          <div className="chips" style={{ marginTop: 10 }}>
+            {(a.best_props || []).map((item) => <span className="chip" key={`${item.lado}-${item.jugador}`} title="Ventaja estadística interna; no incluye cuota de casa">★ {item.jugador} · {item.motivo}</span>)}
+          </div>
+        )}
+        {((a.clave_local || []).length > 0 || (a.clave_visitante || []).length > 0) ? <div className="xi-grid" style={{ marginTop: 10 }}>
+          <PropsTable title={m.home} clave={a.clave_local} best={a.best_props} />
+          <PropsTable title={m.away} clave={a.clave_visitante} best={a.best_props} />
+        </div> : <div className="note" style={{ marginTop: 10 }}>Props numéricos: sin datos reales suficientes. La IA no rellena estimaciones individuales.</div>}
+      </>}
       <p className="note" style={{ color: "var(--muted)", marginTop: 6 }}>
         {isOfficial ? "Once oficial" : "Estimación"} · fuente {provider}{updated ? ` · actualizada ${new Date(updated).toLocaleString("es-ES")}` : ""}{completeness}. Props: MIN minutos · TIT prob. de inicio · G goles · A asist. · R remates · AP a puerta · FC/FR faltas · T tarjetas. {!isOfficial && "La alineación todavía no es oficial; verifica antes de apostar."}
       </p>
@@ -380,7 +387,8 @@ function TrendArrow({ t }) {
   );
 }
 
-export default function MatchDetail({ m, bankroll, onBack, onTeam, players }) {
+export default function MatchDetail({ m, bankroll, onBack, onTeam, players, plan = "vip", onUpgrade }) {
+  const canProps = hasAccess(plan, "props");
   const [ouL, setOuL] = useState(2.5);
   const [hcL, setHcL] = useState(-0.5);
   const [vSel, setVSel] = useState("1");
@@ -519,7 +527,7 @@ export default function MatchDetail({ m, bankroll, onBack, onTeam, players }) {
       <WeatherAdjustmentPanel adjustment={m.weather_adjustment} />
       <OfficialStatsPanel match={m} />
 
-      {m.alineacion && <div className="section-anchor" id="match-lineup"><Alineacion m={m} a={m.alineacion} /></div>}
+      {m.alineacion && <div className="section-anchor" id="match-lineup"><Alineacion m={m} a={m.alineacion} canProps={canProps} onUpgrade={onUpgrade} /></div>}
       <LineupImpact impact={m.lineup_impact} home={m.home} away={m.away} />
 
       {(players || m.alineacion) && (() => {
