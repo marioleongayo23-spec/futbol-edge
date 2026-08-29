@@ -1,0 +1,72 @@
+name: vercel production contract
+
+# Garantiza que cada cambio real de SPA/configuración termina servido por producción.
+# Los commits puramente de football/data/dashboard.json siguen el canal de feed vivo
+# y no necesitan un rebuild de Vercel.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "app/**"
+      - "vercel.json"
+      - "scripts/vercel-ignore-build.sh"
+      - ".nvmrc"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vercel-production-contract-main
+  cancel-in-progress: true
+
+jobs:
+  build-and-verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - name: Validar frontend antes de esperar producción
+        working-directory: app
+        run: |
+          npm ci
+          npm test
+          npm run lint
+          npm run build
+
+      - name: Verificar que Vercel sirve exactamente este commit
+        env:
+          EXPECTED_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          echo "Esperando commit de producción: ${EXPECTED_SHA}"
+
+          for attempt in $(seq 1 36); do
+            body="$(curl -fsS --max-time 15 "https://futbol-edge-snowy.vercel.app/build-version.json?t=$(date +%s)" || true)"
+            deployed="$(printf '%s' "$body" | python -c 'import json,sys; raw=sys.stdin.read().strip(); print((json.loads(raw).get("commit") if raw else "") or "")' 2>/dev/null || true)"
+
+            if [ "$deployed" = "$EXPECTED_SHA" ]; then
+              echo "Producción sincronizada con ${EXPECTED_SHA}"
+              exit 0
+            fi
+
+            echo "Intento ${attempt}/36: producción=${deployed:-sin build-version}; esperado=${EXPECTED_SHA}"
+            sleep 10
+          done
+
+          echo "Vercel no promovió a producción el commit esperado"
+          exit 1
+
+      - name: Verificar canal de datos vivo
+        if: success()
+        run: |
+          curl -fsS --max-time 20 \
+            "https://raw.githubusercontent.com/marioleongayo23-spec/futbol-edge/main/football/data/dashboard.json?t=$(date +%s)" \
+            | python -c 'import json,sys; d=json.load(sys.stdin); assert d.get("feed_quality",{}).get("valid") is True; assert len(d.get("matches",[])) >= 20; print("Feed vivo OK:", d.get("generated_at"))'
