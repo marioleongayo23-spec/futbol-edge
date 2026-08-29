@@ -4,12 +4,15 @@ on:
   schedule:
     - cron: "17 * * * *"
   workflow_dispatch: {}
+  pull_request:
+    paths:
+      - ".github/workflows/production-health.yml"
 
 permissions:
   contents: read
 
 concurrency:
-  group: production-health
+  group: production-health-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
