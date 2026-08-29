@@ -87,41 +87,49 @@ jobs:
               # 2) Estado, XI oficial y meteo con batching/cuota dinámica.
               PYTHONPATH=football/src python -m futbol_pred.hot_refresh_metered
 
-              # 3) Última milla: si el XI llega muy tarde seguimos buscándolo.
+              # 3) Plantillas registradas ACTUALES. Purga jugadores de campañas
+              #    anteriores y bloquea XI no oficiales con futbolistas fuera del club.
+              PYTHONPATH=football/src python -m futbol_pred.matchday_current_squads
+
+              # 4) Última milla: si el XI llega muy tarde seguimos buscándolo.
               PYTHONPATH=football/src python -m futbol_pred.matchday_official_last_mile
 
-              # 4) Base universal: último XI oficial mientras no haya probable fiable.
+              # 5) Base universal: último XI oficial mientras no haya probable fiable.
               PYTHONPATH=football/src python -m futbol_pred.matchday_lineup_baseline
 
-              # 5) Lesiones/sanciones desde T-24h con cadencia adaptativa.
+              # 6) Lesiones/sanciones desde T-24h con cadencia adaptativa.
               PYTHONPATH=football/src python -m futbol_pred.matchday_absence_refresh
 
-              # 6) T-24h..T-2h: recolector incremental de probables.
+              # 7) T-24h..T-2h: recolector incremental de probables.
               PYTHONPATH=football/src python -m futbol_pred.matchday_early_probable_refresh
 
-              # 7) T-2h: prensa reciente + continuidad oficial + muestra real.
+              # 8) T-2h: prensa reciente + continuidad oficial + muestra real.
               PYTHONPATH=football/src python -m futbol_pred.matchday_probable_refresh
 
-              # 8) Reconciliación universal: model-only vuelve al último XI oficial;
+              # 9) Reconciliación universal: model-only vuelve al último XI oficial;
               #    evidencia parcial crea híbrido y grounded/oficial prevalece.
               PYTHONPATH=football/src python -m futbol_pred.matchday_lineup_baseline
 
-              # 9) Barrera final: ningún XI no oficial puede contener una baja segura.
+              # 10) Vuelve a validar el XI generado contra la plantilla actual.
+              #     No publica un probable con un jugador que ya no pertenece al club.
+              PYTHONPATH=football/src python -m futbol_pred.matchday_current_squads
+
+              # 11) Barrera final: ningún XI no oficial puede contener una baja segura.
               PYTHONPATH=football/src python -m futbol_pred.matchday_lineup_integrity
 
-              # 10) Cobertura de predicciones individuales sobre el XI vigente.
+              # 12) Cobertura de predicciones individuales sobre el XI vigente.
               PYTHONPATH=football/src python -m futbol_pred.matchday_player_props_fill
 
-              # 11) Cuotas con TTL dinámico según proximidad y créditos.
+              # 13) Cuotas con TTL dinámico según proximidad y créditos.
               PYTHONPATH=football/src python -m futbol_pred.matchday_market_refresh
 
-              # 12) Reacción predictiva inmediata a clima/XI/bajas/mercado.
+              # 14) Reacción predictiva inmediata a clima/XI/bajas/mercado.
               PYTHONPATH=football/src python -m futbol_pred.matchday_prediction_refresh
 
-              # 13) Certifica autoridad/frescura y bloquea apuestas si no está ready.
+              # 15) Certifica autoridad/frescura y bloquea apuestas si no está ready.
               PYTHONPATH=football/src python -m futbol_pred.matchday_freshness_gate
 
-              # 14) Matriz de cobertura/frescura visible.
+              # 16) Matriz de cobertura/frescura visible.
               PYTHONPATH=football/src python -m futbol_pred.coverage
 
               PYTHONPATH=football/src python -m futbol_pred.matchday_diagnose
