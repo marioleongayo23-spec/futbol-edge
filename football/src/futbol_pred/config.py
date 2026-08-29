@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 
 # Carga .env si existe (dependencia opcional).
@@ -40,6 +41,12 @@ LEAGUE_META = {
 }
 
 
+def _current_season_start(now: datetime | None = None) -> int:
+    """Año de inicio de la temporada europea actual (2026 para 2026/27)."""
+    now = now or datetime.now(timezone.utc)
+    return now.year if now.month >= 7 else now.year - 1
+
+
 @dataclass
 class Settings:
     api_football_key: str | None = os.getenv("API_FOOTBALL_KEY")
@@ -48,7 +55,9 @@ class Settings:
     database_url: str = os.getenv(
         "DATABASE_URL", f"sqlite:///{DATA_DIR / 'futbol.db'}"
     )
-    season: int = int(os.getenv("SEASON", "2025"))
+    # Nunca dejamos una temporada histórica hardcodeada. SEASON sigue siendo
+    # override explícito para backtests/reprocesados; producción usa la actual.
+    season: int = int(os.getenv("SEASON", str(_current_season_start())))
     bankroll: float = float(os.getenv("BANKROLL", "1000"))
     min_edge: float = float(os.getenv("MIN_EDGE", "0.03"))
     kelly_multiplier: float = float(os.getenv("KELLY_MULTIPLIER", "0.25"))
