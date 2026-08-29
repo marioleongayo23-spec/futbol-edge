@@ -93,7 +93,7 @@ export function normalizeFeedForDisplay(data) {
           ? "Plantilla real · sin fuente fiable de once probable"
           : "Sin fuente externa reciente · XI oculto";
         normalized.display_withheld = true;
-        normalized.display_warning = "No hay una fuente externa reciente suficiente para mostrar un once probable fiable.";
+        normalized.display_warning = "Aún no hay un once fiable de este partido. Para no inventar jugadores, el XI probable se mostrará cuando aparezca el último once oficial o la alineación confirmada (habitualmente ~1 h antes del partido).";
       } else if (normalized.status !== "confirmado" && ESTIMATE_QUALITIES.has(normalized.source_quality)) {
         // Con evidencia parcial puede mostrarse como estimación, nunca como probable.
         normalized.status = "estimado";
