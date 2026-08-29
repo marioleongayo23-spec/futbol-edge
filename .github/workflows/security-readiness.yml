@@ -1,0 +1,103 @@
+name: Security and release readiness
+
+on:
+  pull_request:
+    paths:
+      - "app/**"
+      - "football/**"
+      - "scripts/**"
+      - "vercel.json"
+      - ".github/workflows/**"
+  push:
+    branches: [main]
+    paths-ignore:
+      - "football/data/**"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  frontend-security:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - name: Instalar dependencias
+        working-directory: app
+        run: npm ci
+      - name: Gate de vulnerabilidades runtime
+        working-directory: app
+        run: npm audit --omit=dev --audit-level=high
+      - name: Auditoría completa informativa
+        working-directory: app
+        continue-on-error: true
+        run: npm audit --audit-level=high
+      - name: Tests, lint y build
+        working-directory: app
+        run: npm test && npm run lint && npm run build
+
+  backend-security:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: football
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: football/requirements.txt
+      - name: Instalar backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -e .
+      - name: Validar dependencias instaladas
+        run: pip check
+      - name: Ejecutar suite backend
+        run: pytest -q
+
+  repository-safety:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Buscar secretos evidentes versionados
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Excluye ejemplos/documentación y datos generados. Buscamos patrones de
+          # asignación con valores largos que suelen indicar una credencial real.
+          if grep -RInE \
+            --exclude='*.example' \
+            --exclude='*.md' \
+            --exclude='dashboard.json' \
+            --exclude-dir='.git' \
+            --exclude-dir='node_modules' \
+            '(API_KEY|TOKEN|SECRET|PASSWORD)[A-Z0-9_]*[[:space:]]*[:=][[:space:]]*["'"''][A-Za-z0-9_./+=-]{20,}["'"'']' \
+            app football scripts .github; then
+            echo '::error::Posible secreto versionado detectado'
+            exit 1
+          fi
+          echo 'Sin secretos evidentes versionados'
+
+      - name: Validar política de despliegue
+        run: |
+          python - <<'PY'
+          import json
+          cfg = json.load(open('vercel.json', encoding='utf-8'))
+          assert cfg.get('git', {}).get('deploymentEnabled') is False
+          assert cfg.get('buildCommand') == 'bash scripts/vercel-build.sh'
+          assert cfg.get('installCommand') == 'cd app && npm ci'
+          print('Política de despliegue OK')
+          PY
