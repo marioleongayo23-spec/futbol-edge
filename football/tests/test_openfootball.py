@@ -37,6 +37,23 @@ def test_parse_partido_jugado_y_pendiente():
     assert pendiente.matchday == 2
 
 
+def test_parse_score_top_level_como_lista():
+    data = {
+        "matches": [{
+            "round": "3. Round",
+            "date": "2026-08-29",
+            "team1": "Racing Santander",
+            "team2": "Cádiz",
+            "score": [2, 1],
+        }]
+    }
+    fx = OpenFootballClient.parse(data, "segunda", 2026)
+    assert len(fx) == 1
+    assert fx[0].home_goals == 2
+    assert fx[0].away_goals == 1
+    assert fx[0].status == "FINISHED"
+
+
 def test_kickoff_es_tz_aware():
     fx = OpenFootballClient.parse(_FAKE, "segunda", 2025)
     assert fx[0].kickoff.tzinfo is not None
