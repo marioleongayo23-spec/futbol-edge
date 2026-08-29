@@ -425,3 +425,64 @@ code{background:var(--card2);border:1px solid var(--line);border-radius:5px;padd
 .player .dot{width:20px;height:20px;border-radius:50%;border:2px solid rgba(255,255,255,.85);box-shadow:0 2px 5px rgba(0,0,0,.4)}
 .player .pn{font-size:.66rem;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.8);text-align:center;line-height:1.1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:76px}
 .player .pp{font-size:.52rem;font-weight:800;line-height:1;color:rgba(255,255,255,.68);text-shadow:0 1px 2px rgba(0,0,0,.7)}
+
+/* ---------- Monetización: badge de plan, candados, paywall, precios ---------- */
+.plan-badge{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:999px;font-size:.6rem;font-weight:800;
+  letter-spacing:.03em;color:#04110b;vertical-align:middle;text-transform:uppercase}
+.link-button.up{color:var(--amber);font-weight:700}
+.snav-item{position:relative}
+.snav-lock{margin-left:auto;font-size:.72rem;opacity:.8}
+.snav-plans{color:var(--amber)}
+
+/* Bloqueo dentro del detalle de partido */
+.props-locked{width:100%;margin-top:10px;text-align:left;cursor:pointer;
+  background:linear-gradient(90deg,rgba(90,162,255,.12),transparent);
+  border:1px dashed color-mix(in srgb,var(--blue) 55%,var(--line));border-radius:12px;
+  padding:12px 14px;color:var(--tx);font-size:.82rem}
+.props-locked:hover{border-color:var(--blue)}
+
+/* Paywall (pantalla completa de una feature bloqueada) */
+.paywall{display:flex;justify-content:center;padding:24px 0}
+.paywall-card{max-width:420px;width:100%;text-align:center;background:var(--card);
+  border:1px solid var(--line);border-radius:20px;padding:30px 26px;box-shadow:0 12px 36px rgba(0,0,0,.3)}
+.paywall-lock{font-size:2.4rem;line-height:1}
+.paywall-badge{display:inline-block;margin:12px 0 6px;padding:3px 12px;border-radius:999px;
+  font-size:.66rem;font-weight:800;color:#04110b;text-transform:uppercase;letter-spacing:.04em}
+.paywall-why{color:var(--muted);font-size:.9rem;line-height:1.5;margin:10px 0 18px}
+.paywall-price{font-size:2rem;font-weight:800}
+.paywall-price span{font-size:.9rem;font-weight:600;color:var(--muted);margin-left:3px}
+.btn-upgrade{margin-top:16px;width:100%;color:#04110b;font-weight:800;border:none;border-radius:12px;
+  padding:13px;font-size:.95rem;cursor:pointer}
+.btn-upgrade:hover{filter:brightness(1.08)}
+.paywall-foot{margin-top:14px;font-size:.72rem;color:var(--muted)}
+
+/* Página de precios */
+.pricing{max-width:1000px;margin:0 auto}
+.pr-head{text-align:center;margin:6px 0 22px}
+.pr-head h2{margin:0 0 6px;font-size:1.6rem}
+.pr-head p{color:var(--muted);margin:0 0 16px}
+.pr-toggle{display:inline-flex;background:var(--card2);border:1px solid var(--line);border-radius:999px;padding:3px}
+.pr-toggle button{border:none;background:none;border-radius:999px;padding:7px 16px;font-size:.82rem;font-weight:700;color:var(--muted);cursor:pointer}
+.pr-toggle button.on{background:var(--green);color:#04110b}
+.pr-save{font-size:.66rem;background:rgba(255,255,255,.2);border-radius:999px;padding:1px 6px;margin-left:4px}
+.pr-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.pr-card{position:relative;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:22px 20px;display:flex;flex-direction:column}
+.pr-card.feat{border-color:var(--blue);box-shadow:0 12px 30px rgba(90,162,255,.18)}
+.pr-card.current{outline:2px solid var(--green);outline-offset:-2px}
+.pr-tag{position:absolute;top:-11px;left:50%;transform:translateX(-50%);background:var(--blue);color:#04110b;
+  font-size:.62rem;font-weight:800;padding:3px 12px;border-radius:999px;text-transform:uppercase;letter-spacing:.04em}
+.pr-name{font-size:1.15rem;font-weight:800}
+.pr-tagline{color:var(--muted);font-size:.8rem;margin-bottom:12px}
+.pr-price{font-size:2rem;font-weight:800}
+.pr-price span{font-size:.85rem;font-weight:600;color:var(--muted);margin-left:2px}
+.pr-permonth{font-size:.72rem;color:var(--muted);margin-top:2px}
+.pr-feats{list-style:none;padding:0;margin:16px 0;flex:1;display:flex;flex-direction:column;gap:9px}
+.pr-feats li{font-size:.84rem;padding-left:22px;position:relative;line-height:1.35}
+.pr-feats li::before{content:"✓";position:absolute;left:0;color:var(--green);font-weight:800}
+.pr-btn{border:none;border-radius:12px;padding:12px;font-size:.9rem;font-weight:800;color:#04110b;cursor:pointer;margin-top:auto}
+.pr-btn:hover{filter:brightness(1.08)}
+.pr-btn.ghost{background:var(--card2);color:var(--tx);border:1px solid var(--line)}
+.pr-btn.cur{background:none;color:var(--green);border:1px dashed var(--greenD);cursor:default}
+.pr-btn:disabled{opacity:.6;cursor:default}
+.pr-legal{text-align:center;color:var(--dim);font-size:.72rem;margin-top:20px;line-height:1.5}
+@media (max-width:720px){.pr-grid{grid-template-columns:1fr}}

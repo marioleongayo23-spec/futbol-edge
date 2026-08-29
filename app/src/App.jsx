@@ -12,7 +12,10 @@ import ClvPanel from "./ClvPanel";
 import GlobalValuePanel from "./GlobalValuePanel";
 import HistoricalQualityPanel from "./HistoricalQualityPanel";
 import AccuracyMatchDetails from "./AccuracyMatchDetails";
-import { authEnabled, signOut, useSession } from "./supabase";
+import { authEnabled, sendMagicLink, signOut, useSession } from "./supabase";
+import { PLANS, hasAccess, resolvePlan } from "./plans";
+import Paywall from "./Paywall";
+import Pricing from "./Pricing";
 
 function savedLightTheme() {
   try { return localStorage.getItem("theme") === "light"; } catch { return false; }
@@ -1011,8 +1014,11 @@ function TeamPage({ team, matches, players, onBack, onOpen, onPlayer, isFav, onF
 const NAV = [
   ["resumen", "Resumen"], ["partidos", "Partidos"], ["clasificacion", "Clasificación"],
   ["value", "Value bets"], ["cartera", "Mi cartera"], ["quiniela", "Quiniela"],
-  ["jugadores", "Jugadores"], ["datos", "Datos y modelos"],
+  ["jugadores", "Jugadores"], ["datos", "Datos y modelos"], ["planes", "Planes"],
 ];
+
+// Vista → feature que la desbloquea (las no listadas son gratuitas).
+const VIEW_FEATURE = { value: "value", cartera: "cartera", quiniela: "quiniela", datos: "datos" };
 
 export default function App() {
   const { session } = useSession();
@@ -1038,6 +1044,16 @@ export default function App() {
   const onFav = (name) => setFavs(new Set(toggleFav(name)));
   const goto = (v) => { setView(v); setSel(null); setTeamSel(null); setPlayerSel(null); setMenuOpen(false); window.scrollTo(0, 0); };
   const userName = session?.user?.email?.split("@")[0] || "Mario León";
+  const plan = resolvePlan(session);
+  const planInfo = PLANS[plan] || PLANS.free;
+  const login = async () => {
+    const email = window.prompt("Introduce tu email para recibir el enlace de acceso:");
+    if (!email) return;
+    try { await sendMagicLink(email.trim()); window.alert("Te hemos enviado un enlace de acceso. Revisa tu correo."); }
+    catch { window.alert("No se pudo enviar el enlace. Inténtalo de nuevo."); }
+  };
+  const viewFeature = VIEW_FEATURE[view];
+  const gated = viewFeature && !hasAccess(plan, viewFeature);
 
   return (
     <div className={"layout" + (menuOpen ? " open" : "")}>
@@ -1047,11 +1063,15 @@ export default function App() {
           <div><div className="bname">Fútbol Edge</div><div className="btag">PRIVATE INTELLIGENCE</div></div>
         </div>
         <nav className="snav">
-          {NAV.map(([k, l]) => (
-            <button type="button" key={k} className={"snav-item" + (view === k && !sel ? " on" : "")} onClick={() => goto(k)}>
-              <Icon name={k === "clasificacion" ? "clasificacion" : k === "value" ? "value" : k} /> <span>{l}</span>
-            </button>
-          ))}
+          {NAV.map(([k, l]) => {
+            const locked = VIEW_FEATURE[k] && !hasAccess(plan, VIEW_FEATURE[k]);
+            return (
+              <button type="button" key={k} className={"snav-item" + (view === k && !sel ? " on" : "") + (k === "planes" ? " snav-plans" : "")} onClick={() => goto(k)}>
+                <Icon name={k === "clasificacion" ? "clasificacion" : k === "value" ? "value" : k} /> <span>{l}</span>
+                {locked && <span className="snav-lock" aria-label="Requiere plan superior">🔒</span>}
+              </button>
+            );
+          })}
         </nav>
         <div className="side-foot">
           <div className="cal-card">
@@ -1061,7 +1081,17 @@ export default function App() {
           </div>
           <div className="user">
             <div className="avatar">{userName.slice(0, 2).toUpperCase()}</div>
-            <div><div className="uname">{userName}</div><div className="usub">Acceso {authEnabled ? "privado" : "abierto"} · {authEnabled ? <button type="button" className="link-button" onClick={signOut}>salir</button> : "demo"}</div></div>
+            <div>
+              <div className="uname">{userName} <span className="plan-badge" style={{ background: planInfo.accent }}>{planInfo.name}</span></div>
+              <div className="usub">
+                {authEnabled && !session
+                  ? <button type="button" className="link-button" onClick={login}>iniciar sesión</button>
+                  : plan === "vip"
+                    ? <button type="button" className="link-button" onClick={() => goto("planes")}>gestionar plan</button>
+                    : <button type="button" className="link-button up" onClick={() => goto("planes")}>mejorar plan ↑</button>}
+                {authEnabled && session ? <> · <button type="button" className="link-button" onClick={signOut}>salir</button></> : null}
+              </div>
+            </div>
           </div>
         </div>
       </aside>
@@ -1087,21 +1117,23 @@ export default function App() {
 
           {data && playerSel && <PlayerProfile candidate={playerSel} players={data.players} matches={matches} onBack={() => setPlayerSel(null)} onTeam={openTeam} />}
 
-          {data && !playerSel && sel && <MatchDetail m={sel} bankroll={bank} onBack={() => setSel(null)} onTeam={openTeam} players={data.players} />}
+          {data && !playerSel && sel && <MatchDetail m={sel} bankroll={bank} onBack={() => setSel(null)} onTeam={openTeam} players={data.players} plan={plan} onUpgrade={() => { setSel(null); goto("planes"); }} />}
 
           {data && !playerSel && !sel && teamSel && <TeamPage team={teamSel} matches={matches} players={data.players} onBack={() => setTeamSel(null)} onOpen={open} onPlayer={openPlayer} isFav={favs.has(teamSel)} onFav={onFav} />}
 
           {data && !playerSel && !sel && !teamSel && (
             <>
               <h1 className="view-title">{(NAV.find(([k]) => k === view) || [null, "Resumen"])[1]}</h1>
-              {view === "resumen" && <Resumen data={data} matches={matches} q={q} onOpen={open} goto={goto} favs={favs} onTeam={openTeam} />}
-              {view === "clasificacion" && <Clasificacion matches={matches} onTeam={openTeam} />}
-              {view === "partidos" && <Mercados matches={matches} q={q} onOpen={open} />}
-              {view === "jugadores" && <Jugadores players={data.players} onPlayer={openPlayer} />}
-              {view === "value" && <ValueBets matches={matches} bank={bank} setBank={setBank} globalValue={data.value_ranking} />}
-              {view === "cartera" && <Cartera matches={matches} />}
-              {view === "quiniela" && <Quiniela matches={matches} quiniela={data.quiniela} tri={tri} dob={dob} setTri={setTri} setDob={setDob} />}
-              {view === "datos" && <Datos data={data} />}
+              {view === "planes" && <Pricing current={plan} session={session} authEnabled={authEnabled} onLogin={login} />}
+              {gated && <Paywall feature={viewFeature} plan={plan} onUpgrade={() => goto("planes")} />}
+              {!gated && view === "resumen" && <Resumen data={data} matches={matches} q={q} onOpen={open} goto={goto} favs={favs} onTeam={openTeam} />}
+              {!gated && view === "clasificacion" && <Clasificacion matches={matches} onTeam={openTeam} />}
+              {!gated && view === "partidos" && <Mercados matches={matches} q={q} onOpen={open} />}
+              {!gated && view === "jugadores" && <Jugadores players={data.players} onPlayer={openPlayer} />}
+              {!gated && view === "value" && <ValueBets matches={matches} bank={bank} setBank={setBank} globalValue={data.value_ranking} />}
+              {!gated && view === "cartera" && <Cartera matches={matches} />}
+              {!gated && view === "quiniela" && <Quiniela matches={matches} quiniela={data.quiniela} tri={tri} dob={dob} setTri={setTri} setDob={setDob} />}
+              {!gated && view === "datos" && <Datos data={data} />}
             </>
           )}
         </main>
