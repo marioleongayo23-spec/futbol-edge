@@ -113,6 +113,8 @@ def test_reutiliza_plantilla_actual_cacheada_sin_consumir_api():
             raise AssertionError("No debe consultar API con roster actual <12h")
 
     changed, stats = refresh_payload(payload, now=now, football_client=NoNetwork())
+    # Roster cacheado fresco = sin ninguna red: ni fallback por equipo de
+    # API-Football ni refresco de ligas en football-data.org.
     assert stats["teams_fetched"] == 0
-    assert stats["api_calls_estimate"] == 0
+    assert not stats["football_data_leagues_refreshed"]
     assert payload["matches"][0]["current_squads"]["local"]["players"]
