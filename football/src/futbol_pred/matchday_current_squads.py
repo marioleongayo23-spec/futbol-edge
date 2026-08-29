@@ -376,6 +376,10 @@ def refresh_payload(
         "roster_ttl_hours": ROSTER_TTL_HOURS,
         "target_matches": len(targets),
         "football_data_leagues_refreshed": fd_refreshed,
+        # Contrato histórico de observabilidad: consumidores/tests antiguos usan
+        # teams_fetched para saber cuántos equipos requirieron llamadas de fallback.
+        # Se conserva como alias explícito del contador más preciso actual.
+        "teams_fetched": api_fetched,
         "api_fallback_teams_fetched": api_fetched,
         "stale_players_purged": purged,
         "players_added": added,
