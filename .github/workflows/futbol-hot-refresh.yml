@@ -25,8 +25,10 @@ permissions:
   contents: write
   actions: write
 
+# Grupo v2: deja arrancar ya la versión con plantillas 2026/27 aunque quede
+# terminando un heartbeat antiguo del grupo anterior.
 concurrency:
-  group: futbol-edge-hot-refresh
+  group: futbol-edge-hot-refresh-current-squads-v2
   cancel-in-progress: false
 
 jobs:
@@ -48,6 +50,7 @@ jobs:
 
       - name: Refresco autoritativo de matchday y publicación
         env:
+          FOOTBALL_DATA_API_KEY: ${{ secrets.FOOTBALL_DATA_API_KEY }}
           API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
           ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
           AI_API_KEY: ${{ secrets.AI_API_KEY }}
@@ -87,8 +90,8 @@ jobs:
               # 2) Estado, XI oficial y meteo con batching/cuota dinámica.
               PYTHONPATH=football/src python -m futbol_pred.hot_refresh_metered
 
-              # 3) Plantillas registradas ACTUALES. Purga jugadores de campañas
-              #    anteriores y bloquea XI no oficiales con futbolistas fuera del club.
+              # 3) Plantillas ACTUALES 2026/27. LaLiga/Segunda se sanean desde
+              #    football-data; API-Football queda como fallback de próximos.
               PYTHONPATH=football/src python -m futbol_pred.matchday_current_squads
 
               # 4) Última milla: si el XI llega muy tarde seguimos buscándolo.
@@ -106,18 +109,16 @@ jobs:
               # 8) T-2h: prensa reciente + continuidad oficial + muestra real.
               PYTHONPATH=football/src python -m futbol_pred.matchday_probable_refresh
 
-              # 9) Reconciliación universal: model-only vuelve al último XI oficial;
-              #    evidencia parcial crea híbrido y grounded/oficial prevalece.
+              # 9) Reconciliación universal.
               PYTHONPATH=football/src python -m futbol_pred.matchday_lineup_baseline
 
-              # 10) Vuelve a validar el XI generado contra la plantilla actual.
-              #     No publica un probable con un jugador que ya no pertenece al club.
+              # 10) Revalida el XI final contra la plantilla actual.
               PYTHONPATH=football/src python -m futbol_pred.matchday_current_squads
 
               # 11) Barrera final: ningún XI no oficial puede contener una baja segura.
               PYTHONPATH=football/src python -m futbol_pred.matchday_lineup_integrity
 
-              # 12) Cobertura de predicciones individuales sobre el XI vigente.
+              # 12) Predicciones individuales sobre el XI vigente.
               PYTHONPATH=football/src python -m futbol_pred.matchday_player_props_fill
 
               # 13) Cuotas con TTL dinámico según proximidad y créditos.
@@ -126,12 +127,11 @@ jobs:
               # 14) Reacción predictiva inmediata a clima/XI/bajas/mercado.
               PYTHONPATH=football/src python -m futbol_pred.matchday_prediction_refresh
 
-              # 15) Certifica autoridad/frescura y bloquea apuestas si no está ready.
+              # 15) Gate de autoridad/frescura.
               PYTHONPATH=football/src python -m futbol_pred.matchday_freshness_gate
 
               # 16) Matriz de cobertura/frescura visible.
               PYTHONPATH=football/src python -m futbol_pred.coverage
-
               PYTHONPATH=football/src python -m futbol_pred.matchday_diagnose
 
               if git diff --quiet -- football/data/dashboard.json; then
@@ -165,8 +165,6 @@ jobs:
           hour=$(TZ=Europe/Madrid date +%H)
           hour=$((10#$hour))
 
-          # Ventana operativa: 08:00-01:59 Madrid. Fuera de ella paramos la cadena;
-          # el watchdog del día siguiente la vuelve a arrancar.
           if [ "$hour" -ge 8 ] || [ "$hour" -le 1 ]; then
             echo "Autoencadenando siguiente bloque de refresco…"
             curl --fail-with-body --retry 3 --retry-all-errors \
