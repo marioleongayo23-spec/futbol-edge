@@ -1,6 +1,6 @@
 {
   "schema_version": 7,
-  "generated_at": "2026-08-29T08:49:15.808004+02:00",
+  "generated_at": "2026-08-29T08:54:29.506916+02:00",
   "season": 2026,
   "quiniela": {
     "jornada": "3",
@@ -41354,7 +41354,7 @@
           "weather": false,
           "market_odds": true
         },
-        "refreshed_at": "2026-08-29T08:49:15.808004+02:00"
+        "refreshed_at": "2026-08-29T08:54:29.506916+02:00"
       },
       "prediction_factors": [
         {
@@ -41393,7 +41393,7 @@
         "label": "Pronóstico publicable",
         "reasons": [],
         "policy": "abstención automática por incertidumbre o falta de evidencia",
-        "refreshed_at": "2026-08-29T08:49:15.808004+02:00"
+        "refreshed_at": "2026-08-29T08:54:29.506916+02:00"
       },
       "state_simulation": {
         "method": "monte_carlo_5min_game_state_v1",
@@ -41508,7 +41508,7 @@
         "provider": "The Odds API"
       },
       "prediction_live_refresh": {
-        "checked_at": "2026-08-29T08:49:15.808004+02:00",
+        "checked_at": "2026-08-29T08:54:29.506916+02:00",
         "cadence_target_minutes": 5,
         "model_retrained": false,
         "pure_model_probs_changed": false,
@@ -41537,7 +41537,7 @@
           "absences": {
             "state": "ok",
             "required": false,
-            "checked_at": "2026-08-29T06:42:15.820718+02:00",
+            "checked_at": "2026-08-29T08:54:20.274371+02:00",
             "source": "API-Football",
             "detail": "ok"
           },
@@ -41563,7 +41563,7 @@
       },
       "api_football_fixture_id": 1570357,
       "operational_checks": {
-        "absences_checked_at": "2026-08-29T06:42:15.820718+02:00",
+        "absences_checked_at": "2026-08-29T08:54:20.274371+02:00",
         "absences_check_result": "ok",
         "player_props_checked_at": "2026-08-29T08:42:17.843166+02:00",
         "player_props_check_result": "complete_hybrid"
@@ -42961,7 +42961,7 @@
           "weather": false,
           "market_odds": false
         },
-        "refreshed_at": "2026-08-29T08:49:15.808004+02:00"
+        "refreshed_at": "2026-08-29T08:54:29.506916+02:00"
       },
       "prediction_factors": [
         {
@@ -43000,7 +43000,7 @@
         "label": "Pronóstico publicable",
         "reasons": [],
         "policy": "abstención automática por incertidumbre o falta de evidencia",
-        "refreshed_at": "2026-08-29T08:49:15.808004+02:00"
+        "refreshed_at": "2026-08-29T08:54:29.506916+02:00"
       },
       "state_simulation": {
         "method": "monte_carlo_5min_game_state_v1",
@@ -43105,7 +43105,7 @@
         ]
       },
       "prediction_live_refresh": {
-        "checked_at": "2026-08-29T08:49:15.808004+02:00",
+        "checked_at": "2026-08-29T08:54:29.506916+02:00",
         "cadence_target_minutes": 5,
         "model_retrained": false,
         "pure_model_probs_changed": false,
@@ -44715,7 +44715,7 @@
           "weather": false,
           "market_odds": true
         },
-        "refreshed_at": "2026-08-29T08:49:15.808004+02:00"
+        "refreshed_at": "2026-08-29T08:54:29.506916+02:00"
       },
       "prediction_factors": [
         {
@@ -44754,7 +44754,7 @@
         "label": "Pronóstico publicable",
         "reasons": [],
         "policy": "abstención automática por incertidumbre o falta de evidencia",
-        "refreshed_at": "2026-08-29T08:49:15.808004+02:00"
+        "refreshed_at": "2026-08-29T08:54:29.506916+02:00"
       },
       "state_simulation": {
         "method": "monte_carlo_5min_game_state_v1",
@@ -44927,7 +44927,7 @@
         "provider": "The Odds API"
       },
       "prediction_live_refresh": {
-        "checked_at": "2026-08-29T08:49:15.808004+02:00",
+        "checked_at": "2026-08-29T08:54:29.506916+02:00",
         "cadence_target_minutes": 5,
         "model_retrained": false,
         "pure_model_probs_changed": false,
@@ -331044,22 +331044,23 @@
   },
   "source_health": {
     "api_football": {
-      "requests_total": 1,
+      "requests_total": 2,
       "requests_by_endpoint": {
-        "fixtures": 1
+        "fixtures": 1,
+        "injuries": 1
       },
-      "daily_limit": null,
-      "daily_remaining": null,
-      "minute_limit": null,
-      "minute_remaining": null,
-      "checked_at": "2026-08-28T21:53:47.047316+00:00",
+      "daily_limit": 100,
+      "daily_remaining": 99,
+      "minute_limit": 10,
+      "minute_remaining": 9,
+      "checked_at": "2026-08-29T06:54:21.880273+00:00",
       "policy": "polling prepartido prioritario + backoff por cuota restante"
     },
     "the_odds_api": {
-      "remaining": 81,
-      "used": 419,
+      "remaining": 78,
+      "used": 422,
       "last_cost": 3,
-      "checked_at": "2026-08-29T08:49:14.854145+02:00",
+      "checked_at": "2026-08-29T08:54:28.607028+02:00",
       "policy": "TTL dinámico por kickoff y créditos restantes"
     }
   }
