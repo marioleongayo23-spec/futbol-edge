@@ -7,14 +7,16 @@ observabilidad describa producción, no una documentación estática.
 """
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable, Iterable
+from zoneinfo import ZoneInfo
 
 from .config import DATA_DIR
 from .feed_quality import load_feed, write_feed_safely
 
 OUTPUT = Path(DATA_DIR) / "dashboard.json"
+NAIVE_TIMESTAMP_ZONE = ZoneInfo("Europe/Madrid")
 
 
 def _nested(row: dict, *path: str):
@@ -30,9 +32,14 @@ def _stamp(value) -> datetime | None:
     if not value:
         return None
     try:
-        return datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
     except (TypeError, ValueError):
         return None
+    # Open-Meteo is requested in Europe/Madrid and returns local ISO stamps
+    # without an offset. Normalize every comparison key to aware UTC.
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=NAIVE_TIMESTAMP_ZONE)
+    return parsed.astimezone(timezone.utc)
 
 
 def _latest(values: Iterable[object]) -> str | None:
