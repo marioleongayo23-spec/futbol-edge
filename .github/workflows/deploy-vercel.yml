@@ -3,15 +3,15 @@ name: deploy vercel (CLI)
 # Despliegue de producción robusto e independiente de la integración Git de
 # Vercel (que puede quedar pausada por cuota o desconectada). Construye la SPA en
 # el runner de GitHub y sube el resultado ya compilado a producción con la CLI de
-# Vercel. Así la web SIEMPRE queda en la última versión del código, pase lo que
-# pase en el dashboard de Vercel.
+# Vercel. Así la web puede publicarse sin depender del build remoto de Vercel.
 #
 # Solo se dispara con cambios de CÓDIGO (app/, vercel.json, scripts, .nvmrc). El
-# feed de datos se sirve en vivo desde GitHub, así que sus commits no redeployan
-# (protege la cuota Hobby). Requiere 3 secrets del repo:
-#   VERCEL_TOKEN       -> vercel.com/account/settings/tokens (Create Token)
-#   VERCEL_ORG_ID      -> de .vercel/project.json tras 'vercel link' (orgId)
-#   VERCEL_PROJECT_ID  -> de .vercel/project.json tras 'vercel link' (projectId)
+# feed de datos se sirve en vivo desde GitHub, así que sus commits no redeployan.
+# Requiere un único secret del repo:
+#   VERCEL_TOKEN -> vercel.com/account/settings/tokens (Create Token)
+#
+# Los IDs de equipo/proyecto no son credenciales y se fijan aquí para evitar
+# depender de dos secrets adicionales que solo duplicaban configuración pública.
 
 on:
   push:
@@ -36,26 +36,22 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
-      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      VERCEL_ORG_ID: team_UezD7A1MDWJVnLCRCRh4bdOc
+      VERCEL_PROJECT_ID: prj_x059Hz47Zb5f8g2ibGEwUVBpNtU2
       # Para que build-version.json lleve el commit real y el contrato lo valide.
       VERCEL_GIT_COMMIT_SHA: ${{ github.sha }}
       VERCEL_GIT_COMMIT_REF: ${{ github.ref_name }}
     steps:
       - uses: actions/checkout@v4
 
-      - name: Comprobar secrets de Vercel
+      - name: Comprobar token de Vercel
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: |
-          missing=0
-          for v in VERCEL_TOKEN VERCEL_ORG_ID VERCEL_PROJECT_ID; do
-            if [ -z "${!v:-}" ]; then echo "::error::Falta el secret $v"; missing=1; fi
-          done
-          if [ "$missing" != 0 ]; then
-            echo "Añade los secrets en GitHub → Settings → Secrets and variables → Actions."
-            echo "VERCEL_TOKEN: vercel.com/account/settings/tokens"
-            echo "VERCEL_ORG_ID y VERCEL_PROJECT_ID: ejecuta 'vercel link' en el repo y cópialos de .vercel/project.json"
+          if [ -z "${VERCEL_TOKEN:-}" ]; then
+            echo "::error::Falta el secret VERCEL_TOKEN"
+            echo "Añádelo en GitHub → Settings → Secrets and variables → Actions."
+            echo "Créalo en Vercel → Account Settings → Tokens."
             exit 1
           fi
 
@@ -78,7 +74,6 @@ jobs:
         run: |
           url="$(vercel deploy --prebuilt --prod --token="${{ secrets.VERCEL_TOKEN }}")"
           echo "Desplegado en: $url"
-          echo "deploy_url=$url" >> "$GITHUB_OUTPUT"
 
       - name: Verificar que producción sirve este commit
         run: |
@@ -86,7 +81,7 @@ jobs:
           expected="${{ github.sha }}"
           echo "Esperando commit en producción: $expected"
           for attempt in $(seq 1 24); do
-            body="$(curl -fsS --max-time 15 "https://futbol-edge-snowy.vercel.app/build-version.json?t=$(date +%s)" || true)"
+            body="$(curl -fsS --max-time 15 "https://futbol-edge-porra1.vercel.app/build-version.json?t=$(date +%s)" || true)"
             deployed="$(printf '%s' "$body" | python3 -c 'import json,sys; raw=sys.stdin.read().strip(); print((json.loads(raw).get("commit") if raw else "") or "")' 2>/dev/null || true)"
             if [ "$deployed" = "$expected" ]; then
               echo "Producción sincronizada con $expected"
