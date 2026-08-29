@@ -6,10 +6,10 @@
       "*": false
     }
   },
-  "ignoreCommand": "git diff HEAD^ HEAD --quiet -- app vercel.json",
-  "buildCommand": "cp football/data/dashboard.json app/public/dashboard.json && cd app && npm install && npm run build",
+  "ignoreCommand": "bash scripts/vercel-ignore-build.sh",
+  "buildCommand": "mkdir -p app/public && printf '{\"commit\":\"%s\",\"ref\":\"%s\",\"built_at\":\"%s\"}\\n' \"${VERCEL_GIT_COMMIT_SHA:-unknown}\" \"${VERCEL_GIT_COMMIT_REF:-unknown}\" \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\" > app/public/build-version.json && cp football/data/dashboard.json app/public/dashboard.json && cd app && npm run build",
   "outputDirectory": "app/dist",
-  "installCommand": "cd app && npm install",
+  "installCommand": "cd app && npm ci",
   "framework": "vite",
   "rewrites": [
     { "source": "/((?!assets/|.*\\..*).*)", "destination": "/index.html" }
@@ -17,6 +17,12 @@
   "headers": [
     {
       "source": "/sw.js",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/build-version.json",
       "headers": [
         { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
       ]
