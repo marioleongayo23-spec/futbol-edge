@@ -1,8 +1,9 @@
 name: vercel production contract
 
 # Garantiza que cada cambio real de SPA/configuración termina servido por producción.
-# Los commits puramente de football/data/dashboard.json siguen el canal de feed vivo
-# y no necesitan un rebuild de Vercel.
+# Durante una contención explícita por cuota, git.deploymentEnabled=false evita
+# consumir más deployments; el contrato sigue validando build y feed sin exigir
+# una promoción que Vercel no puede aceptar todavía.
 on:
   push:
     branches: [main]
@@ -27,13 +28,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Detectar modo de auto-deploy Git
+        id: gitdeploy
+        run: |
+          enabled="$(python - <<'PY'
+          import json
+          cfg = json.load(open('vercel.json', encoding='utf-8'))
+          print('false' if cfg.get('git', {}).get('deploymentEnabled') is False else 'true')
+          PY
+          )"
+          echo "enabled=${enabled}" >> "$GITHUB_OUTPUT"
+          echo "Auto-deploy Git de Vercel: ${enabled}"
+
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
           cache: npm
           cache-dependency-path: app/package-lock.json
 
-      - name: Validar frontend antes de esperar producción
+      - name: Validar frontend
         working-directory: app
         run: |
           npm ci
@@ -42,6 +55,7 @@ jobs:
           npm run build
 
       - name: Verificar que Vercel sirve exactamente este commit
+        if: steps.gitdeploy.outputs.enabled == 'true'
         env:
           EXPECTED_SHA: ${{ github.sha }}
         run: |
@@ -64,8 +78,11 @@ jobs:
           echo "Vercel no promovió a producción el commit esperado"
           exit 1
 
+      - name: Registrar contención de cuota
+        if: steps.gitdeploy.outputs.enabled == 'false'
+        run: echo "Auto-deploy Git pausado para no seguir consumiendo la cuota Hobby de Vercel."
+
       - name: Verificar canal de datos vivo
-        if: success()
         run: |
           curl -fsS --max-time 20 \
             "https://raw.githubusercontent.com/marioleongayo23-spec/futbol-edge/main/football/data/dashboard.json?t=$(date +%s)" \
