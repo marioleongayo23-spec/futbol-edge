@@ -2,8 +2,11 @@ name: futbol-edge hot refresh
 
 # Canal autoritativo de día de partido.
 # La continuidad NO depende del cron: cada bloque activo se auto-despacha al terminar.
-# El schedule y workflow_run son solo watchdogs para recuperar el heartbeat si GitHub
-# o una incidencia externa interrumpen la cadena.
+# El schedule es solo un watchdog para recuperar el heartbeat si GitHub o una
+# incidencia externa interrumpen la cadena. No se dispara por workflow_run tras
+# futbol-pred: el pipeline pesado ya ejecuta toda la tanda matchday_* de refresco
+# al final, así que relanzarlo sería redundante y solo generaba runs pendientes
+# cancelados al solaparse con la cadena de auto-dispatch.
 on:
   push:
     branches: [main]
@@ -12,10 +15,6 @@ on:
       - "!football/data/dashboard.json"
       - ".github/workflows/futbol-hot-refresh.yml"
       - "scripts/publish_live_feed.sh"
-  workflow_run:
-    workflows: ["futbol-pred (cron)"]
-    types: [completed]
-    branches: [main]
   schedule:
     # Watchdog cada 30 min, desplazado del inicio de hora.
     - cron: "7,37 8-23 * * *"
@@ -36,7 +35,6 @@ concurrency:
 
 jobs:
   refresh:
-    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 75
     steps:
