@@ -466,4 +466,56 @@ def build_alerts(previous: dict | None, audit: dict, ai_events: list[dict], now:
     old_time = _parse((previous or {}).get("generated_at"))
     if old_time and (_aware(now).astimezone(MADRID) - old_time).total_seconds() > 2 * 3600:
         alerts.append({"severity": "warning", "code": "previous_feed_stale", "message": "El feed anterior tenía más de 2 horas de antigüedad", "at": stamp})
+
+    # Colector caído: un workflow puede terminar en verde y aun así llevar horas
+    # sin refrescar una fuente concreta (cuota agotada, endpoint caído, gate mal
+    # calibrado). Vigilamos la marca de tiempo de cada fuente para que un dato
+    # parado NO pase desapercibido detrás de un check verde.
+    alerts.extend(_source_staleness_alerts(previous, now, stamp))
     return alerts
+
+
+# Horas máximas sin refresco antes de avisar, por fuente. Conservador: el margen
+# cubre TTLs dinámicos y ventanas de baja actividad sin generar ruido.
+_SOURCE_MAX_STALE_H = {
+    "the_odds_api": 12.0,
+    "api_football": 12.0,
+    "current_squads": 30.0,
+}
+_SOURCE_LABEL = {
+    "the_odds_api": "cuotas (The Odds API)",
+    "api_football": "API-Football",
+    "current_squads": "plantillas actuales",
+}
+
+
+def _source_staleness_alerts(previous: dict | None, now: datetime, stamp: str) -> list[dict]:
+    out: list[dict] = []
+    health = (previous or {}).get("source_health") or {}
+    if not isinstance(health, dict):
+        return out
+    now_local = _aware(now).astimezone(MADRID)
+    for source, max_hours in _SOURCE_MAX_STALE_H.items():
+        node = health.get(source)
+        if not isinstance(node, dict):
+            continue
+        stamp_value = node.get("checked_at") or node.get("last_success") or node.get("captured_at")
+        checked = _parse(stamp_value)
+        if checked is None:
+            continue
+        hours = (now_local - checked).total_seconds() / 3600.0
+        if hours <= max_hours:
+            continue
+        out.append({
+            "severity": "critical" if hours > max_hours * 2 else "warning",
+            "code": f"source_stale_{source}",
+            "message": (
+                f"La fuente {_SOURCE_LABEL.get(source, source)} lleva {hours:.0f} h sin "
+                f"actualizarse (umbral {max_hours:.0f} h): posible cuota agotada, endpoint "
+                "caído o gate mal calibrado."
+            ),
+            "source": source,
+            "stale_hours": round(hours, 1),
+            "at": stamp,
+        })
+    return out

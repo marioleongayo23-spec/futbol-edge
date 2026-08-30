@@ -193,3 +193,27 @@ def test_poll_oficial_reintenta_t30_si_t60_no_tenia_once():
     assert attach_official_context([match], kickoff - timedelta(minutes=30), client) == 1
     assert match["alineacion"]["official_poll_window"] == "T-30"
     assert set(match["alineacion"]["official_poll_windows"]) == {"T-60", "T-30"}
+
+
+def test_alerta_de_fuente_stale_detecta_colector_caido():
+    # Un colector puede quedarse parado (cuota agotada, endpoint caído) mientras el
+    # workflow termina en verde. La alerta debe destaparlo por su marca de tiempo.
+    now = datetime(2026, 8, 30, 15, 37, tzinfo=MADRID)
+    previous = {
+        "generated_at": now.isoformat(),
+        "source_health": {
+            "the_odds_api": {"checked_at": (now - timedelta(hours=30)).isoformat()},
+            "api_football": {"checked_at": (now - timedelta(hours=3)).isoformat()},
+            "current_squads": {"checked_at": now.isoformat()},
+        },
+    }
+
+    alerts = build_alerts(previous, {"incomplete": []}, [], now)
+    codes = {a["code"] for a in alerts}
+
+    assert "source_stale_the_odds_api" in codes
+    assert "source_stale_api_football" not in codes  # 3 h < umbral 12 h
+    assert "source_stale_current_squads" not in codes  # fresco
+    odds_alert = next(a for a in alerts if a["code"] == "source_stale_the_odds_api")
+    assert odds_alert["severity"] == "critical"  # 30 h > 2×12 h
+    assert odds_alert["source"] == "the_odds_api"
