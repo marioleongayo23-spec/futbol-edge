@@ -140,6 +140,9 @@ jobs:
               # 17) Calidad auditable 0–100 derivada únicamente de cobertura real.
               PYTHONPATH=football/src python scripts/enrich_match_quality.py
 
+              # 18) Tabla de verdad operacional y anti-leakage.
+              PYTHONPATH=football/src python -m futbol_pred.feature_truth
+
               PYTHONPATH=football/src python -m futbol_pred.matchday_diagnose
 
               # Canal paralelo sin commits: se actualiza en cada ciclo aunque el
