@@ -1,6 +1,14 @@
+import importlib.util
 import json
+from pathlib import Path
 
-from scripts.enrich_match_quality import enrich
+
+_SCRIPT = Path(__file__).resolve().parents[2] / "scripts" / "enrich_match_quality.py"
+_SPEC = importlib.util.spec_from_file_location("enrich_match_quality", _SCRIPT)
+_MODULE = importlib.util.module_from_spec(_SPEC)
+assert _SPEC and _SPEC.loader
+_SPEC.loader.exec_module(_MODULE)
+enrich = _MODULE.enrich
 
 
 def test_enrich_publica_match_quality_sin_tocar_probabilidades(tmp_path):
