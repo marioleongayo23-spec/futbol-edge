@@ -5,6 +5,7 @@ import { leaguesIn, projectedTable } from "./standings";
 import { teamProfile, teamSquad } from "./teams";
 import { bestValue, countdown, getFavs, modelAccuracy, recentForm, toggleFav, topValueBets } from "./insights";
 import MatchDetail from "./MatchDetail";
+import { QualityBadge } from "./MatchQuality";
 import PlayerProfile from "./PlayerProfile";
 import TeamIntelligencePanel from "./TeamIntelligencePanel";
 import ProbabilityQualityPanel from "./ProbabilityQualityPanel";
@@ -95,6 +96,7 @@ function MatchRow({ m, onOpen, formMap }) {
           </span>
         )}
       </span>
+      {m.match_quality && <QualityBadge mq={m.match_quality} compact />}
       <span className="mrow-tag">
         {val && <span className="tag-val" title={`Value ${val.selection}: edge ${(val.edge * 100).toFixed(1)}%`}>◆</span>}
         {m.league.replace("LaLiga", "1ª").replace("Hypermotion", "").replace("Champions League", "UCL")}{best ? ` · ${best}` : ""}
@@ -315,7 +317,7 @@ function Mercados({ matches, q, onOpen }) {
             const val = bestValue(m);
             return (
               <tr key={m.id} className="click" role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onOpen(m); }} onClick={() => onOpen(m)}>
-                <td className="tl"><div className="mk-team"><b>{m.home}</b> <span className="dim">vs</span> {m.away}<div className="mk-sub">{m.league} · J{m.matchday || ""} · {fmtKick(m.kickoff)}</div></div></td>
+                <td className="tl"><div className="mk-team"><b>{m.home}</b> <span className="dim">vs</span> {m.away}<div className="mk-sub">{m.league} · J{m.matchday || ""} · {fmtKick(m.kickoff)}{m.match_quality && <> · <QualityBadge mq={m.match_quality} compact /></>}</div></div></td>
                 <td><span className={"q-" + sign(m)} style={{ fontWeight: 800 }}>{sign(m)}</span></td>
                 <td>{m.markets?.marcador || "—"}</td>
                 <td>{o25 != null ? Math.round(o25 * 100) + "%" : "—"}</td>

@@ -1,0 +1,35 @@
+/* Badge y panel de calidad de datos por partido (campo match_quality del feed).
+   Usa las variables de tema de styles.css, así que funciona en claro y oscuro. */
+
+.mq-badge{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:2px 8px;border-radius:999px;
+  border:1px solid var(--line);background:var(--card2);
+  font-size:.64rem;font-weight:700;line-height:1.6;letter-spacing:.02em;
+  color:var(--muted);white-space:nowrap;vertical-align:middle;text-transform:none;
+}
+.mq-badge .mq-dot{width:7px;height:7px;border-radius:50%;background:var(--muted);flex:0 0 auto}
+.mq-high{color:var(--green);border-color:var(--greenD);background:rgba(34,201,138,.10)}
+.mq-high .mq-dot{background:var(--green)}
+.mq-medium{color:var(--blue);border-color:color-mix(in srgb,var(--blue) 45%,var(--line));background:rgba(90,162,255,.10)}
+.mq-medium .mq-dot{background:var(--blue)}
+.mq-limited{color:var(--amber);border-color:color-mix(in srgb,var(--amber) 45%,var(--line));background:rgba(255,176,32,.12)}
+.mq-limited .mq-dot{background:var(--amber)}
+.mq-insufficient,.mq-blocked{color:var(--red);border-color:color-mix(in srgb,var(--red) 45%,var(--line));background:rgba(255,93,108,.10)}
+.mq-insufficient .mq-dot,.mq-blocked .mq-dot{background:var(--red)}
+
+/* Panel completo en el detalle del partido. */
+.mq-card .mq-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.mq-score{display:flex;align-items:baseline;gap:6px;margin-top:10px}
+.mq-score b{font-size:1.5rem;font-variant-numeric:tabular-nums}
+.mq-score span{font-size:.72rem;color:var(--muted)}
+.mq-missing{font-size:.74rem;color:var(--amber);margin-top:8px}
+.mq-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 16px;margin-top:14px}
+.mq-row{display:grid;grid-template-columns:minmax(74px,auto) 1fr 36px;align-items:center;gap:9px;font-size:.72rem}
+.mq-row>span:first-child{color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mq-track{height:7px;border-radius:999px;background:var(--line);overflow:hidden}
+.mq-track i{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,var(--blue),#8fc5ff)}
+.mq-row.full .mq-track i{background:linear-gradient(90deg,var(--greenD),var(--green))}
+.mq-row.none .mq-track i{background:var(--red);opacity:.55}
+.mq-row>b{text-align:right;font-variant-numeric:tabular-nums;color:var(--muted)}
+@media(max-width:640px){.mq-grid{grid-template-columns:1fr}}

@@ -8,6 +8,7 @@ import WeatherAdjustmentPanel from "./WeatherAdjustmentPanel";
 import { teamSquad } from "./teams";
 import PredictionTimelinePanel from "./PredictionTimelinePanel";
 import { hasAccess } from "./plans";
+import { QualityBadge, MatchQualityCard } from "./MatchQuality";
 
 function Teams({ m, onTeam }) {
   return (
@@ -450,11 +451,14 @@ export default function MatchDetail({ m, bankroll, onBack, onTeam, players, plan
           )}
           {snapshot?.generated_at && <span className="chip" title="Snapshot inmutable utilizado para evaluar el modelo">Predicción <b>{snapshot.window || new Date(snapshot.generated_at).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}</b></span>}
           {surprise && !m.finished && <span className="pill y" title="El favorito del modelo no coincide con el del mercado">⚡ Sorpresa</span>}
+          {m.match_quality && <QualityBadge mq={m.match_quality} />}
           <button type="button" className="mini" onClick={share}>{copied ? "✓ Copiado" : "🔗 Compartir"}</button>
         </div>
       </div>
 
       <PredictionTimelinePanel m={m} />
+
+      {m.match_quality && <MatchQualityCard mq={m.match_quality} />}
 
       <nav className="match-nav" aria-label="Secciones del partido">
         {[['analysis', 'Previa'], ['lineup', 'Onces'], ['prediction', 'Pronóstico'], ['stats', 'Datos']].map(([key, label]) => (
