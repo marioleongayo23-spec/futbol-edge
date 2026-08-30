@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Enriquece dashboard.json con calidad auditable por partido.
+"""Enriquece dashboard.json con calidad y señales derivadas auditables.
 
 La calidad es una señal de cobertura, no una modificación de probabilidades.
-Solo se calcula cuando el pipeline ya ha generado ``coverage`` para el partido;
-no se inventan estados para partidos fuera de la ventana operativa.
+Las líneas justas de jugador son teóricas y solo se generan para props con
+fuente real API-Football; nunca se presentan como cuotas disponibles.
 """
 from __future__ import annotations
 
@@ -11,6 +11,7 @@ import json
 from pathlib import Path
 
 from futbol_pred.match_quality import calculate_match_quality
+from futbol_pred.player_fair_lines import enrich_payload as enrich_player_fair_lines
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -32,6 +33,9 @@ def enrich(path: Path = DASHBOARD) -> bool:
             match["match_quality"] = quality
             changed = True
 
+    fair_changed, fair_enriched = enrich_player_fair_lines(payload)
+    changed = changed or fair_changed
+
     if changed:
         path.write_text(
             json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
@@ -41,4 +45,4 @@ def enrich(path: Path = DASHBOARD) -> bool:
 
 
 if __name__ == "__main__":
-    print("match_quality changed:", enrich())
+    print("derived enrichment changed:", enrich())
