@@ -217,3 +217,21 @@ def test_alerta_de_fuente_stale_detecta_colector_caido():
     odds_alert = next(a for a in alerts if a["code"] == "source_stale_the_odds_api")
     assert odds_alert["severity"] == "critical"  # 30 h > 2×12 h
     assert odds_alert["source"] == "the_odds_api"
+
+
+def test_alerta_de_ia_inactiva():
+    now = datetime(2026, 8, 30, 21, 50, tzinfo=MADRID)
+    previous = {
+        "generated_at": now.isoformat(),
+        "ai_health": {"events": [
+            {"provider": "Gemini", "status": "success", "at": (now - timedelta(hours=55)).isoformat()},
+        ]},
+    }
+    alerts = build_alerts(previous, {"incomplete": []}, [], now)
+    ai = next(a for a in alerts if a["code"] == "ai_inactive")
+    assert ai["severity"] == "critical"  # 55 h > 48 h
+    # Con IA reciente no debe alertar.
+    fresh = {"generated_at": now.isoformat(), "ai_health": {"events": [
+        {"provider": "Gemini", "status": "success", "at": (now - timedelta(hours=3)).isoformat()},
+    ]}}
+    assert not [a for a in build_alerts(fresh, {"incomplete": []}, [], now) if a["code"] == "ai_inactive"]

@@ -472,6 +472,30 @@ def build_alerts(previous: dict | None, audit: dict, ai_events: list[dict], now:
     # calibrado). Vigilamos la marca de tiempo de cada fuente para que un dato
     # parado NO pase desapercibido detrás de un check verde.
     alerts.extend(_source_staleness_alerts(previous, now, stamp))
+
+    # IA inactiva: si hace más de un día que ningún proveedor genera contenido,
+    # las previas y onces se congelan en el último bueno (típico de una clave
+    # agotada, caducada o sin configurar). No debe pasar en silencio.
+    now_local = _aware(now).astimezone(MADRID)
+    events = ((previous or {}).get("ai_health") or {}).get("events") or []
+    last_ok = max(
+        (dt for event in events if event.get("status") == "success"
+         for dt in [_parse(event.get("at"))] if dt is not None),
+        default=None,
+    )
+    if last_ok is not None:
+        idle_h = (now_local - last_ok).total_seconds() / 3600.0
+        if idle_h > 24:
+            alerts.append({
+                "severity": "critical" if idle_h > 48 else "warning",
+                "code": "ai_inactive",
+                "message": (
+                    f"La IA no genera contenido nuevo desde hace {idle_h:.0f} h: las previas y "
+                    "onces se sirven de caché. Revisa la clave/cuota de Gemini o Groq."
+                ),
+                "idle_hours": round(idle_h, 1),
+                "at": stamp,
+            })
     return alerts
 
 
