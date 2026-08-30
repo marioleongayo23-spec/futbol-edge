@@ -1,6 +1,6 @@
 {
   "schema_version": 7,
-  "generated_at": "2026-08-30T21:39:06.749401+02:00",
+  "generated_at": "2026-08-30T21:44:25.340055+02:00",
   "season": 2026,
   "quiniela": {
     "jornada": "3",
@@ -54862,7 +54862,7 @@
           "weather": true,
           "market_odds": false
         },
-        "refreshed_at": "2026-08-30T21:39:06.749401+02:00",
+        "refreshed_at": "2026-08-30T21:44:25.340055+02:00",
         "raw_score_before_freshness_gate": 80.0,
         "data_freshness_gate_applied": true,
         "data_freshness_gate_status": "warning",
@@ -54910,7 +54910,7 @@
         "label": "Pronóstico publicable",
         "reasons": [],
         "policy": "abstención automática por incertidumbre o falta de evidencia",
-        "refreshed_at": "2026-08-30T21:39:06.749401+02:00"
+        "refreshed_at": "2026-08-30T21:44:25.340055+02:00"
       },
       "state_simulation": {
         "method": "monte_carlo_5min_game_state_v1",
@@ -55393,7 +55393,7 @@
         "player_props_check_result": "complete_hybrid",
         "fixture_checked_at": "2026-08-30T21:38:54.895154+02:00",
         "fixture_check_result": "not_found",
-        "weather_checked_at": "2026-08-30T21:38:54.895154+02:00",
+        "weather_checked_at": "2026-08-30T21:44:14.695206+02:00",
         "weather_check_result": "ok",
         "lineup_checked_at": "2026-08-30T21:25:07.736452+02:00",
         "lineup_check_result": "fixture_not_found_last_mile"
@@ -55420,7 +55420,7 @@
           "weather": {
             "state": "ok",
             "required": true,
-            "checked_at": "2026-08-30T21:38:54.895154+02:00",
+            "checked_at": "2026-08-30T21:44:14.695206+02:00",
             "source": "Open-Meteo",
             "detail": "ok"
           },
@@ -55458,7 +55458,7 @@
         ]
       },
       "prediction_live_refresh": {
-        "checked_at": "2026-08-30T21:39:06.749401+02:00",
+        "checked_at": "2026-08-30T21:44:25.340055+02:00",
         "cadence_target_minutes": 5,
         "model_retrained": false,
         "pure_model_probs_changed": false,
@@ -55524,7 +55524,7 @@
           "wind_kmh": 4.1,
           "weather_code": 0
         },
-        "applied_at": "2026-08-30T21:39:06.749401+02:00",
+        "applied_at": "2026-08-30T21:44:25.340055+02:00",
         "reason": "condiciones dentro de umbrales neutros",
         "reasons": [],
         "multipliers": {
@@ -340337,14 +340337,14 @@
     }
   },
   "feature_truth_table": {
-    "generated_at": "2026-08-30T21:39:06.749401+02:00",
+    "generated_at": "2026-08-30T21:44:25.340055+02:00",
     "principle": "candidate -> leakage-safe snapshot -> walk-forward -> compare vs accepted engine + no-vig market -> promote only on improvement",
     "eligible_matches": 360,
     "features": [
       {
         "feature": "dixon_coles_score_model",
         "source": "Resultados históricos reales · Football-Data/API-Football + score model Dixon-Coles",
-        "available_at": "2026-08-30T21:39:06.749401+02:00",
+        "available_at": "2026-08-30T21:44:25.340055+02:00",
         "coverage": {
           "covered": 360,
           "eligible": 360,
@@ -340366,7 +340366,7 @@
       {
         "feature": "elo",
         "source": "Resultados históricos reales transformados en rating Elo",
-        "available_at": "2026-08-30T21:39:06.749401+02:00",
+        "available_at": "2026-08-30T21:44:25.340055+02:00",
         "coverage": {
           "covered": 360,
           "eligible": 360,
@@ -340387,7 +340387,7 @@
       {
         "feature": "team_stat_model",
         "source": "football-data.co.uk · históricos de remates, SOT, córners, faltas y tarjetas",
-        "available_at": "2026-08-30T21:39:06.749401+02:00",
+        "available_at": "2026-08-30T21:44:25.340055+02:00",
         "coverage": {
           "covered": 360,
           "eligible": 360,
@@ -340492,7 +340492,7 @@
       {
         "feature": "tactical_matchup",
         "source": "Perfiles observados casa/fuera derivados de football-data.co.uk",
-        "available_at": "2026-08-30T21:39:06.749401+02:00",
+        "available_at": "2026-08-30T21:44:25.340055+02:00",
         "coverage": {
           "covered": 360,
           "eligible": 360,
