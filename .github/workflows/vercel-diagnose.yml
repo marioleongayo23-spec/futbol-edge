@@ -1,0 +1,92 @@
+name: vercel diag (manual)
+
+# Diagnóstico de producción BAJO DEMANDA. Corre la CLI de Vercel en el runner de
+# GitHub (que sí alcanza Vercel, a diferencia de un entorno con egress cerrado) y
+# vuelca todo al log para inspección. NO despliega ni cambia nada: es solo lectura.
+#
+# Reutiliza el mismo secret y los mismos IDs públicos que deploy-vercel.yml.
+# Se lanza a mano desde Actions → "vercel diag (manual)" → Run workflow.
+
+on:
+  workflow_dispatch:
+    inputs:
+      probe_path:
+        description: "Ruta pública a sondear (p.ej. / o /partidos)"
+        required: false
+        default: "/"
+      runtime_logs:
+        description: "Traer logs de runtime del deployment de producción"
+        type: boolean
+        required: false
+        default: true
+
+concurrency:
+  group: vercel-diagnose
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      VERCEL_ORG_ID: team_UezD7A1MDWJVnLCRCRh4bdOc
+      VERCEL_PROJECT_ID: prj_x059Hz47Zb5f8g2ibGEwUVBpNtU2
+      PROD_URL: https://futbol-edge-porra1.vercel.app
+      TOKEN: ${{ secrets.VERCEL_TOKEN }}
+    steps:
+      - name: Comprobar token de Vercel
+        run: |
+          if [ -z "${TOKEN:-}" ]; then
+            echo "::error::Falta el secret VERCEL_TOKEN (mismo que usa deploy-vercel.yml)."
+            exit 1
+          fi
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Instalar Vercel CLI
+        run: npm install -g vercel@latest
+
+      - name: "Sondeo PÚBLICO anónimo (¿protección de deployment activa?)"
+        run: |
+          target="${PROD_URL}${{ inputs.probe_path }}"
+          echo "== Cabeceras de ${target} (anónimo, como un visitante) =="
+          # -o /dev/null para no volcar el cuerpo; queremos el status y Location.
+          code="$(curl -sS -o /dev/null -w '%{http_code}' -I --max-time 25 "$target" || echo '000')"
+          echo "HTTP status anónimo: $code"
+          echo "--- cabeceras completas ---"
+          curl -sS -D - -o /dev/null --max-time 25 "$target" || true
+          echo
+          if [ "$code" = "401" ] || [ "$code" = "403" ] || [ "$code" = "302" ] || [ "$code" = "307" ]; then
+            echo "::warning::El dominio NO es público para anónimos (status $code). Suele ser 'Deployment Protection / Vercel Authentication' activa en el proyecto → el público no puede entrar. Se desactiva en Vercel → Project → Settings → Deployment Protection."
+          fi
+          echo "== build-version.json (anónimo): qué commit está publicado =="
+          curl -sS -L --max-time 25 "${PROD_URL}/build-version.json" || true
+          echo
+          echo "== primeros 1500 bytes del HTML servido (anónimo, siguiendo redirecciones) =="
+          curl -sS -L --max-time 25 "$target" | head -c 1500 || true
+          echo
+
+      - name: Pull de configuración de producción
+        run: vercel pull --yes --environment=production --token="$TOKEN" || true
+
+      - name: Deployments recientes (estado y edad)
+        run: vercel ls --token="$TOKEN" || true
+
+      - name: Inspeccionar el deployment de producción
+        run: vercel inspect "$PROD_URL" --token="$TOKEN" || true
+
+      - name: Logs de BUILD del deployment de producción
+        run: vercel inspect "$PROD_URL" --logs --token="$TOKEN" 2>&1 | tail -150 || true
+
+      - name: Logs de RUNTIME (si se pidieron)
+        if: ${{ inputs.runtime_logs }}
+        run: timeout 45 vercel logs "$PROD_URL" --token="$TOKEN" 2>&1 | tail -150 || true
+
+      - name: Resumen
+        if: always()
+        run: echo "Diagnóstico terminado. Revisa 'Sondeo PÚBLICO anónimo' para saber si el dominio es accesible para visitantes."
