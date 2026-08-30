@@ -184,7 +184,7 @@ jobs:
         run: |
           ok=0
           for i in 1 2 3 4 5; do
-            if curl -fsS --max-time 20 https://futbol-edge-snowy.vercel.app/ >/dev/null \
+            if curl -fsS --max-time 20 https://futbol-edge-porra1.vercel.app/ >/dev/null \
               && curl -fsS --max-time 20 https://raw.githubusercontent.com/marioleongayo23-spec/futbol-edge/main/football/data/dashboard.json \
                 | python -c 'import json,sys; d=json.load(sys.stdin); assert d.get("feed_quality",{}).get("valid") is True'; then
               ok=1
