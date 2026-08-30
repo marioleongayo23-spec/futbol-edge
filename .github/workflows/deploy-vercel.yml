@@ -12,6 +12,9 @@ name: deploy vercel (CLI)
 #
 # Los IDs de equipo/proyecto no son credenciales y se fijan aquí para evitar
 # depender de dos secrets adicionales que solo duplicaban configuración pública.
+#
+# Trigger de producción: este cambio de comentario reactiva explícitamente el
+# workflow después de una integración de feed que también modifica scripts/.
 
 on:
   push:
