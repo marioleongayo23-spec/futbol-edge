@@ -109,6 +109,8 @@ jobs:
           python -m futbol_pred.matchday_prediction_refresh
           python -m futbol_pred.matchday_freshness_gate
           python -m futbol_pred.coverage
+          python scripts/enrich_match_quality.py
+          python -m futbol_pred.feature_truth
           python -m futbol_pred.matchday_diagnose
 
           python - <<'PY'
@@ -117,9 +119,11 @@ jobs:
           q = d.get("feed_quality", {})
           a = d.get("content_audit", {})
           s = (d.get("source_health") or {}).get("current_squads") or {}
+          t = d.get("feature_truth_table", {})
           print("[feed] calidad:", q.get("score"), "| métricas:", q.get("metrics"))
           print("[coverage]", a.get("status"), "| completos:", a.get("complete"), "/", a.get("matches_today"), "| resumen:", a.get("coverage_summary"))
           print("[squads]", {k:s.get(k) for k in ("season_context","football_data_leagues_refreshed","stale_players_purged","players_added","lineup_conflicts")})
+          print("[feature-truth]", len(t.get("features") or []), "features | elegibles:", t.get("eligible_matches"))
           PY
 
       - name: Publicar canal vivo sin commits
