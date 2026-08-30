@@ -21,8 +21,12 @@ _INSTR = (
     '"bajas_local":["nombre (lesión|sanción|duda|rotación: motivo)"],'
     '"bajas_visitante":["nombre (lesión|sanción|duda|rotación: motivo)"]}]\n'
     "Los 11 jugadores deben ir en su demarcación habitual REAL. Ordénalos desde "
-    "el portero hasta el delantero. Incluye todos los partidos; si no puedes "
-    "completar uno con suficiente calidad, omítelo y el sistema conservará caché."
+    "el portero hasta el delantero. USA EXCLUSIVAMENTE jugadores que militen "
+    "ACTUALMENTE en cada club en la temporada en curso: no incluyas a nadie que "
+    "ya haya abandonado el equipo, ni cedidos fuera, ni fichajes de otros clubes. "
+    "Ante la duda sobre un jugador, elige a otro de la plantilla vigente. Incluye "
+    "todos los partidos; si no puedes completar uno con suficiente calidad, "
+    "omítelo y el sistema conservará caché."
 )
 
 _DEFAULT_FORMATION = ["POR", "LI", "DFC", "DFC", "LD", "MC", "MCD", "MC", "EI", "DC", "ED"]

@@ -29,7 +29,7 @@ test("muestra primero el nombre del jugador en disponibilidad", () => {
 });
 
 
-test("no dibuja un once squad-only como probable", () => {
+test("muestra un once squad-only como estimación desde plantilla, no como probable pleno", () => {
   const feed = normalizeFeedForDisplay({
     matches: [{
       id: "m1",
@@ -48,12 +48,39 @@ test("no dibuja un once squad-only como probable", () => {
   });
 
   const lineup = feed.matches[0].alineacion;
-  assert.equal(lineup.status, "sin confirmar");
-  assert.equal(lineup.display_withheld, true);
-  assert.equal(lineup.lineup_kind, "squad_only_withheld");
-  assert.deepEqual(lineup.local, []);
-  assert.deepEqual(lineup.visitante, []);
-  assert.match(lineup.provider, /sin fuente fiable/i);
+  // Con plantillas vigentes, el once desde plantilla se muestra (no se oculta),
+  // pero etiquetado como estimación honesta, nunca como "confirmado".
+  assert.equal(lineup.status, "estimado");
+  assert.notEqual(lineup.display_withheld, true);
+  assert.equal(lineup.local.length, 11);
+  assert.equal(lineup.visitante.length, 11);
+  assert.equal(lineup.lineup_kind, "partially_grounded_estimate");
+  assert.match(lineup.display_warning, /plantilla vigente/i);
+});
+
+test("muestra un once reconstruido (roster_grounded) como estimación", () => {
+  const feed = normalizeFeedForDisplay({
+    matches: [{
+      id: "m1",
+      alineacion: {
+        model: "gemini-flash-lite-latest",
+        source_quality: "roster_grounded",
+        lineup_kind: "roster_reconstructed",
+        status: "estimado",
+        local: Array.from({ length: 11 }, (_, i) => `Local ${i}`),
+        visitante: Array.from({ length: 11 }, (_, i) => `Visitante ${i}`),
+        posiciones_local: Array(11).fill("MC"),
+        posiciones_visitante: Array(11).fill("MC"),
+        display_warning: "XI probable reconstruido con la plantilla vigente.",
+      },
+    }],
+  });
+
+  const lineup = feed.matches[0].alineacion;
+  assert.equal(lineup.status, "estimado");
+  assert.notEqual(lineup.display_withheld, true);
+  assert.equal(lineup.local.length, 11);
+  assert.equal(lineup.lineup_kind, "roster_reconstructed");
 });
 
 test("oculta onces legacy squad-stats-v1 (jugadores de temporadas pasadas)", () => {

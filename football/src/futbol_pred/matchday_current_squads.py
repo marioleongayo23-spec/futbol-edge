@@ -14,12 +14,15 @@ from __future__ import annotations
 from copy import deepcopy
 from datetime import datetime, timezone
 import json
+import re
+import unicodedata
 
 from .config import DATA_DIR
 from .feed_quality import load_feed, write_feed_safely
 from .hot_refresh import MADRID, _aware, _parse
 from .ingest.api_football import ApiFootballClient
 from .ingest.football_data import FootballDataClient
+from .ingest.lineups_ai import _formation, _probable_positions, _probable_xi
 
 OUTPUT = DATA_DIR / "dashboard.json"
 ROSTER_TTL_HOURS = 24
@@ -47,8 +50,53 @@ def _key(value: str | None) -> str:
     return ApiFootballClient._team_key(str(value or ""))
 
 
+def _strip_accents(value: str | None) -> str:
+    text = unicodedata.normalize("NFKD", str(value or ""))
+    return "".join(ch for ch in text if not unicodedata.combining(ch))
+
+
 def _name_key(value: str | None) -> str:
-    return "".join(ch for ch in str(value or "").casefold().strip() if ch.isalnum())
+    # Insensible a acentos: "Tchouaméni" y "Tchouameni" deben cotejar igual.
+    return "".join(ch for ch in _strip_accents(value).casefold() if ch.isalnum())
+
+
+def _name_tokens(value: str | None) -> set[str]:
+    plain = re.sub(r"[^a-z0-9 ]", " ", _strip_accents(value).casefold())
+    return {tok for tok in plain.split() if len(tok) >= 3}
+
+
+def _roster_lookup(squad: list[dict]) -> tuple[dict[str, str], list[tuple[set[str], str]]]:
+    exact: dict[str, str] = {}
+    tokens: list[tuple[set[str], str]] = []
+    for row in squad or []:
+        name = row.get("name") if isinstance(row, dict) else row
+        if not name:
+            continue
+        exact.setdefault(_name_key(name), name)
+        tokens.append((_name_tokens(name), name))
+    return exact, tokens
+
+
+def _resolve_squad_name(name: str, exact: dict[str, str], tokens: list[tuple[set[str], str]]) -> str | None:
+    """Nombre canónico de plantilla que corresponde a ``name``, o None.
+
+    Tolera acentos y nombres parciales frecuentes (p.ej. "Rodrygo Goes" ↔
+    "Rodrygo") sin arriesgar falsos positivos: exige subconjunto de tokens o al
+    menos dos tokens compartidos.
+    """
+    key = _name_key(name)
+    if key in exact:
+        return exact[key]
+    wanted = _name_tokens(name)
+    if not wanted:
+        return None
+    for tset, canonical in tokens:
+        if tset and (wanted <= tset or tset <= wanted):
+            return canonical
+    for tset, canonical in tokens:
+        if len(wanted & tset) >= 2:
+            return canonical
+    return None
 
 
 def _same_team(left: str | None, right: str | None) -> bool:
@@ -211,32 +259,104 @@ def _official_lineup(lineup: dict) -> bool:
     )
 
 
+def _repair_side(lineup: dict, side: str, squad: list[dict]) -> tuple[list[str] | None, list[str] | None, list[str]]:
+    """Reconstruye el XI de un lado sobre la plantilla real.
+
+    Conserva (con su nombre canónico) los jugadores del XI que pertenecen a la
+    plantilla y sustituye a los que no por titulares probables de la plantilla
+    vigente. Devuelve ``(xi, posiciones, no_resueltos)``; ``xi`` es ``None`` si la
+    plantilla no basta para completar once nombres.
+    """
+    exact, tokens = _roster_lookup(squad)
+    unresolved: list[str] = []
+    kept: list[str] = []
+    seen: set[str] = set()
+    for name in (lineup.get(side) or []):
+        if not name:
+            continue
+        canonical = _resolve_squad_name(name, exact, tokens)
+        if canonical is None:
+            unresolved.append(name)
+            continue
+        key = _name_key(canonical)
+        if key in seen:
+            continue
+        seen.add(key)
+        kept.append(canonical)
+    if len(kept) < 11:
+        for name in _probable_xi(squad) or []:
+            if len(kept) >= 11:
+                break
+            key = _name_key(name)
+            if key not in seen:
+                seen.add(key)
+                kept.append(name)
+    if len(kept) < 11:
+        return None, None, unresolved
+    xi = kept[:11]
+    return xi, _probable_positions(squad, xi), unresolved
+
+
 def _validate_lineup(match: dict, local_squad: list[dict], visitor_squad: list[dict], stamp: str) -> int:
     lineup = match.get("alineacion") or {}
     if not lineup or _official_lineup(lineup):
         return 0
-    conflicts = {}
-    for side, squad in (("local", local_squad), ("visitante", visitor_squad)):
+    conflicts: dict[str, list[str]] = {}
+    repaired_any = False
+    withheld = False
+    for side, squad, pos_key in (
+        ("local", local_squad, "posiciones_local"),
+        ("visitante", visitor_squad, "posiciones_visitante"),
+    ):
         if len(squad) < 11:
             continue
-        allowed = {_name_key(row.get("name")) for row in squad}
-        bad = [name for name in (lineup.get(side) or []) if _name_key(name) not in allowed]
-        if bad:
-            conflicts[side] = bad
+        exact, tokens = _roster_lookup(squad)
+        bad = [name for name in (lineup.get(side) or []) if _resolve_squad_name(name, exact, tokens) is None]
+        if not bad:
+            continue
+        conflicts[side] = bad
+        xi, positions, _ = _repair_side(lineup, side, squad)
+        if not xi:
+            withheld = True
+            continue
+        lineup[side] = xi
+        lineup[pos_key] = positions
+        repaired_any = True
+
     if not conflicts:
         return 0
-    lineup.update({
-        "status": "estimado",
-        "source_quality": "model_only",
-        "lineup_kind": "roster_conflict_withheld",
-        "current_squad_validated_at": stamp,
-        "current_squad_conflicts": conflicts,
-        "display_warning": (
-            "XI oculto: contiene jugadores que no pertenecen a la plantilla registrada actual. "
-            "Se reconstruirá con plantilla vigente, prensa reciente y continuidad de 2026/27."
-        ),
-    })
-    lineup.pop("critical_probable_checked_at", None)
+
+    if withheld and not repaired_any:
+        # No hubo plantilla suficiente para reconstruir: se oculta como antes.
+        lineup.update({
+            "status": "estimado",
+            "source_quality": "model_only",
+            "lineup_kind": "roster_conflict_withheld",
+            "current_squad_validated_at": stamp,
+            "current_squad_conflicts": conflicts,
+            "display_warning": (
+                "XI oculto: contiene jugadores que no pertenecen a la plantilla registrada actual. "
+                "Se reconstruirá con plantilla vigente, prensa reciente y continuidad de 2026/27."
+            ),
+        })
+        lineup.pop("critical_probable_checked_at", None)
+    else:
+        # Reconstruido desde la plantilla vigente: se muestra con aviso honesto.
+        lineup.update({
+            "status": "estimado",
+            "source_quality": "roster_grounded",
+            "lineup_kind": "roster_reconstructed",
+            "positions_inferred": True,
+            "formacion_local": _formation(lineup.get("posiciones_local")),
+            "formacion_visitante": _formation(lineup.get("posiciones_visitante")),
+            "current_squad_validated_at": stamp,
+            "current_squad_conflicts": conflicts,
+            "display_warning": (
+                "XI probable reconstruido con la plantilla vigente: se sustituyeron "
+                "jugadores que ya no constan en el club por titulares probables de la plantilla actual."
+            ),
+        })
+        lineup.pop("display_withheld", None)
     match["alineacion"] = lineup
     return sum(len(rows) for rows in conflicts.values())
 

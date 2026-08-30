@@ -9,11 +9,16 @@ export const FEED_URL =
 // BASE_URL es "/" en Vercel y "/futbol-edge/" en GitHub Pages.
 const FALLBACK_URL = (import.meta.env?.BASE_URL || "/") + "dashboard.json";
 const WITHHELD_QUALITIES = new Set(["model_only", "statistical_fallback"]);
-// Modelos que NO son un once probable fiable: plantilla actual sin fuente
-// externa (squad-only-v3) y el legacy squad-stats-v1 (construido con estadísticas
-// de temporadas anteriores, arrastraba jugadores que ya no están en el club).
-const WITHHELD_MODELS = new Set(["squad-only-v3", "squad-stats-v1"]);
-const ESTIMATE_QUALITIES = new Set(["fallback_with_media", "media_partial"]);
+// Solo se oculta el legacy squad-stats-v1 (construido con estadísticas de
+// temporadas anteriores; arrastraba jugadores que ya no están en el club).
+// squad-only-v3 se reconstruye desde la plantilla VIGENTE, así que se muestra
+// como estimación honesta en lugar de ocultarse.
+const WITHHELD_MODELS = new Set(["squad-stats-v1"]);
+// Onces mostrables como estimación (nunca como "probable" con respaldo pleno):
+// roster_grounded = XI reconstruido con la plantilla actual (sustituye a quien
+// ya no está por titulares reales del club).
+const ESTIMATE_QUALITIES = new Set(["fallback_with_media", "media_partial", "roster_grounded"]);
+const ROSTER_ESTIMATE_MODELS = new Set(["squad-only-v3"]);
 const LIVE_REFRESH_MS = 60_000;
 
 // App.jsx consume loadFeed() con `.then(setData)`. Conservamos esa API y usamos
@@ -94,12 +99,18 @@ export function normalizeFeedForDisplay(data) {
           : "Sin fuente externa reciente · XI oculto";
         normalized.display_withheld = true;
         normalized.display_warning = "Aún no hay un once fiable de este partido. Para no inventar jugadores, el XI probable se mostrará cuando aparezca el último once oficial o la alineación confirmada (habitualmente ~1 h antes del partido).";
-      } else if (normalized.status !== "confirmado" && ESTIMATE_QUALITIES.has(normalized.source_quality)) {
-        // Con evidencia parcial puede mostrarse como estimación, nunca como probable.
+      } else if (
+        normalized.status !== "confirmado"
+        && (ESTIMATE_QUALITIES.has(normalized.source_quality) || ROSTER_ESTIMATE_MODELS.has(normalized.model))
+      ) {
+        // Con evidencia parcial o reconstruido desde la plantilla vigente: se
+        // muestra como estimación, nunca como probable con respaldo pleno.
         normalized.status = "estimado";
         normalized.lineup_kind = normalized.lineup_kind || "partially_grounded_estimate";
         normalized.display_warning = normalized.display_warning
-          || "XI estimado con evidencia parcial; todavía no existe respaldo suficiente para llamarlo once probable.";
+          || (ROSTER_ESTIMATE_MODELS.has(normalized.model)
+            ? "XI estimado desde la plantilla vigente del club; se afinará con el once oficial cuando se publique (~1 h antes del partido)."
+            : "XI estimado con evidencia parcial; todavía no existe respaldo suficiente para llamarlo once probable.");
       }
 
       // Un check operativo antiguo podía marcar "published" si API-Football
