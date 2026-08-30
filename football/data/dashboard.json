@@ -1,6 +1,6 @@
 {
   "schema_version": 7,
-  "generated_at": "2026-08-31T00:38:45.848478+02:00",
+  "generated_at": "2026-08-31T01:31:51.606779+02:00",
   "season": 2026,
   "quiniela": {
     "jornada": "3",
@@ -57050,7 +57050,8 @@
           "official_lineup": false,
           "weather": false,
           "market_odds": false
-        }
+        },
+        "refreshed_at": "2026-08-31T01:31:51.606779+02:00"
       },
       "prediction_factors": [
         {
@@ -57088,7 +57089,8 @@
         "decision": "eligible",
         "label": "Pronóstico publicable",
         "reasons": [],
-        "policy": "abstención automática por incertidumbre o falta de evidencia"
+        "policy": "abstención automática por incertidumbre o falta de evidencia",
+        "refreshed_at": "2026-08-31T01:31:51.606779+02:00"
       },
       "state_simulation": {
         "method": "monte_carlo_5min_game_state_v1",
@@ -57126,27 +57128,27 @@
         "status": "estimado",
         "evidence": "baja",
         "home": {
-          "key_players": 0,
-          "expected_minutes_avg": null,
-          "starter_probability_avg_pct": null,
-          "attack_presence_index": null,
+          "key_players": 11,
+          "expected_minutes_avg": 76.0,
+          "starter_probability_avg_pct": 74,
+          "attack_presence_index": 16.41,
           "listed_absences": 0,
           "official_absences": 0,
           "confidence_penalty_pp": 0.0
         },
         "away": {
-          "key_players": 0,
-          "expected_minutes_avg": null,
-          "starter_probability_avg_pct": null,
-          "attack_presence_index": null,
+          "key_players": 11,
+          "expected_minutes_avg": 76.0,
+          "starter_probability_avg_pct": 74,
+          "attack_presence_index": 11.13,
           "listed_absences": 0,
           "official_absences": 0,
           "confidence_penalty_pp": 0.0
         },
-        "attack_presence_edge": null,
+        "attack_presence_edge": 5.28,
         "confidence_penalty_pp": 5.0,
         "probability_adjustment": "not_applied",
-        "method": "minutos × probabilidad de titularidad × producción observada; las bajas oficiales penalizan confianza. No altera el 1X2 sin validación histórica."
+        "method": "actualización intradía de minutos/producción/bajas; no altera 1X2 puro sin gate histórico"
       },
       "current_squads": {
         "season_context": 2026,
@@ -57653,6 +57655,18 @@
           "odds": 0.0,
           "players": 50.0
         }
+      },
+      "prediction_live_refresh": {
+        "checked_at": "2026-08-31T01:31:51.606779+02:00",
+        "cadence_target_minutes": 5,
+        "model_retrained": false,
+        "pure_model_probs_changed": false,
+        "reacts_to": [
+          "weather",
+          "lineup",
+          "absences",
+          "market"
+        ]
       }
     },
     {
@@ -341773,14 +341787,14 @@
     }
   },
   "feature_truth_table": {
-    "generated_at": "2026-08-31T00:38:45.848478+02:00",
+    "generated_at": "2026-08-31T01:31:51.606779+02:00",
     "principle": "candidate -> leakage-safe snapshot -> walk-forward -> compare vs accepted engine + no-vig market -> promote only on improvement",
     "eligible_matches": 360,
     "features": [
       {
         "feature": "dixon_coles_score_model",
         "source": "Resultados históricos reales · Football-Data/API-Football + score model Dixon-Coles",
-        "available_at": "2026-08-31T00:38:45.848478+02:00",
+        "available_at": "2026-08-31T01:31:51.606779+02:00",
         "coverage": {
           "covered": 360,
           "eligible": 360,
@@ -341802,7 +341816,7 @@
       {
         "feature": "elo",
         "source": "Resultados históricos reales transformados en rating Elo",
-        "available_at": "2026-08-31T00:38:45.848478+02:00",
+        "available_at": "2026-08-31T01:31:51.606779+02:00",
         "coverage": {
           "covered": 360,
           "eligible": 360,
@@ -341823,7 +341837,7 @@
       {
         "feature": "team_stat_model",
         "source": "football-data.co.uk · históricos de remates, SOT, córners, faltas y tarjetas",
-        "available_at": "2026-08-31T00:38:45.848478+02:00",
+        "available_at": "2026-08-31T01:31:51.606779+02:00",
         "coverage": {
           "covered": 360,
           "eligible": 360,
@@ -341928,7 +341942,7 @@
       {
         "feature": "tactical_matchup",
         "source": "Perfiles observados casa/fuera derivados de football-data.co.uk",
-        "available_at": "2026-08-31T00:38:45.848478+02:00",
+        "available_at": "2026-08-31T01:31:51.606779+02:00",
         "coverage": {
           "covered": 360,
           "eligible": 360,
