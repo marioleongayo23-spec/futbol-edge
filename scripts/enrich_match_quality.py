@@ -33,7 +33,7 @@ def enrich(path: Path = DASHBOARD) -> bool:
             match["match_quality"] = quality
             changed = True
 
-    fair_changed, fair_enriched = enrich_player_fair_lines(payload)
+    fair_changed, _ = enrich_player_fair_lines(payload)
     changed = changed or fair_changed
 
     if changed:
