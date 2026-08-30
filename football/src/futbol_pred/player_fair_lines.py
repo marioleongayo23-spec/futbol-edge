@@ -66,7 +66,11 @@ def fair_lines_for_prop(prop: dict[str, Any]) -> dict[str, list[dict[str, Any]]]
 
 
 def enrich_player_rows(rows: list[dict[str, Any]]) -> tuple[bool, int]:
-    """Añade fair_lines solo a filas respaldadas por API-Football."""
+    """Añade fair_lines solo a filas respaldadas por API-Football.
+
+    Si una fila deja de tener evidencia real, elimina cualquier fair_lines
+    anterior para no dejar una señal teórica huérfana en el feed.
+    """
     changed = False
     enriched = 0
     for row in rows:
@@ -74,6 +78,10 @@ def enrich_player_rows(rows: list[dict[str, Any]]) -> tuple[bool, int]:
             continue
         source = str(row.get("source") or "")
         if not source.startswith(REAL_SOURCE_PREFIX):
+            if "fair_lines" in row or "fair_model" in row:
+                row.pop("fair_lines", None)
+                row.pop("fair_model", None)
+                changed = True
             continue
         fair = fair_lines_for_prop(row)
         if row.get("fair_lines") != fair:
