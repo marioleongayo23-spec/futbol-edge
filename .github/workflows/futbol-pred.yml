@@ -109,7 +109,7 @@ jobs:
           python -m futbol_pred.matchday_prediction_refresh
           python -m futbol_pred.matchday_freshness_gate
           python -m futbol_pred.coverage
-          python scripts/enrich_match_quality.py
+          python ../scripts/enrich_match_quality.py
           python -m futbol_pred.feature_truth
           python -m futbol_pred.matchday_diagnose
 
