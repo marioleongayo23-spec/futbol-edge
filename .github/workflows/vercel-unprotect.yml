@@ -1,0 +1,86 @@
+name: vercel unprotect prod (manual)
+
+# Desactiva Vercel Authentication (Deployment Protection) del proyecto para que
+# producción sea accesible al público. Cambia CONFIGURACIÓN de Vercel vía API; no
+# toca código ni despliega. Guarda por interruptor manual con confirmación
+# explícita (confirm=SI) para que no se dispare por accidente.
+#
+# Reutiliza VERCEL_TOKEN y los IDs públicos de deploy-vercel.yml.
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: "Escribe SI para desactivar la protección (hace la web pública)"
+        required: true
+        default: "NO"
+      mode:
+        description: "off = desactivar del todo | preview = mantener protegidos solo los previews"
+        required: false
+        default: "off"
+
+concurrency:
+  group: vercel-protection
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  unprotect:
+    if: ${{ inputs.confirm == 'SI' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      TEAM: team_UezD7A1MDWJVnLCRCRh4bdOc
+      PROJECT: prj_x059Hz47Zb5f8g2ibGEwUVBpNtU2
+      PROD_URL: https://futbol-edge-porra1.vercel.app
+      TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      API: https://api.vercel.com
+    steps:
+      - name: Comprobar token
+        run: |
+          if [ -z "${TOKEN:-}" ]; then echo "::error::Falta el secret VERCEL_TOKEN"; exit 1; fi
+
+      - name: Estado ACTUAL de protección (para registro / posible reversión)
+        run: |
+          echo "== ssoProtection / passwordProtection / trustedIps ANTES =="
+          curl -sS -H "Authorization: Bearer $TOKEN" \
+            "$API/v9/projects/$PROJECT?teamId=$TEAM" \
+          | python3 -c 'import json,sys; d=json.load(sys.stdin); print(json.dumps({k:d.get(k) for k in ("name","id","ssoProtection","passwordProtection","trustedIps")}, indent=2, ensure_ascii=False))'
+
+      - name: Desactivar la protección (PATCH)
+        run: |
+          if [ "${{ inputs.mode }}" = "preview" ]; then
+            BODY='{"ssoProtection":{"deploymentType":"preview"}}'
+            echo "Modo: proteger SOLO previews (producción pública)."
+          else
+            BODY='{"ssoProtection":null}'
+            echo "Modo: desactivar Vercel Authentication por completo."
+          fi
+          echo "== Respuesta del PATCH (campos de protección) =="
+          code="$(curl -sS -o /tmp/patch.json -w '%{http_code}' -X PATCH \
+            -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+            -d "$BODY" \
+            "$API/v9/projects/$PROJECT?teamId=$TEAM")"
+          echo "HTTP $code"
+          python3 -c 'import json,sys; d=json.load(open("/tmp/patch.json")); print(json.dumps({k:d.get(k) for k in ("error","ssoProtection","passwordProtection","trustedIps")}, indent=2, ensure_ascii=False))' || cat /tmp/patch.json
+          if [ "$code" -ge 300 ]; then echo "::error::El PATCH no fue 2xx (código $code)"; exit 1; fi
+
+      - name: Verificar acceso PÚBLICO anónimo tras el cambio
+        run: |
+          echo "Esperando propagación…"; sleep 8
+          for probe in "/" "/build-version.json"; do
+            echo "== GET (anónimo) ${PROD_URL}${probe} =="
+            code="$(curl -sS -o /dev/null -w '%{http_code}' -I --max-time 25 "${PROD_URL}${probe}" || echo '000')"
+            echo "HTTP status anónimo: $code"
+          done
+          echo "== build-version.json publicado (debe ser JSON, no el HTML del SSO) =="
+          curl -sS -L --max-time 25 "${PROD_URL}/build-version.json" | head -c 400 || true
+          echo
+          final="$(curl -sS -o /dev/null -w '%{http_code}' -I --max-time 25 "${PROD_URL}/" || echo '000')"
+          if [ "$final" = "200" ]; then
+            echo "OK: producción responde 200 a anónimos. La web es pública."
+          else
+            echo "::warning::Producción responde $final a anónimos (esperado 200). Si sigue 302, revisa que no haya además Password Protection o Trusted IPs, o reintenta con mode=off."
+          fi
