@@ -1,0 +1,61 @@
+name: ai diag (manual)
+
+# Diagnóstico BAJO DEMANDA de la IA. Solo lectura: dice si los secrets de IA
+# llegan al pipeline, si el cliente los detecta (available()) y hace UNA llamada
+# real mínima para ver el error exacto si falla (clave inválida, cuota, etc.).
+# Nunca imprime el valor de la clave, solo su longitud.
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: football
+    env:
+      AI_API_KEY: ${{ secrets.AI_API_KEY }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      GEMINI_MODEL: ${{ secrets.GEMINI_MODEL }}
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+      GROQ_MODEL: ${{ secrets.GROQ_MODEL }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      OPENAI_BASE_URL: ${{ secrets.OPENAI_BASE_URL }}
+      LOCAL_AI_BASE_URL: ${{ secrets.LOCAL_AI_BASE_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Instalar dependencias
+        run: |
+          pip install -r requirements.txt
+          pip install -e .
+      - name: Diagnóstico de IA
+        run: |
+          python - <<'PY'
+          import os
+          from futbol_pred.ingest.ai_client import available, configured_providers, chat
+          print("== secrets que llegan al workflow (solo longitud, no el valor) ==")
+          for k in ("AI_API_KEY", "GEMINI_API_KEY", "GROQ_API_KEY", "GEMINI_MODEL",
+                    "GROQ_MODEL", "OPENAI_API_KEY", "OPENAI_BASE_URL", "LOCAL_AI_BASE_URL"):
+              v = (os.getenv(k) or "").strip()
+              print(f"  {k}: {'SET (len=' + str(len(v)) + ')' if v else 'VACÍO / no configurado'}")
+          print("== detección del cliente ==")
+          print("  available():", available())
+          print("  configured_providers():", configured_providers())
+          print("== llamada real mínima (para ver el error exacto si falla) ==")
+          try:
+              r = chat("Responde exactamente: OK", max_tokens=10, timeout=30)
+              if r:
+                  print("  OK ->", r.provider, "/", r.model, "/", repr((r.text or "")[:60]))
+              else:
+                  print("  chat() devolvió None (ningún proveedor respondió)")
+          except Exception as exc:
+              print("  EXCEPCIÓN:", type(exc).__name__, "-", str(exc)[:300])
+          PY
