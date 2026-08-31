@@ -1,9 +1,9 @@
 name: ai diag (manual)
 
 # Diagnóstico BAJO DEMANDA de la IA. Solo lectura: dice si los secrets de IA
-# llegan al pipeline, si el cliente los detecta (available()) y hace UNA llamada
-# real mínima para ver el error exacto si falla (clave inválida, cuota, etc.).
-# Nunca imprime el valor de la clave, solo su longitud.
+# llegan al pipeline, si el cliente los detecta (available()) y prueba las APIs
+# de Gemini y Groq DIRECTAMENTE para mostrar el código HTTP y el error exacto si
+# fallan (clave inválida, API no habilitada, cuota, etc.). Nunca imprime la clave.
 
 on:
   workflow_dispatch: {}
@@ -39,7 +39,7 @@ jobs:
       - name: Diagnóstico de IA
         run: |
           python - <<'PY'
-          import os
+          import os, requests
           from futbol_pred.ingest.ai_client import available, configured_providers, chat
           print("== secrets que llegan al workflow (solo longitud, no el valor) ==")
           for k in ("AI_API_KEY", "GEMINI_API_KEY", "GROQ_API_KEY", "GEMINI_MODEL",
@@ -47,15 +47,49 @@ jobs:
               v = (os.getenv(k) or "").strip()
               print(f"  {k}: {'SET (len=' + str(len(v)) + ')' if v else 'VACÍO / no configurado'}")
           print("== detección del cliente ==")
-          print("  available():", available())
-          print("  configured_providers():", configured_providers())
-          print("== llamada real mínima (para ver el error exacto si falla) ==")
+          print("  available():", available(), "| providers:", configured_providers())
+
+          print("== Gemini directo (GET /v1beta/models) ==")
+          gk = (os.getenv("AI_API_KEY") or os.getenv("GEMINI_API_KEY") or "").strip()
+          if gk:
+              try:
+                  resp = requests.get("https://generativelanguage.googleapis.com/v1beta/models",
+                                      params={"key": gk}, timeout=30)
+                  print("  HTTP", resp.status_code)
+                  if resp.status_code == 200:
+                      names = [m.get("name") for m in resp.json().get("models", [])
+                               if "generateContent" in (m.get("supportedGenerationMethods") or [])][:6]
+                      print("  modelos con generateContent (muestra):", names)
+                  else:
+                      print("  ERROR body:", resp.text[:400])
+              except Exception as exc:
+                  print("  EXCEPCIÓN:", type(exc).__name__, "-", str(exc)[:200])
+          else:
+              print("  (sin clave Gemini)")
+
+          print("== Groq directo (POST /openai/v1/chat/completions) ==")
+          qk = (os.getenv("GROQ_API_KEY") or "").strip()
+          if qk:
+              try:
+                  resp = requests.post("https://api.groq.com/openai/v1/chat/completions",
+                                       headers={"Authorization": f"Bearer {qk}"},
+                                       json={"model": os.getenv("GROQ_MODEL") or "llama-3.3-70b-versatile",
+                                             "messages": [{"role": "user", "content": "di OK"}],
+                                             "max_tokens": 5}, timeout=30)
+                  print("  HTTP", resp.status_code)
+                  if resp.status_code != 200:
+                      print("  ERROR body:", resp.text[:400])
+                  else:
+                      print("  OK:", resp.json().get("choices", [{}])[0].get("message", {}).get("content"))
+              except Exception as exc:
+                  print("  EXCEPCIÓN:", type(exc).__name__, "-", str(exc)[:200])
+          else:
+              print("  (sin clave Groq)")
+
+          print("== chat() del cliente (con fallback) ==")
           try:
               r = chat("Responde exactamente: OK", max_tokens=10, timeout=30)
-              if r:
-                  print("  OK ->", r.provider, "/", r.model, "/", repr((r.text or "")[:60]))
-              else:
-                  print("  chat() devolvió None (ningún proveedor respondió)")
+              print("  ->", (r.provider, r.model, (r.text or "")[:40]) if r else "None")
           except Exception as exc:
-              print("  EXCEPCIÓN:", type(exc).__name__, "-", str(exc)[:300])
+              print("  EXCEPCIÓN:", type(exc).__name__, "-", str(exc)[:200])
           PY
