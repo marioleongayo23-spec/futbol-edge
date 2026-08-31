@@ -1,6 +1,6 @@
 {
   "schema_version": 7,
-  "generated_at": "2026-08-31T21:42:38.984360+02:00",
+  "generated_at": "2026-08-31T21:48:05.099305+02:00",
   "season": 2026,
   "quiniela": {
     "jornada": "4",
@@ -60828,7 +60828,7 @@
       "operational_checks": {
         "weather_checked_at": "2026-08-31T21:26:05.005856+02:00",
         "weather_check_result": "ok",
-        "fixture_checked_at": "2026-08-31T21:36:58.691973+02:00",
+        "fixture_checked_at": "2026-08-31T21:47:48.664553+02:00",
         "fixture_check_result": "not_found"
       },
       "current_squads": {
@@ -60854,7 +60854,7 @@
           "fixture": {
             "state": "ok",
             "required": true,
-            "checked_at": "2026-08-31T21:36:58.691973+02:00",
+            "checked_at": "2026-08-31T21:47:48.664553+02:00",
             "source": "football_data_uk",
             "detail": "not_found"
           },
@@ -61276,7 +61276,7 @@
           "modelProb": 0.399,
           "edge": -0.047,
           "weather_adjusted": true,
-          "prediction_refreshed_at": "2026-08-31T21:42:38.984360+02:00"
+          "prediction_refreshed_at": "2026-08-31T21:48:05.099305+02:00"
         },
         {
           "market": "ou25",
@@ -61285,7 +61285,7 @@
           "modelProb": 0.601,
           "edge": -0.071,
           "weather_adjusted": true,
-          "prediction_refreshed_at": "2026-08-31T21:42:38.984360+02:00"
+          "prediction_refreshed_at": "2026-08-31T21:48:05.099305+02:00"
         },
         {
           "market": "1x2",
@@ -64004,7 +64004,7 @@
           "wind_kmh": 7.4,
           "weather_code": 2
         },
-        "applied_at": "2026-08-31T21:42:38.984360+02:00",
+        "applied_at": "2026-08-31T21:48:05.099305+02:00",
         "reason": "condiciones dentro de umbrales neutros",
         "reasons": [],
         "multipliers": {
@@ -64948,7 +64948,7 @@
           "weather": true,
           "market_odds": false
         },
-        "refreshed_at": "2026-08-31T21:42:38.984360+02:00",
+        "refreshed_at": "2026-08-31T21:48:05.099305+02:00",
         "raw_score_before_freshness_gate": 99.0,
         "data_freshness_gate_applied": true,
         "data_freshness_gate_status": "warning",
@@ -64996,7 +64996,7 @@
         "label": "Pronóstico publicable",
         "reasons": [],
         "policy": "abstención automática por incertidumbre o falta de evidencia",
-        "refreshed_at": "2026-08-31T21:42:38.984360+02:00"
+        "refreshed_at": "2026-08-31T21:48:05.099305+02:00"
       },
       "prediction_snapshot": {
         "generated_at": "2026-08-31T18:21:25.111972+02:00",
@@ -65670,9 +65670,9 @@
         "lineup": "2026-08-31T12:31:31.320086+00:00"
       },
       "operational_checks": {
-        "weather_checked_at": "2026-08-31T21:42:24.151349+02:00",
+        "weather_checked_at": "2026-08-31T21:47:48.664553+02:00",
         "weather_check_result": "ok",
-        "fixture_checked_at": "2026-08-31T21:36:58.691973+02:00",
+        "fixture_checked_at": "2026-08-31T21:47:48.664553+02:00",
         "fixture_check_result": "not_found",
         "lineup_checked_at": "2026-08-31T21:31:34.742550+02:00",
         "lineup_check_result": "fixture_not_found_last_mile",
@@ -66077,7 +66077,7 @@
         }
       },
       "prediction_live_refresh": {
-        "checked_at": "2026-08-31T21:42:38.984360+02:00",
+        "checked_at": "2026-08-31T21:48:05.099305+02:00",
         "cadence_target_minutes": 5,
         "model_retrained": false,
         "pure_model_probs_changed": false,
@@ -66174,14 +66174,14 @@
           "fixture": {
             "state": "ok",
             "required": true,
-            "checked_at": "2026-08-31T21:36:58.691973+02:00",
+            "checked_at": "2026-08-31T21:47:48.664553+02:00",
             "source": "football_data",
             "detail": "not_found"
           },
           "weather": {
             "state": "ok",
             "required": true,
-            "checked_at": "2026-08-31T21:42:24.151349+02:00",
+            "checked_at": "2026-08-31T21:47:48.664553+02:00",
             "source": "Open-Meteo",
             "detail": "ok"
           },
@@ -424048,7 +424048,7 @@
       "daily_remaining": 99,
       "minute_limit": 10,
       "minute_remaining": 9,
-      "checked_at": "2026-08-31T19:37:00.361667+00:00",
+      "checked_at": "2026-08-31T19:47:50.471749+00:00",
       "policy": "polling prepartido prioritario + backoff por cuota restante"
     },
     "the_odds_api": {
@@ -424148,14 +424148,14 @@
     }
   },
   "feature_truth_table": {
-    "generated_at": "2026-08-31T21:42:38.984360+02:00",
+    "generated_at": "2026-08-31T21:48:05.099305+02:00",
     "principle": "candidate -> leakage-safe snapshot -> walk-forward -> compare vs accepted engine + no-vig market -> promote only on improvement",
     "eligible_matches": 493,
     "features": [
       {
         "feature": "dixon_coles_score_model",
         "source": "Resultados históricos reales · Football-Data/API-Football + score model Dixon-Coles",
-        "available_at": "2026-08-31T21:42:38.984360+02:00",
+        "available_at": "2026-08-31T21:48:05.099305+02:00",
         "coverage": {
           "covered": 493,
           "eligible": 493,
@@ -424177,7 +424177,7 @@
       {
         "feature": "elo",
         "source": "Resultados históricos reales transformados en rating Elo",
-        "available_at": "2026-08-31T21:42:38.984360+02:00",
+        "available_at": "2026-08-31T21:48:05.099305+02:00",
         "coverage": {
           "covered": 493,
           "eligible": 493,
@@ -424198,7 +424198,7 @@
       {
         "feature": "team_stat_model",
         "source": "football-data.co.uk · históricos de remates, SOT, córners, faltas y tarjetas",
-        "available_at": "2026-08-31T21:42:38.984360+02:00",
+        "available_at": "2026-08-31T21:48:05.099305+02:00",
         "coverage": {
           "covered": 354,
           "eligible": 493,
@@ -424303,7 +424303,7 @@
       {
         "feature": "tactical_matchup",
         "source": "Perfiles observados casa/fuera derivados de football-data.co.uk",
-        "available_at": "2026-08-31T21:42:38.984360+02:00",
+        "available_at": "2026-08-31T21:48:05.099305+02:00",
         "coverage": {
           "covered": 354,
           "eligible": 493,
