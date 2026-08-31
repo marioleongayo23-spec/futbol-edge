@@ -83,7 +83,7 @@ jobs:
           LOCAL_AI_BASE_URL: ${{ secrets.LOCAL_AI_BASE_URL }}
           LOCAL_AI_MODEL: ${{ secrets.LOCAL_AI_MODEL }}
           LOCAL_AI_API_KEY: ${{ secrets.LOCAL_AI_API_KEY }}
-          AI_DAILY_CALL_BUDGET: "16"
+          AI_DAILY_CALL_BUDGET: "40"
           AI_REFRESH_RUN: ${{ github.event_name == 'schedule' && '1' || '0' }}
           FORCE_AI: ${{ github.event_name == 'workflow_dispatch' && inputs.force_ai && '1' || '0' }}
         run: |

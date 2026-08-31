@@ -65,7 +65,7 @@ jobs:
           LOCAL_AI_BASE_URL: ${{ secrets.LOCAL_AI_BASE_URL }}
           LOCAL_AI_MODEL: ${{ secrets.LOCAL_AI_MODEL }}
           LOCAL_AI_API_KEY: ${{ secrets.LOCAL_AI_API_KEY }}
-          AI_DAILY_CALL_BUDGET: "20"
+          AI_DAILY_CALL_BUDGET: "40"
           GH_TOKEN: ${{ github.token }}
         run: |
           git config user.name "github-actions[bot]"
