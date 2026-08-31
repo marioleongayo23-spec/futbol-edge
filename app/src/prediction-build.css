@@ -1,0 +1,19 @@
+/* "Cómo se forma la predicción": cadena cuantificada motor→modelo→mercado→final. */
+.pb-legend{display:flex;flex-wrap:wrap;gap:14px;font-size:.76rem;color:var(--muted);margin:2px 0 10px}
+.pb-legend .pb-dot{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:5px;vertical-align:middle}
+.pb-dot.s1{background:#22c98a}
+.pb-dot.sx{background:#5b6b82}
+.pb-dot.s2{background:#5aa2ff}
+
+.pb-stage{margin:9px 0}
+.pb-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;font-size:.83rem;margin-bottom:4px}
+.pb-head b{font-weight:700}
+.pb-head .dim{font-size:.72rem;text-align:right}
+.pb-bar{display:flex;height:24px;border-radius:7px;overflow:hidden;border:1px solid var(--line)}
+.pb-stage.strong .pb-bar{height:28px}
+.pb-stage.final .pb-bar{height:30px;box-shadow:0 0 0 2px var(--greenD)}
+.pb-stage.final .pb-head b{color:var(--green)}
+.pb-arrow{color:var(--muted);text-align:center;font-size:.8rem;line-height:1;margin:1px 0}
+.pb-shift{display:flex;gap:10px;font-size:.72rem;margin-top:4px;color:var(--muted)}
+.pb-shift .up{color:var(--green);font-weight:700}
+.pb-shift .down{color:var(--blue);font-weight:700}

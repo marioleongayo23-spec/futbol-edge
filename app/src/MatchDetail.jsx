@@ -7,6 +7,7 @@ import OfficialStatsPanel from "./OfficialStatsPanel";
 import WeatherAdjustmentPanel from "./WeatherAdjustmentPanel";
 import { teamSquad } from "./teams";
 import PredictionTimelinePanel from "./PredictionTimelinePanel";
+import PredictionBuild from "./PredictionBuild";
 import { hasAccess } from "./plans";
 import { QualityBadge, MatchQualityCard } from "./MatchQuality";
 
@@ -497,6 +498,8 @@ export default function MatchDetail({ m, bankroll, onBack, onTeam, players, plan
           <p className="note" style={{ color: "var(--muted)", marginTop: 4 }}>Redactado por {m.preview_meta?.provider || "IA"} a partir de los números del modelo{m.preview_meta?.quality != null ? ` · calidad ${Math.round(m.preview_meta.quality * 100)}%` : ""}. No es información de fuentes; interpreta los datos.</p>
         </div>
       )}
+
+      <PredictionBuild m={m} />
 
       {(m.prediction_factors || []).length > 0 && (
         <div className="card">
