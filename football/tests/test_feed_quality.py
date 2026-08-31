@@ -3,7 +3,25 @@
 from copy import deepcopy
 import json
 
-from futbol_pred.feed_quality import evaluate_feed, preserve_last_known_good, write_feed_safely
+from futbol_pred.feed_quality import (
+    _sanitize_incomplete_lineups,
+    evaluate_feed,
+    preserve_last_known_good,
+    write_feed_safely,
+)
+
+
+def _complete_lineup():
+    return {
+        "local": [f"L{i}" for i in range(11)],
+        "visitante": [f"V{i}" for i in range(11)],
+        "posiciones_local": ["POR"] + ["DFC"] * 10,
+        "posiciones_visitante": ["POR"] + ["DFC"] * 10,
+        "formacion_local": "4-3-3",
+        "formacion_visitante": "4-3-3",
+        "status": "probable",
+        "provider": "Motor estadístico local",
+    }
 
 
 def _feed(n=20):
@@ -98,6 +116,48 @@ def test_once_vacio_proximo_avisa_pero_no_bloquea_publicacion():
     assert not report["issues"]
     assert any(w.startswith("once_vacio_proximo") for w in report["warnings"])
     assert report["metrics"]["empty_lineups_upcoming"] == len(feed["matches"])
+
+
+def test_once_incompleto_en_partido_nuevo_no_bloquea_el_feed():
+    """Un once malformado en UN partido nuevo (sin once bueno anterior) se cae a
+    'sin once', en vez de invalidar y bloquear la publicación entera."""
+
+    feed = _feed()
+    # Once presente pero a medias: 10 jugadores, sin posiciones ni formación.
+    feed["matches"][0]["alineacion"] = {
+        "local": [f"L{i}" for i in range(10)],
+        "visitante": [f"V{i}" for i in range(11)],
+        "provider": "Motor estadístico local",
+    }
+    # Antes de sanear: once_incompleto invalida TODO el feed.
+    assert evaluate_feed(deepcopy(feed))["valid"] is False
+    dropped = _sanitize_incomplete_lineups(feed, previous=None)
+    assert dropped == 1
+    assert feed["matches"][0]["alineacion"] is None
+    report = evaluate_feed(feed)
+    assert report["valid"] is True
+    assert not any(i.startswith(("once_incompleto", "posiciones_incompletas")) for i in report["issues"])
+
+
+def test_once_incompleto_recupera_el_once_completo_anterior():
+    """Si el feed anterior tenía un once COMPLETO para ese partido, se recupera en
+    vez de dejar el partido sin once (y sin disparar regresión)."""
+
+    previous = _feed()
+    previous["matches"][0]["alineacion"] = _complete_lineup()
+    candidate = deepcopy(previous)
+    # El refresco deja el once a medias (sin posiciones ni formación).
+    candidate["matches"][0]["alineacion"] = {
+        "local": [f"L{i}" for i in range(11)],
+        "visitante": [f"V{i}" for i in range(11)],
+        "provider": "Motor estadístico local",
+    }
+    dropped = _sanitize_incomplete_lineups(candidate, previous=previous)
+    assert dropped == 1
+    assert candidate["matches"][0]["alineacion"]["formacion_local"] == "4-3-3"
+    report = evaluate_feed(candidate, previous=previous)
+    assert report["valid"] is True
+    assert not any(i.startswith("regresion_alineacion") for i in report["issues"])
 
 
 def test_perdida_de_once_ya_publicado_sigue_bloqueando():

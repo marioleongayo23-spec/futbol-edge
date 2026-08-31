@@ -349,12 +349,65 @@ def evaluate_feed(candidate: dict, previous: dict | None = None) -> dict:
     }
 
 
+def _incomplete_lineup(lineup: dict | None, schema_version: int) -> bool:
+    """Un once PRESENTE pero malformado: jugadores != 11, sin posiciones/formación
+    o sin estado válido. Se distingue de 'sin once' (None), que sí es admisible."""
+
+    if not lineup:
+        return False
+    if len(lineup.get("local") or []) != 11 or len(lineup.get("visitante") or []) != 11:
+        return True
+    if (
+        len(lineup.get("posiciones_local") or []) != 11
+        or len(lineup.get("posiciones_visitante") or []) != 11
+        or not lineup.get("formacion_local")
+        or not lineup.get("formacion_visitante")
+    ):
+        return True
+    if schema_version >= 6 and lineup.get("status") not in {"confirmado", "probable", "estimado"}:
+        return True
+    return False
+
+
+def _sanitize_incomplete_lineups(candidate: dict, previous: dict | None) -> int:
+    """Evita que un once malformado en UN partido invalide y bloquee TODO el feed.
+
+    Un refresco puede dejar un once a medias (p. ej. un partido nuevo cuya fuente
+    solo trae parte del XI, sin posiciones ni estado). Antes eso ponía
+    ``feed_valid=false``; el script de turno devolvía 1 y tumbaba el pipeline
+    entero, impidiendo publicar el feed —previas de IA incluidas—. Ahora, en vez
+    de bloquear, se recupera el último once COMPLETO publicado para ese partido y,
+    si no lo hay, se deja el partido sin once (aviso ``once_vacio_proximo``, no
+    bloqueante). El resto del feed se publica con normalidad.
+    """
+
+    schema_version = int(candidate.get("schema_version") or 0)
+    old_matches = (previous or {}).get("matches") or []
+    old_by_id = {m.get("id"): m for m in old_matches if isinstance(m, dict) and m.get("id")}
+    old_by_key = {match_identity(m): m for m in old_matches if isinstance(m, dict)}
+    repaired = 0
+    for match in candidate.get("matches") or []:
+        if not isinstance(match, dict) or not _incomplete_lineup(match.get("alineacion"), schema_version):
+            continue
+        old = old_by_id.get(match.get("id")) or old_by_key.get(match_identity(match))
+        old_lineup = (old or {}).get("alineacion")
+        if old_lineup and not _incomplete_lineup(old_lineup, schema_version):
+            match["alineacion"] = deepcopy(old_lineup)
+        else:
+            match["alineacion"] = None
+        repaired += 1
+    return repaired
+
+
 def write_feed_safely(path: Path, payload: dict, previous: dict | None = None) -> tuple[bool, dict]:
     """Valida, escribe atómicamente y nunca pisa un feed bueno con uno peor."""
 
     previous = previous if previous is not None else load_feed(path)
     preserve_last_known_good(payload, previous)
+    dropped = _sanitize_incomplete_lineups(payload, previous)
     report = evaluate_feed(payload, previous)
+    if dropped:
+        report.setdefault("metrics", {})["sanitized_incomplete_lineups"] = dropped
     payload["feed_quality"] = report
     if not report["valid"]:
         return False, report
