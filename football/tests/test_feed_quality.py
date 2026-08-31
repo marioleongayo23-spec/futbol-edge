@@ -74,13 +74,50 @@ def test_escritura_segura_anade_informe(tmp_path):
     assert saved["feed_quality"]["valid"] is True
 
 
-def test_schema4_bloquea_proximos_sin_previa_ni_once():
+def test_schema4_bloquea_proximo_sin_previa():
     feed = _feed()
     feed["schema_version"] = 4
     report = evaluate_feed(feed)
     assert report["valid"] is False
     assert any(issue.startswith("preview_vacia_proximo") for issue in report["issues"])
-    assert any(issue.startswith("once_vacio_proximo") for issue in report["issues"])
+
+
+def test_once_vacio_proximo_avisa_pero_no_bloquea_publicacion():
+    """Un próximo NUEVO sin once no puede congelar TODO el feed (previas,
+    predicciones y la IA ya generada del resto). Se avisa, pero se publica."""
+
+    feed = _feed()
+    feed["schema_version"] = 4
+    # Todas las próximas tienen previa (el motor local siempre la rellena) pero
+    # ninguna tiene once: antes invalidaba el feed entero.
+    for match in feed["matches"]:
+        match["preview"] = " ".join(["texto"] * 100)
+        match["preview_meta"] = {"provider": "Motor estadístico local"}
+    report = evaluate_feed(feed)
+    assert report["valid"] is True
+    assert not report["issues"]
+    assert any(w.startswith("once_vacio_proximo") for w in report["warnings"])
+    assert report["metrics"]["empty_lineups_upcoming"] == len(feed["matches"])
+
+
+def test_perdida_de_once_ya_publicado_sigue_bloqueando():
+    """La red de seguridad real: perder un once que el feed anterior YA tenía
+    se sigue bloqueando como regresión, aunque once_vacio_proximo sea aviso."""
+
+    previous = _feed()
+    previous["matches"][0]["alineacion"] = {
+        "local": [f"J{i}" for i in range(11)],
+        "visitante": [f"V{i}" for i in range(11)],
+        "status": "probable",
+    }
+    candidate = deepcopy(previous)
+    for match in candidate["matches"]:
+        match["preview"] = " ".join(["texto"] * 100)
+        match["preview_meta"] = {"provider": "Motor estadístico local"}
+    candidate["matches"][0].pop("alineacion")  # se pierde un once ya publicado
+    report = evaluate_feed(candidate, previous=previous)
+    assert report["valid"] is False
+    assert any(issue.startswith("regresion_alineacion") for issue in report["issues"])
 
 
 def test_schema5_exige_snapshot_prepartido():

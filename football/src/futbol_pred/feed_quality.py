@@ -316,6 +316,19 @@ def evaluate_feed(candidate: dict, previous: dict | None = None) -> dict:
                 if not _missing(old.get(field)) and _missing(match.get(field)):
                     issues.append(f"regresion_{field}:{match.get('id')}")
 
+    # ``once_vacio_proximo`` es INFORMATIVO, no bloqueante. Un partido próximo
+    # NUEVO sin once (p. ej. una eliminatoria recién programada cuyos equipos aún
+    # no tienen plantilla que reconstruir, o un fixture que la fuente de onces no
+    # localiza) no puede tirar TODO el candidato y congelar en el último feed
+    # bueno las previas, predicciones, clima y la IA ya generada del resto de
+    # partidos. La pérdida de un once YA publicado se sigue bloqueando aparte con
+    # ``regresion_alineacion``, y toda próxima conserva al menos su previa —que sí
+    # es bloqueante y el motor local siempre puede rellenar—. Este era el bloqueo
+    # real que mantenía la IA congelada: 8 próximos sin once invalidaban el feed
+    # entero en cada ejecución.
+    warnings = [issue for issue in issues if issue.startswith("once_vacio_proximo:")]
+    blocking = [issue for issue in issues if not issue.startswith("once_vacio_proximo:")]
+
     metrics = {
         "matches": len(matches),
         "predictions": prediction_count,
@@ -323,13 +336,15 @@ def evaluate_feed(candidate: dict, previous: dict | None = None) -> dict:
         "lineups": lineup_count,
         "upcoming_content_required": required_ai_count,
         "blank_matches": blank_matches,
+        "empty_lineups_upcoming": len(warnings),
         "leagues": sorted(str(league) for league in leagues if league),
         "evaluable_predictions": evaluable,
     }
     return {
-        "valid": not issues,
-        "score": 1.0 if not issues else round(max(0.0, 1.0 - len(issues) / max(len(matches), 1)), 3),
-        "issues": issues[:50],
+        "valid": not blocking,
+        "score": 1.0 if not blocking else round(max(0.0, 1.0 - len(blocking) / max(len(matches), 1)), 3),
+        "issues": blocking[:50],
+        "warnings": warnings[:50],
         "metrics": metrics,
     }
 
