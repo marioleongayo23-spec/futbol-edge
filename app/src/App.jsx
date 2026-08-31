@@ -1112,7 +1112,8 @@ export default function App() {
 
         <main className="content">
           {data && isStale(data) && <div className="banner warn">⚠️ El feed puede estar desactualizado (hace {Math.round(feedAgeHours(data))} h). Se revisa a las 00:15 y 10:15, con control adicional cuando hay onces oficiales.</div>}
-          {data?.alerts?.some((item) => item.severity === "critical") && <div className="banner warn">⚠️ {data.alerts.filter((item) => item.severity === "critical").map((item) => item.message).join(" · ")}</div>}
+          {data?.alerts?.some((item) => item.severity === "critical") && <div className="banner warn">⚠️ {[...new Set(data.alerts.filter((item) => item.severity === "critical").map((item) => item.message))].join(" · ")}</div>}
+          {data?.alerts?.some((item) => item.severity === "warning") && <div className="banner">ℹ️ {[...new Set(data.alerts.filter((item) => item.severity === "warning").map((item) => item.message))].join(" · ")}</div>}
           {data?._fromFallback && <div className="banner">Mostrando copia local del feed (no se pudo cargar el remoto).</div>}
           {err && <div className="state">No se pudo cargar el feed.<br />{err}</div>}
           {!data && !err && <Skeletons n={5} />}
