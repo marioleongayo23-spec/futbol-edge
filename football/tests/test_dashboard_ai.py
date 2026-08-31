@@ -18,12 +18,27 @@ def _match(now):
     }
 
 
-def test_ia_solo_a_las_00_y_10(monkeypatch):
+def test_ia_solo_en_ventanas_madrugada_y_manana(monkeypatch):
     monkeypatch.delenv("FORCE_AI", raising=False)
+    # Horas objetivo.
     assert _ai_window(datetime(2026, 8, 24, 0, 15, tzinfo=MADRID)) is True
     assert _ai_window(datetime(2026, 8, 24, 10, 15, tzinfo=MADRID)) is True
+    # Fuera de ventana: la IA no se dispara ni en tarde ni en madrugada tardía.
     assert _ai_window(datetime(2026, 8, 24, 7, tzinfo=MADRID)) is False
     assert _ai_window(datetime(2026, 8, 24, 15, tzinfo=MADRID)) is False
+    assert _ai_window(datetime(2026, 8, 24, 2, tzinfo=MADRID)) is False
+
+
+def test_ventana_tolera_retraso_del_cron(monkeypatch):
+    """El cron dispara a :13 y :43 pero Actions lo retrasa; deben entrar igual."""
+
+    monkeypatch.delenv("FORCE_AI", raising=False)
+    # El :13, antes SIEMPRE fuera, ahora entra.
+    assert _ai_window(datetime(2026, 8, 24, 0, 13, tzinfo=MADRID)) is True
+    assert _ai_window(datetime(2026, 8, 24, 10, 13, tzinfo=MADRID)) is True
+    # El :43 con retraso que lo pasa a la hora siguiente sigue dentro.
+    assert _ai_window(datetime(2026, 8, 24, 1, 5, tzinfo=MADRID)) is True
+    assert _ai_window(datetime(2026, 8, 24, 11, 5, tzinfo=MADRID)) is True
 
 
 def test_force_ai_manual_salva_ventana(monkeypatch):

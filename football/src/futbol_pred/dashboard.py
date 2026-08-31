@@ -445,7 +445,22 @@ def _force_ai() -> bool:
 
 
 def _ai_window(now: datetime) -> bool:
-    """Dos controles diarios a las 00:15 y 10:15, tolerando retraso del cron."""
+    """Dos refrescos de IA al día: madrugada (~00 h) y media mañana (~10 h).
+
+    El cron dispara a los minutos :13 y :43, pero GitHub Actions arrastra
+    retrasos que van de unos minutos a más de una hora, sobre todo en horas
+    punta. La ventana anterior (``minuto 15-44``) era tan estrecha que casi
+    ningún cron caía dentro —los :13 quedaban SIEMPRE fuera y un :43 con dos
+    minutos de retraso también—, así que la IA se congelaba en el último feed
+    bueno. Ahora la ventana abarca la hora objetivo y la siguiente (00-01 y
+    10-11 h) para que cualquier cron retrasado siga entrando.
+
+    Esto NO multiplica el gasto: el límite real no es la ventana sino el
+    enfriamiento por partido (``_can_attempt``, 6 h) y el presupuesto diario
+    (``AI_DAILY_CALL_BUDGET``). Con la ventana abierta durante varias horas, el
+    primer cron elegible genera y los siguientes se saltan por enfriamiento, de
+    modo que siguen saliendo ~2 sesiones de IA al día.
+    """
 
     if _force_ai():
         return True
@@ -456,7 +471,7 @@ def _ai_window(now: datetime) -> bool:
     if refresh_run is not None and not _env_true("AI_REFRESH_RUN"):
         return False
     local = ensure_aware(now).astimezone(MADRID)
-    return local.hour in {0, 10} and 15 <= local.minute < 45
+    return local.hour in {0, 1, 10, 11}
 
 
 def _same_match_day(match: dict, now: datetime) -> bool:
