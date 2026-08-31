@@ -187,13 +187,13 @@ function Resumen({ data, matches, onOpen, goto, favs, onTeam }) {
                   <span className="chip">{pickSelLabel(p, m)}</span>
                   {p.kind === "value" ? (
                     <>
-                      <span className="chip">Cuota <b>{p.odds}</b></span>
+                      <span className="chip">Cuota <b>{Number(p.odds).toFixed(2)}</b></span>
                       <span className="pill y" title="Valor: el modelo da más probabilidad que la cuota del mercado">+{(p.edge * 100).toFixed(1)}%</span>
                     </>
                   ) : (
                     <>
                       <span className="chip">Prob <b>{Math.round(p.modelProb * 100)}%</b></span>
-                      <span className="chip" title="Cuota justa implícita del modelo (1 / probabilidad)">cuota justa {p.fairOdds}</span>
+                      <span className="chip" title="Cuota justa implícita del modelo (1 / probabilidad)">cuota justa {Number(p.fairOdds).toFixed(2)}</span>
                     </>
                   )}
                 </span>
