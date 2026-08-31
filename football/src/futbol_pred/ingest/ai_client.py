@@ -27,6 +27,7 @@ _GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:g
 _GEMINI_MODELS_URL = "https://generativelanguage.googleapis.com/v1beta/models"
 _GROQ_BASE_URL = "https://api.groq.com/openai/v1"
 _gemini_model_cache: list[str] | None = None
+_groq_model_cache: list[str] | None = None
 _events: list[dict] = []
 _usage: dict | None = None
 
@@ -128,30 +129,78 @@ def _gemini(prompt: str, max_tokens: int, temperature: float, timeout: int) -> A
     return None
 
 
+def _groq_models(key: str, base: str, timeout: int) -> list[str]:
+    """Descubre modelos activos en la cuenta y evita atarse a uno retirado.
+
+    Groq retira modelos con frecuencia y el acceso depende del plan de la cuenta.
+    El anterior valor fijo ``llama-3.3-70b-versatile`` devolvía 404
+    (``model_not_found``) en esta cuenta, así que el fallback quedaba muerto. Como
+    con Gemini, se consulta ``GET /models`` y se prueban en orden de preferencia
+    los que la cuenta sí expone. No se usa ``OPENAI_MODEL``: es de otro proveedor
+    y su nombre no existe en Groq (era otra causa del 404).
+    """
+
+    global _groq_model_cache
+    configured = _clean_text(os.getenv("GROQ_MODEL"))
+    if _groq_model_cache is None:
+        discovered: list[str] = []
+        try:
+            response = requests.get(
+                f"{base}/models", headers={"Authorization": f"Bearer {key}"}, timeout=timeout
+            )
+            if response.ok:
+                for item in response.json().get("data", []):
+                    name = str(item.get("id") or "")
+                    # Solo modelos de texto/chat; se descartan audio/visión/guard.
+                    if name and not any(
+                        tag in name for tag in ("whisper", "tts", "guard", "vision", "prompt-guard")
+                    ):
+                        discovered.append(name)
+        except (requests.RequestException, AttributeError, TypeError, ValueError):
+            discovered = []
+        preferred = [
+            "llama-3.3-70b-versatile",
+            "llama-3.1-8b-instant",
+            "llama3-70b-8192",
+            "llama3-8b-8192",
+            "gemma2-9b-it",
+        ]
+        ordered = [name for name in preferred if name in discovered]
+        ordered.extend(name for name in discovered if name not in ordered)
+        # Si el descubrimiento falla, se prueba una lista mínima estable; el
+        # 8b-instant es el modelo base siempre disponible en el plan gratuito.
+        _groq_model_cache = ordered or ["llama-3.1-8b-instant", "llama3-8b-8192"]
+    return ([configured] if configured else []) + [
+        name for name in _groq_model_cache if name != configured
+    ]
+
+
 def _groq(prompt: str, max_tokens: int, temperature: float, timeout: int) -> AIResponse | None:
     key = _groq_key()
     if not key:
         return None
     base = os.getenv("GROQ_BASE_URL", _GROQ_BASE_URL).rstrip("/")
-    model = os.getenv("GROQ_MODEL") or os.getenv("OPENAI_MODEL") or "llama-3.3-70b-versatile"
-    response = requests.post(
-        f"{base}/chat/completions",
-        headers={"Authorization": f"Bearer {key}"},
-        json={
-            "model": model,
-            "messages": [{"role": "user", "content": prompt}],
-            "temperature": temperature,
-            "max_tokens": max_tokens,
-        },
-        timeout=timeout,
-    )
-    if not response.ok:
-        return None
-    try:
-        text = _clean_text(response.json()["choices"][0]["message"]["content"])
-    except (AttributeError, TypeError, ValueError, KeyError, IndexError):
-        return None
-    return AIResponse(text=text, provider="Groq", model=model) if text else None
+    for model in _groq_models(key, base, min(timeout, 20)):
+        response = requests.post(
+            f"{base}/chat/completions",
+            headers={"Authorization": f"Bearer {key}"},
+            json={
+                "model": model,
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": temperature,
+                "max_tokens": max_tokens,
+            },
+            timeout=timeout,
+        )
+        if not response.ok:
+            continue
+        try:
+            text = _clean_text(response.json()["choices"][0]["message"]["content"])
+        except (AttributeError, TypeError, ValueError, KeyError, IndexError):
+            text = None
+        if text:
+            return AIResponse(text=text, provider="Groq", model=model)
+    return None
 
 
 def _local(prompt: str, max_tokens: int, temperature: float, timeout: int) -> AIResponse | None:
