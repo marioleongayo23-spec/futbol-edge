@@ -19,6 +19,22 @@ faltas), así ninguna métrica se queda casi siempre plana solo por variar poco.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
+
+_EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
+
+
+def _aware(dt):
+    """Fecha comparable para ordenar: normaliza naive->UTC (y None->época) para
+    poder ordenar aunque la fuente mezcle kickoffs con y sin zona horaria.
+
+    El resto del pipeline (Elo, orden de partidos) ya normaliza así; sin esto,
+    ordenar el sembrado multi-temporada (que mezcla fechas con y sin tz) lanzaba
+    TypeError y dejaba el modelo de tendencias sin construir (tendencias planas).
+    """
+    if dt is None:
+        return _EPOCH
+    return dt if dt.tzinfo is not None else dt.replace(tzinfo=timezone.utc)
 
 RECENT = 5      # ventana de "forma reciente"
 MIN_SPLIT = 2   # mínimo de partidos (local o visitante) para señal de estilo
@@ -88,7 +104,7 @@ class TrendModel:
 
     def fit(self, fixtures, stats_rows, canon) -> "TrendModel":
         for fx in sorted((f for f in fixtures if f.home_goals is not None),
-                         key=lambda f: f.kickoff):
+                         key=lambda f: _aware(f.kickoff)):
             h, a = canon(fx.home_team), canon(fx.away_team)
             self._add(h, a, "goals", fx.home_goals, fx.away_goals)
             self.last_played[h] = fx.kickoff
@@ -184,10 +200,11 @@ class TrendModel:
 
     def _rest_days(self, team, kickoff):
         prev = self.last_played.get(team)
-        if prev is None:
+        if prev is None or kickoff is None:
             return None
         try:
-            return max(0, (kickoff - prev).days)
+            # _aware evita el TypeError si un lado es naive y el otro aware.
+            return max(0, (_aware(kickoff) - _aware(prev)).days)
         except (TypeError, ValueError):
             return None
 

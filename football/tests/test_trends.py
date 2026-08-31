@@ -84,6 +84,24 @@ def test_metrica_de_baja_varianza_aun_discrimina():
     assert tm.trend("B1", "B2")["fouls"]["dir"] == "flat"
 
 
+def test_fit_no_rompe_con_kickoffs_mezclados_tz():
+    """El sembrado multi-temporada mezcla kickoffs con y sin zona horaria. Antes
+    `fit` los ordenaba en crudo y lanzaba TypeError, así que `_fit_trends` lo
+    tragaba y dejaba el modelo sin construir (tendencias congeladas/planas)."""
+    aware = datetime(2026, 8, 1, tzinfo=timezone.utc)
+    naive = datetime(2025, 1, 1)  # sembrado de temporada anterior, sin tz
+    fixtures = [
+        _Fx("A", "B", 3, 0, naive),
+        _Fx("B", "A", 1, 1, aware),
+        _Fx("A", "C", 2, 0, naive),
+        _Fx("C", "B", 0, 2, aware),
+    ]
+    tm = TrendModel().fit(fixtures, [], _id)          # no debe lanzar
+    assert tm.totals                                   # se construyó con datos
+    t = tm.trend("A", "B", kickoff=aware)
+    assert set(t) == {"goals", "shots", "corners", "fouls", "yellows"}
+
+
 def test_siempre_devuelve_las_metricas():
     tm = TrendModel().fit([], [], _id)
     t = tm.trend("X", "Y", kickoff=datetime(2026, 1, 1, tzinfo=timezone.utc))

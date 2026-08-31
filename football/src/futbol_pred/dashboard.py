@@ -1555,7 +1555,10 @@ def _fit_trends(league: str, season: int, fixtures):
             except Exception:
                 continue
         return TrendModel().fit(fixtures, rows, _canon)
-    except Exception:
+    except Exception as exc:  # noqa: BLE001
+        # Sin esto el fallo era invisible y dejaba las tendencias congeladas
+        # (se conservaba el last-known-good) sin ninguna señal en los logs.
+        print(f"[trends] modelo no construido ({league}): {type(exc).__name__}: {exc}")
         return None
 
 
