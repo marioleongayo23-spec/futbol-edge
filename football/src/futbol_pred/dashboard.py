@@ -879,6 +879,79 @@ def _squads_from_players(players: dict | None) -> dict[str, dict[str, list[dict]
     return out
 
 
+def _player_key(name) -> str:
+    """Clave de jugador insensible a acentos y espacios ('David' == 'Dávid')."""
+
+    import unicodedata
+
+    stripped = unicodedata.normalize("NFKD", str(name or ""))
+    stripped = "".join(ch for ch in stripped if not unicodedata.combining(ch))
+    return " ".join(stripped.casefold().split())
+
+
+def _merge_player_rows(base: dict, other: dict) -> dict:
+    """Funde dos filas del mismo jugador: una de plantilla actual, otra de stats.
+
+    La plantilla (``current_squad_member``) aporta posición, dorsal y foto; las
+    stats aportan el rendimiento (goles, asistencias, minutos), que la plantilla
+    trae a cero. Así un jugador que aparecía bajo el nombre corto y el largo del
+    club queda como una sola fila enriquecida.
+    """
+
+    squad, stats = (base, other) if base.get("current_squad_member") else (other, base)
+    merged = dict(stats)
+    for key, value in squad.items():
+        if value not in (None, "", [], {}):
+            merged[key] = value
+    for field in ("goals", "assists", "shots", "yc", "min"):
+        stat_value = stats.get(field)
+        if isinstance(stat_value, (int, float)) and stat_value:
+            merged[field] = stat_value
+    return merged
+
+
+def _dedupe_players_by_team(players: dict | None, matches: list[dict]) -> dict | None:
+    """Funde equipos duplicados por alias en una sola entrada por club.
+
+    El bloque de jugadores mezclaba dos fuentes con nombres distintos para el mismo
+    club: las estadísticas (nombre corto, p. ej. ``Atletico Madrid``) y la plantilla
+    actual de football-data (nombre largo, ``Club Atlético de Madrid``). Al cotejar
+    por el nombre EXACTO quedaban 34 «equipos» en LaLiga en vez de 20, con rosters
+    fantasma. Ahora se agrupa por equipo canónico + jugador (sin acentos), se
+    conserva el nombre que usa el calendario y cada jugador se enriquece en lugar de
+    duplicarse. No se pierden datos: es solo fusión.
+    """
+
+    if not players:
+        return players
+    display_by_canon: dict[str, str] = {}
+    for match in matches or []:
+        for team in (match.get("home"), match.get("away")):
+            team = str(team or "").strip()
+            if team:
+                display_by_canon.setdefault(_canon(team), team)
+    for bucket in players.values():
+        if not isinstance(bucket, dict):
+            continue
+        by_key: dict[tuple[str, str], dict] = {}
+        order: list[tuple[str, str]] = []
+        for row in bucket.get("players") or []:
+            if not isinstance(row, dict):
+                continue
+            team = str(row.get("team") or "").strip()
+            canon = _canon(team) if team else ""
+            key = (canon, _player_key(row.get("player")))
+            new_row = dict(row)
+            new_row["team"] = display_by_canon.get(canon) or team
+            if key in by_key:
+                by_key[key] = _merge_player_rows(by_key[key], new_row)
+            else:
+                by_key[key] = new_row
+                order.append(key)
+        bucket["players"] = [by_key[key] for key in order]
+    return players
+
+
 def _merge_lineup_players(players: dict | None, matches: list[dict]) -> dict:
     """Indexa y enriquece jugadores mostrados en onces con evidencia real de API-Football.
 
@@ -1146,6 +1219,7 @@ def build_dashboard(
     first_audit = content_audit(matches, players, now)
     retried = _retry_incomplete(matches, first_audit, now)
     players = _merge_lineup_players(players, matches)
+    players = _dedupe_players_by_team(players, matches)
     audit = content_audit(matches, players, now)
     audit["selective_retries"] = retried
     audit["prefinal_lineup_updates"] = prefinal_updates
