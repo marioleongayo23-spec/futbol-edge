@@ -10,6 +10,10 @@ el Elche concede fuera. La dirección (↑/→/↓) dice si el emparejamiento pr
 más o menos que un partido TÍPICO DE LA LIGA (antes se comparaba con la media de
 los propios equipos y por eso casi todo salía plano), y el motivo explica el
 estilo. Un modificador por días de descanso ajusta goles/remates/tarjetas.
+
+El umbral para marcar ↑/↓ se ADAPTA a cada métrica: se compara la señal con la
+dispersión real de esa métrica en la liga (los córners varían mucho más que las
+faltas), así ninguna métrica se queda casi siempre plana solo por variar poco.
 """
 
 from __future__ import annotations
@@ -18,9 +22,16 @@ from dataclasses import dataclass, field
 
 RECENT = 5      # ventana de "forma reciente"
 MIN_SPLIT = 2   # mínimo de partidos (local o visitante) para señal de estilo
-UP = 0.06       # umbral relativo para marcar ↑/↓ (6%)
+UP = 0.06       # umbral relativo de reserva si no hay dispersión de liga (6%)
 DOM = 0.18      # cuánto debe pesar un lado para decir "más para X"
 REST_LOW = 3    # días de descanso "justo" (fatiga)
+# Umbral ↑/↓ ADAPTADO a cada métrica: los córners y goles varían mucho entre
+# partidos y las faltas apenas, así que un 6% fijo dejaba a las métricas de baja
+# varianza (faltas, remates) casi siempre planas. Marcamos dirección cuando la
+# señal supera Z_DISP desviaciones típicas de esa métrica, acotado a [MIN, MAX].
+Z_DISP = 0.6    # nº de desviaciones típicas de la liga para marcar ↑/↓
+THR_MIN = 0.02  # suelo: por debajo del 2% no llamamos tendencia (ruido)
+THR_MAX = 0.15  # techo: por encima del 15% no exigimos más para marcarla
 
 # Métricas con split local/visitante (de co.uk) + goles (de resultados).
 #   fatigue = efecto de MENOS descanso sobre la métrica.
@@ -57,6 +68,8 @@ class TrendModel:
     # equipo -> métrica -> lista de TOTALES de partido (para forma y referencia).
     totals: dict = field(default_factory=dict)
     last_played: dict = field(default_factory=dict)
+    # Caché de dispersión por métrica (media/desv. de la señal en la liga).
+    _disp: dict | None = field(default=None, repr=False, compare=False)
 
     def _bucket(self, team, metric):
         return self.stat.setdefault(team, {}).setdefault(
@@ -85,6 +98,7 @@ class TrendModel:
             for m in _SPLIT_METRICS:
                 if m in r.stats:
                     self._add(h, a, m, r.stats[m][0], r.stats[m][1])
+        self._disp = None  # invalida la caché de dispersión tras reentrenar
         return self
 
     def _avg(self, team, metric, key):
@@ -103,6 +117,62 @@ class TrendModel:
         """
         vals = [self._overall(team, metric) for team in self.totals]
         return _mean([v for v in vals if v is not None])
+
+    def _match_exp(self, home, away, metric):
+        """Total esperado de la métrica para el emparejamiento, por estilo.
+
+        Lado local = lo que el local genera en casa + lo que el visitante
+        concede fuera; lado visitante, simétrico. Devuelve (total, lado_local,
+        lado_visitante) o (None, None, None) si falta histórico de un lado.
+        """
+        hf, aa = self._avg(home, metric, "hf"), self._avg(away, metric, "aa")
+        af, ha = self._avg(away, metric, "af"), self._avg(home, metric, "ha")
+        exp_home = _mean([x for x in (hf, aa) if x is not None])
+        exp_away = _mean([x for x in (af, ha) if x is not None])
+        if exp_home is None or exp_away is None:
+            return None, None, None
+        return exp_home + exp_away, exp_home, exp_away
+
+    def _signal_dispersion(self):
+        """Desviación típica de la señal (desv. relativa vs media de liga) sobre
+        TODOS los emparejamientos posibles, por métrica.
+
+        Sirve para adaptar el umbral ↑/↓ a cuánto varía de verdad cada métrica:
+        los córners y goles se disparan de un partido a otro y las faltas apenas,
+        así que un umbral fijo dejaba a las de baja varianza casi siempre planas.
+        """
+        if self._disp is not None:
+            return self._disp
+        disp = {}
+        teams = list(self.totals)
+        for metric in METRICS:
+            ref = self._league_avg(metric)
+            if not ref:
+                disp[metric] = None
+                continue
+            sigs = []
+            for home in teams:
+                for away in teams:
+                    if home == away:
+                        continue
+                    match_exp, _, _ = self._match_exp(home, away, metric)
+                    if match_exp is not None:
+                        sigs.append((match_exp - ref) / ref)
+            if len(sigs) >= 8:
+                mu = sum(sigs) / len(sigs)
+                disp[metric] = (sum((s - mu) ** 2 for s in sigs) / len(sigs)) ** 0.5
+            else:
+                disp[metric] = None
+        self._disp = disp
+        return disp
+
+    def _threshold(self, metric):
+        """Umbral relativo para marcar ↑/↓ en esta métrica, adaptado a su
+        dispersión en la liga y acotado a [THR_MIN, THR_MAX]."""
+        spread = self._signal_dispersion().get(metric)
+        if not spread:
+            return UP
+        return min(THR_MAX, max(THR_MIN, Z_DISP * spread))
 
     def _recent_delta(self, team, metric):
         seq = self.totals.get(team, {}).get(metric, [])
@@ -127,17 +197,14 @@ class TrendModel:
         rest_a = self._rest_days(away, kickoff) if kickoff else None
         for metric, cfg in METRICS.items():
             lab = cfg["label"].lower()
-            hf, ha = self._avg(home, metric, "hf"), self._avg(home, metric, "ha")
-            af, aa = self._avg(away, metric, "af"), self._avg(away, metric, "aa")
-            # Lado local del partido: lo que genera el local en casa y lo que
-            # concede el visitante fuera. Lado visitante, simétrico.
-            exp_home = _mean([x for x in (hf, aa) if x is not None])
-            exp_away = _mean([x for x in (af, ha) if x is not None])
+            # Umbral ↑/↓ propio de la métrica (los córners varían mucho más que
+            # las faltas), para que ninguna se quede casi siempre plana.
+            thr = self._threshold(metric)
+            match_exp, exp_home, exp_away = self._match_exp(home, away, metric)
             reasons = []
             signal = None
 
-            if exp_home is not None and exp_away is not None:
-                match_exp = exp_home + exp_away
+            if match_exp is not None:
                 # Referencia = media de la LIGA (no de estos dos equipos): así el
                 # ↑/↓ significa "más/menos que un partido típico de la liga".
                 ref = self._league_avg(metric)
@@ -150,7 +217,7 @@ class TrendModel:
                         reasons.append(f"más {lab} para {home} (genera en casa y {away} concede fuera)")
                     elif 0.5 - share_h >= DOM:
                         reasons.append(f"más {lab} para {away}")
-                if signal is not None and abs(signal) >= UP:
+                if signal is not None and abs(signal) >= thr:
                     reasons.append(f"emparejamiento de {'mucho' if signal > 0 else 'poco'} {lab} por el estilo de ambos")
 
             # Forma reciente como matiz secundario (condición del momento).
@@ -173,7 +240,7 @@ class TrendModel:
                 signal += fat * 0.05
                 reasons.append("poco descanso")
 
-            direction = "up" if signal >= UP else "down" if signal <= -UP else "flat"
+            direction = "up" if signal >= thr else "down" if signal <= -thr else "flat"
             out[metric] = {
                 "dir": direction,
                 "pct": round(signal * 100),

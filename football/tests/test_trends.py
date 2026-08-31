@@ -58,6 +58,32 @@ def test_cruce_ofensivo_sube_vs_media_de_liga():
     assert t["goals"]["pct"] > 0
 
 
+def test_metrica_de_baja_varianza_aun_discrimina():
+    """Faltas apenas varían entre partidos: con umbral fijo (6%) el
+    emparejamiento más faltero salía 'flat'. Con el umbral adaptado a la
+    dispersión de la métrica, ese cruce marca '↑' aunque su desvío sea pequeño,
+    y un cruce medio sigue 'flat'."""
+    base = [f"B{i}" for i in range(10)]
+    rows = []
+    # Liga: casi todos cometen 10 faltas en casa y fuera (baja varianza).
+    for h in base:
+        for a in base:
+            if h != a:
+                rows.append(MatchStats(h, a, {"fouls": (10, 10)}))
+    # Nervio comete algo más EN CASA; Áspero, algo más FUERA (desvío ~4%).
+    for a in base:
+        rows.append(MatchStats("Nervio", a, {"fouls": (11, 10)}))
+    for h in base:
+        rows.append(MatchStats(h, "Aspero", {"fouls": (10, 11)}))
+    tm = TrendModel().fit([], rows, _id)
+    faltas = tm.trend("Nervio", "Aspero")["fouls"]
+    assert faltas["dir"] == "up"
+    assert 0 < faltas["pct"] < 6            # habría sido 'flat' con el 6% fijo
+    assert tm._threshold("fouls") < 0.06    # umbral adaptado por debajo del fijo
+    # Un emparejamiento medio de la liga sigue plano (no marcamos ruido).
+    assert tm.trend("B1", "B2")["fouls"]["dir"] == "flat"
+
+
 def test_siempre_devuelve_las_metricas():
     tm = TrendModel().fit([], [], _id)
     t = tm.trend("X", "Y", kickoff=datetime(2026, 1, 1, tzinfo=timezone.utc))
