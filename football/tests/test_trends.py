@@ -40,6 +40,24 @@ def test_estilo_local_dominador_sube_y_reparte():
     assert "Atleti" in t["corners"]["reason"]
 
 
+def test_cruce_ofensivo_sube_vs_media_de_liga():
+    """Dos equipos muy goleadores frente a una liga baja: antes salía 'flat'
+    (se comparaba con su propia media, alta); ahora sube vs la media de la liga."""
+    base = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    fixtures = []
+    # A y B: partidos suyos de 4 goles (muy por encima de la media de liga).
+    for i in range(6):
+        fixtures.append(_Fx("A", f"L{i}", 3, 1, base))   # A marca mucho
+        fixtures.append(_Fx(f"M{i}", "B", 1, 3, base))    # B marca mucho fuera
+    # Resto de la liga: partidos de pocos goles (1-0) para bajar la media.
+    for i in range(10):
+        fixtures.append(_Fx(f"P{i}", f"Q{i}", 1, 0, base))
+    tm = TrendModel().fit(fixtures, [], _id)
+    t = tm.trend("A", "B", kickoff=base)
+    assert t["goals"]["dir"] == "up"
+    assert t["goals"]["pct"] > 0
+
+
 def test_siempre_devuelve_las_metricas():
     tm = TrendModel().fit([], [], _id)
     t = tm.trend("X", "Y", kickoff=datetime(2026, 1, 1, tzinfo=timezone.utc))

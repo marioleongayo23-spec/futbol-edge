@@ -1,12 +1,14 @@
 """Tendencia de las estadísticas esperadas, por ESTILO de los dos equipos.
 
-No mira la media de la liga: mira a ESTE local y ESTE visitante y sus condiciones,
-con histórico de varias temporadas separando local/visitante y a favor/en contra.
+Cruza el histórico multi-temporada de ESTE local y ESTE visitante (separando
+local/visitante y a favor/en contra) para estimar lo que producirá el partido, y
+compara ese total esperado con la MEDIA DE LA LIGA para marcar ↑/→/↓.
 
 Ejemplo: Atlético (local, dominador) vs Elche (visitante, se encierra) → más
 córners y remates, y sobre todo para el Atlético, porque genera mucho en casa y
-el Elche concede fuera. La tendencia (↑/→/↓) compara lo esperado de ESTE
-emparejamiento con lo normal PARA ESTOS DOS EQUIPOS, y explica el motivo por
+el Elche concede fuera. La dirección (↑/→/↓) dice si el emparejamiento produce
+más o menos que un partido TÍPICO DE LA LIGA (antes se comparaba con la media de
+los propios equipos y por eso casi todo salía plano), y el motivo explica el
 estilo. Un modificador por días de descanso ajusta goles/remates/tarjetas.
 """
 
@@ -91,6 +93,17 @@ class TrendModel:
     def _overall(self, team, metric):
         return _mean(self.totals.get(team, {}).get(metric, []))
 
+    def _league_avg(self, metric):
+        """Media de la métrica en TODA la liga (referencia para ↑/↓).
+
+        Antes se comparaba el emparejamiento con la media de LOS PROPIOS dos
+        equipos, pero como lo esperado se deriva de esos mismos equipos la señal
+        era casi siempre ~0 (todo salía 'flat'). Comparar con la media de la liga
+        hace que un cruce ofensivo destaque al alza y uno defensivo a la baja.
+        """
+        vals = [self._overall(team, metric) for team in self.totals]
+        return _mean([v for v in vals if v is not None])
+
     def _recent_delta(self, team, metric):
         seq = self.totals.get(team, {}).get(metric, [])
         base = _mean(seq)
@@ -125,8 +138,9 @@ class TrendModel:
 
             if exp_home is not None and exp_away is not None:
                 match_exp = exp_home + exp_away
-                ref = _mean([x for x in (self._overall(home, metric),
-                                         self._overall(away, metric)) if x is not None])
+                # Referencia = media de la LIGA (no de estos dos equipos): así el
+                # ↑/↓ significa "más/menos que un partido típico de la liga".
+                ref = self._league_avg(metric)
                 if ref:
                     signal = (match_exp - ref) / ref
                 # Reparto: ¿para quién? (estilo local vs visitante)
