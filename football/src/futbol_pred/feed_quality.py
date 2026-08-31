@@ -436,6 +436,17 @@ def _dedupe_matches_by_id(candidate: dict) -> int:
             order.append(match)
     if removed:
         candidate["matches"] = order
+        # Recalcula counts para no dejar total/jugados/proximos desincronizados
+        # (counts.total != len(matches) es bloqueante), igual que en build_dashboard.
+        counts = candidate.get("counts")
+        if isinstance(counts, dict):
+            dicts = [m for m in order if isinstance(m, dict)]
+            counts["total"] = len(order)
+            counts["jugados"] = sum(1 for m in dicts if m.get("finished"))
+            counts["proximos"] = sum(1 for m in dicts if not m.get("finished"))
+            counts["con_prediccion"] = sum(
+                1 for m in dicts if m.get("engine") in {"dixon-coles", "ensemble", "residual"}
+            )
     return removed
 
 

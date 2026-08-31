@@ -105,12 +105,17 @@ def test_id_duplicado_se_deduplica_y_no_bloquea(tmp_path):
     dup.pop("markets", None)
     dup.pop("xg", None)
     candidate["matches"].append(dup)
+    # build_dashboard fija counts.total = nº de partidos CON el duplicado dentro.
+    candidate["counts"]["total"] = len(candidate["matches"])
     ok, report = write_feed_safely(path, candidate, previous=previous)
     assert ok is True
     assert report["metrics"]["deduped_duplicate_ids"] == 1
-    written = json.loads(path.read_text(encoding="utf-8"))["matches"]
+    saved = json.loads(path.read_text(encoding="utf-8"))
+    written = saved["matches"]
     ids = [m["id"] for m in written]
     assert len(ids) == len(set(ids))  # ya no hay ids duplicados
+    # counts recalculado: sin esto counts_total_inconsistente bloquearía el feed.
+    assert saved["counts"]["total"] == len(written)
     kept = next(m for m in written if m["id"] == candidate["matches"][0]["id"])
     assert "markets" in kept and "xg" in kept  # se conservó la copia más rica
 
