@@ -3,7 +3,7 @@ import { crestFor, feedAgeHours, fmtKick, hasPrediction, isStale, loadFeed } fro
 import { entropy, fairProbs, kelly, overround, plenoSign } from "./poisson";
 import { leaguesIn, projectedTable } from "./standings";
 import { teamProfile, teamSquad } from "./teams";
-import { bestValue, countdown, getFavs, modelAccuracy, recentForm, toggleFav, topValueBets } from "./insights";
+import { bestValue, countdown, getFavs, modelAccuracy, recentForm, toggleFav } from "./insights";
 import MatchDetail from "./MatchDetail";
 import { QualityBadge } from "./MatchQuality";
 import PlayerProfile from "./PlayerProfile";
@@ -106,7 +106,19 @@ function MatchRow({ m, onOpen, formMap }) {
 }
 
 /* ---------- Resumen: dashboard de calendario por días ---------- */
-function Resumen({ matches, onOpen, goto, favs, onTeam }) {
+function pickSelLabel(pick, m) {
+  const { market, selection } = pick;
+  if (market === "1x2") {
+    if (selection === "1") return `Gana ${m ? m.home : "local"}`;
+    if (selection === "2") return `Gana ${m ? m.away : "visitante"}`;
+    return "Empate";
+  }
+  if (market === "ou25") return selection === "over" ? "+2.5 goles" : "−2.5 goles";
+  if (market === "btts") return selection === "yes" ? "Ambos marcan" : "No ambos marcan";
+  return `${market} ${selection}`;
+}
+
+function Resumen({ data, matches, onOpen, goto, favs, onTeam }) {
   const days = useMemo(() => [...new Set(matches.map((m) => m.date).filter(Boolean))].sort(), [matches]);
   const startIdx = useMemo(() => {
     const t = todayKey();
@@ -130,7 +142,10 @@ function Resumen({ matches, onOpen, goto, favs, onTeam }) {
     for (const m of dayMatches) { map[m.home] ??= recentForm(matches, m.home); map[m.away] ??= recentForm(matches, m.away); }
     return map;
   }, [matches, dayMatches]);
-  const dayValue = useMemo(() => topValueBets(dayMatches, 3), [dayMatches]);
+  // Picks del día (servidor): valor cuando hay cuotas, confianza cuando no.
+  const picks = (data?.picks || []).slice(0, 5);
+  const accPct = data?.accuracy?.pct_1x2 ?? null;
+  const roi = data?.performance?.overall?.roi ?? null;
   const favList = useMemo(() => {
     if (!favs || !favs.size) return [];
     return [...favs].map((t) => {
@@ -155,19 +170,39 @@ function Resumen({ matches, onOpen, goto, favs, onTeam }) {
         <div className="stat" title="Aciertos 1X2 del modelo en partidos ya jugados esta temporada"><span className="stat-k">Acierto modelo</span><b className="stat-v accent">{acc.pct != null ? acc.pct + "%" : "—"}</b><span className="stat-s">{acc.total ? `${acc.hits}/${acc.total} aciertos 1X2` : "sin datos aún"}</span></div>
       </div>
 
-      {dayValue.length > 0 && (
+      {picks.length > 0 && (
         <div className="card">
-          <div className="lbl">◆ Value del día <span className="dim">(modelo vs mercado)</span></div>
-          {dayValue.map(({ m, selection, edge, odds }) => (
-            <button type="button" key={m.id} className="vd-row click row-button" onClick={() => onOpen(m)}>
-              <span className="vd-team">{m.home} <span className="dim">vs</span> {m.away}</span>
-              <span className="chips">
-                <span className="chip">Apuesta <b>{selection}</b></span>
-                <span className="chip">Cuota <b>{odds}</b></span>
-                <span className="pill y">+{(edge * 100).toFixed(1)}%</span>
-              </span>
-            </button>
-          ))}
+          <div className="lbl">◆ Picks del día
+            <span className="dim">
+              {accPct != null ? ` · modelo ${accPct}% acierto 1X2` : ""}
+              {roi != null ? `, ROI ${roi > 0 ? "+" : ""}${roi}%` : ""}
+            </span>
+          </div>
+          {picks.map((p) => {
+            const m = matches.find((x) => x.id === p.match_id);
+            return (
+              <button type="button" key={`${p.match_id}-${p.market}-${p.selection}`} className="vd-row click row-button" onClick={() => m && onOpen(m)}>
+                <span className="vd-team">{p.home} <span className="dim">vs</span> {p.away}</span>
+                <span className="chips">
+                  <span className="chip">{pickSelLabel(p, m)}</span>
+                  {p.kind === "value" ? (
+                    <>
+                      <span className="chip">Cuota <b>{p.odds}</b></span>
+                      <span className="pill y" title="Valor: el modelo da más probabilidad que la cuota del mercado">+{(p.edge * 100).toFixed(1)}%</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="chip">Prob <b>{Math.round(p.modelProb * 100)}%</b></span>
+                      <span className="chip" title="Cuota justa implícita del modelo (1 / probabilidad)">cuota justa {p.fairOdds}</span>
+                    </>
+                  )}
+                </span>
+              </button>
+            );
+          })}
+          <div className="note dim">
+            Valor = el modelo ve más probabilidad que la cuota del mercado. Sin cuotas de The Odds API se muestra la predicción de mayor confianza con su cuota justa.
+          </div>
         </div>
       )}
 

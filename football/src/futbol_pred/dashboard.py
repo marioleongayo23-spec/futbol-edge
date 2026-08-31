@@ -28,6 +28,7 @@ from .operational import (
     build_alerts, content_audit,
 )
 from .performance import build_performance
+from .picks import build_picks
 from .finished_stats import attach_finished_stats
 from .accuracy_detail import enrich_accuracy
 from .real_market import attach_closing_snapshots, attach_extended_market_value
@@ -1241,6 +1242,7 @@ def build_dashboard(
         "market_calibration": market_calibration or None,
         "historical_seed": historical_seeds or None,
         "value_ranking": market_value.get("ranking") or [],
+        "picks": build_picks(matches, now),
         "market_value_source": market_value.get("source"),
         "accuracy": enrich_accuracy(_aggregate_accuracy(matches), matches),
         "performance": build_performance(matches),
