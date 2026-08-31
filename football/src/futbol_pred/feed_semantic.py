@@ -38,6 +38,10 @@ def semantic_feed(payload: dict) -> dict:
     normalized = copy.deepcopy(payload)
     normalized.pop("generated_at", None)
     normalized.pop("postmatch_stats_updates", None)
+    # ``picks`` es derivado y depende de la hora (ventana de 72 h deslizante):
+    # no debe disparar por sí solo una republicación. Viaja con cualquier cambio
+    # real de probs/mercado, que sí cuenta en la huella.
+    normalized.pop("picks", None)
 
     audit = normalized.get("content_audit")
     if isinstance(audit, dict):
