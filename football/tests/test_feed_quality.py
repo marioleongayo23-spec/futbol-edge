@@ -92,6 +92,29 @@ def test_escritura_segura_anade_informe(tmp_path):
     assert saved["feed_quality"]["valid"] is True
 
 
+def test_id_duplicado_se_deduplica_y_no_bloquea(tmp_path):
+    """Un id repetido (misma jornada por dos vías) no debe invalidar TODO el feed:
+    se funde en la copia más completa y se publica, en vez de rechazar el
+    candidato entero y congelar el last-known-good (predicciones y tendencias)."""
+    path = tmp_path / "dashboard.json"
+    previous = _feed(20)
+    path.write_text(json.dumps(previous), encoding="utf-8")
+    candidate = _feed(20)
+    # El mismo partido entra dos veces con el mismo id; la segunda, más pobre.
+    dup = deepcopy(candidate["matches"][0])
+    dup.pop("markets", None)
+    dup.pop("xg", None)
+    candidate["matches"].append(dup)
+    ok, report = write_feed_safely(path, candidate, previous=previous)
+    assert ok is True
+    assert report["metrics"]["deduped_duplicate_ids"] == 1
+    written = json.loads(path.read_text(encoding="utf-8"))["matches"]
+    ids = [m["id"] for m in written]
+    assert len(ids) == len(set(ids))  # ya no hay ids duplicados
+    kept = next(m for m in written if m["id"] == candidate["matches"][0]["id"])
+    assert "markets" in kept and "xg" in kept  # se conservó la copia más rica
+
+
 def test_schema4_bloquea_proximo_sin_previa():
     feed = _feed()
     feed["schema_version"] = 4

@@ -399,13 +399,56 @@ def _sanitize_incomplete_lineups(candidate: dict, previous: dict | None) -> int:
     return repaired
 
 
+def _dedupe_matches_by_id(candidate: dict) -> int:
+    """Funde partidos repetidos por id para que un id duplicado no invalide TODO
+    el feed.
+
+    Un mismo partido puede entrar dos veces cuando la jornada llega por dos vías
+    (p. ej. calendario + resultados co.uk de la misma fecha), y ``evaluate_feed``
+    marca ``id_duplicado`` como bloqueante: se rechaza el candidato ENTERO y se
+    conserva el last-known-good, así que el feed se congela (predicciones,
+    previas y tendencias incluidas). Un id repetido nunca es legítimo, así que
+    nos quedamos con la copia más completa y conservamos el orden.
+    """
+
+    matches = candidate.get("matches")
+    if not isinstance(matches, list):
+        return 0
+
+    def richness(match: dict) -> int:
+        return sum(1 for value in match.values() if value not in (None, "", [], {}))
+
+    order: list = []
+    index_by_id: dict = {}
+    removed = 0
+    for match in matches:
+        if not isinstance(match, dict) or match.get("id") is None:
+            order.append(match)
+            continue
+        mid = match.get("id")
+        if mid in index_by_id:
+            removed += 1
+            idx = index_by_id[mid]
+            if richness(match) > richness(order[idx]):
+                order[idx] = match  # conserva la copia más rica
+        else:
+            index_by_id[mid] = len(order)
+            order.append(match)
+    if removed:
+        candidate["matches"] = order
+    return removed
+
+
 def write_feed_safely(path: Path, payload: dict, previous: dict | None = None) -> tuple[bool, dict]:
     """Valida, escribe atómicamente y nunca pisa un feed bueno con uno peor."""
 
     previous = previous if previous is not None else load_feed(path)
+    deduped = _dedupe_matches_by_id(payload)
     preserve_last_known_good(payload, previous)
     dropped = _sanitize_incomplete_lineups(payload, previous)
     report = evaluate_feed(payload, previous)
+    if deduped:
+        report.setdefault("metrics", {})["deduped_duplicate_ids"] = deduped
     if dropped:
         report.setdefault("metrics", {})["sanitized_incomplete_lineups"] = dropped
     payload["feed_quality"] = report
