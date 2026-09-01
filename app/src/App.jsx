@@ -417,11 +417,46 @@ function Jugadores({ players, onPlayer }) {
 }
 
 /* ---------- Quiniela ---------- */
-const Q_STOP = new Set(["cf", "fc", "cd", "ud", "sd", "rc", "cp", "club", "de", "la", "el", "los", "real"]);
-const qNorm = (s) => (s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9 ]/g, " ");
-const qTokens = (s) => qNorm(s).split(/\s+/).filter((t) => t.length >= 3 && !Q_STOP.has(t));
-const qTeamMatch = (a, b) => { const A = new Set(qTokens(a)); return qTokens(b).some((t) => A.has(t)); };
-const qFindMatch = (local, visit, list) => list.find((m) => qTeamMatch(local, m.home) && qTeamMatch(visit, m.away));
+// Procedencia del signo (la calcula el backend, por partido). El feed reutiliza
+// la tarjeta del partido; "modelo" es la predicción directa de la liga (Segunda
+// incluida); "liga_f" es el modelo curado de la femenina; "base", último recurso.
+const Q_FUENTE = { feed: "", modelo: "Modelo", liga_f: "Liga F", base: "Base" };
+// Femenino: nunca se enlaza con la tarjeta del equipo masculino homónimo.
+const qFem = (s) => /\(\s*[fF]\s*\)/.test(s || "");
+const qKey = (s) => (s || "").normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();
+const qStopWord = new Set(["cf", "fc", "cd", "ud", "sd", "rc", "cp", "club", "de", "la", "el", "los", "real"]);
+const qWords = (s) => qKey(s).replace(/[^a-z0-9 ]/g, " ").split(/\s+/).filter((t) => t.length >= 3 && !qStopWord.has(t));
+const qShare = (a, b) => { const A = new Set(qWords(a)); return qWords(b).some((t) => A.has(t)); };
+// Respaldo SOLO para feed antiguo (aún sin predicción embebida por el backend):
+// enlaza por nombre, pero jamás un femenino con un partido masculino.
+const qFallbackMatch = (local, visit, predicted) =>
+  (qFem(local) || qFem(visit)) ? null
+    : predicted.find((m) => qShare(local, m.home) && qShare(visit, m.away)) || null;
+// Ítem de quiniela desde el partido oficial. El signo ya viaja calculado y
+// fundamentado desde el backend; el frontend ya NO cruza nombres para predecir
+// (eso emparejaba mal femeninos con el masculino y dejaba Segunda sin predicción).
+const qItemFromPartido = (p, predicted) => {
+  let probs = Array.isArray(p.probs) ? p.probs : null;
+  let m = p.fuente === "feed" && p.match_id ? predicted.find((x) => x.id === p.match_id) : null;
+  let { marcador, fuente, league, kickoff, matchday } = p;
+  if (!probs) {  // feed sin predicción embebida todavía: respaldo prudente.
+    m = qFallbackMatch(p.local, p.visitante, predicted);
+    if (m) { probs = m.probs; marcador = m.markets?.marcador; fuente = "feed"; league = m.league; kickoff = m.kickoff; matchday = m.matchday; }
+  }
+  const signo = p.signo || (probs ? ["1", "X", "2"][probs.indexOf(Math.max(...probs))] : null);
+  return {
+    local: p.local, visitante: p.visitante, probs, signo,
+    marcador, fuente,
+    league: league || m?.league, kickoff: kickoff || m?.kickoff,
+    matchday: matchday ?? m?.matchday, m,
+  };
+};
+const qItemFromMatch = (m) => ({
+  local: m.home, visitante: m.away, probs: m.probs,
+  signo: ["1", "X", "2"][m.probs.indexOf(Math.max(...m.probs))],
+  marcador: m.markets?.marcador, fuente: "feed",
+  league: m.league, kickoff: m.kickoff, matchday: m.matchday, m,
+});
 
 function Quiniela({ matches, quiniela, tri, dob, setTri, setDob }) {
   const [copied, setCopied] = useState(false);
@@ -429,15 +464,15 @@ function Quiniela({ matches, quiniela, tri, dob, setTri, setDob }) {
   const official = quiniela && Array.isArray(quiniela.partidos) && quiniela.partidos.length >= 14 ? quiniela : null;
 
   const items = official
-    ? quiniela.partidos.slice(0, 15).map((p) => ({ local: p.local, visitante: p.visitante, m: qFindMatch(p.local, p.visitante, predicted) }))
-    : predicted.slice(0, 15).map((m) => ({ local: m.home, visitante: m.away, m }));
+    ? quiniela.partidos.slice(0, 15).map((p) => qItemFromPartido(p, predicted))
+    : predicted.slice(0, 15).map(qItemFromMatch);
   const ms = items.slice(0, 14);
   const pleno = items[14];
 
   const fc = ms.map((it) => {
-    if (!it.m) return { it, pr: null, best: "1", ent: -1 };
-    const pr = { 1: it.m.probs[0] / 100, X: it.m.probs[1] / 100, 2: it.m.probs[2] / 100 };
-    const best = Object.keys(pr).reduce((a, b) => (pr[a] > pr[b] ? a : b));
+    if (!Array.isArray(it.probs)) return { it, pr: null, best: "1", ent: -1 };
+    const pr = { 1: it.probs[0] / 100, X: it.probs[1] / 100, 2: it.probs[2] / 100 };
+    const best = it.signo && pr[it.signo] != null ? it.signo : Object.keys(pr).reduce((a, b) => (pr[a] > pr[b] ? a : b));
     return { it, pr, best, ent: entropy(pr) };
   });
   const ranked = [...fc.keys()].filter((i) => fc[i].pr).sort((a, b) => fc[b].ent - fc[a].ent);
@@ -448,8 +483,9 @@ function Quiniela({ matches, quiniela, tri, dob, setTri, setDob }) {
   let cost = 1; fc.forEach((_, i) => (cost *= mult[i] ? mult[i].length : 1));
   let pAll = 1; fc.forEach((f, i) => { if (!f.pr) return; const sel = mult[i] || [f.best]; pAll *= sel.reduce((s, x) => s + f.pr[x], 0); });
   const nPred = fc.filter((f) => f.pr).length;
-  const plenoScore = pleno?.m?.markets?.marcador?.split("-").map((n) => parseInt(n, 10));
-  const plenoSigns = plenoScore ? [plenoSign(plenoScore[0]), plenoSign(plenoScore[1])] : null;
+  const plenoScore = pleno?.marcador?.split("-").map((n) => parseInt(n, 10));
+  const plenoSigns = plenoScore && plenoScore.length === 2 && plenoScore.every((n) => !Number.isNaN(n))
+    ? [plenoSign(plenoScore[0]), plenoSign(plenoScore[1])] : null;
 
   const copy = async () => {
     const lines = fc.map((f, i) => { const sel = f.pr ? (mult[i] || [f.best]) : ["-"]; return `${i + 1}. ${f.it.local} - ${f.it.visitante}  →  ${sel.join("/")}`; });
@@ -474,28 +510,38 @@ function Quiniela({ matches, quiniela, tri, dob, setTri, setDob }) {
           <span className="chip">Prob. pleno <b>{(pAll * 100).toFixed(3)}%</b></span>
           <button type="button" className="mini" onClick={copy}>{copied ? "✓ Copiado" : "📋 Copiar quiniela"}</button>
         </div>
+        {official && (quiniela.fuentes || []).some((s) => s === "liga_f" || s === "base") && (
+          <p className="note" style={{ color: "var(--muted)", marginTop: 6 }}>Los partidos femeninos (Liga F) usan un modelo curado de jerarquía: sin fuente gratuita de resultados femeninos, se funda el signo en la fuerza conocida de cada equipo. Nunca se hereda la predicción del club masculino.</p>
+        )}
       </div>
       {fc.map((f, i) => {
         const sel = f.pr ? (mult[i] || [f.best]) : null;
+        const src = Q_FUENTE[f.it.fuente];
         return (
           <div className="card" key={i} style={{ padding: "10px 14px" }}>
-            <div className="ctop"><span>{i + 1}{f.it.m ? ` · ${f.it.m.league} J${f.it.m.matchday || ""}` : ""}</span><span>{f.it.m ? fmtKick(f.it.m.kickoff) : ""}</span></div>
+            <div className="ctop">
+              <span>{i + 1}{f.it.league ? ` · ${f.it.league} J${f.it.matchday || ""}` : ""}{src ? <span className="q-src"> · {src}</span> : ""}</span>
+              <span>{f.it.kickoff ? fmtKick(f.it.kickoff) : ""}</span>
+            </div>
             <div className="row" style={{ justifyContent: "space-between" }}>
               <div className="tn" style={{ flex: 1 }}>{f.it.local} <span style={{ color: "var(--dim)" }}>vs</span> {f.it.visitante}</div>
               <div className="q-sign">{sel ? sel.map((s) => <span key={s} className={"q-" + s}>{s}</span>) : <span className="dim">sin pred.</span>}</div>
             </div>
-            {f.pr && <div className="chips"><span className="chip">1 <b>{f.it.m.probs[0]}%</b></span><span className="chip">X <b>{f.it.m.probs[1]}%</b></span><span className="chip">2 <b>{f.it.m.probs[2]}%</b></span></div>}
+            {f.pr && <div className="chips"><span className="chip">1 <b>{f.it.probs[0]}%</b></span><span className="chip">X <b>{f.it.probs[1]}%</b></span><span className="chip">2 <b>{f.it.probs[2]}%</b></span>{f.it.marcador && <span className="chip">Marcador <b>{f.it.marcador}</b></span>}</div>}
           </div>
         );
       })}
       {pleno && (
         <div className="card pleno" style={{ padding: "12px 14px" }}>
-          <div className="ctop"><span>🏆 Pleno al 15{pleno.m ? ` · ${pleno.m.league} J${pleno.m.matchday || ""}` : ""}</span><span>{pleno.m ? fmtKick(pleno.m.kickoff) : ""}</span></div>
+          <div className="ctop">
+            <span>🏆 Pleno al 15{pleno.league ? ` · ${pleno.league} J${pleno.matchday || ""}` : ""}{Q_FUENTE[pleno.fuente] ? <span className="q-src"> · {Q_FUENTE[pleno.fuente]}</span> : ""}</span>
+            <span>{pleno.kickoff ? fmtKick(pleno.kickoff) : ""}</span>
+          </div>
           <div className="row" style={{ justifyContent: "space-between" }}>
             <div className="tn" style={{ flex: 1 }}>{pleno.local} <span style={{ color: "var(--dim)" }}>vs</span> {pleno.visitante}</div>
             <div className="q-sign pleno-sc">{plenoSigns ? <>{plenoSigns[0]} <span style={{ color: "var(--dim)" }}>-</span> {plenoSigns[1]}</> : <span className="dim">sin pred.</span>}</div>
           </div>
-          {pleno.m?.markets?.marcador && <div className="chips"><span className="chip">Marcador previsto <b>{pleno.m.markets.marcador}</b></span></div>}
+          {pleno.marcador && <div className="chips"><span className="chip">Marcador previsto <b>{pleno.marcador}</b></span></div>}
         </div>
       )}
     </>
