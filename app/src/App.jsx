@@ -762,6 +762,31 @@ function AccuracyPanel({ acc }) {
           </div>
         </div>
       )}
+      {acc.market_accuracy && acc.market_accuracy.length > 0 && (
+        <div style={{ marginTop: 16 }}>
+          <div className="mut" style={{ fontWeight: 700, color: "var(--tx)", marginBottom: 6 }}>
+            Acierto por mercado
+          </div>
+          <div className="tbl-wrap">
+            <table className="tbl-mk">
+              <thead><tr><th className="tl">Mercado</th><th>Acierto</th><th>Brier</th><th>N</th></tr></thead>
+              <tbody>
+                {acc.market_accuracy.map((mk) => (
+                  <tr key={mk.key}>
+                    <td className="tl">{mk.label}</td>
+                    <td className={mk.hit_rate >= 55 ? "value-yes" : mk.hit_rate < 45 ? "value-no" : "dim"}>{mk.hit_rate}%</td>
+                    <td className={mk.brier <= 0.22 ? "value-yes" : mk.brier >= 0.28 ? "value-no" : "dim"}>{mk.brier}</td>
+                    <td>{mk.n}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="mut" style={{ marginTop: 6 }}>
+            Brier mide la calidad de la probabilidad (0 = perfecto, 0,25 = como lanzar una moneda); más bajo, mejor.
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -82,3 +82,22 @@ def test_reliability_none_con_muestra_pequena():
          "prediction_history": [_snapshot([70, 20, 10])]},
     ]
     assert _aggregate_accuracy(matches)["reliability"] is None
+
+
+def test_market_accuracy_over_y_btts():
+    """Acierto y Brier de Over 2.5 y Ambos Marcan sobre el snapshot prepartido."""
+    def mk(res, over, btts):
+        return {"finished": True, "result": res, "kickoff": "2026-08-23T21:00:00+02:00",
+                "prediction_history": [{"generated_at": "2026-08-23T10:00:00+02:00",
+                                        "probs": [40, 30, 30],
+                                        "markets": {"over_2_5": over, "btts": btts}}]}
+    matches = [
+        mk([2, 1], 0.70, 0.65),  # total 3 -> over sí (pred sí=acierto); btts sí (pred sí=acierto)
+        mk([0, 0], 0.55, 0.60),  # total 0 -> over no (pred sí=fallo); btts no (pred sí=fallo)
+        mk([1, 0], 0.40, 0.45),  # total 1 -> over no (pred no=acierto); btts no (pred no=acierto)
+    ]
+    ma = {m["key"]: m for m in _aggregate_accuracy(matches)["market_accuracy"]}
+    assert ma["over_2_5"]["n"] == 3 and ma["over_2_5"]["hits"] == 2 and ma["over_2_5"]["hit_rate"] == 67
+    assert ma["btts"]["n"] == 3 and ma["btts"]["hits"] == 2
+    # Brier de over: (0.70-1)^2 + (0.55-0)^2 + (0.40-0)^2 = 0.09+0.3025+0.16 = 0.5525 /3
+    assert ma["over_2_5"]["brier"] == round(0.5525 / 3, 3)

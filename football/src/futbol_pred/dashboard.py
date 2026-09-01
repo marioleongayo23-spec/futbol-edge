@@ -1293,6 +1293,7 @@ def _aggregate_accuracy(matches: list[dict]) -> dict | None:
     hits = n_sign = evaluated = 0
     per: dict = {}
     rel_samples: list[tuple[float, int]] = []  # (prob del favorito, acierto)
+    mkt: dict = {}  # mercado -> {n, hits, brier}
     for m in matches:
         res = m.get("result")
         if not m.get("finished") or not res:
@@ -1315,6 +1316,20 @@ def _aggregate_accuracy(matches: list[dict]) -> dict | None:
                 rel_samples.append((float(probs[fav_i]), hit))
             except (TypeError, ValueError):
                 pass
+        # Acierto y calibración (Brier) de los mercados binarios que sí se
+        # resuelven solo con el resultado: Over 2.5 y Ambos Marcan.
+        snap_mk = snapshot.get("markets") or {}
+        total_goles = res[0] + res[1]
+        for key, actual in (("over_2_5", int(total_goles > 2.5)),
+                            ("btts", int(res[0] > 0 and res[1] > 0))):
+            p = snap_mk.get(key)
+            if not isinstance(p, (int, float)):
+                continue
+            p = float(p)
+            d = mkt.setdefault(key, {"n": 0, "hits": 0, "brier": 0.0})
+            d["n"] += 1
+            d["hits"] += int((p >= 0.5) == bool(actual))
+            d["brier"] += (p - actual) ** 2
         # Error por métrica: esperado (stats) vs real (statsReal).
         pred, real_stats = snapshot.get("stats"), m.get("statsReal")
         if not pred or not real_stats:
@@ -1352,6 +1367,13 @@ def _aggregate_accuracy(matches: list[dict]) -> dict | None:
         "pct_1x2": round(100 * hits / n_sign) if n_sign else None,
         "metrics": metrics,
         "reliability": _reliability(rel_samples),
+        "market_accuracy": [
+            {"key": k, "label": {"over_2_5": "Over 2.5 goles", "btts": "Ambos marcan"}.get(k, k),
+             "n": d["n"], "hits": d["hits"],
+             "hit_rate": round(100 * d["hits"] / d["n"]),
+             "brier": round(d["brier"] / d["n"], 3)}
+            for k, d in mkt.items() if d["n"]
+        ] or None,
         "source": "pre_match_snapshots",
         "excluded_without_snapshot": max(
             0,
