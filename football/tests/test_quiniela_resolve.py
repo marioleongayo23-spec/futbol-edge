@@ -120,5 +120,30 @@ def test_resolver_pone_prediccion_a_todos():
     assert by_orden[3]["signo"] == "2"  # Barcelona (F) favorito visitante
 
 
+def test_segunda_no_se_etiqueta_como_primera_por_el_sembrado():
+    """Un equipo que también conoce el modelo de Primera (por el sembrado de
+    ex-Primera: Girona/Almería/Cádiz) se predice y etiqueta con su división ACTUAL
+    según el feed (Segunda), no con la sembrada."""
+    seg = _segunda_bundle()
+    # Modelo de Primera que TAMBIÉN conoce a los equipos de Segunda (sembrado).
+    laliga = {"model": seg["segunda"]["model"], "elo": seg["segunda"]["elo"],
+              "ensemble_params": {}, "residual_params": {}, "model_weight": 0.6,
+              "market_temperature": 1.0}
+    bundles = {"laliga": laliga, "segunda": seg["segunda"]}  # laliga primero
+    # El feed sitúa a Sp Gijon y Girona en Segunda (aunque solo sea por resultados).
+    matches = [{
+        "id": "seg-1", "home": "Sp Gijon", "away": "Girona",
+        "league": "LaLiga Hypermotion", "finished": True, "result": [1, 0],
+        "kickoff": "2026-08-20T18:00:00+02:00",
+    }]
+    quiniela = {"jornada": 4, "fecha": "2026-09-05", "partidos": [
+        {"orden": 1, "local": "Sporting de Gijón", "visitante": "Girona"}]}
+    q = D._resolve_quiniela(quiniela, matches, bundles, "2026-09-05T00:00:00+02:00",
+                            datetime.now(timezone.utc))
+    p = q["partidos"][0]
+    assert p["fuente"] == "modelo"
+    assert p["league"] == "LaLiga Hypermotion"  # su división actual, no "LaLiga"
+
+
 def test_resolver_sin_quiniela_es_inocuo():
     assert D._resolve_quiniela(None, [], {}, "x", datetime.now(timezone.utc)) is None
