@@ -1580,7 +1580,7 @@ def _quiniela_from_payload(payload: dict, league_label: str) -> dict | None:
     }
 
 
-def _quiniela_predict_one(local, visit, feed_idx, league_bundles, kickoff, generated_at) -> dict | None:
+def _quiniela_predict_one(local, visit, feed_idx, league_bundles, team_league, kickoff, generated_at) -> dict | None:
     """Resuelve el pronóstico de UN partido de la quiniela con grounding en cascada.
 
     A) Reutiliza el partido del feed si existe (misma tarjeta que ve el usuario).
@@ -1599,8 +1599,15 @@ def _quiniela_predict_one(local, visit, feed_idx, league_bundles, kickoff, gener
         m = feed_idx.get((ch, ca))
         if m:
             return _quiniela_from_match(m)
-        # Tier B: modelo de la liga que conozca a ambos equipos.
-        for league, bundle in league_bundles.items():
+        # Tier B: modelo de la liga que conozca a ambos equipos. Se prioriza la
+        # división donde JUEGAN hoy (según el feed): así un equipo que también
+        # está en el sembrado de otra liga (Girona/Almería/Cádiz, ex-Primera) se
+        # predice y etiqueta con su división actual (Segunda), no con la sembrada.
+        label_to_key = {v: k for k, v in LEAGUES.items()}
+        pref_label = team_league.get(ch) if team_league.get(ch) == team_league.get(ca) else None
+        pref_key = label_to_key.get(pref_label) if pref_label else None
+        order = sorted(league_bundles.items(), key=lambda kv: kv[0] != pref_key)
+        for league, bundle in order:
             model = bundle.get("model")
             if model is None or not (model.is_known(ch) and model.is_known(ca)):
                 continue
@@ -1652,7 +1659,13 @@ def _resolve_quiniela(quiniela, matches, league_bundles, generated_at, now) -> d
     if not quiniela or not quiniela.get("partidos"):
         return quiniela
     feed_idx: dict[tuple[str, str], dict] = {}
+    team_league: dict[str, str] = {}  # equipo canónico -> liga donde juega HOY
     for m in matches:
+        league_label = m.get("league")
+        for side in ("home", "away"):
+            team = m.get(side)
+            if team:
+                team_league[_canon(team)] = league_label
         if m.get("finished") or not isinstance(m.get("probs"), list):
             continue
         feed_idx.setdefault((_canon(m.get("home", "")), _canon(m.get("away", ""))), m)
@@ -1662,7 +1675,7 @@ def _resolve_quiniela(quiniela, matches, league_bundles, generated_at, now) -> d
         try:
             pred = _quiniela_predict_one(
                 p.get("local", ""), p.get("visitante", ""),
-                feed_idx, league_bundles, kickoff, generated_at,
+                feed_idx, league_bundles, team_league, kickoff, generated_at,
             )
         except Exception:  # noqa: BLE001 - un partido nunca tumba la quiniela
             pred = None
