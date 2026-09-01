@@ -1,6 +1,6 @@
 {
   "schema_version": 7,
-  "generated_at": "2026-09-01T01:48:05.409238+02:00",
+  "generated_at": "2026-09-01T02:06:23.345512+02:00",
   "season": 2026,
   "quiniela": {
     "jornada": "4",
@@ -43166,37 +43166,37 @@
       },
       "alineacion": {
         "local": [
-          "Andrés Fernández",
+          "M. Ryan",
+          "N. Perez",
           "Dela",
-          "Sergio Postigo",
-          "Alex Valle",
-          "Andrés García",
-          "Oriol Rey",
-          "Pablo Martínez",
-          "Kocho",
-          "Carlos Álvarez",
-          "Brugue",
-          "Dani Gómez"
+          "A. Mandi",
+          "M. Sanchez",
+          "O. Rey",
+          "R. Brugue",
+          "E. Bardeli",
+          "J. A. Olasagasti",
+          "T. Fernandez",
+          "I. Romero"
         ],
         "visitante": [
-          "Rui Silva",
-          "Héctor Bellerín",
-          "Marc Bartra",
-          "Diego Llorente",
-          "Romain Perraud",
-          "Johnny Cardoso",
-          "William Carvalho",
-          "Pablo Fornals",
-          "Ayoze Pérez",
-          "Abde Ezzalzouli",
-          "Cédric Bakambu"
+          "A. Valles",
+          "H. Bellerin",
+          "M. Bartra",
+          "Natan",
+          "F. Garcia",
+          "F. Bernal",
+          "M. Roca",
+          "Antony",
+          "Isco",
+          "R. Riquelme",
+          "T. Parrott"
         ],
         "bajas_local": [],
         "bajas_visitante": [],
         "clave_local": [],
         "clave_visitante": [],
-        "provider": "Gemini",
-        "model": "gemini-flash-lite-latest",
+        "provider": "API-Football",
+        "model": "alineación oficial",
         "quality": {
           "complete": true,
           "lineup_players": 22,
@@ -43207,22 +43207,23 @@
           "real_player_props": 0,
           "predicted_player_props": 22,
           "model_player_props": 22,
-          "player_props_source": "Predictivo híbrido · 0/22 con muestra individual real"
+          "player_props_source": "Predictivo híbrido · 0/22 con muestra individual real",
+          "official": true
         },
         "generated_at": "2026-08-29T16:44:26.305943+02:00",
         "ts": "2026-08-29T16:44:26.305943+02:00",
-        "fuente": "T-16m · medios recientes para ambos equipos + continuidad oficial + IA",
+        "fuente": "API-Football · backfill último partido oficial",
         "posiciones_local": [
           "POR",
+          "LD",
           "DFC",
           "DFC",
           "LI",
-          "LD",
           "MCD",
+          "MD",
           "MC",
           "MC",
-          "ED",
-          "EI",
+          "MI",
           "DC"
         ],
         "posiciones_visitante": [
@@ -43232,17 +43233,17 @@
           "DFC",
           "LI",
           "MCD",
-          "MC",
-          "MP",
+          "MCD",
           "ED",
+          "MP",
           "EI",
           "DC"
         ],
-        "formacion_local": "4-3-3",
-        "formacion_visitante": "4-3-3",
+        "formacion_local": "4-1-4-1",
+        "formacion_visitante": "4-2-3-1",
         "positions_inferred": false,
         "cache_status": "recuperado_de_cache",
-        "status": "estimado",
+        "status": "confirmado",
         "disponibilidad_local": [],
         "disponibilidad_visitante": [],
         "best_props": [],
@@ -43254,8 +43255,8 @@
         "position_history_supported": 0,
         "position_history_overrides": 0,
         "position_history_evidence": [],
-        "phase": "same_day_probable",
-        "lineup_kind": "roster_conflict_withheld",
+        "phase": "historical_final",
+        "lineup_kind": "official",
         "media_sources": [
           {
             "source": "Estadio Deportivo",
@@ -43375,7 +43376,7 @@
           }
         },
         "evidence_scope": "trusted_media_both_sides",
-        "source_quality": "model_only",
+        "source_quality": "official",
         "display_warning": "XI oculto: contiene jugadores que no pertenecen a la plantilla registrada actual. Se reconstruirá con plantilla vigente, prensa reciente y continuidad de 2026/27.",
         "probable_refresh_windows": {
           "T-618m": "2026-08-29T06:42:17.293824+02:00",
@@ -43446,7 +43447,7 @@
           "T-16m": "2026-08-29T16:44:26.305943+02:00"
         },
         "probable_refresh_window_last": "T-16m",
-        "source_updated_at": "2026-08-29T16:44:26.305943+02:00",
+        "source_updated_at": "2026-09-01T02:06:23.345512+02:00",
         "critical_probable_generated_at": "2026-08-29T16:44:26.305943+02:00",
         "player_props_source": "Predictivo híbrido · 0/22 con muestra individual real",
         "player_props_checked_at": "2026-08-29T17:03:51.482583+02:00",
@@ -43474,7 +43475,8 @@
             "Abde Ezzalzouli",
             "Cédric Bakambu"
           ]
-        }
+        },
+        "official_backfill_at": "2026-09-01T02:06:23.345512+02:00"
       },
       "venue_meta": {
         "name": "Ciutat de València",
@@ -43818,7 +43820,8 @@
         "confidence_penalty_pp": 5.0,
         "probability_adjustment": "not_applied",
         "method": "minutos × probabilidad de titularidad × producción observada; las bajas oficiales penalizan confianza. No altera el 1X2 sin validación histórica."
-      }
+      },
+      "api_football_fixture_id": 1570357
     },
     {
       "id": "football_data_uk-1299159830",
@@ -47235,37 +47238,37 @@
       },
       "alineacion": {
         "local": [
-          "Thibaut Courtois",
-          "Denzel Dumfries",
-          "Ibrahima Konaté",
-          "Dean Huijsen",
-          "Álvaro Carreras",
-          "Bernardo Silva",
-          "Federico Valverde",
-          "Arda Güler",
-          "Jude Bellingham",
-          "Vinícius Júnior",
-          "Kylian Mbappé"
+          "T. Courtois",
+          "T. Alexander-Arnold",
+          "A. Rudiger",
+          "D. Huijsen",
+          "M. Cucurella",
+          "F. Valverde",
+          "E. Camavinga",
+          "B. Diaz",
+          "J. Bellingham",
+          "Vinicius Junior",
+          "K. Mbappe"
         ],
         "visitante": [
-          "Alfonso Herrero",
-          "Puga",
-          "Einar Galilea",
-          "Ramón Enríquez Rodríguez",
-          "Dani Lorenzo",
-          "David Larrubia",
-          "José Salinas",
-          "Fernando Calero",
-          "Alex Pastor Carayol",
-          "Carlos Dotor",
-          "Izan Merino"
+          "A. Herrero",
+          "C. Puga",
+          "A. Recio",
+          "E. Galilea",
+          "Rafita",
+          "D. Larrubia",
+          "R. Rodriguez",
+          "I. Merino",
+          "J. Munoz",
+          "Chupe",
+          "C. Dotor"
         ],
         "bajas_local": [],
         "bajas_visitante": [],
         "clave_local": [],
         "clave_visitante": [],
-        "provider": "Gemini",
-        "model": "gemini-flash-lite-latest",
+        "provider": "API-Football",
+        "model": "alineación oficial",
         "quality": {
           "complete": true,
           "lineup_players": 22,
@@ -47276,11 +47279,12 @@
           "real_player_props": 0,
           "predicted_player_props": 22,
           "model_player_props": 22,
-          "player_props_source": "Predictivo híbrido · 0/22 con muestra individual real"
+          "player_props_source": "Predictivo híbrido · 0/22 con muestra individual real",
+          "official": true
         },
         "generated_at": "2026-08-30T16:38:48.014276+02:00",
         "ts": "2026-08-30T16:38:48.014276+02:00",
-        "fuente": "T-21m · medios recientes para ambos equipos + continuidad oficial + IA",
+        "fuente": "API-Football · backfill último partido oficial",
         "posiciones_local": [
           "POR",
           "LD",
@@ -47296,22 +47300,22 @@
         ],
         "posiciones_visitante": [
           "POR",
+          "LD",
+          "DFC",
+          "DFC",
           "LI",
-          "DFC",
-          "MC",
+          "MD",
           "MCD",
-          "EI",
-          "DFC",
-          "LD",
-          "LD",
-          "MC",
-          "MC"
+          "MCD",
+          "MI",
+          "DC",
+          "DC"
         ],
-        "formacion_local": "4-3-3",
-        "formacion_visitante": "5-4-1",
-        "positions_inferred": true,
+        "formacion_local": "4-2-3-1",
+        "formacion_visitante": "4-4-2",
+        "positions_inferred": false,
         "cache_status": "recuperado_de_cache",
-        "status": "estimado",
+        "status": "confirmado",
         "disponibilidad_local": [],
         "disponibilidad_visitante": [],
         "best_props": [],
@@ -47322,8 +47326,8 @@
         "position_history_supported": 0,
         "position_history_overrides": 0,
         "position_history_evidence": [],
-        "phase": "same_day_probable",
-        "lineup_kind": "roster_reconstructed",
+        "phase": "historical_final",
+        "lineup_kind": "official",
         "media_sources": [
           {
             "source": "MARCA",
@@ -47411,7 +47415,7 @@
           }
         },
         "evidence_scope": "trusted_media_both_sides",
-        "source_quality": "roster_grounded",
+        "source_quality": "official",
         "display_warning": "XI probable reconstruido con la plantilla vigente: se sustituyeron jugadores que ya no constan en el club por titulares probables de la plantilla actual.",
         "probable_refresh_windows": {
           "T-1020m": "2026-08-30T00:00:07.517414+02:00",
@@ -47557,7 +47561,7 @@
           "T-21m": "2026-08-30T16:38:48.014276+02:00"
         },
         "probable_refresh_window_last": "T-21m",
-        "source_updated_at": "2026-08-30T16:38:48.014276+02:00",
+        "source_updated_at": "2026-09-01T02:06:23.345512+02:00",
         "critical_probable_generated_at": "2026-08-30T16:38:48.014276+02:00",
         "player_props_source": "Predictivo híbrido · 0/22 con muestra individual real",
         "player_props_checked_at": "2026-08-30T16:38:55.905341+02:00",
@@ -47573,7 +47577,8 @@
           ]
         },
         "official_fixture_id": 1570360,
-        "critical_probable_checked_at": "2026-08-30T16:38:48.014276+02:00"
+        "critical_probable_checked_at": "2026-08-30T16:38:48.014276+02:00",
+        "official_backfill_at": "2026-09-01T02:06:23.345512+02:00"
       },
       "venue_meta": {
         "name": "Santiago Bernabéu",
@@ -47917,7 +47922,8 @@
         "confidence_penalty_pp": 5.0,
         "probability_adjustment": "not_applied",
         "method": "minutos × probabilidad de titularidad × producción observada; las bajas oficiales penalizan confianza. No altera el 1X2 sin validación histórica."
-      }
+      },
+      "api_football_fixture_id": 1570360
     },
     {
       "id": "football_data_uk-1745130232",
@@ -58201,30 +58207,30 @@
       },
       "alineacion": {
         "local": [
-          "Herrera",
-          "Areso",
-          "Catena",
-          "Herrando",
-          "Cruz",
-          "Torró",
-          "Moncayola",
-          "Aimar Oroz",
+          "Sergio Herrera",
+          "Iñigo Arguibide",
+          "Alejandro Catena",
+          "Jorge Herrando",
+          "Abel Bretones",
+          "Jon Moncayola",
+          "Iker Muñoz",
           "Rubén García",
-          "Bryan Zaragoza",
-          "Budimir"
+          "Aimar Oroz",
+          "Moi Gómez",
+          "Ante Budimir"
         ],
         "visitante": [
-          "Soria",
-          "Nyom",
+          "David Soria",
+          "Kiko Femenía",
           "Djené",
-          "Alderete",
-          "Diego Rico",
-          "Milla",
-          "Yellu",
-          "Carles Pérez",
-          "Sola",
-          "Uche",
-          "Bertug"
+          "Zaid Romero",
+          "Johan Mojica",
+          "Andrés García",
+          "Francho Serrano",
+          "Orel Mangala",
+          "Ramón Terrats",
+          "Enes Ünal",
+          "Martín Satriano"
         ],
         "posiciones_local": [
           "POR",
@@ -58233,9 +58239,9 @@
           "DFC",
           "LI",
           "MCD",
-          "MC",
-          "MP",
+          "MCD",
           "ED",
+          "MP",
           "EI",
           "DC"
         ],
@@ -58245,15 +58251,15 @@
           "DFC",
           "DFC",
           "LI",
+          "MD",
           "MCD",
-          "MC",
-          "ED",
-          "EI",
-          "MP",
+          "MCD",
+          "MI",
+          "DC",
           "DC"
         ],
-        "formacion_local": "4-3-3",
-        "formacion_visitante": "4-3-3",
+        "formacion_local": "4-2-3-1",
+        "formacion_visitante": "4-4-2",
         "positions_inferred": false,
         "bajas_local": [
           "David García (lesión: muscular)",
@@ -58269,7 +58275,7 @@
         "clave_visitante": [],
         "best_props": [],
         "numeric_props_source": "pending_real_data",
-        "status": "probable",
+        "status": "confirmado",
         "quality": {
           "complete": true,
           "lineup_players": 22,
@@ -58277,7 +58283,8 @@
           "positions_players": 22,
           "score": 1.0,
           "numeric_props_source": "pending_real_data",
-          "real_player_props": 0
+          "real_player_props": 0,
+          "official": true
         },
         "disponibilidad_local": [
           {
@@ -58325,18 +58332,18 @@
             "official": false
           }
         ],
-        "provider": "Gemini",
-        "model": "gemini-flash-lite-latest",
+        "provider": "API-Football",
+        "model": "alineación oficial",
         "generated_at": "2026-08-31T16:21:32.324461+02:00",
         "ts": "2026-08-31T16:21:32.324461+02:00",
-        "fuente": "T-3h · medios recientes para ambos equipos + continuidad oficial + IA",
+        "fuente": "API-Football · backfill último partido oficial",
         "input_fingerprint": "751c72d224f7856c",
         "position_source": "model_unverified",
         "position_history_supported": 0,
         "position_history_overrides": 0,
         "position_history_evidence": [],
-        "phase": "pre_final",
-        "lineup_kind": "source_grounded_probable",
+        "phase": "historical_final",
+        "lineup_kind": "official",
         "media_sources": [
           {
             "source": "AS",
@@ -58391,14 +58398,16 @@
           }
         },
         "evidence_scope": "trusted_media_both_sides",
-        "source_quality": "media_grounded",
+        "source_quality": "official",
         "display_warning": null,
         "probable_refresh_windows": {
           "T-3h": "2026-08-31T16:21:32.324461+02:00"
         },
         "probable_refresh_window_last": "T-3h",
-        "source_updated_at": "2026-08-31T16:21:32.324461+02:00",
-        "prefinal_refresh_at": "2026-08-31T16:21:32.324461+02:00"
+        "source_updated_at": "2026-09-01T02:06:23.345512+02:00",
+        "prefinal_refresh_at": "2026-08-31T16:21:32.324461+02:00",
+        "official_fixture_id": 1570358,
+        "official_backfill_at": "2026-09-01T02:06:23.345512+02:00"
       },
       "lineup_impact": {
         "status": "probable",
@@ -59240,7 +59249,8 @@
       "ai_attempts": {
         "preview": "2026-08-31T12:31:31.320086+00:00",
         "lineup": "2026-08-31T12:31:31.320086+00:00"
-      }
+      },
+      "api_football_fixture_id": 1570358
     },
     {
       "id": "football_data_uk-1408200099",
@@ -66461,30 +66471,30 @@
       },
       "alineacion": {
         "local": [
-          "Marc-André ter Stegen",
+          "Joan García",
           "Jules Koundé",
-          "Ronald Araújo",
           "Pau Cubarsí",
-          "João Cancelo",
-          "Marc Casadó",
-          "Dani Olmo",
-          "Fermín López",
+          "Andreas Christensen",
+          "Xavi Espart",
+          "Marc Bernal",
+          "Pedri",
           "Lamine Yamal",
-          "Raphinha",
-          "Robert Lewandowski"
+          "Dani Olmo",
+          "Anthony Gordon",
+          "Raphinha"
         ],
         "visitante": [
-          "Thibaut Courtois",
-          "Denzel Dumfries",
-          "Ibrahima Konaté",
-          "Dean Huijsen",
-          "Álvaro Carreras",
-          "Bernardo Silva",
-          "Federico Valverde",
-          "Arda Güler",
-          "Jude Bellingham",
-          "Vinícius Júnior",
-          "Kylian Mbappé"
+          "Dani Cárdenas",
+          "Iván Balliu",
+          "Florian Lejeune",
+          "Pathé Ismaël Ciss",
+          "Jozhua Vertrouwd",
+          "Óscar Valentín",
+          "Gnangoro Bouaré",
+          "Jorge de Frutos",
+          "Unai López",
+          "Álvaro García",
+          "Sergio Camello"
         ],
         "posiciones_local": [
           "POR",
@@ -66493,9 +66503,9 @@
           "DFC",
           "LI",
           "MCD",
-          "MC",
-          "MP",
+          "MCD",
           "ED",
+          "MP",
           "EI",
           "DC"
         ],
@@ -66512,8 +66522,8 @@
           "EI",
           "DC"
         ],
-        "formacion_local": "4-3-3",
-        "formacion_visitante": "4-3-3",
+        "formacion_local": "4-2-3-1",
+        "formacion_visitante": "4-2-3-1",
         "positions_inferred": false,
         "bajas_local": [
           "Gavi (lesión: ligamento cruzado)",
@@ -66528,7 +66538,7 @@
         "clave_visitante": [],
         "best_props": [],
         "numeric_props_source": "pending_real_data",
-        "status": "estimado",
+        "status": "confirmado",
         "quality": {
           "complete": true,
           "lineup_players": 22,
@@ -66536,7 +66546,8 @@
           "positions_players": 22,
           "score": 1.0,
           "numeric_props_source": "pending_real_data",
-          "real_player_props": 0
+          "real_player_props": 0,
+          "official": true
         },
         "disponibilidad_local": [
           {
@@ -66577,18 +66588,18 @@
             "official": false
           }
         ],
-        "provider": "Gemini",
-        "model": "gemini-flash-lite-latest",
+        "provider": "API-Football",
+        "model": "alineación oficial",
         "generated_at": "2026-08-31T18:21:25.111972+02:00",
         "ts": "2026-08-31T18:21:25.111972+02:00",
-        "fuente": "Estimación T-3h · continuidad oficial + IA · sin fuente externa suficiente",
+        "fuente": "API-Football · backfill último partido oficial",
         "input_fingerprint": "4ff6144e5c995a64",
         "position_source": "model_unverified",
         "position_history_supported": 0,
         "position_history_overrides": 0,
         "position_history_evidence": [],
-        "phase": "pre_final_estimate",
-        "lineup_kind": "model_estimate",
+        "phase": "historical_final",
+        "lineup_kind": "official",
         "media_sources": [],
         "lineup_evidence": {
           "policy": "both_sides_required_for_probable",
@@ -66609,14 +66620,16 @@
           }
         },
         "evidence_scope": "model_only",
-        "source_quality": "model_only",
+        "source_quality": "official",
         "display_warning": "XI estimado por modelo; no existe evidencia externa suficiente para ambos equipos.",
         "probable_refresh_windows": {
           "T-3h": "2026-08-31T18:21:25.111972+02:00"
         },
         "probable_refresh_window_last": "T-3h",
-        "source_updated_at": "2026-08-31T18:21:25.111972+02:00",
-        "prefinal_refresh_at": "2026-08-31T18:21:25.111972+02:00"
+        "source_updated_at": "2026-09-01T02:06:23.345512+02:00",
+        "prefinal_refresh_at": "2026-08-31T18:21:25.111972+02:00",
+        "official_fixture_id": 1570354,
+        "official_backfill_at": "2026-09-01T02:06:23.345512+02:00"
       },
       "lineup_impact": {
         "status": "estimado",
@@ -67401,7 +67414,8 @@
       "ai_attempts": {
         "preview": "2026-08-31T12:31:31.320086+00:00",
         "lineup": "2026-08-31T12:31:31.320086+00:00"
-      }
+      },
+      "api_football_fixture_id": 1570354
     },
     {
       "id": "football_data-564682",
@@ -68238,7 +68252,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-09-01T01:48:05.409238+02:00",
+      "updatedAt": "2026-09-01T02:06:23.345512+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -68831,56 +68845,56 @@
       },
       "alineacion": {
         "local": [
-          "Álvaro Vallés Rosa",
-          "Diego Llorente",
-          "Héctor Bellerín",
-          "Júnior Firpo",
-          "Bartra",
+          "A. Valles",
+          "H. Bellerin",
+          "M. Bartra",
+          "Natan",
+          "F. Garcia",
+          "F. Bernal",
+          "M. Roca",
+          "Antony",
           "Isco",
-          "Giovani Lo Celso",
-          "Marc Roca",
-          "Cucho Hernández",
-          "Aitor Ruibal",
-          "Antony"
+          "R. Riquelme",
+          "T. Parrott"
         ],
         "visitante": [
-          "Thibaut Courtois",
-          "Éder Militão",
-          "Antonio Rüdiger",
-          "Denzel Dumfries",
-          "Trent Alexander-Arnold",
-          "Federico Valverde",
-          "Bernardo Silva",
-          "Aurélien Tchouameni",
-          "Rodrygo",
-          "Vinicius Junior",
-          "Kylian Mbappé"
+          "Dani Cárdenas",
+          "Iván Balliu",
+          "Florian Lejeune",
+          "Pathé Ismaël Ciss",
+          "Jozhua Vertrouwd",
+          "Óscar Valentín",
+          "Gnangoro Bouaré",
+          "Jorge de Frutos",
+          "Unai López",
+          "Álvaro García",
+          "Sergio Camello"
         ],
         "posiciones_local": [
           "POR",
-          "LI",
-          "DFC",
-          "DFC",
           "LD",
-          "MC",
+          "DFC",
+          "DFC",
+          "LI",
           "MCD",
-          "MC",
+          "MCD",
+          "ED",
+          "MP",
           "EI",
-          "DC",
-          "ED"
+          "DC"
         ],
         "posiciones_visitante": [
           "POR",
-          "LI",
-          "DFC",
-          "DFC",
           "LD",
-          "MC",
+          "DFC",
+          "DFC",
+          "LI",
           "MCD",
-          "MC",
+          "MCD",
+          "ED",
+          "MP",
           "EI",
-          "DC",
-          "ED"
+          "DC"
         ],
         "formacion_local": "4-3-3",
         "formacion_visitante": "4-3-3",
@@ -68894,8 +68908,8 @@
         "best_props": [],
         "numeric_props_source": "pending_real_data",
         "status": "estimado",
-        "provider": "Motor estadístico local",
-        "model": "squad-only-v3",
+        "provider": "Último XI oficial",
+        "model": "continuidad-oficial-v1",
         "quality": {
           "complete": true,
           "lineup_players": 22,
@@ -68904,13 +68918,32 @@
           "score": 0.72,
           "provisional": true,
           "numeric_props_source": "pending_real_data",
-          "real_player_props": 0
+          "real_player_props": 0,
+          "official": false,
+          "baseline_from_official_history": true
         },
-        "generated_at": "2026-08-31T08:21:28.703587+00:00",
-        "ts": "2026-08-31T08:21:28.703587+00:00",
-        "fuente": "Motor estadístico local",
+        "generated_at": "2026-09-01T02:06:23.345512+02:00",
+        "ts": "2026-09-01T02:06:23.345512+02:00",
+        "fuente": "Último XI oficial disponible de cada equipo · pendiente de probable actualizado",
         "input_fingerprint": "717a367fcc25e280",
-        "cache_status": "recuperado_de_cache"
+        "cache_status": "recuperado_de_cache",
+        "phase": "rolling_baseline",
+        "lineup_kind": "last_official_baseline",
+        "source_quality": "official_history_baseline",
+        "display_warning": "Base provisional: último XI oficial disponible; se sustituirá automáticamente cuando aparezca un probable fiable o el XI oficial.",
+        "position_source": "official_history",
+        "baseline_sources": {
+          "local": {
+            "kickoff": "2026-08-29T17:00:00+02:00",
+            "source": "último XI oficial"
+          },
+          "visitante": {
+            "kickoff": "2026-08-31T21:30:00+02:00",
+            "source": "último XI oficial"
+          }
+        },
+        "baseline_policy": "official_current > media_grounded > hybrid > last_official",
+        "source_updated_at": "2026-09-01T02:06:23.345512+02:00"
       },
       "venue_meta": {
         "name": "Benito Villamarín",
@@ -73070,7 +73103,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-09-01T01:48:05.409238+02:00",
+      "updatedAt": "2026-09-01T02:06:23.345512+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -73633,56 +73666,56 @@
       },
       "alineacion": {
         "local": [
-          "Alfonso Herrero",
-          "Fernando Calero",
-          "Alex Pastor Carayol",
-          "José Salinas",
-          "Angel Recio",
-          "Juan Melero",
-          "Pablo Martínez",
-          "Ramón Enríquez Rodríguez",
-          "Eneko Jauregi Escobar",
-          "Juan Cruz",
-          "Joaquín Muñoz"
+          "A. Herrero",
+          "C. Puga",
+          "A. Recio",
+          "E. Galilea",
+          "Rafita",
+          "D. Larrubia",
+          "R. Rodriguez",
+          "I. Merino",
+          "J. Munoz",
+          "Chupe",
+          "C. Dotor"
         ],
         "visitante": [
-          "Maty Ryan",
-          "Aïssa Mandi",
-          "Jeremy Toljan",
-          "Adrián de la Fuente",
-          "Manuel Sánchez",
-          "Oriol Rey",
-          "Carlos Álvarez",
-          "Jon Olasagasti",
-          "Roger Brugué",
-          "Víctor García",
-          "Iván Romero"
+          "M. Ryan",
+          "N. Perez",
+          "Dela",
+          "A. Mandi",
+          "M. Sanchez",
+          "O. Rey",
+          "R. Brugue",
+          "E. Bardeli",
+          "J. A. Olasagasti",
+          "T. Fernandez",
+          "I. Romero"
         ],
         "posiciones_local": [
           "POR",
-          "LI",
-          "DFC",
-          "DFC",
           "LD",
-          "MC",
+          "DFC",
+          "DFC",
+          "LI",
+          "MD",
           "MCD",
-          "MC",
-          "EI",
+          "MCD",
+          "MI",
           "DC",
-          "ED"
+          "DC"
         ],
         "posiciones_visitante": [
           "POR",
-          "LI",
-          "DFC",
-          "DFC",
           "LD",
-          "MC",
+          "DFC",
+          "DFC",
+          "LI",
           "MCD",
+          "MD",
           "MC",
-          "EI",
-          "DC",
-          "ED"
+          "MC",
+          "MI",
+          "DC"
         ],
         "formacion_local": "4-3-3",
         "formacion_visitante": "4-3-3",
@@ -73696,8 +73729,8 @@
         "best_props": [],
         "numeric_props_source": "pending_real_data",
         "status": "estimado",
-        "provider": "Motor estadístico local",
-        "model": "squad-only-v3",
+        "provider": "Último XI oficial",
+        "model": "continuidad-oficial-v1",
         "quality": {
           "complete": true,
           "lineup_players": 22,
@@ -73706,13 +73739,32 @@
           "score": 0.72,
           "provisional": true,
           "numeric_props_source": "pending_real_data",
-          "real_player_props": 0
+          "real_player_props": 0,
+          "official": false,
+          "baseline_from_official_history": true
         },
-        "generated_at": "2026-08-31T08:21:28.703587+00:00",
-        "ts": "2026-08-31T08:21:28.703587+00:00",
-        "fuente": "Motor estadístico local",
+        "generated_at": "2026-09-01T02:06:23.345512+02:00",
+        "ts": "2026-09-01T02:06:23.345512+02:00",
+        "fuente": "Último XI oficial disponible de cada equipo · pendiente de probable actualizado",
         "input_fingerprint": "d5e459b119158fde",
-        "cache_status": "recuperado_de_cache"
+        "cache_status": "recuperado_de_cache",
+        "phase": "rolling_baseline",
+        "lineup_kind": "last_official_baseline",
+        "source_quality": "official_history_baseline",
+        "display_warning": "Base provisional: último XI oficial disponible; se sustituirá automáticamente cuando aparezca un probable fiable o el XI oficial.",
+        "position_source": "official_history",
+        "baseline_sources": {
+          "local": {
+            "kickoff": "2026-08-30T17:00:00+02:00",
+            "source": "último XI oficial"
+          },
+          "visitante": {
+            "kickoff": "2026-08-29T17:00:00+02:00",
+            "source": "último XI oficial"
+          }
+        },
+        "baseline_policy": "official_current > media_grounded > hybrid > last_official",
+        "source_updated_at": "2026-09-01T02:06:23.345512+02:00"
       },
       "venue_meta": {
         "name": "La Rosaleda",
@@ -425325,14 +425377,14 @@
     }
   },
   "feature_truth_table": {
-    "generated_at": "2026-09-01T01:48:05.409238+02:00",
+    "generated_at": "2026-09-01T02:06:23.345512+02:00",
     "principle": "candidate -> leakage-safe snapshot -> walk-forward -> compare vs accepted engine + no-vig market -> promote only on improvement",
     "eligible_matches": 490,
     "features": [
       {
         "feature": "dixon_coles_score_model",
         "source": "Resultados históricos reales · Football-Data/API-Football + score model Dixon-Coles",
-        "available_at": "2026-09-01T01:48:05.409238+02:00",
+        "available_at": "2026-09-01T02:06:23.345512+02:00",
         "coverage": {
           "covered": 490,
           "eligible": 490,
@@ -425354,7 +425406,7 @@
       {
         "feature": "elo",
         "source": "Resultados históricos reales transformados en rating Elo",
-        "available_at": "2026-09-01T01:48:05.409238+02:00",
+        "available_at": "2026-09-01T02:06:23.345512+02:00",
         "coverage": {
           "covered": 490,
           "eligible": 490,
@@ -425375,7 +425427,7 @@
       {
         "feature": "team_stat_model",
         "source": "football-data.co.uk · históricos de remates, SOT, córners, faltas y tarjetas",
-        "available_at": "2026-09-01T01:48:05.409238+02:00",
+        "available_at": "2026-09-01T02:06:23.345512+02:00",
         "coverage": {
           "covered": 351,
           "eligible": 490,
@@ -425439,7 +425491,7 @@
       {
         "feature": "lineups_absences_minutes",
         "source": "API-Football oficial + medios recientes + continuidad histórica + snapshots pre-match",
-        "available_at": "2026-08-31T18:21:25.111972+02:00",
+        "available_at": "2026-09-01T02:06:23.345512+02:00",
         "coverage": {
           "covered": 351,
           "eligible": 490,
@@ -425460,7 +425512,7 @@
       {
         "feature": "player_props",
         "source": "API-Football /players + XI probable/oficial; estimación trazable solo para huecos sin muestra",
-        "available_at": "2026-08-31T18:21:25.111972+02:00",
+        "available_at": "2026-09-01T02:06:23.345512+02:00",
         "coverage": {
           "covered": 0,
           "eligible": 490,
@@ -425480,7 +425532,7 @@
       {
         "feature": "tactical_matchup",
         "source": "Perfiles observados casa/fuera derivados de football-data.co.uk",
-        "available_at": "2026-09-01T01:48:05.409238+02:00",
+        "available_at": "2026-09-01T02:06:23.345512+02:00",
         "coverage": {
           "covered": 351,
           "eligible": 490,
