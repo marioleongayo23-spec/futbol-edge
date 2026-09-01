@@ -117,6 +117,46 @@ function TacticalProfile({ matchup, home, away }) {
   </div>;
 }
 
+/* Radar de estilo: superpone los dos equipos en 5 ejes de percentil (0-100).
+   Da la "forma" del emparejamiento de un vistazo; las barras de TacticalProfile
+   siguen dando el número exacto y las unidades. */
+const RADAR_DIMS = [
+  ["attack_volume", "Ataque"],
+  ["territorial_pressure", "Presión"],
+  ["defensive_exposure", "Exposición"],
+  ["finishing_efficiency", "Eficacia"],
+  ["contact_intensity", "Contacto"],
+];
+function StyleRadar({ matchup, home, away }) {
+  const cx = 100, cy = 100, maxR = 58, labelR = 76;
+  const point = (i, r) => {
+    const a = (-90 + i * (360 / RADAR_DIMS.length)) * Math.PI / 180;
+    return [cx + r * Math.cos(a), cy + r * Math.sin(a)];
+  };
+  const scores = (side) => RADAR_DIMS.map(([k]) => {
+    const s = side?.style_vector?.[k]?.score;
+    return Number.isFinite(s) ? Math.max(0, Math.min(100, s)) : null;
+  });
+  const hs = scores(matchup?.home), as = scores(matchup?.away);
+  const filled = (arr) => arr.filter((v) => v != null).length;
+  if (filled(hs) < 3 && filled(as) < 3) return null;  // muestra insuficiente
+  const poly = (arr) => arr.map((s, i) => point(i, ((s ?? 0) / 100) * maxR).join(",")).join(" ");
+  return (
+    <div className="style-radar">
+      <svg viewBox="-22 -2 244 204" role="img" aria-label={`Radar de estilo: ${home} contra ${away}`}>
+        {[25, 50, 75, 100].map((r) => (
+          <polygon key={r} className="sr-ring" points={RADAR_DIMS.map((_, i) => point(i, (r / 100) * maxR).join(",")).join(" ")} />
+        ))}
+        {RADAR_DIMS.map((_, i) => { const [x, y] = point(i, maxR); return <line key={i} className="sr-axis" x1={cx} y1={cy} x2={x} y2={y} />; })}
+        <polygon className="sr-away" points={poly(as)} />
+        <polygon className="sr-home" points={poly(hs)} />
+        {RADAR_DIMS.map(([, lab], i) => { const [x, y] = point(i, labelR); return <text key={lab} className="sr-lab" x={x} y={y} textAnchor="middle" dominantBaseline="middle">{lab}</text>; })}
+      </svg>
+      <div className="sr-legend"><span><i className="sr-dot h" />{home}</span><span><i className="sr-dot a" />{away}</span></div>
+    </div>
+  );
+}
+
 function LineupImpact({ impact, home, away }) {
   if (!impact) return null;
   const side = (label, row) => <div className="impact-side">
@@ -389,6 +429,51 @@ function TrendArrow({ t }) {
   );
 }
 
+/* Une con comas y "y" final: [a,b,c] -> "a, b y c". */
+function joinEs(items) {
+  if (items.length <= 1) return items[0] || "";
+  return items.slice(0, -1).join(", ") + " y " + items[items.length - 1];
+}
+
+/* Síntesis en una frase del estilo esperado (a partir de las tendencias ↑/↓) y
+   NEXO con la predicción: la tendencia de goles se contrasta con el Over/Under
+   del modelo, para que las flechas y el pronóstico cuenten la misma historia. */
+function StyleSummary({ m }) {
+  const t = m.tendencias;
+  if (!t) return null;
+  const order = ["goals", "shots", "corners", "fouls", "yellows"];
+  const up = [], down = [];
+  for (const k of order) {
+    const x = t[k];
+    if (!x) continue;
+    if (x.dir === "up") up.push((x.label || k).toLowerCase());
+    else if (x.dir === "down") down.push((x.label || k).toLowerCase());
+  }
+  const seg = [];
+  if (up.length) seg.push("más " + joinEs(up));
+  if (down.length) seg.push("menos " + joinEs(down));
+  const phrase = seg.length
+    ? "Se esperan " + seg.join(", y ") + " de lo habitual en la liga."
+    : "Emparejamiento de perfil estadístico neutro para la liga.";
+
+  const g = t.goals;
+  const ov = m.markets?.over_2_5;
+  let nexo = null;
+  if (g && typeof ov === "number") {
+    const pov = Math.round(ov * 100);
+    if (g.dir === "up" && ov >= 0.55) nexo = `Coherente con el Over 2.5 del modelo (${pov}%).`;
+    else if (g.dir === "down" && ov <= 0.45) nexo = `Coherente con el Under 2.5 del modelo (${100 - pov}%).`;
+    else if (g.dir === "up") nexo = `Aun así el modelo no despeja el Over 2.5 (${pov}%).`;
+    else if (g.dir === "down") nexo = `Aun así el Over 2.5 del modelo queda en ${pov}%.`;
+  }
+  return (
+    <div className="style-summary">
+      <p className="ss-phrase">{phrase}</p>
+      {nexo && <p className="ss-nexo">↳ {nexo}</p>}
+    </div>
+  );
+}
+
 export default function MatchDetail({ m, bankroll, onBack, onTeam, players, plan = "vip", onUpgrade }) {
   const canProps = hasAccess(plan, "props");
   const [ouL, setOuL] = useState(2.5);
@@ -524,6 +609,7 @@ export default function MatchDetail({ m, bankroll, onBack, onTeam, players, plan
           {m.tactical_matchup && <>
             <div className="kv"><span>Volumen de remate proyectado</span><b>{m.tactical_matchup.expected_shot_pressure?.home ?? "—"} – {m.tactical_matchup.expected_shot_pressure?.away ?? "—"}</b></div>
             <div className="kv"><span>Fiabilidad del perfil</span><b>{m.tactical_matchup.reliability} · {m.tactical_matchup.minimum_samples} partidos por split</b></div>
+            <StyleRadar matchup={m.tactical_matchup} home={m.home} away={m.away} />
             <TacticalProfile matchup={m.tactical_matchup} home={m.home} away={m.away} />
             {(m.tactical_matchup.notes || []).map((note) => <p className="mut" key={note}>• {note}</p>)}
           </>}
@@ -715,6 +801,7 @@ export default function MatchDetail({ m, bankroll, onBack, onTeam, players, plan
           ) : m.stats && (
             <div className="card section-anchor" id="match-stats">
               <div className="lbl">Estadísticas esperadas</div>
+              <StyleSummary m={m} />
               <table>
                 <thead><tr><th>Métrica</th><th>Local</th><th>Visit.</th><th>Total</th><th>Tend.</th></tr></thead>
                 <tbody>

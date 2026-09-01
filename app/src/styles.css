@@ -345,6 +345,23 @@ code{background:var(--card2);border:1px solid var(--line);border-radius:5px;padd
 .style-row small{display:block;color:var(--dim);font-size:.62rem}
 .clash-list{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}
 
+/* Síntesis de estilo esperado + nexo con el mercado (encabeza las tendencias) */
+.style-summary{margin:2px 0 12px;padding:9px 11px;border:1px solid var(--line);border-left:3px solid var(--green);border-radius:10px;background:var(--card2)}
+.style-summary .ss-phrase{margin:0;font-size:.82rem;font-weight:600;color:var(--tx)}
+.style-summary .ss-nexo{margin:5px 0 0;font-size:.74rem;color:var(--muted)}
+
+/* Radar de estilo: dos polígonos superpuestos (local verde, visitante azul) */
+.style-radar{display:flex;flex-direction:column;align-items:center;margin:8px 0 4px}
+.style-radar svg{width:100%;max-width:300px;height:auto}
+.sr-ring{fill:none;stroke:var(--line);stroke-width:.7}
+.sr-axis{stroke:var(--line);stroke-width:.7}
+.sr-home{fill:color-mix(in srgb,var(--green) 26%,transparent);stroke:var(--green);stroke-width:1.6;stroke-linejoin:round}
+.sr-away{fill:color-mix(in srgb,var(--blue) 20%,transparent);stroke:var(--blue);stroke-width:1.6;stroke-linejoin:round}
+.sr-lab{fill:var(--muted);font-size:8.5px;font-weight:600}
+.sr-legend{display:flex;gap:16px;font-size:.72rem;color:var(--muted);margin-top:4px}
+.sr-legend .sr-dot{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:5px;vertical-align:middle}
+.sr-dot.h{background:var(--green)}.sr-dot.a{background:var(--blue)}
+
 /* Impacto de once y simulador de estados */
 .impact-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:10px 0}
 .impact-side{padding:10px;border:1px solid var(--line);border-radius:12px;background:var(--card2)}
