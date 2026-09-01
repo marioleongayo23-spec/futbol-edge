@@ -53,3 +53,32 @@ def test_aggregate_no_usa_prediccion_recalculada_sin_snapshot():
         "probs": [99, 1, 0],
     }
     assert _aggregate_accuracy([match]) is None
+
+
+def test_reliability_por_bandas_de_confianza():
+    """La curva de fiabilidad agrupa por confianza del favorito y compara la
+    probabilidad media dada con el acierto real observado."""
+    def mk(res, probs):
+        return {"finished": True, "result": res, "kickoff": "2026-08-23T21:00:00+02:00",
+                "prediction_history": [_snapshot(probs)]}
+    matches = [
+        mk([2, 0], [70, 20, 10]),  # muy claro, acierta (1)
+        mk([2, 1], [68, 22, 10]),  # muy claro, acierta (1)
+        mk([0, 1], [66, 20, 14]),  # muy claro, falla (salió 2)
+        mk([1, 0], [58, 25, 17]),  # claro, acierta (1)
+        mk([0, 0], [55, 30, 15]),  # claro, falla (salió X)
+        mk([1, 1], [48, 30, 22]),  # ajustado, falla (salió X)
+    ]
+    rel = _aggregate_accuracy(matches)["reliability"]
+    assert rel is not None and rel["n"] == 6
+    muy = next(b for b in rel["bands"] if b["label"].startswith("Muy claro"))
+    assert muy["n"] == 3 and muy["hits"] == 2 and muy["hit_rate"] == 67
+    assert muy["avg_pred"] == 68  # media de 70, 68, 66
+
+
+def test_reliability_none_con_muestra_pequena():
+    matches = [
+        {"finished": True, "result": [2, 0], "kickoff": "2026-08-23T21:00:00+02:00",
+         "prediction_history": [_snapshot([70, 20, 10])]},
+    ]
+    assert _aggregate_accuracy(matches)["reliability"] is None

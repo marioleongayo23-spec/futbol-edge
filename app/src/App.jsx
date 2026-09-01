@@ -737,6 +737,31 @@ function AccuracyPanel({ acc }) {
         </div>
       )}
       <div className="mut" style={{ marginTop: 8 }}>Sesgo + = el modelo predice de menos (hubo más en la realidad); − = predice de más.</div>
+      {acc.reliability && acc.reliability.bands?.length > 0 && (
+        <div style={{ marginTop: 16 }}>
+          <div className="mut" style={{ fontWeight: 700, color: "var(--tx)", marginBottom: 6 }}>
+            ¿Está calibrado? Confianza declarada vs. acierto real
+          </div>
+          <div className="tbl-wrap">
+            <table className="tbl-mk">
+              <thead><tr><th className="tl">Confianza del favorito</th><th>Dijo (media)</th><th>Acertó</th><th>N</th></tr></thead>
+              <tbody>
+                {acc.reliability.bands.map((b) => (
+                  <tr key={b.label}>
+                    <td className="tl">{b.label}</td>
+                    <td>{b.avg_pred}%</td>
+                    <td className={Math.abs(b.hit_rate - b.avg_pred) <= 10 ? "value-yes" : "value-no"}>{b.hit_rate}%</td>
+                    <td>{b.n}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="mut" style={{ marginTop: 6 }}>
+            Bien calibrado = las dos columnas se parecen (si dice 65%, acierta ~65%). Muestra aún pequeña; se afina con la temporada.
+          </div>
+        </div>
+      )}
     </div>
   );
 }

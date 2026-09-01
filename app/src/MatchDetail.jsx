@@ -474,6 +474,51 @@ function StyleSummary({ m }) {
   );
 }
 
+const PM_WINDOWS = {
+  initial: "Inicial", "T-24h": "24 h antes", "T-12h": "12 h antes", "T-6h": "6 h antes",
+  "T-3h": "3 h antes", "pre_final_T-3h": "3 h antes",
+  "final_T-60_official": "60 min · once oficial", "final_T-30_official": "30 min · once oficial",
+};
+
+/* Trayectoria del pronóstico 1X2 a lo largo de los hitos capturados (snapshots
+   inmutables T-24h→saque). Complementa el delta del último paso mostrando el
+   camino entero. Solo se dibuja cuando hay ≥2 hitos con probabilidades. */
+function PredictionMovement({ m }) {
+  const hist = (Array.isArray(m.prediction_history) ? m.prediction_history : [])
+    .filter((h) => Array.isArray(h.probs) && h.probs.length === 3);
+  if (hist.length < 2) return null;
+  const first = hist[0].probs, last = hist[hist.length - 1].probs;
+  const shift = last.map((v, i) => Math.round(v - first[i]));
+  const moved = shift.some((d) => Math.abs(d) >= 3);
+  return (
+    <div className="card">
+      <div className="lbl">Cómo se movió el pronóstico <span className="dim">· 1X2 por hito</span></div>
+      <div className="pb-legend">
+        <span><i className="pb-dot s1" />{m.home}</span>
+        <span><i className="pb-dot sx" />Empate</span>
+        <span><i className="pb-dot s2" />{m.away}</span>
+      </div>
+      {hist.map((h, i) => (
+        <div className="pm-row" key={i}>
+          <span className="pm-win">{PM_WINDOWS[h.window] || h.window || "—"}</span>
+          <div className="pb-bar">
+            {[0, 1, 2].map((j) => (
+              <div className={"seg " + ["s1", "sx", "s2"][j]} style={{ flex: Math.max(h.probs[j], 0.6) }} key={j}>
+                {h.probs[j] >= 16 ? h.probs[j] + "%" : ""}
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+      <p className="note" style={{ marginTop: 6 }}>
+        {moved
+          ? <>Del primer hito al último: {shift.map((d, j) => d ? <span key={j} className={d > 0 ? "up" : "down"}>{["1", "X", "2"][j]} {d > 0 ? "+" : ""}{d}pp </span> : null)}</>
+          : "El pronóstico apenas se movió entre hitos."}
+      </p>
+    </div>
+  );
+}
+
 export default function MatchDetail({ m, bankroll, onBack, onTeam, players, plan = "vip", onUpgrade }) {
   const canProps = hasAccess(plan, "props");
   const [ouL, setOuL] = useState(2.5);
@@ -585,6 +630,7 @@ export default function MatchDetail({ m, bankroll, onBack, onTeam, players, plan
       )}
 
       <PredictionBuild m={m} />
+      <PredictionMovement m={m} />
 
       {(m.prediction_factors || []).length > 0 && (
         <div className="card">

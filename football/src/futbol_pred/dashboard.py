@@ -1292,6 +1292,7 @@ def _aggregate_accuracy(matches: list[dict]) -> dict | None:
               "reds": "Rojas"}
     hits = n_sign = evaluated = 0
     per: dict = {}
+    rel_samples: list[tuple[float, int]] = []  # (prob del favorito, acierto)
     for m in matches:
         res = m.get("result")
         if not m.get("finished") or not res:
@@ -1304,10 +1305,16 @@ def _aggregate_accuracy(matches: list[dict]) -> dict | None:
         # Acierto 1X2: favorito del modelo vs signo real.
         probs = snapshot.get("probs")
         if probs and len(probs) == 3:
-            fav = ["1", "X", "2"][max(range(3), key=lambda i: probs[i])]
+            fav_i = max(range(3), key=lambda i: probs[i])
+            fav = ["1", "X", "2"][fav_i]
             real = _sign(res[0], res[1])
             n_sign += 1
-            hits += int(fav == real)
+            hit = int(fav == real)
+            hits += hit
+            try:
+                rel_samples.append((float(probs[fav_i]), hit))
+            except (TypeError, ValueError):
+                pass
         # Error por métrica: esperado (stats) vs real (statsReal).
         pred, real_stats = snapshot.get("stats"), m.get("statsReal")
         if not pred or not real_stats:
@@ -1344,12 +1351,40 @@ def _aggregate_accuracy(matches: list[dict]) -> dict | None:
         "n_1x2": n_sign,
         "pct_1x2": round(100 * hits / n_sign) if n_sign else None,
         "metrics": metrics,
+        "reliability": _reliability(rel_samples),
         "source": "pre_match_snapshots",
         "excluded_without_snapshot": max(
             0,
             sum(1 for m in matches if m.get("finished") and m.get("result")) - evaluated,
         ),
     }
+
+
+def _reliability(samples: list[tuple[float, int]]) -> dict | None:
+    """¿Está calibrado el modelo? Agrupa por confianza del favorito y compara la
+    probabilidad media que dio con el acierto real observado. Bien calibrado =
+    ambas cifras se parecen (si dice 60%, acierta ~60%). Bandas anchas para tener
+    muestra en cada una; se afina según avanza la temporada."""
+    samples = [(p, h) for p, h in samples if p is not None]
+    if len(samples) < 6:
+        return None
+    edges = ((0, 52, "Ajustado (<52%)"), (52, 65, "Claro (52-65%)"), (65, 101, "Muy claro (≥65%)"))
+    bands = []
+    for lo, hi, label in edges:
+        pts = [(p, h) for p, h in samples if lo <= p < hi]
+        if not pts:
+            continue
+        n = len(pts)
+        bands.append({
+            "label": label,
+            "n": n,
+            "hits": sum(h for _, h in pts),
+            "hit_rate": round(100 * sum(h for _, h in pts) / n),
+            "avg_pred": round(sum(p for p, _ in pts) / n),
+        })
+    if not bands:
+        return None
+    return {"bands": bands, "n": len(samples)}
 
 
 def _sign(h: int, a: int) -> str:
