@@ -39,6 +39,22 @@ def test_fuera_de_ventana_conserva_prediccion_anterior():
     assert len(current["prediction_history"]) == 1
 
 
+def test_tendencias_no_se_congela_con_el_snapshot():
+    """tendencias es un indicador derivado (↑/→/↓ del estilo), no la apuesta:
+    debe recalcularse en cada ejecución en vez de quedar congelado con el
+    snapshot prepartido. Congelarlo dejaba fuera de producción las mejoras del
+    modelo de tendencias (referencia de liga + umbral por métrica)."""
+    old = _match([50, 30, 20])
+    old["tendencias"] = {"goals": {"dir": "flat", "pct": 0}}
+    apply_prediction_snapshots([old], [], datetime(2026, 8, 23, 15, tzinfo=MADRID))
+    current = _match([80, 10, 10])
+    current["tendencias"] = {"goals": {"dir": "up", "pct": 12}}  # recalculado, más fresco
+    apply_prediction_snapshots([current], [old], datetime(2026, 8, 24, 8, tzinfo=MADRID))
+    assert current["probs"] == [50, 30, 20]  # la predicción SÍ se congela
+    assert current["tendencias"] == {"goals": {"dir": "up", "pct": 12}}  # tendencias NO
+    assert "tendencias" not in current["prediction_snapshot"]
+
+
 def test_ventana_de_las_diez_crea_revision_del_partido_del_dia():
     old = _match([50, 30, 20])
     apply_prediction_snapshots([old], [], datetime(2026, 8, 23, 15, tzinfo=MADRID))

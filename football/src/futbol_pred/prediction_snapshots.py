@@ -21,7 +21,11 @@ _SNAPSHOT_FIELDS = (
     "xg",
     "markets",
     "stats",
-    "tendencias",
+    # ``tendencias`` NO se congela: es un indicador derivado (↑/→/↓ del estilo
+    # esperado, no la apuesta) y congelarlo dejaba fuera de producción cualquier
+    # mejora del modelo de tendencias —referencia de liga, umbral por métrica—,
+    # porque apply_prediction_snapshots restauraba la versión capturada con el
+    # código viejo. Se recalcula en cada ejecución, como picks.
     "odds",
     "value",
     "calibrated",
