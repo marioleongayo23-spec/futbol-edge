@@ -1092,6 +1092,10 @@ def build_dashboard(
     errors: list[dict] = []
     squads_by_league: dict[str, dict[str, list[dict]]] = {}
     stats_models_by_league: dict[str, object] = {}
+    # Bundle por liga con TODO lo que necesita fixture_payload, para poder
+    # predecir después partidos que no vienen en el calendario del feed (p. ej.
+    # los de Segunda de la quiniela, que co.uk solo publica como resultados).
+    league_bundles: dict[str, dict] = {}
 
     for league in LEAGUES:
         try:
@@ -1138,6 +1142,15 @@ def build_dashboard(
                 model_w = float(production["model_weight"])
                 market_temperature = float(production["temperature"])
             h2h = _h2h_map(train)  # incluye temporadas previas (sembrado)
+            if model is not None:
+                league_bundles[league] = {
+                    "model": model, "elo": elo, "stats": stats, "team_meta": meta,
+                    "real_stats": real_stats, "odds_map": odds_map,
+                    "closing_odds_map": closing_odds_map, "model_weight": model_w,
+                    "h2h": h2h, "trends": trends, "ensemble_params": ensemble_params,
+                    "residual_params": residual_params,
+                    "market_temperature": market_temperature,
+                }
             # TODOS los partidos de la temporada (resultados + próximos).
             matches.extend(
                 fixture_payload(fx, model, generated_at, stats=stats, team_meta=meta,
@@ -1236,7 +1249,9 @@ def build_dashboard(
         "schema_version": 7,
         "generated_at": generated_at,
         "season": season,
-        "quiniela": _load_quiniela_oficial(),
+        "quiniela": _resolve_quiniela(
+            _load_quiniela_oficial(), matches, league_bundles, generated_at, now
+        ),
         "players": players,
         "model": model_report,
         "market_calibration": market_calibration or None,
@@ -1517,6 +1532,146 @@ def _load_quiniela_oficial() -> dict | None:
         except Exception:
             continue
     return None
+
+
+def _quiniela_kickoff(fecha: str | None, now: datetime) -> datetime:
+    """Saque sintético para un partido de la quiniela sin fixture en el feed."""
+    if fecha:
+        try:
+            d = datetime.fromisoformat(fecha)
+            return d.replace(hour=18, minute=0, tzinfo=MADRID) if d.tzinfo is None else d
+        except ValueError:
+            pass
+    return (ensure_aware(now) + timedelta(days=2)).astimezone(MADRID)
+
+
+def _quiniela_from_match(m: dict) -> dict:
+    """Extrae el pronóstico ya calculado de un partido del feed (Tier A)."""
+    probs = m.get("probs")
+    signo = ["1", "X", "2"][max(range(3), key=lambda i: probs[i])]
+    return {
+        "probs": probs,
+        "signo": signo,
+        "marcador": (m.get("markets") or {}).get("marcador"),
+        "xg": m.get("xg"),
+        "league": m.get("league"),
+        "kickoff": m.get("kickoff"),
+        "matchday": m.get("matchday"),
+        "fuente": "feed",
+        "match_id": m.get("id"),
+    }
+
+
+def _quiniela_from_payload(payload: dict, league_label: str) -> dict | None:
+    """Pronóstico desde un fixture_payload recién calculado (Tier B: modelo de liga)."""
+    probs = payload.get("probs")
+    if not isinstance(probs, list):
+        return None
+    signo = ["1", "X", "2"][max(range(3), key=lambda i: probs[i])]
+    return {
+        "probs": probs,
+        "signo": signo,
+        "marcador": (payload.get("markets") or {}).get("marcador"),
+        "xg": payload.get("xg"),
+        "league": league_label,
+        "kickoff": payload.get("kickoff"),
+        "matchday": payload.get("matchday"),
+        "fuente": "modelo",
+    }
+
+
+def _quiniela_predict_one(local, visit, feed_idx, league_bundles, kickoff, generated_at) -> dict | None:
+    """Resuelve el pronóstico de UN partido de la quiniela con grounding en cascada.
+
+    A) Reutiliza el partido del feed si existe (misma tarjeta que ve el usuario).
+    B) Si no, predice con el modelo de la liga que conozca a ambos equipos
+       (clave para Segunda: co.uk solo da resultados, sin calendario próximo).
+    C) Si es femenino o el equipo es desconocido, usa el modelo curado de Liga F
+       (prior de jerarquía). Así NINGÚN partido queda "sin predicción".
+    """
+    from . import ligaf
+
+    ch, ca = _canon(local), _canon(visit)
+    femenino = ligaf.is_femenino(local) or ligaf.is_femenino(visit)
+
+    if not femenino:
+        # Tier A: partido próximo con predicción en el feed.
+        m = feed_idx.get((ch, ca))
+        if m:
+            return _quiniela_from_match(m)
+        # Tier B: modelo de la liga que conozca a ambos equipos.
+        for league, bundle in league_bundles.items():
+            model = bundle.get("model")
+            if model is None or not (model.is_known(ch) and model.is_known(ca)):
+                continue
+            fixture = Fixture(
+                api_id=abs(hash((local, visit))) % 10_000_000,
+                league=league, season=current_season(),
+                kickoff=kickoff, home_team=local, away_team=visit,
+                status="SCHEDULED", source="quiniela",
+            )
+            payload = fixture_payload(
+                fixture, model, generated_at,
+                stats=bundle.get("stats"), team_meta=bundle.get("team_meta"),
+                real_stats=bundle.get("real_stats"), odds_map=bundle.get("odds_map"),
+                closing_odds_map=bundle.get("closing_odds_map"),
+                model_weight=bundle.get("model_weight", 0.6), h2h=bundle.get("h2h"),
+                trends=bundle.get("trends"), elo=bundle.get("elo"),
+                ensemble_params=bundle.get("ensemble_params"),
+                residual_params=bundle.get("residual_params"),
+                market_temperature=bundle.get("market_temperature", 1.0),
+            )
+            resolved = _quiniela_from_payload(payload, LEAGUES.get(league, league))
+            if resolved:
+                return resolved
+
+    # Tier C: modelo curado (Liga F para femeninos; base con ventaja de campo si
+    # el equipo es desconocido en todas las ligas masculinas).
+    lf = ligaf.predict(local, visit)
+    probs = lf["probs"]
+    signo = max(probs, key=probs.get)
+    return {
+        "probs": [round(probs["1"] * 100), round(probs["X"] * 100), round(probs["2"] * 100)],
+        "signo": signo,
+        "marcador": lf["marcador"],
+        "xg": list(lf["xg"]),
+        "league": "Liga F" if femenino else "—",
+        "kickoff": ensure_aware(kickoff).astimezone(MADRID).isoformat(),
+        "matchday": None,
+        "fuente": "liga_f" if femenino else "base",
+    }
+
+
+def _resolve_quiniela(quiniela, matches, league_bundles, generated_at, now) -> dict | None:
+    """Adjunta a CADA partido de la quiniela oficial su pronóstico fundamentado.
+
+    El frontend ya no adivina cruzando nombres contra el feed (lo que dejaba los
+    de Segunda sin predicción y —peor— emparejaba los femeninos con el equipo
+    masculino homónimo): el signo viaja calculado y con su procedencia.
+    """
+    if not quiniela or not quiniela.get("partidos"):
+        return quiniela
+    feed_idx: dict[tuple[str, str], dict] = {}
+    for m in matches:
+        if m.get("finished") or not isinstance(m.get("probs"), list):
+            continue
+        feed_idx.setdefault((_canon(m.get("home", "")), _canon(m.get("away", ""))), m)
+    kickoff = _quiniela_kickoff(quiniela.get("fecha"), now)
+    resolved = 0
+    for p in quiniela["partidos"]:
+        try:
+            pred = _quiniela_predict_one(
+                p.get("local", ""), p.get("visitante", ""),
+                feed_idx, league_bundles, kickoff, generated_at,
+            )
+        except Exception:  # noqa: BLE001 - un partido nunca tumba la quiniela
+            pred = None
+        if pred and isinstance(pred.get("probs"), list):
+            p.update(pred)
+            resolved += 1
+    quiniela["con_prediccion"] = resolved
+    quiniela["fuentes"] = sorted({p.get("fuente") for p in quiniela["partidos"] if p.get("fuente")})
+    return quiniela
 
 
 def _seed_fixtures(league: str, season: int) -> list:
