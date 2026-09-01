@@ -1554,7 +1554,15 @@ def _fit_trends(league: str, season: int, fixtures):
                 rows += client.get_stats(league, season - back)
             except Exception:
                 continue
-        return TrendModel().fit(fixtures, rows, _canon)
+        model = TrendModel().fit(fixtures, rows, _canon)
+        try:  # diagnóstico: por qué las tendencias salen (o no) planas
+            disp = model._signal_dispersion()
+            thr = {m: round(model._threshold(m), 4) for m in disp}
+            print(f"[trends] {league}: equipos={len(model.totals)} "
+                  f"co.uk_filas={len(rows)} umbrales={thr}")
+        except Exception:  # noqa: BLE001 - el diagnóstico nunca tumba el feed
+            pass
+        return model
     except Exception as exc:  # noqa: BLE001
         # Sin esto el fallo era invisible y dejaba las tendencias congeladas
         # (se conservaba el last-known-good) sin ninguna señal en los logs.
