@@ -1531,48 +1531,59 @@ def _build_stats_method(stats_backtest: dict | None) -> dict:
 
 
 def _load_players(season: int) -> dict | None:
-    """Rankings de jugadores (goleadores, asistencias...) por liga.
+    """Rankings de jugadores (goleadores, asistencias...) por liga, AUTO-REFRESCADOS.
 
-    Orden de preferencia:
-    1) Override manual: football/data/players.json (fiable; se rellena a mano o
-       con los scrapers ejecutados desde una IP no bloqueada).
-    2) FBref (tablas HTML reales) — bloquea IPs de datacenter/CI con 403.
-    3) as.com (rankings de temporada) — página renderizada por JS, sin tabla.
+    Antes se devolvía tal cual football/data/players.json (una foto estática que
+    tapaba el fetch en vivo y se quedaba desactualizada). Ahora se REFRESCA en
+    cada ejecución desde football-data.org (misma clave que los fixtures, fiable
+    en CI): goleadores y asistentes de LaLiga y Champions. Ese fetch se SUPERPONE
+    sobre el fichero estático, que queda solo como base/fallback para las
+    categorías que la fuente en vivo no da (remates/xG/amarillas de understat) y
+    para cuando no hay clave. Así los goleadores están siempre al día y Champions
+    —que antes salía vacío— se rellena.
+
     Devuelve {liga: {label, rankings:{cat:{label, players[]}}}} o None.
     """
+    # 1) Base estática (understat, más categorías pero puede envejecer).
+    static: dict = {}
     path = Path(DATA_DIR) / "players.json"
     if path.exists():
         try:
-            data = json.loads(path.read_text(encoding="utf-8"))
-            data = {k: v for k, v in data.items() if not k.startswith("_")}
-            if data:
-                return data
+            static = {k: v for k, v in json.loads(path.read_text(encoding="utf-8")).items()
+                      if not k.startswith("_")}
         except Exception:
-            pass
+            static = {}
 
-    fetchers = []
-    for modname, fn in (("players_football_data", "get_top_players"),
-                        ("fbref_players", "get_top_players"),
-                        ("players_as", "get_top_players")):
-        try:
-            mod = __import__(f"futbol_pred.ingest.{modname}", fromlist=[fn])
-            fetchers.append(getattr(mod, fn))
-        except Exception:
-            continue
+    # 2) Fetch en vivo (football-data.org /scorers: LaLiga PD y Champions CL).
+    live: dict = {}
+    try:
+        from .ingest.players_football_data import get_top_players
 
-    data: dict = {}
-    for league, label in (("laliga", "LaLiga"), ("segunda", "LaLiga Hypermotion")):
-        p = None
-        for fetch in fetchers:
+        for league, label in (("laliga", "LaLiga"), ("segunda", "LaLiga Hypermotion"),
+                              ("champions", "Champions League")):
             try:
-                p = fetch(season, league=league)
+                r = get_top_players(season, league=league)
             except Exception:
-                p = None
-            if p:
-                break
-        if p:
-            data[league] = {"label": label, "rankings": p}
-    return data or None
+                r = None
+            if r:
+                live[league] = {"label": label, "rankings": r}
+    except Exception:
+        live = {}
+
+    # 3) Fusión: base estática + categorías frescas del vivo (el vivo manda en
+    #    goles/asistencias; se conservan las categorías extra del estático).
+    out: dict = {}
+    for league in set(static) | set(live):
+        s = static.get(league) or {}
+        lv = live.get(league) or {}
+        rankings = dict(s.get("rankings") or {})
+        rankings.update(lv.get("rankings") or {})
+        if rankings:
+            out[league] = {
+                "label": lv.get("label") or s.get("label") or league,
+                "rankings": rankings,
+            }
+    return out or None
 
 
 def _load_quiniela_oficial() -> dict | None:
