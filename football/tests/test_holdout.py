@@ -70,6 +70,22 @@ def test_holdout_estructura_y_skill():
     assert out["rps"] >= 0 and out["baseline_rps"] >= 0
 
 
+def test_comparacion_elige_mejor_algoritmo_por_estadistica():
+    rep = holdout_report(_matches(rounds=50))
+    comp = rep["comparison"]
+    for stat, c in comp.items():
+        algos = c["algorithms"]
+        # Están los candidatos y el ganador es el de menor MAE (verdad de campo).
+        assert set(algos) <= {"liga", "equipo", "ataque_defensa", "regresion"}
+        assert c["best"] in algos
+        assert algos[c["best"]] == min(algos.values())
+        # La regresión expone qué variable influye en la predicción.
+        assert set(c["influence"]) == {"ataque_propio", "defensa_rival", "media_liga", "intercepto"}
+    # Con fuerza latente por equipo, algún método por equipo bate a la media de liga.
+    fouls = comp["fouls"]["algorithms"]
+    assert min(fouls["equipo"], fouls["ataque_defensa"], fouls["regresion"]) < fouls["liga"]
+
+
 def test_muestra_insuficiente_devuelve_none():
     assert holdout_report(_matches(rounds=2)) is None
     assert holdout_report([]) is None
