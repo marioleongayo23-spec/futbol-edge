@@ -201,6 +201,8 @@ ALGO_LABEL = {
 FORM_WINDOW = 5   # partidos recientes para la forma
 REST_CAP = 10.0   # tope de días de descanso (evita outliers de parón)
 MIN_TEAM = 8      # partidos mínimos del equipo en el 20% para evaluarlo aparte
+ADOPT_MIN = 12    # partidos mínimos del equipo para CAMBIAR su método en producción
+ADOPT_MARGIN = 0.10  # el nuevo método debe bajar el error ≥10% para adoptarse
 
 # Variables del modelo multi-variable por equipo (además de local/visitante, que
 # entra como indicador). Orden = columnas de la regresión enriquecida.
@@ -368,6 +370,16 @@ def compare_stat_algorithms(predictor, train: list, test: list, stats=STATS) -> 
                 continue
             bteam = min(maes, key=maes.get)
             base = maes["equipo"]
+            # Guardia de adopción en producción: por defecto se mantiene el
+            # método actual (ataque_defensa). Solo se cambia el método de ESTE
+            # equipo+estadística si "equipo" (el único no-default aplicable hoy
+            # en el pipeline) lo supera de forma ROBUSTA en su propio 20%.
+            default_mae = maes.get("ataque_defensa")
+            adopt, adopt_gain = "ataque_defensa", None
+            if default_mae and len(own) >= ADOPT_MIN:
+                eq = maes.get("equipo")
+                if eq is not None and eq <= default_mae * (1 - ADOPT_MARGIN):
+                    adopt, adopt_gain = "equipo", round((1 - eq / default_mae) * 100, 1)
             team_acc.setdefault(team, {"equipo": team, "stats": {}})["stats"][s] = {
                 "label": STAT_LABEL[s],
                 "n": len(own),
@@ -376,6 +388,9 @@ def compare_stat_algorithms(predictor, train: list, test: list, stats=STATS) -> 
                 "best_mae": round(maes[bteam], 3),
                 "baseline_mae": round(base, 3),
                 "skill_pct": round((1 - maes[bteam] / base) * 100, 1) if base else None,
+                "default_mae": round(default_mae, 3) if default_mae is not None else None,
+                "adopt": adopt,
+                "adopt_gain": adopt_gain,
             }
     return {"comparison": out, "by_team": team_acc}
 

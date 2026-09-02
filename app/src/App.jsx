@@ -935,7 +935,9 @@ function TeamBacktest({ byTeam }) {
   const [team, setTeam] = useState(teams[0]);
   if (!teams.length) return null;
   const cur = team && byTeam[team] ? team : teams[0];
-  const stats = Object.values(byTeam[cur]?.stats || {});
+  const entries = Object.entries(byTeam[cur]?.stats || {});
+  const applied = new Set(["fouls", "yellows", "reds"]);  // solo disciplina se aplica en vivo
+  const nLive = entries.filter(([k, v]) => v.adopt === "equipo" && applied.has(k)).length;
   return (
     <>
       <div className="row-between" style={{ marginTop: 16 }}>
@@ -944,24 +946,28 @@ function TeamBacktest({ byTeam }) {
           {teams.map((t) => <option key={t} value={t}>{t}</option>)}
         </select>
       </div>
-      <div className="mut" style={{ margin: "2px 0 8px" }}>El 80/20 aplicado a CADA equipo con sus partidos y rivales; la base es su PROPIA media (no la de liga). El ganador es el candidato a usar en las predicciones futuras de ese equipo.</div>
+      <div className="mut" style={{ margin: "2px 0 8px" }}>El 80/20 aplicado a CADA equipo con sus partidos y rivales; la base es su PROPIA media (no la de liga). En cada actualización, si un método supera de forma robusta al actual, se usa para ese equipo (guardia: solo faltas/tarjetas por ahora).</div>
       <div className="tbl-wrap">
         <table className="tbl-mk">
-          <thead><tr><th className="tl">Estadística</th><th className="tl">Mejor método</th><th>MAE</th><th>vs su media</th><th>N</th></tr></thead>
+          <thead><tr><th className="tl">Estadística</th><th className="tl">Mejor método</th><th>MAE</th><th>vs su media</th><th>N</th><th>En vivo</th></tr></thead>
           <tbody>
-            {stats.map((v) => (
-              <tr key={v.label}>
-                <td className="tl">{v.label}</td>
-                <td className="tl">{v.best_label}</td>
-                <td>{v.best_mae}</td>
-                <td className={v.skill_pct > 0 ? "value-yes" : ""}>{v.skill_pct == null ? "—" : (v.skill_pct > 0 ? "+" : "") + v.skill_pct + "%"}</td>
-                <td className="dim">{v.n}</td>
-              </tr>
-            ))}
+            {entries.map(([k, v]) => {
+              const live = v.adopt === "equipo" && applied.has(k);
+              return (
+                <tr key={v.label}>
+                  <td className="tl">{v.label}</td>
+                  <td className="tl">{v.best_label}</td>
+                  <td>{v.best_mae}</td>
+                  <td className={v.skill_pct > 0 ? "value-yes" : ""}>{v.skill_pct == null ? "—" : (v.skill_pct > 0 ? "+" : "") + v.skill_pct + "%"}</td>
+                  <td className="dim">{v.n}</td>
+                  <td className={live ? "value-yes" : "dim"}>{live ? `✓ ${v.adopt_gain != null ? "+" + v.adopt_gain + "%" : ""}` : "—"}</td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
-      <div className="mut" style={{ marginTop: 8 }}>“vs su media” = mejora frente a predecir la media histórica del propio equipo. La muestra por equipo es pequeña (N = sus partidos del 20%): tómalo como señal, no como certeza.</div>
+      <div className="mut" style={{ marginTop: 8 }}>“En vivo” = ese método ya se aplica a las predicciones de este equipo (superó al actual con margen en su 20%). {nLive === 0 ? "Ahora mismo este equipo mantiene el método por defecto en todas: el actual ya es el mejor." : ""} Muestra pequeña por equipo (N): es señal, no certeza; la guardia evita cambios por casualidad.</div>
     </>
   );
 }

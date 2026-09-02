@@ -152,6 +152,7 @@ def fixture_payload(
     ensemble_params: dict | None = None,
     residual_params: dict | None = None,
     market_temperature: float = 1.0,
+    stats_method: dict | None = None,
 ) -> dict:
     kickoff = ensure_aware(fixture.kickoff).astimezone(MADRID)
     team_meta = team_meta or {}
@@ -325,6 +326,9 @@ def fixture_payload(
                 tot_g = eh + ea
                 hshare = (eh / tot_g) if tot_g > 0 else 0.5
                 out_stats = {}
+                applied: dict = {}
+                hmap = (stats_method or {}).get(home_id, {})
+                amap = (stats_method or {}).get(away_id, {})
                 for k, v in sp.items():
                     if k == "goals":
                         h, a = round(eh, 2), round(ea, 2)
@@ -333,8 +337,20 @@ def fixture_payload(
                         h, a = round(t * hshare, 1), round(t * (1 - hshare), 1)
                     else:  # faltas, amarillas, rojas: sin sesgo por dominio
                         h, a = v["home"], v["away"]
+                        # Método por-equipo validado en el banco 80/20 (con guardia):
+                        # si "equipo" gana de forma robusta, se usa la tasa propia.
+                        if hmap.get(k) == "equipo":
+                            own = stats.home.get(home_id, {}).get(k)
+                            if own is not None and own.for_avg is not None:
+                                h = round(own.for_avg, 2); applied.setdefault(k, {})["home"] = "equipo"
+                        if amap.get(k) == "equipo":
+                            own = stats.away.get(away_id, {}).get(k)
+                            if own is not None and own.for_avg is not None:
+                                a = round(own.for_avg, 2); applied.setdefault(k, {})["away"] = "equipo"
                     out_stats[k] = {"home": h, "away": a, "total": round(h + a, 2)}
                 payload["stats"] = out_stats
+                if applied:
+                    payload["stats_method"] = applied
         except (KeyError, ValueError):
             pass
 
@@ -1077,6 +1093,7 @@ def build_dashboard(
     configure_daily_budget((previous or {}).get("ai_usage"), now.astimezone(MADRID))
     model_report = _load_model_report(season)
     stats_backtest = _load_stats_backtest(season)
+    stats_method_by_league = _build_stats_method(stats_backtest)
     calibration_source = {"model": model_report} if model_report else previous
     previous_seed = (previous or {}).get("historical_seed") if (previous or {}).get("season") == season else None
     historical_seeds = previous_seed or build_historical_seeds(season)
@@ -1160,7 +1177,8 @@ def build_dashboard(
                                 model_weight=model_w, h2h=h2h, trends=trends,
                                 elo=elo, ensemble_params=ensemble_params,
                                 residual_params=residual_params,
-                                market_temperature=market_temperature)
+                                market_temperature=market_temperature,
+                                stats_method=stats_method_by_league.get(LEAGUES.get(league, league)))
                 for fx in sorted(fixtures, key=lambda item: ensure_aware(item.kickoff))
             )
         except Exception as exc:  # una liga no debe tumbar el resto del feed
@@ -1485,6 +1503,31 @@ def _load_stats_backtest(season: int) -> dict | None:
             rep["label"] = label
             out[label] = rep
     return out or None
+
+
+# Estadísticas cuyo método por-equipo SÍ se aplica en producción: las de
+# disciplina, que el pipeline predice por lado directamente (faltas/tarjetas).
+# Goles/remates/córners siguen alineados al xG (dominio), no se tocan.
+_ADOPT_STATS = {"fouls", "yellows", "reds"}
+
+
+def _build_stats_method(stats_backtest: dict | None) -> dict:
+    """Mapa {liga: {equipo_canónico: {estadística: método}}} con los cambios de
+    método por equipo que la guardia del banco 80/20 aprobó (solo disciplina)."""
+    out: dict = {}
+    for league_label, rep in (stats_backtest or {}).items():
+        tmap: dict = {}
+        for team, info in (rep.get("by_team") or {}).items():
+            overrides = {
+                st: v["adopt"]
+                for st, v in (info.get("stats") or {}).items()
+                if st in _ADOPT_STATS and v.get("adopt") and v["adopt"] != "ataque_defensa"
+            }
+            if overrides:
+                tmap[team] = overrides
+        if tmap:
+            out[league_label] = tmap
+    return out
 
 
 def _load_players(season: int) -> dict | None:
