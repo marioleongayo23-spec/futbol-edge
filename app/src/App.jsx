@@ -924,7 +924,45 @@ function StatsBacktest({ report }) {
           <div className="mut" style={{ marginTop: 8 }}>“Variable clave” = la que más mueve esa estadística en el modelo multi-variable por equipo (ataque/defensa, forma, descanso, árbitro, local/visitante). El ganador es el candidato a aplicar a las predicciones futuras; iteramos añadiendo variables (clima…) hasta maximizar el acierto de cada una.</div>
         </>
       )}
+      <TeamBacktest key={liga} byTeam={r.by_team} />
     </div>
+  );
+}
+
+/* Banco 80/20 POR EQUIPO: mejor método para cada equipo sobre sus propios partidos. */
+function TeamBacktest({ byTeam }) {
+  const teams = byTeam ? Object.keys(byTeam) : [];
+  const [team, setTeam] = useState(teams[0]);
+  if (!teams.length) return null;
+  const cur = team && byTeam[team] ? team : teams[0];
+  const stats = Object.values(byTeam[cur]?.stats || {});
+  return (
+    <>
+      <div className="row-between" style={{ marginTop: 16 }}>
+        <div className="lbl">Por equipo: mejor método sobre SUS propios partidos</div>
+        <select aria-label="Equipo de la validación por equipo" value={cur} onChange={(e) => setTeam(e.target.value)}>
+          {teams.map((t) => <option key={t} value={t}>{t}</option>)}
+        </select>
+      </div>
+      <div className="mut" style={{ margin: "2px 0 8px" }}>El 80/20 aplicado a CADA equipo con sus partidos y rivales; la base es su PROPIA media (no la de liga). El ganador es el candidato a usar en las predicciones futuras de ese equipo.</div>
+      <div className="tbl-wrap">
+        <table className="tbl-mk">
+          <thead><tr><th className="tl">Estadística</th><th className="tl">Mejor método</th><th>MAE</th><th>vs su media</th><th>N</th></tr></thead>
+          <tbody>
+            {stats.map((v) => (
+              <tr key={v.label}>
+                <td className="tl">{v.label}</td>
+                <td className="tl">{v.best_label}</td>
+                <td>{v.best_mae}</td>
+                <td className={v.skill_pct > 0 ? "value-yes" : ""}>{v.skill_pct == null ? "—" : (v.skill_pct > 0 ? "+" : "") + v.skill_pct + "%"}</td>
+                <td className="dim">{v.n}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="mut" style={{ marginTop: 8 }}>“vs su media” = mejora frente a predecir la media histórica del propio equipo. La muestra por equipo es pequeña (N = sus partidos del 20%): tómalo como señal, no como certeza.</div>
+    </>
   );
 }
 

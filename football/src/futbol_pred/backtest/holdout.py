@@ -20,7 +20,7 @@ Decisiones metodológicas:
 
 from __future__ import annotations
 
-from collections import Counter
+from collections import Counter, defaultdict
 from datetime import datetime, timezone
 from statistics import fmean
 
@@ -200,6 +200,7 @@ ALGO_LABEL = {
 
 FORM_WINDOW = 5   # partidos recientes para la forma
 REST_CAP = 10.0   # tope de días de descanso (evita outliers de parón)
+MIN_TEAM = 8      # partidos mínimos del equipo en el 20% para evaluarlo aparte
 
 # Variables del modelo multi-variable por equipo (además de local/visitante, que
 # entra como indicador). Orden = columnas de la regresión enriquecida.
@@ -265,6 +266,7 @@ def compare_stat_algorithms(predictor, train: list, test: list, stats=STATS) -> 
     import numpy as np
 
     out: dict = {}
+    team_acc: dict = {}  # equipo -> {stats: {stat: mejor método para ESE equipo}}
     for s in stats:
         lh = predictor.league_home[s].for_avg
         la = predictor.league_away[s].for_avg
@@ -306,6 +308,7 @@ def compare_stat_algorithms(predictor, train: list, test: list, stats=STATS) -> 
             coef_p, *_ = np.linalg.lstsq(Xp, y, rcond=None)
 
         errs: dict[str, list] = {k: [] for k in ALGO_LABEL}
+        team_errs: dict = defaultdict(lambda: defaultdict(list))  # equipo -> método -> errores
         for m in test:
             r = m.stats.get(s)
             if not r:
@@ -321,9 +324,13 @@ def compare_stat_algorithms(predictor, train: list, test: list, stats=STATS) -> 
             if coef_p is not None:
                 preds["regresion_plus"] = (float(np.dot(coef_p, _feat_plus(m, True) + [1.0])),
                                            float(np.dot(coef_p, _feat_plus(m, False) + [1.0])))
+            Hc, Ac = _canon(m.home_team), _canon(m.away_team)
             for name, (ph, pa) in preds.items():
                 errs[name].append(abs(ph - r[0]))
                 errs[name].append(abs(pa - r[1]))
+                if name != "liga":  # POR EQUIPO nunca usamos la media de liga
+                    team_errs[Hc][name].append(abs(ph - r[0]))
+                    team_errs[Ac][name].append(abs(pa - r[1]))
 
         algos = {k: round(fmean(v), 3) for k, v in errs.items() if v}
         if not algos:
@@ -348,7 +355,29 @@ def compare_stat_algorithms(predictor, train: list, test: list, stats=STATS) -> 
                     PLUS_VARS[i]: round(float(contrib[i] / tot), 3) for i in range(len(PLUS_VARS))
                 }
         out[s] = entry
-    return out
+
+        # --- POR EQUIPO: mejor método para ESTE equipo en ESTA estadística ---
+        # Se evalúa sobre los partidos del propio equipo en el 20% oculto; la
+        # base es su PROPIA media (no la de liga), como pediste.
+        for team, methods in team_errs.items():
+            own = methods.get("equipo")
+            if not own or len(own) < MIN_TEAM:
+                continue
+            maes = {k: fmean(v) for k, v in methods.items() if len(v) >= MIN_TEAM}
+            if "equipo" not in maes:
+                continue
+            bteam = min(maes, key=maes.get)
+            base = maes["equipo"]
+            team_acc.setdefault(team, {"equipo": team, "stats": {}})["stats"][s] = {
+                "label": STAT_LABEL[s],
+                "n": len(own),
+                "best": bteam,
+                "best_label": ALGO_LABEL[bteam],
+                "best_mae": round(maes[bteam], 3),
+                "baseline_mae": round(base, 3),
+                "skill_pct": round((1 - maes[bteam] / base) * 100, 1) if base else None,
+            }
+    return {"comparison": out, "by_team": team_acc}
 
 
 def holdout_report(matches: list, train_frac: float = 0.8) -> dict | None:
@@ -366,7 +395,8 @@ def holdout_report(matches: list, train_frac: float = 0.8) -> dict | None:
     outcome = _outcome_report(model, train, test) if model is not None else None
     predictor = StatsPredictor().fit(train, fit_pseudo_xg=False)
     stats = _stats_report(predictor, train, test)
-    comparison = compare_stat_algorithms(predictor, train, test)
+    bench = compare_stat_algorithms(predictor, train, test)
+    comparison, by_team = bench["comparison"], bench["by_team"]
     if not stats and not outcome:
         return None
 
@@ -386,4 +416,5 @@ def holdout_report(matches: list, train_frac: float = 0.8) -> dict | None:
         "outcome": outcome,
         "stats": stats,
         "comparison": comparison,
+        "by_team": by_team,
     }
