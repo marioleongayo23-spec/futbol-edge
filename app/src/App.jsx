@@ -844,6 +844,7 @@ function StatsBacktest({ report }) {
   if (!report || !ligas.length) return null;
   const r = report[liga] || report[ligas[0]];
   const rows = Object.values(r.stats || {});
+  const comp = Object.values(r.comparison || {});
   const o = r.outcome;
   const skillCls = (v) => (v == null ? "" : v > 0 ? "value-yes" : "value-no");
   const skillTxt = (v) => (v == null ? "—" : (v > 0 ? "+" : "") + v + "%");
@@ -891,6 +892,32 @@ function StatsBacktest({ report }) {
         </div>
       )}
       <div className="mut" style={{ marginTop: 8 }}>“vs media” = cuánto baja el error frente a predecir la media de liga (verde = el modelo aporta señal real). “Error medio” (MAE) en las unidades de cada estadística; sesgo &gt;0 = el modelo predice de más.</div>
+      {comp.length > 0 && (
+        <>
+          <div className="lbl" style={{ marginTop: 16 }}>¿Qué algoritmo predice mejor cada estadística?</div>
+          <div className="mut" style={{ margin: "2px 0 8px" }}>Sobre el mismo 20% oculto se enfrentan varios métodos (media de liga, media del equipo, ataque×defensa, regresión con pesos aprendidos); gana el de menor error. Es el banco para iterar y quedarnos con el mejor por variable.</div>
+          <div className="tbl-wrap">
+            <table className="tbl-mk">
+              <thead><tr><th className="tl">Estadística</th><th className="tl">Mejor método</th><th>MAE</th><th>vs media liga</th></tr></thead>
+              <tbody>
+                {comp.map((c) => {
+                  const liga = c.algorithms?.liga;
+                  const gain = liga ? Math.round((1 - c.best_mae / liga) * 100) : null;
+                  return (
+                    <tr key={c.label}>
+                      <td className="tl">{c.label}</td>
+                      <td className="tl">{c.best_label}</td>
+                      <td>{c.best_mae}</td>
+                      <td className={gain > 0 ? "value-yes" : ""}>{gain == null ? "—" : (gain > 0 ? "+" : "") + gain + "%"}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <div className="mut" style={{ marginTop: 8 }}>El ganador de cada estadística es el candidato a aplicar en las predicciones futuras. Iteramos añadiendo métodos y variables hasta maximizar el acierto de cada una.</div>
+        </>
+      )}
     </div>
   );
 }

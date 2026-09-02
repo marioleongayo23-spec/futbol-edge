@@ -122,8 +122,7 @@ def _outcome_report(model, train: list, test: list) -> dict | None:
     }
 
 
-def _stats_report(train: list, test: list) -> dict:
-    predictor = StatsPredictor().fit(train, fit_pseudo_xg=False)
+def _stats_report(predictor, train: list, test: list) -> dict:
     base_home, base_away = {}, {}
     for s in STATS:
         hv = [m.stats[s][0] for m in train if m.stats.get(s)]
@@ -174,6 +173,108 @@ def _stats_report(train: list, test: list) -> dict:
     return out
 
 
+def _rate(predictor, team: str, stat: str, home_side: bool, want_for: bool) -> float:
+    """Tasa (a favor / en contra) del equipo como local o visitante, con media
+    de liga como respaldo si aún no tiene muestra."""
+    canon = _canon(team)
+    acc = (predictor.home if home_side else predictor.away)[canon][stat]
+    league = (predictor.league_home if home_side else predictor.league_away)[stat]
+    if acc.n:
+        v = acc.for_avg if want_for else acc.against_avg
+        if v is not None:
+            return v
+    lv = league.for_avg
+    return lv if lv is not None else 0.0
+
+
+# Algoritmos candidatos para predecir una estadística. Cada uno es una forma
+# distinta de combinar las variables (equipo/rival, local/visitante, media de
+# liga). El banco 80/20 mide su error en partidos NO vistos y así se ve, por
+# estadística, cuál predice mejor — el sustrato para iterar.
+ALGO_LABEL = {
+    "liga": "Media de liga",
+    "equipo": "Media del equipo",
+    "ataque_defensa": "Ataque × defensa",
+    "regresion": "Regresión (pesos aprendidos)",
+}
+
+
+def compare_stat_algorithms(predictor, train: list, test: list, stats=STATS) -> dict:
+    """Enfrenta varios algoritmos por estadística sobre el 20% oculto.
+
+    Devuelve, por estadística, el MAE de cada candidato, el ganador y —para la
+    regresión— el peso de cada variable (qué influye en la predicción).
+    """
+    import numpy as np
+
+    out: dict = {}
+    for s in stats:
+        lh = predictor.league_home[s].for_avg
+        la = predictor.league_away[s].for_avg
+        if lh is None or la is None:
+            continue
+
+        def _feat(m, home: bool):
+            H, A = m.home_team, m.away_team
+            if home:  # [ataque propio (local), defensa rival (visitante), media liga]
+                return [_rate(predictor, H, s, True, True), _rate(predictor, A, s, False, False), lh]
+            return [_rate(predictor, A, s, False, True), _rate(predictor, H, s, True, False), la]
+
+        # Regresión: aprende los pesos de la combinación sobre el TRAIN.
+        coef = None
+        rows, targets = [], []
+        for m in train:
+            r = m.stats.get(s)
+            if not r:
+                continue
+            rows.append(_feat(m, True) + [1.0]); targets.append(r[0])
+            rows.append(_feat(m, False) + [1.0]); targets.append(r[1])
+        if len(rows) >= 20:
+            coef, *_ = np.linalg.lstsq(np.asarray(rows), np.asarray(targets), rcond=None)
+
+        errs: dict[str, list] = {k: [] for k in ALGO_LABEL}
+        for m in test:
+            r = m.stats.get(s)
+            if not r:
+                continue
+            H, A = m.home_team, m.away_team
+            fh, fa = _feat(m, True), _feat(m, False)
+            preds = {
+                "liga": (lh, la),
+                "equipo": (fh[0], fa[0]),
+                "ataque_defensa": ((fh[0] + fh[1]) / 2, (fa[0] + fa[1]) / 2),
+            }
+            if coef is not None:
+                preds["regresion"] = (float(np.dot(coef, fh + [1.0])),
+                                      float(np.dot(coef, fa + [1.0])))
+            for name, (ph, pa) in preds.items():
+                errs[name].append(abs(ph - r[0]))
+                errs[name].append(abs(pa - r[1]))
+
+        algos = {k: round(fmean(v), 3) for k, v in errs.items() if v}
+        if not algos:
+            continue
+        best = min(algos, key=algos.get)
+        entry = {
+            "label": STAT_LABEL[s],
+            "n": len(errs[best]),
+            "algorithms": algos,
+            "best": best,
+            "best_label": ALGO_LABEL[best],
+            "best_mae": algos[best],
+        }
+        if coef is not None:
+            # Influencia: peso de cada variable en la regresión ganadora/candidata.
+            entry["influence"] = {
+                "ataque_propio": round(float(coef[0]), 3),
+                "defensa_rival": round(float(coef[1]), 3),
+                "media_liga": round(float(coef[2]), 3),
+                "intercepto": round(float(coef[3]), 3),
+            }
+        out[s] = entry
+    return out
+
+
 def holdout_report(matches: list, train_frac: float = 0.8) -> dict | None:
     """Informe 80/20 completo para una lista de MatchStats de una liga.
 
@@ -187,7 +288,9 @@ def holdout_report(matches: list, train_frac: float = 0.8) -> dict | None:
     except (ValueError, KeyError):
         model = None
     outcome = _outcome_report(model, train, test) if model is not None else None
-    stats = _stats_report(train, test)
+    predictor = StatsPredictor().fit(train, fit_pseudo_xg=False)
+    stats = _stats_report(predictor, train, test)
+    comparison = compare_stat_algorithms(predictor, train, test)
     if not stats and not outcome:
         return None
 
@@ -206,4 +309,5 @@ def holdout_report(matches: list, train_frac: float = 0.8) -> dict | None:
         "seasons": [f"{y % 100:02d}/{(y + 1) % 100:02d}" for y in seasons],
         "outcome": outcome,
         "stats": stats,
+        "comparison": comparison,
     }
