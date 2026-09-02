@@ -187,23 +187,80 @@ def _rate(predictor, team: str, stat: str, home_side: bool, want_for: bool) -> f
     return lv if lv is not None else 0.0
 
 
-# Algoritmos candidatos para predecir una estadística. Cada uno es una forma
-# distinta de combinar las variables (equipo/rival, local/visitante, media de
-# liga). El banco 80/20 mide su error en partidos NO vistos y así se ve, por
-# estadística, cuál predice mejor — el sustrato para iterar.
+# Algoritmos candidatos para predecir una estadística. Cada uno combina las
+# variables de otra forma. El banco 80/20 mide su error en partidos NO vistos y
+# así se ve, por estadística, cuál predice mejor — el sustrato para iterar.
 ALGO_LABEL = {
     "liga": "Media de liga",
     "equipo": "Media del equipo",
     "ataque_defensa": "Ataque × defensa",
-    "regresion": "Regresión (pesos aprendidos)",
+    "regresion": "Regresión (equipo+rival)",
+    "regresion_plus": "Regresión multi-variable",
 }
+
+FORM_WINDOW = 5   # partidos recientes para la forma
+REST_CAP = 10.0   # tope de días de descanso (evita outliers de parón)
+
+# Variables del modelo multi-variable por equipo (además de local/visitante, que
+# entra como indicador). Orden = columnas de la regresión enriquecida.
+PLUS_VARS = ["ataque_propio", "defensa_rival", "forma_reciente", "descanso", "arbitro", "local"]
+PLUS_LABEL = {
+    "ataque_propio": "Ataque propio", "defensa_rival": "Defensa rival",
+    "forma_reciente": "Forma reciente", "descanso": "Descanso",
+    "arbitro": "Árbitro", "local": "Local/visitante",
+}
+
+
+def _causal_context(matches: list, stat: str) -> dict:
+    """Forma reciente y descanso por equipo en cada partido, usando SOLO partidos
+    anteriores (sin fuga temporal). Clave = id(match)."""
+    from collections import deque, defaultdict
+
+    hist: dict = defaultdict(lambda: deque(maxlen=FORM_WINDOW))
+    last: dict = {}
+    ctx: dict = {}
+    for m in sorted(matches, key=lambda x: _aware(x.kickoff)):
+        d = _aware(m.kickoff)
+        H, A = _canon(m.home_team), _canon(m.away_team)
+        ctx[id(m)] = {
+            "home": {"form": (fmean(hist[H]) if hist[H] else None),
+                     "rest": (min(REST_CAP, (d - last[H]).days) if H in last else None)},
+            "away": {"form": (fmean(hist[A]) if hist[A] else None),
+                     "rest": (min(REST_CAP, (d - last[A]).days) if A in last else None)},
+        }
+        r = m.stats.get(stat)
+        if r:
+            hist[H].append(r[0]); hist[A].append(r[1])
+        last[H] = d; last[A] = d
+    return ctx
+
+
+def _referee_means(train: list, stat: str):
+    """Tendencia del árbitro para la estadística (media por equipo), desde el TRAIN."""
+    from collections import defaultdict
+
+    acc: dict = defaultdict(lambda: [0.0, 0])
+    league = [0.0, 0]
+    for m in train:
+        r = m.stats.get(stat)
+        if not r:
+            continue
+        per_team = (r[0] + r[1]) / 2.0
+        league[0] += per_team; league[1] += 1
+        if m.referee:
+            acc[m.referee][0] += per_team; acc[m.referee][1] += 1
+    league_mean = league[0] / league[1] if league[1] else 0.0
+    means = {k: v[0] / v[1] for k, v in acc.items() if v[1] >= 6}
+    return means, league_mean
 
 
 def compare_stat_algorithms(predictor, train: list, test: list, stats=STATS) -> dict:
     """Enfrenta varios algoritmos por estadística sobre el 20% oculto.
 
-    Devuelve, por estadística, el MAE de cada candidato, el ganador y —para la
-    regresión— el peso de cada variable (qué influye en la predicción).
+    Incluye un modelo multi-variable por equipo (equipo+rival, forma reciente,
+    descanso, árbitro, local/visitante) y expone qué variable influye en cada
+    estadística. Devuelve, por estadística, el MAE de cada candidato, el ganador
+    y la influencia de cada variable.
     """
     import numpy as np
 
@@ -214,30 +271,45 @@ def compare_stat_algorithms(predictor, train: list, test: list, stats=STATS) -> 
         if lh is None or la is None:
             continue
 
-        def _feat(m, home: bool):
+        ctx = _causal_context(train + test, s)
+        ref_means, ref_league = _referee_means(train, s)
+
+        def _feat(m, home: bool):  # simple: [ataque propio, defensa rival, media liga]
             H, A = m.home_team, m.away_team
-            if home:  # [ataque propio (local), defensa rival (visitante), media liga]
+            if home:
                 return [_rate(predictor, H, s, True, True), _rate(predictor, A, s, False, False), lh]
             return [_rate(predictor, A, s, False, True), _rate(predictor, H, s, True, False), la]
 
-        # Regresión: aprende los pesos de la combinación sobre el TRAIN.
-        coef = None
-        rows, targets = [], []
+        def _feat_plus(m, home: bool):  # + forma, descanso, árbitro, local
+            base = _feat(m, home)  # [own, opp, liga]
+            c = ctx.get(id(m), {}).get("home" if home else "away", {})
+            forma = c.get("form")
+            forma = forma if forma is not None else base[0]
+            descanso = c.get("rest")
+            descanso = descanso if descanso is not None else REST_CAP
+            arb = ref_means.get(m.referee, ref_league) if m.referee else ref_league
+            return [base[0], base[1], forma, descanso, arb, 1.0 if home else 0.0]
+
+        # Ajuste de las dos regresiones (pesos aprendidos) sobre el TRAIN.
+        rows, rows_p, targets = [], [], []
         for m in train:
             r = m.stats.get(s)
             if not r:
                 continue
-            rows.append(_feat(m, True) + [1.0]); targets.append(r[0])
-            rows.append(_feat(m, False) + [1.0]); targets.append(r[1])
-        if len(rows) >= 20:
-            coef, *_ = np.linalg.lstsq(np.asarray(rows), np.asarray(targets), rcond=None)
+            rows.append(_feat(m, True) + [1.0]); rows_p.append(_feat_plus(m, True) + [1.0]); targets.append(r[0])
+            rows.append(_feat(m, False) + [1.0]); rows_p.append(_feat_plus(m, False) + [1.0]); targets.append(r[1])
+        coef = coef_p = None
+        if len(rows) >= 30:
+            y = np.asarray(targets)
+            coef, *_ = np.linalg.lstsq(np.asarray(rows), y, rcond=None)
+            Xp = np.asarray(rows_p)
+            coef_p, *_ = np.linalg.lstsq(Xp, y, rcond=None)
 
         errs: dict[str, list] = {k: [] for k in ALGO_LABEL}
         for m in test:
             r = m.stats.get(s)
             if not r:
                 continue
-            H, A = m.home_team, m.away_team
             fh, fa = _feat(m, True), _feat(m, False)
             preds = {
                 "liga": (lh, la),
@@ -245,8 +317,10 @@ def compare_stat_algorithms(predictor, train: list, test: list, stats=STATS) -> 
                 "ataque_defensa": ((fh[0] + fh[1]) / 2, (fa[0] + fa[1]) / 2),
             }
             if coef is not None:
-                preds["regresion"] = (float(np.dot(coef, fh + [1.0])),
-                                      float(np.dot(coef, fa + [1.0])))
+                preds["regresion"] = (float(np.dot(coef, fh + [1.0])), float(np.dot(coef, fa + [1.0])))
+            if coef_p is not None:
+                preds["regresion_plus"] = (float(np.dot(coef_p, _feat_plus(m, True) + [1.0])),
+                                           float(np.dot(coef_p, _feat_plus(m, False) + [1.0])))
             for name, (ph, pa) in preds.items():
                 errs[name].append(abs(ph - r[0]))
                 errs[name].append(abs(pa - r[1]))
@@ -263,14 +337,16 @@ def compare_stat_algorithms(predictor, train: list, test: list, stats=STATS) -> 
             "best_label": ALGO_LABEL[best],
             "best_mae": algos[best],
         }
-        if coef is not None:
-            # Influencia: peso de cada variable en la regresión ganadora/candidata.
-            entry["influence"] = {
-                "ataque_propio": round(float(coef[0]), 3),
-                "defensa_rival": round(float(coef[1]), 3),
-                "media_liga": round(float(coef[2]), 3),
-                "intercepto": round(float(coef[3]), 3),
-            }
+        # Influencia: aporte real de cada variable = |peso| × dispersión de esa
+        # variable en el train, normalizado (suma 1). Dice qué mueve cada stat.
+        if coef_p is not None:
+            Xp = np.asarray(rows_p)
+            contrib = np.abs(coef_p[:len(PLUS_VARS)]) * Xp[:, :len(PLUS_VARS)].std(axis=0)
+            tot = float(contrib.sum())
+            if tot > 0:
+                entry["influence"] = {
+                    PLUS_VARS[i]: round(float(contrib[i] / tot), 3) for i in range(len(PLUS_VARS))
+                }
         out[s] = entry
     return out
 
