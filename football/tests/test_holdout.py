@@ -15,15 +15,19 @@ def _matches(rounds: int = 40, noise: float = 0.0) -> list[MatchStats]:
     """
     teams = [f"Team{i}" for i in range(8)]
     strength = {t: 0.5 + i for i, t in enumerate(teams)}   # goles/remates
-    discipline = {t: 1 + (i % 4) for i, t in enumerate(teams)}  # faltas/tarjetas
+    discipline = {t: 1 + (i % 4) for i, t in enumerate(teams)}  # faltas
+    refs = ["RA", "RB", "RC", "RD"]
+    ref_yc = {"RA": 1, "RB": 2, "RC": 3, "RD": 5}  # las tarjetas dependen del árbitro
     start = datetime(2024, 8, 15, tzinfo=timezone.utc)
     out: list[MatchStats] = []
     d = 0
+    mi = 0  # contador global de partidos: rota árbitros decorrelados del equipo
     for rnd in range(rounds):
         rot = teams[rnd % 8:] + teams[:rnd % 8]
         for k in range(0, 8, 2):
             h, a = rot[k], rot[k + 1]
             d += 3
+            ref = refs[mi % 4]; mi += 1
             hg = round(strength[h] * 0.5)
             ag = round(strength[a] * 0.4)
             hs = round(6 + strength[h] * 2)
@@ -34,8 +38,8 @@ def _matches(rounds: int = 40, noise: float = 0.0) -> list[MatchStats]:
                 "sot": (round(hs * 0.4), round(as_ * 0.4)),
                 "corners": (5, 4),
                 "fouls": (10 * discipline[h], 10 * discipline[a]),
-                "yellows": (discipline[h], discipline[a]),
-            }, kickoff=start + timedelta(days=d)))
+                "yellows": (ref_yc[ref], ref_yc[ref]),  # solo el árbitro las mueve
+            }, referee=ref, kickoff=start + timedelta(days=d)))
     return out
 
 
@@ -76,14 +80,24 @@ def test_comparacion_elige_mejor_algoritmo_por_estadistica():
     for stat, c in comp.items():
         algos = c["algorithms"]
         # Están los candidatos y el ganador es el de menor MAE (verdad de campo).
-        assert set(algos) <= {"liga", "equipo", "ataque_defensa", "regresion"}
+        assert set(algos) <= {"liga", "equipo", "ataque_defensa", "regresion", "regresion_plus"}
         assert c["best"] in algos
         assert algos[c["best"]] == min(algos.values())
-        # La regresión expone qué variable influye en la predicción.
-        assert set(c["influence"]) == {"ataque_propio", "defensa_rival", "media_liga", "intercepto"}
+        # El modelo multi-variable expone qué variable influye en la predicción.
+        assert set(c["influence"]) == {"ataque_propio", "defensa_rival", "forma_reciente", "descanso", "arbitro", "local"}
     # Con fuerza latente por equipo, algún método por equipo bate a la media de liga.
     fouls = comp["fouls"]["algorithms"]
     assert min(fouls["equipo"], fouls["ataque_defensa"], fouls["regresion"]) < fouls["liga"]
+
+
+def test_arbitro_es_la_variable_dominante_en_tarjetas():
+    """Si las tarjetas solo dependen del árbitro, el modelo multi-variable lo
+    detecta: gana en amarillas y la influencia del árbitro es la mayor."""
+    comp = holdout_report(_matches(rounds=60))["comparison"]
+    yc = comp["yellows"]
+    assert yc["influence"]["arbitro"] == max(yc["influence"].values())
+    # El modelo con árbitro predice mejor que los que lo ignoran.
+    assert yc["algorithms"]["regresion_plus"] < yc["algorithms"]["ataque_defensa"]
 
 
 def test_muestra_insuficiente_devuelve_none():

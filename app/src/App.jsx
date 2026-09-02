@@ -838,6 +838,10 @@ function AccuracyPanel({ acc }) {
 }
 
 /* Validación 80/20: entrena con el 80% más antiguo y predice el 20% reciente. */
+const Q_VAR = {
+  ataque_propio: "Ataque propio", defensa_rival: "Defensa rival",
+  forma_reciente: "Forma", descanso: "Descanso", arbitro: "Árbitro", local: "Local/visit.",
+};
 function StatsBacktest({ report }) {
   const ligas = report ? Object.keys(report) : [];
   const [liga, setLiga] = useState(ligas[0]);
@@ -898,24 +902,26 @@ function StatsBacktest({ report }) {
           <div className="mut" style={{ margin: "2px 0 8px" }}>Sobre el mismo 20% oculto se enfrentan varios métodos (media de liga, media del equipo, ataque×defensa, regresión con pesos aprendidos); gana el de menor error. Es el banco para iterar y quedarnos con el mejor por variable.</div>
           <div className="tbl-wrap">
             <table className="tbl-mk">
-              <thead><tr><th className="tl">Estadística</th><th className="tl">Mejor método</th><th>MAE</th><th>vs media liga</th></tr></thead>
+              <thead><tr><th className="tl">Estadística</th><th className="tl">Mejor método</th><th>MAE</th><th>vs media liga</th><th className="tl">Variable clave</th></tr></thead>
               <tbody>
                 {comp.map((c) => {
                   const liga = c.algorithms?.liga;
                   const gain = liga ? Math.round((1 - c.best_mae / liga) * 100) : null;
+                  const top = c.influence ? Object.entries(c.influence).sort((a, b) => b[1] - a[1])[0] : null;
                   return (
                     <tr key={c.label}>
                       <td className="tl">{c.label}</td>
                       <td className="tl">{c.best_label}</td>
                       <td>{c.best_mae}</td>
                       <td className={gain > 0 ? "value-yes" : ""}>{gain == null ? "—" : (gain > 0 ? "+" : "") + gain + "%"}</td>
+                      <td className="tl">{top ? `${Q_VAR[top[0]] || top[0]} (${Math.round(top[1] * 100)}%)` : "—"}</td>
                     </tr>
                   );
                 })}
               </tbody>
             </table>
           </div>
-          <div className="mut" style={{ marginTop: 8 }}>El ganador de cada estadística es el candidato a aplicar en las predicciones futuras. Iteramos añadiendo métodos y variables hasta maximizar el acierto de cada una.</div>
+          <div className="mut" style={{ marginTop: 8 }}>“Variable clave” = la que más mueve esa estadística en el modelo multi-variable por equipo (ataque/defensa, forma, descanso, árbitro, local/visitante). El ganador es el candidato a aplicar a las predicciones futuras; iteramos añadiendo variables (clima…) hasta maximizar el acierto de cada una.</div>
         </>
       )}
     </div>
