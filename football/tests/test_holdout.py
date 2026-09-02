@@ -100,6 +100,26 @@ def test_arbitro_es_la_variable_dominante_en_tarjetas():
     assert yc["algorithms"]["regresion_plus"] < yc["algorithms"]["ataque_defensa"]
 
 
+def test_por_equipo_elige_metodo_por_equipo():
+    """El banco evalúa 80/20 POR EQUIPO: cada equipo tiene su mejor método por
+    estadística sobre SUS partidos, con su PROPIA media como base (no la de liga).
+    Con tarjetas dirigidas por el árbitro, el multi-variable gana para la mayoría."""
+    bt = holdout_report(_matches(rounds=70))["by_team"]
+    assert len(bt) >= 6
+    ganan_arbitro = 0
+    for team, info in bt.items():
+        assert info["equipo"] == team
+        for stat, v in info["stats"].items():
+            assert v["n"] >= 8  # MIN_TEAM
+            assert v["best_label"] and v["best_mae"] >= 0
+            assert v["best"] != "liga"  # POR EQUIPO nunca la media de liga
+        yc = info["stats"].get("yellows")
+        if yc and yc["best"] == "regresion_plus":
+            ganan_arbitro += 1
+    # Las tarjetas dependen del árbitro: el multi-variable gana en casi todos.
+    assert ganan_arbitro >= len(bt) // 2
+
+
 def test_muestra_insuficiente_devuelve_none():
     assert holdout_report(_matches(rounds=2)) is None
     assert holdout_report([]) is None
