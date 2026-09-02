@@ -837,6 +837,64 @@ function AccuracyPanel({ acc }) {
   );
 }
 
+/* Validación 80/20: entrena con el 80% más antiguo y predice el 20% reciente. */
+function StatsBacktest({ report }) {
+  const ligas = report ? Object.keys(report) : [];
+  const [liga, setLiga] = useState(ligas[0]);
+  if (!report || !ligas.length) return null;
+  const r = report[liga] || report[ligas[0]];
+  const rows = Object.values(r.stats || {});
+  const o = r.outcome;
+  const skillCls = (v) => (v == null ? "" : v > 0 ? "value-yes" : "value-no");
+  const skillTxt = (v) => (v == null ? "—" : (v > 0 ? "+" : "") + v + "%");
+  return (
+    <div className="card">
+      <div className="row-between">
+        <div className="lbl">Validación 80/20 (predicho vs real en partidos no vistos)</div>
+        {ligas.length > 1 && (
+          <select aria-label="Competición de la validación 80/20" value={liga} onChange={(e) => setLiga(e.target.value)}>
+            {ligas.map((l) => <option key={l} value={l}>{report[l].label || l}</option>)}
+          </select>
+        )}
+      </div>
+      <div className="mut" style={{ margin: "4px 0 10px" }}>
+        Se entrena con el <b>80%</b> de los partidos más antiguos{r.seasons?.length ? ` (desde ${r.seasons[0]})` : ""} y se predice el <b>20%</b> más reciente, que el modelo nunca vio. Corte cronológico (el modelo es temporal) y contraste con la media de liga para medir la señal real.
+      </div>
+      <div className="chips" style={{ marginBottom: 10 }}>
+        <span className="chip">Entrenado <b>{r.train_n}</b></span>
+        <span className="chip">Validado <b>{r.test_n}</b></span>
+        {r.test_start && <span className="chip">Test <b>{r.test_start} → {r.test_end}</b></span>}
+      </div>
+      {o && (
+        <div className="chips" style={{ marginBottom: 10 }}>
+          <span className="chip">Acierto 1X2 <b>{Math.round(o.accuracy * 100)}%</b> <span className="dim">(base {Math.round(o.baseline_accuracy * 100)}%)</span></span>
+          <span className="chip">RPS <b>{o.rps}</b> <span className="dim">(base {o.baseline_rps})</span></span>
+          {o.rps_skill_pct != null && <span className="chip">Señal RPS <b className={skillCls(o.rps_skill_pct)}>{skillTxt(o.rps_skill_pct)}</b></span>}
+        </div>
+      )}
+      {rows.length > 0 && (
+        <div className="tbl-wrap">
+          <table className="tbl-mk">
+            <thead><tr><th className="tl">Estadística</th><th>Error medio</th><th>vs media</th><th>Sesgo</th><th>Real</th></tr></thead>
+            <tbody>
+              {rows.map((s) => (
+                <tr key={s.label}>
+                  <td className="tl">{s.label}</td>
+                  <td>{s.mae}</td>
+                  <td className={skillCls(s.skill_pct)}>{skillTxt(s.skill_pct)}</td>
+                  <td className="dim">{s.bias > 0 ? "+" : ""}{s.bias}</td>
+                  <td className="dim">{s.real_mean}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      <div className="mut" style={{ marginTop: 8 }}>“vs media” = cuánto baja el error frente a predecir la media de liga (verde = el modelo aporta señal real). “Error medio” (MAE) en las unidades de cada estadística; sesgo &gt;0 = el modelo predice de más.</div>
+    </div>
+  );
+}
+
 function Datos({ data }) {
   const ds = data.data_sources || {};
   const ageH = feedAgeHours(data);
@@ -882,6 +940,7 @@ function Datos({ data }) {
       <AccuracyPanel acc={data.accuracy} />
       <AccuracyMatchDetails rows={data.accuracy?.matches} />
       <ModelReport model={data.model} />
+      <StatsBacktest report={data.stats_backtest} />
       <div className="card">
         <div className="lbl">Motor y estado</div>
         <div className="chips">

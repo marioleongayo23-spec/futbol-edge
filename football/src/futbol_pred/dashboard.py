@@ -1076,6 +1076,7 @@ def build_dashboard(
 
     configure_daily_budget((previous or {}).get("ai_usage"), now.astimezone(MADRID))
     model_report = _load_model_report(season)
+    stats_backtest = _load_stats_backtest(season)
     calibration_source = {"model": model_report} if model_report else previous
     previous_seed = (previous or {}).get("historical_seed") if (previous or {}).get("season") == season else None
     historical_seeds = previous_seed or build_historical_seeds(season)
@@ -1254,6 +1255,7 @@ def build_dashboard(
         ),
         "players": players,
         "model": model_report,
+        "stats_backtest": stats_backtest,
         "market_calibration": market_calibration or None,
         "historical_seed": historical_seeds or None,
         "value_ranking": market_value.get("ranking") or [],
@@ -1450,6 +1452,38 @@ def _load_model_report(season: int) -> dict | None:
         if rep:
             rep["label"] = label
             out[league] = rep
+    return out or None
+
+
+def _load_stats_backtest(season: int) -> dict | None:
+    """Validación 80/20 (hold-out) por liga desde la temporada 2024/25.
+
+    Entrena con el 80% de los partidos más antiguos (co.uk: cada acción de juego)
+    y predice el 20% más reciente, comparando con la realidad el 1X2 y cada
+    estadística. Corte cronológico (el modelo es temporal) y contraste contra la
+    media de liga, para medir con verdad de campo cuánta señal aporta el modelo.
+    """
+    try:
+        from .backtest.holdout import holdout_report
+        from .ingest.football_data_uk import FootballDataUKClient
+    except Exception:
+        return None
+    client = FootballDataUKClient()
+    out: dict = {}
+    for league, label in (("laliga", "LaLiga"), ("segunda", "LaLiga Hypermotion")):
+        rows: list = []
+        for year in range(2024, season + 1):  # desde 24/25 hasta la temporada actual
+            try:
+                rows += client.get_stats(league, year)
+            except Exception:
+                continue
+        try:
+            rep = holdout_report(rows)
+        except Exception:
+            rep = None
+        if rep:
+            rep["label"] = label
+            out[label] = rep
     return out or None
 
 
