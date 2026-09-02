@@ -1,6 +1,6 @@
 {
   "schema_version": 7,
-  "generated_at": "2026-09-02T20:55:38.490980+02:00",
+  "generated_at": "2026-09-02T21:02:51.330862+02:00",
   "season": 2026,
   "quiniela": {
     "jornada": "4",
@@ -74238,6 +74238,10 @@
             }
           ]
         }
+      },
+      "operational_checks": {
+        "absences_checked_at": "2026-09-02T21:02:51.330862+02:00",
+        "absences_check_result": "fixture_not_found"
       }
     },
     {
@@ -433479,14 +433483,14 @@
     }
   },
   "feature_truth_table": {
-    "generated_at": "2026-09-02T20:55:38.490980+02:00",
+    "generated_at": "2026-09-02T21:02:51.330862+02:00",
     "principle": "candidate -> leakage-safe snapshot -> walk-forward -> compare vs accepted engine + no-vig market -> promote only on improvement",
     "eligible_matches": 489,
     "features": [
       {
         "feature": "dixon_coles_score_model",
         "source": "Resultados históricos reales · Football-Data/API-Football + score model Dixon-Coles",
-        "available_at": "2026-09-02T20:55:38.490980+02:00",
+        "available_at": "2026-09-02T21:02:51.330862+02:00",
         "coverage": {
           "covered": 489,
           "eligible": 489,
@@ -433508,7 +433512,7 @@
       {
         "feature": "elo",
         "source": "Resultados históricos reales transformados en rating Elo",
-        "available_at": "2026-09-02T20:55:38.490980+02:00",
+        "available_at": "2026-09-02T21:02:51.330862+02:00",
         "coverage": {
           "covered": 489,
           "eligible": 489,
@@ -433529,7 +433533,7 @@
       {
         "feature": "team_stat_model",
         "source": "football-data.co.uk · históricos de remates, SOT, córners, faltas y tarjetas",
-        "available_at": "2026-09-02T20:55:38.490980+02:00",
+        "available_at": "2026-09-02T21:02:51.330862+02:00",
         "coverage": {
           "covered": 350,
           "eligible": 489,
@@ -433634,7 +433638,7 @@
       {
         "feature": "tactical_matchup",
         "source": "Perfiles observados casa/fuera derivados de football-data.co.uk",
-        "available_at": "2026-09-02T20:55:38.490980+02:00",
+        "available_at": "2026-09-02T21:02:51.330862+02:00",
         "coverage": {
           "covered": 350,
           "eligible": 489,
