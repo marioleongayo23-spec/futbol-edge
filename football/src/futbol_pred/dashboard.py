@@ -355,6 +355,29 @@ def fixture_payload(
         except (KeyError, ValueError):
             pass
 
+    # Árbitro designado (football-data.org): si se conoce el árbitro del partido,
+    # su perfil histórico ajusta faltas/tarjetas ANTES de construir los mercados y
+    # se expone como official_context. Reutiliza el modelo validado del Bloque 2.
+    # (Latente si la fuente no trae árbitro; la asignación de API-Football, cuando
+    # exista, lo sobrescribe más adelante en attach_official_context.)
+    if not finished_with_result and getattr(fixture, "referee", None) and stats is not None:
+        ref_model = getattr(stats, "referee_model", None)
+        if ref_model is not None:
+            try:
+                oc = {"referee": fixture.referee, "source": "football-data.org",
+                      "source_updated_at": generated_at}
+                profile = ref_model.context(fixture.referee)
+                if profile:
+                    oc["referee_profile"] = profile
+                if payload.get("stats"):
+                    adjusted, applied = ref_model.adjust_stats(payload["stats"], fixture.referee)
+                    if applied:
+                        payload["stats"] = adjusted
+                        oc["referee_adjustment_applied"] = applied
+                payload["official_context"] = oc
+            except Exception:  # noqa: BLE001 - el árbitro nunca tumba el feed
+                pass
+
     # Tendencia (↑/→/↓) de las stats esperadas: forma reciente + lo que espera el
     # modelo vs la media de liga + descanso. Solo en próximos con predicción.
     if not finished_with_result and trends is not None:
@@ -396,6 +419,10 @@ def fixture_payload(
                 stat, row["total"], stats.dispersion(stat) if stats is not None else 1.0,
                 mean_home=row["home"], mean_away=row["away"], trend=trend_for.get(stat),
             ))
+        applied_ref = set((payload.get("official_context") or {}).get("referee_adjustment_applied") or [])
+        for mk in detail:
+            if mk.get("stat") in applied_ref:
+                mk["referee_moved"] = True
         payload["markets_detail"] = detail
         if not finished_with_result:
             payload["committed"] = committed_scoreline(
@@ -1342,6 +1369,7 @@ def build_dashboard(
             "proximos": sum(1 for m in matches if not m.get("finished")),
             "con_prediccion": sum(1 for m in matches if m.get("engine") in {"dixon-coles", "ensemble", "residual"}),
             "con_cuotas": sum(1 for m in matches if isinstance(m.get("odds"), dict)),
+            "con_arbitro": sum(1 for m in matches if (m.get("official_context") or {}).get("referee")),
         },
         "matches": matches,
         "errors": errors,

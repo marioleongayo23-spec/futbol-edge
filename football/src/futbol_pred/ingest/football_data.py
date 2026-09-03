@@ -79,6 +79,18 @@ class FootballDataClient:
         return [self._parse(m, league, season) for m in data.get("matches", [])]
 
     @staticmethod
+    def _referee(m: dict) -> str | None:
+        """Árbitro principal del partido si football-data.org lo trae (v4 expone
+        ``referees`` con tipo REFEREE). En el plan gratis suele venir vacío pre-
+        partido; si aparece, encendemos el efecto del árbitro sin coste extra."""
+        refs = m.get("referees") or []
+        if not isinstance(refs, list):
+            return None
+        main = next((r for r in refs if str(r.get("type", "")).upper() == "REFEREE"), None)
+        name = (main or (refs[0] if refs else {})).get("name")
+        return name.strip() if isinstance(name, str) and name.strip() else None
+
+    @staticmethod
     def _parse(m: dict, league: str, season: int) -> Fixture:
         score = m.get("score", {}).get("fullTime", {})
         home = m.get("homeTeam", {})
@@ -100,6 +112,7 @@ class FootballDataClient:
             away_crest=away.get("crest"),
             home_tla=home.get("tla"),
             away_tla=away.get("tla"),
+            referee=FootballDataClient._referee(m),
         )
 
     def get_team_meta(self, league: str, season: int | None = None) -> dict:
