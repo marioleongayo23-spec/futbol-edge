@@ -1387,7 +1387,7 @@ export default function App() {
 
           {data && playerSel && <PlayerProfile candidate={playerSel} players={data.players} matches={matches} onBack={() => setPlayerSel(null)} onTeam={openTeam} />}
 
-          {data && !playerSel && sel && <MatchDetail m={sel} bankroll={bank} onBack={() => setSel(null)} onTeam={openTeam} players={data.players} plan={plan} onUpgrade={() => { setSel(null); goto("planes"); }} />}
+          {data && !playerSel && sel && <MatchDetail m={sel} onBack={() => setSel(null)} onTeam={openTeam} plan={plan} onUpgrade={() => { setSel(null); goto("planes"); }} />}
 
           {data && !playerSel && !sel && teamSel && <TeamPage team={teamSel} matches={matches} players={data.players} onBack={() => setTeamSel(null)} onOpen={open} onPlayer={openPlayer} isFav={favs.has(teamSel)} onFav={onFav} />}
 

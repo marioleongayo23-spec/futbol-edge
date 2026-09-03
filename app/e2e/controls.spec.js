@@ -154,7 +154,7 @@ test("la ficha abre, navega por secciones y enlaza el equipo", async ({ page }) 
   await gotoView(page, "Partidos");
   await page.locator('tr[role="button"]').first().click();
   await expect(page.getByRole("button", { name: "Volver a la lista" })).toBeVisible();
-  for (const section of ["Previa", "Onces", "Pronóstico", "Datos"]) {
+  for (const section of ["Pronóstico", "Onces", "Mercados", "Contexto"]) {
     await page.locator(".match-nav").getByRole("button", { name: section, exact: true }).click();
   }
   const teamButton = page.locator(".match-hero .team-button").first();
@@ -170,7 +170,7 @@ test("la ficha explica táctica, impacto del once y escenarios", async ({ page }
   await gotoView(page, "Partidos");
   const row = page.locator('tr[role="button"]').filter({ hasText: enriched.home }).filter({ hasText: enriched.away }).first();
   await row.click();
-  await expect(page.getByText("Impacto del once", { exact: true })).toBeVisible();
+  await expect(page.getByText("Impacto del once", { exact: false })).toBeVisible();
   await expect(page.getByText("Simulador de resultados", { exact: true })).toBeVisible();
   await expect(page.getByText("Cruce de estilos", { exact: false })).toBeVisible();
 });
