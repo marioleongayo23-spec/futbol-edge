@@ -1,0 +1,64 @@
+/* Predicciones por mercado (over/under/exacto) y el marcador al que nos mojamos. */
+
+.mk2-tbl {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.86rem;
+}
+.mk2-tbl th,
+.mk2-tbl td {
+  padding: 6px 8px;
+  text-align: center;
+  border-bottom: 1px solid var(--line, rgba(255, 255, 255, 0.08));
+}
+.mk2-tbl th {
+  color: var(--muted);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.mk2-tbl .tl {
+  text-align: left;
+}
+/* Lado más probable de la línea principal: resaltado. */
+.mk2-tbl td.mk2-pick {
+  color: var(--green, #22c98a);
+  font-weight: 700;
+  background: rgba(34, 201, 138, 0.08);
+  border-radius: 6px;
+}
+
+.mk2-picks {
+  margin-top: 10px;
+}
+.mk2-lean {
+  border: 1px solid var(--line, rgba(255, 255, 255, 0.12));
+}
+.mk2-lean.agree {
+  border-color: rgba(34, 201, 138, 0.55);
+  background: rgba(34, 201, 138, 0.1);
+}
+
+/* Nos mojamos: marcador destacado. */
+.committed {
+  border: 1px solid rgba(34, 201, 138, 0.35);
+}
+.committed-score {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin: 8px 0 4px;
+  flex-wrap: wrap;
+}
+.committed-score .ct {
+  color: var(--muted);
+  font-weight: 600;
+  max-width: 40%;
+  text-align: center;
+}
+.committed-score .cs {
+  font-size: 2rem;
+  line-height: 1;
+  color: var(--green, #22c98a);
+  letter-spacing: 1px;
+}

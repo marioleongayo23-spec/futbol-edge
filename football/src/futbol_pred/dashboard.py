@@ -23,6 +23,7 @@ from .ingest.api_football import ApiFootballClient, Fixture
 from .ingest.football_data import FootballDataClient
 from .normalize import canonical_team
 from .market_calibration import learn_market_calibration
+from .model.market_lines import committed_scoreline, count_market, goals_market
 from .operational import (
     annotate_prediction_context, attach_official_context, attach_state_simulations,
     build_alerts, content_audit,
@@ -371,6 +372,36 @@ def fixture_payload(
                 payload["tactical_matchup"] = tactical
         except Exception:  # noqa: BLE001 - la tendencia nunca tumba el feed
             pass
+
+    # Mercados "que se mojan": cada estadística como P(por encima)/P(por debajo)/
+    # exacto, con su tendencia; y UN marcador al que nos mojamos. Reexpresa lo que
+    # ya predice el modelo (matriz de goles + medias esperadas), sin inventar.
+    try:
+        tend = payload.get("tendencias") or {}
+        trend_for = {
+            "goals": tend.get("goals"),
+            "corners": tend.get("corners"),
+            "yellows": tend.get("yellows"),
+            "shots": tend.get("shots"),
+            "sot": tend.get("shots"),  # tiros a puerta comparten señal con remates
+            "fouls": tend.get("fouls"),
+        }
+        detail = [goals_market(matrix, eh, ea, trend_for["goals"])]
+        st = payload.get("stats") or {}
+        for stat in ("corners", "yellows", "shots", "sot", "fouls"):
+            row = st.get(stat)
+            if not row:
+                continue
+            detail.append(count_market(
+                stat, row["total"], stats.dispersion(stat) if stats is not None else 1.0,
+                mean_home=row["home"], mean_away=row["away"], trend=trend_for.get(stat),
+            ))
+        payload["markets_detail"] = detail
+        if not finished_with_result:
+            payload["committed"] = committed_scoreline(
+                matrix, probs, fixture.home_team, fixture.away_team)
+    except Exception:  # noqa: BLE001 - los mercados nunca tumban el feed
+        pass
 
     # Cuotas y value bets solo para partidos por jugar.
     if not finished_with_result and odds_map:
