@@ -83,7 +83,13 @@ def _official_poll_window(minutes_to_kickoff: float, attempts: dict) -> str | No
     return None
 
 
-def _recompute_referee_markets(match: dict, stats_model, applied: list[str]) -> None:
+def _recompute_referee_markets(
+    match: dict,
+    stats_model,
+    affected: list[str],
+    *,
+    moved: list[str] | None = None,
+) -> None:
     """Cuando el árbitro asignado mueve faltas/tarjetas, el mercado de esa
     estadística (P encima/debajo/exacto) tiene que reflejarlo. Recalcula solo las
     filas afectadas de ``markets_detail`` con las medias ya ajustadas por el
@@ -99,7 +105,8 @@ def _recompute_referee_markets(match: dict, stats_model, applied: list[str]) -> 
     tend = match.get("tendencias") or {}
     trend_for = {"yellows": tend.get("yellows"), "fouls": tend.get("fouls")}
     index = {row.get("stat"): i for i, row in enumerate(detail) if isinstance(row, dict)}
-    for stat in applied:
+    moved_stats = set(affected if moved is None else moved)
+    for stat in affected:
         row = stats.get(stat)
         pos = index.get(stat)
         if not isinstance(row, dict) or pos is None:
@@ -116,8 +123,45 @@ def _recompute_referee_markets(match: dict, stats_model, applied: list[str]) -> 
             )
         except Exception:  # noqa: BLE001
             continue
-        new_market["referee_moved"] = True
+        if stat in moved_stats:
+            new_market["referee_moved"] = True
         detail[pos] = new_market
+
+
+def _without_previous_referee_adjustment(stats: dict | None, context: dict | None) -> dict | None:
+    """Recupera la base previa al ajuste arbitral ya aplicado.
+
+    ``fixture_payload`` puede aplicar primero el árbitro de football-data.org y,
+    cerca del saque, API-Football puede confirmar o sustituir esa designación.
+    La segunda fuente debe partir de la base, no multiplicar otra vez una línea
+    ya ajustada. El perfil publicado conserva exactamente el factor empleado,
+    por lo que podemos deshacerlo sin guardar otra copia de las estadísticas en
+    el feed.
+    """
+    if not stats:
+        return stats
+    out = {key: dict(value) if isinstance(value, dict) else value for key, value in stats.items()}
+    if not isinstance(context, dict):
+        return out
+    applied = set(context.get("referee_adjustment_applied") or [])
+    metrics = ((context.get("referee_profile") or {}).get("metrics") or {})
+    for stat in applied:
+        row = out.get(stat)
+        profile = metrics.get(stat) if isinstance(metrics, dict) else None
+        if not isinstance(row, dict) or not isinstance(profile, dict):
+            continue
+        try:
+            factor = float(profile["factor"])
+            if factor <= 0:
+                continue
+            home = float(row["home"]) / factor
+            away = float(row["away"]) / factor
+        except (KeyError, TypeError, ValueError, ZeroDivisionError):
+            continue
+        row["home"] = round(home, 2)
+        row["away"] = round(away, 2)
+        row["total"] = round(home + away, 2)
+    return out
 
 
 def attach_official_context(matches: list[dict], now: datetime, client: ApiFootballClient | None = None, limit: int = 8, stats_models: dict[str, object] | None = None) -> int:
@@ -171,6 +215,8 @@ def attach_official_context(matches: list[dict], now: datetime, client: ApiFootb
             if official_context:
                 official_context["source_updated_at"] = now_local.isoformat()
                 official_context["official_poll_window"] = poll_window
+                previous_context = match.get("official_context") or {}
+                previous_applied = list(previous_context.get("referee_adjustment_applied") or [])
                 stats_model = (stats_models or {}).get(match.get("league"))
                 referee_model = getattr(stats_model, "referee_model", None)
                 referee = official_context.get("referee")
@@ -179,13 +225,20 @@ def attach_official_context(matches: list[dict], now: datetime, client: ApiFootb
                         profile = referee_model.context(referee)
                         if profile:
                             official_context["referee_profile"] = profile
-                        adjusted, applied = referee_model.adjust_stats(match.get("stats"), referee)
-                        if applied:
+                        base_stats = _without_previous_referee_adjustment(
+                            match.get("stats"), previous_context
+                        )
+                        adjusted, applied = referee_model.adjust_stats(base_stats, referee)
+                        affected = list(dict.fromkeys([*previous_applied, *applied]))
+                        if affected:
                             match["stats"] = adjusted
+                            # También recalcula una línea cuyo ajuste anterior se
+                            # haya retirado porque cambió la designación.
+                            _recompute_referee_markets(
+                                match, stats_model, affected, moved=applied
+                            )
+                        if applied:
                             official_context["referee_adjustment_applied"] = applied
-                            # El mercado de faltas/tarjetas se recalcula con la
-                            # línea que deja el perfil del árbitro asignado.
-                            _recompute_referee_markets(match, stats_model, applied)
                     except Exception:
                         pass
                 match["official_context"] = official_context

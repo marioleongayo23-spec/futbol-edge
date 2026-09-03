@@ -259,6 +259,45 @@ def refresh_payload(payload: dict, now: datetime | None = None) -> tuple[bool, d
     return changed, stats
 
 
+# Top-5 por jugador y métrica: se calcula para los onces probables PRÓXIMOS (no
+# para todo el calendario futuro, que inflaría el feed y cuyos onces son
+# especulativos). Cada ejecución del cron amplía la ventana según se acercan.
+PLAYER_MARKETS_HORIZON_DAYS = 10
+
+
+def attach_player_markets(matches: list[dict], now: datetime | None = None) -> int:
+    """Rellena match['player_markets'] (top-5 por métrica y equipo) para los
+    partidos próximos con once probable 11+11. Reutiliza el mismo reparto por rol
+    que las props de día de partido, así que la estimación es coherente."""
+    from .model.player_markets import build_player_markets
+
+    now_local = _aware(now or datetime.now(timezone.utc)).astimezone(MADRID)
+    count = 0
+    for match in matches:
+        if not isinstance(match, dict) or match.get("finished"):
+            continue
+        kickoff = _parse(match.get("kickoff"))
+        if not kickoff:
+            continue
+        days = (kickoff - now_local).total_seconds() / 86400.0
+        if days < -0.05 or days > PLAYER_MARKETS_HORIZON_DAYS:
+            continue
+        lineup = match.get("alineacion") if isinstance(match.get("alineacion"), dict) else {}
+        if lineup.get("display_withheld"):
+            continue
+        if len(lineup.get("local") or []) != 11 or len(lineup.get("visitante") or []) != 11:
+            continue
+        local, _ = _hybrid_side(match, lineup, "local")
+        away, _ = _hybrid_side(match, lineup, "visitante")
+        if len(local) != 11 or len(away) != 11:
+            continue
+        markets = build_player_markets(local, away)
+        if markets:
+            match["player_markets"] = markets
+            count += 1
+    return count
+
+
 def run(path=OUTPUT, now: datetime | None = None):
     previous = load_feed(path)
     if not previous:

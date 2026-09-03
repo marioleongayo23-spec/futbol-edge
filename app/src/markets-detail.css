@@ -121,3 +121,71 @@
 }
 .ref-profile .trend-up { color: var(--red, #e5484d); }
 .ref-profile .trend-down { color: var(--green, #22c98a); }
+
+/* Top-5 por jugador y métrica. */
+.pm-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 6px 0 10px;
+}
+.pm-tab {
+  border: 1px solid var(--line, rgba(255, 255, 255, 0.14));
+  background: transparent;
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+.pm-tab.on {
+  color: var(--text);
+  border-color: rgba(34, 201, 138, 0.55);
+  background: rgba(34, 201, 138, 0.12);
+}
+.pm-bestbet {
+  margin: 2px 0 8px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: rgba(34, 201, 138, 0.1);
+  border: 1px solid rgba(34, 201, 138, 0.3);
+  font-size: 0.86rem;
+}
+.pm-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.pm-col .tn {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.pm-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  padding: 4px 6px;
+  border-radius: 6px;
+}
+.pm-row.pm-best {
+  background: rgba(34, 201, 138, 0.08);
+}
+.pm-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.86rem;
+}
+.pm-val {
+  white-space: nowrap;
+  font-size: 0.82rem;
+  text-align: right;
+}
+.pm-line {
+  color: var(--green, #22c98a);
+}
+@media (max-width: 520px) {
+  .pm-grid { grid-template-columns: 1fr; }
+}
