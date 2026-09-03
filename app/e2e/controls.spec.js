@@ -171,6 +171,6 @@ test("la ficha explica táctica, impacto del once y escenarios", async ({ page }
   const row = page.locator('tr[role="button"]').filter({ hasText: enriched.home }).filter({ hasText: enriched.away }).first();
   await row.click();
   await expect(page.getByText("Impacto del once", { exact: true })).toBeVisible();
-  await expect(page.getByText("Simulador de estados", { exact: true })).toBeVisible();
+  await expect(page.getByText("Simulador de resultados", { exact: true })).toBeVisible();
   await expect(page.getByText("Cruce de estilos", { exact: false })).toBeVisible();
 });

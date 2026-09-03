@@ -195,22 +195,41 @@ function LineupImpact({ impact, home, away }) {
   </div>;
 }
 
-function StateSimulation({ simulation }) {
+function StateSimulation({ simulation, home, away }) {
   if (!simulation?.probabilities) return null;
   const probs = simulation.probabilities;
   const assumptions = simulation.assumptions || {};
+  const pct = (v) => Math.round((v || 0) * 100);
+  const wm = simulation.winning_margins;
+  const cs = simulation.clean_sheet, cb = simulation.comeback_win;
   return <div className="card scenario-card">
-    <div className="row-between"><div className="lbl">Simulador de estados</div><span className="pill">escenario, no pick</span></div>
+    <div className="row-between"><div className="lbl">Simulador de resultados</div><span className="pill">escenario, no pick</span></div>
     <div className="scenario-probs">
-      {[['1', probs['1']], ['X', probs.X], ['2', probs['2']]].map(([sign, value]) => <span key={sign}><b>{Math.round((value || 0) * 100)}%</b><small>{sign}</small></span>)}
+      {[['1', probs['1']], ['X', probs.X], ['2', probs['2']]].map(([sign, value]) => <span key={sign}><b>{pct(value)}%</b><small>{sign}</small></span>)}
     </div>
     <div className="chips">
       <span className="chip">Goles medios <b>{simulation.expected_total_goals}</b></span>
       <span className="chip">Rango 80% <b>{simulation.total_goals_range_80?.join("–")}</b></span>
-      <span className="chip">Over 2.5 <b>{Math.round((simulation.over_2_5 || 0) * 100)}%</b></span>
-      <span className="chip">BTTS <b>{Math.round((simulation.btts || 0) * 100)}%</b></span>
+      <span className="chip">Over 2.5 <b>{pct(simulation.over_2_5)}%</b></span>
+      <span className="chip">BTTS <b>{pct(simulation.btts)}%</b></span>
+      {cs && <span className="chip" title="Probabilidad de dejar la portería a cero">Portería a 0 <b>{pct(cs.home)}% · {pct(cs.away)}%</b></span>}
+      {cb && (pct(cb.home) + pct(cb.away) > 0) && <span className="chip" title="Ganar tras ir por detrás en algún momento">Remontada <b>{pct(cb.home)}% · {pct(cb.away)}%</b></span>}
     </div>
-    <p className="note source-note">{simulation.simulations?.toLocaleString("es-ES")} simulaciones · ritmo climático ×{assumptions.pace_multiplier ?? 1}{assumptions.estimated_goal_delta_vs_neutral ? ` · ${assumptions.estimated_goal_delta_vs_neutral} goles vs clima neutro` : ""}. {assumptions.state_effects}</p>
+    {Array.isArray(simulation.exact_scores) && simulation.exact_scores.length > 0 && <>
+      <div className="lbl" style={{ marginTop: 10 }}>Resultado exacto <span className="dim">· más simulados</span></div>
+      <div className="chips">
+        {simulation.exact_scores.slice(0, 8).map((e) => <span className="chip" key={e.score}>{e.score} <b>{pct(e.probability)}%</b></span>)}
+      </div>
+    </>}
+    {wm && <>
+      <div className="lbl" style={{ marginTop: 10 }}>Margen de victoria</div>
+      <div className="scenario-margins">
+        <div><span className="tn">{home}</span><small>+1 <b>{pct(wm.home_by_1)}%</b> · +2 <b>{pct(wm.home_by_2)}%</b> · +3 o más <b>{pct(wm.home_by_3plus)}%</b></small></div>
+        <div><span className="tn">Empate</span><small><b>{pct(wm.draw)}%</b></small></div>
+        <div><span className="tn">{away}</span><small>+1 <b>{pct(wm.away_by_1)}%</b> · +2 <b>{pct(wm.away_by_2)}%</b> · +3 o más <b>{pct(wm.away_by_3plus)}%</b></small></div>
+      </div>
+    </>}
+    <p className="note source-note">{simulation.simulations?.toLocaleString("es-ES")} simulaciones · ritmo climático ×{assumptions.pace_multiplier ?? 1}{assumptions.estimated_goal_delta_vs_neutral ? ` · ${assumptions.estimated_goal_delta_vs_neutral} goles vs clima neutro` : ""}. {assumptions.state_effects} Los porcentajes de portería a 0 y remontada son local · visitante.</p>
   </div>;
 }
 
@@ -897,7 +916,7 @@ export default function MatchDetail({ m, bankroll, onBack, onTeam, players, plan
 
           {!m.finished && <CommittedPick c={m.committed} home={m.home} away={m.away} />}
 
-          <StateSimulation simulation={m.state_simulation} />
+          <StateSimulation simulation={m.state_simulation} home={m.home} away={m.away} />
 
           {!m.finished && (<>
           <div className="card">
