@@ -298,12 +298,37 @@ class TrendModel:
                 ) if value is not None
             ])
 
+            venue_label = "en casa" if venue == "home" else "a domicilio"
+
             def dimension(label, value, population, unit):
+                score = _percentile(value, population)
+                # Fundamento honesto de CADA puntuación: el número observado, dónde
+                # se mide (casa/fuera, que es lo que hace que el estilo difiera de la
+                # media global del equipo) y qué significa el percentil en la liga.
+                if score is None:
+                    band = "sin muestra suficiente"
+                elif score >= 75:
+                    band = "muy por encima de la media de la liga"
+                elif score >= 58:
+                    band = "por encima de la media"
+                elif score >= 43:
+                    band = "en la media de la liga"
+                elif score >= 25:
+                    band = "por debajo de la media"
+                else:
+                    band = "muy por debajo de la media"
+                foundation = (
+                    f"{round(value, 2)} {unit} {venue_label} · {band}"
+                    + (f" (percentil {score})" if score is not None else "")
+                    if value is not None else "sin muestra suficiente"
+                )
                 return {
                     "label": label,
-                    "score": _percentile(value, population),
+                    "score": score,
                     "observed": round(value, 2) if value is not None else None,
                     "unit": unit,
+                    "venue": venue_label,
+                    "foundation": foundation,
                 }
 
             efficiencies = []
@@ -322,11 +347,47 @@ class TrendModel:
                             (peer_cards or 0) * 3 if peer_cards is not None else None,
                         ) if item is not None
                     ]))
+            # Más métricas 0-100 (fuera del pentágono) que evalúan comportamiento:
+            # pegada, solidez y disciplina. Solidez y disciplina se INVIERTEN
+            # (menos goles concedidos / menos tarjetas = índice más alto).
+            def metric(label, value, population, unit, invert=False):
+                pct = _percentile(value, population)
+                score = (100 - pct) if (invert and pct is not None) else pct
+                if score is None:
+                    band = "sin muestra suficiente"
+                elif score >= 75:
+                    band = "muy por encima de la media"
+                elif score >= 58:
+                    band = "por encima de la media"
+                elif score >= 43:
+                    band = "en la media de la liga"
+                elif score >= 25:
+                    band = "por debajo de la media"
+                else:
+                    band = "muy por debajo de la media"
+                foundation = (
+                    f"{round(value, 2)} {unit} {venue_label} · {band}"
+                    + (f" (índice {score}/100)" if score is not None else "")
+                    if value is not None else "sin muestra suficiente"
+                )
+                return {"label": label, "score": score,
+                        "observed": round(value, 2) if value is not None else None,
+                        "unit": unit, "foundation": foundation}
+
+            extra_metrics = [
+                metric("Pegada", values["goals"]["for"], peer_values("goals", fav), "goles/partido"),
+                metric("Solidez defensiva", values["goals"]["against"],
+                       peer_values("goals", against), "goles concedidos/partido", invert=True),
+                metric("Disciplina", values["yellows"]["for"],
+                       peer_values("yellows", fav), "tarjetas/partido", invert=True),
+            ]
+
             return {
                 "samples": samples,
                 "venue_split": "casa" if venue == "home" else "fuera",
                 "actions": values,
                 "attack_efficiency_goals_per_shot": round(efficiency, 3) if efficiency is not None else None,
+                "extra_metrics": extra_metrics,
                 "style_vector": {
                     "attack_volume": dimension(
                         "Volumen ofensivo", shots, peer_values("shots", fav), "remates/partido"
@@ -396,6 +457,56 @@ class TrendModel:
                 "label": "Cruce de dos perfiles de contacto alto",
                 "strength": round(sum(contact_scores) / 2),
             })
+        # Valores esperados TENIENDO EN CUENTA AL RIVAL: cada uno mezcla lo que el
+        # equipo genera en su split con lo que el rival concede en el suyo. Es el
+        # mismo principio que las tendencias, aquí expuesto por métrica.
+        def _blend(a, b):
+            vals = [v for v in (a, b) if v is not None]
+            return round(sum(vals) / len(vals), 1) if vals else None
+
+        rival_adjusted = {
+            "shots": {
+                "home": round(home_pressure, 1) if home_pressure is not None else None,
+                "away": round(away_pressure, 1) if away_pressure is not None else None,
+            },
+            "corners": {
+                "home": _blend(hp["actions"]["corners"]["for"], ap["actions"]["corners"]["against"]),
+                "away": _blend(ap["actions"]["corners"]["for"], hp["actions"]["corners"]["against"]),
+            },
+            "cards": {
+                "home": _blend(hp["actions"]["yellows"]["for"], ap["actions"]["yellows"]["against"]),
+                "away": _blend(ap["actions"]["yellows"]["for"], hp["actions"]["yellows"]["against"]),
+            },
+        }
+
+        # Superioridad proyectada: diferencia de goles a favor/en contra en el split.
+        # Explica el PORQUÉ de que un estilo domine (equipo superior presiona más).
+        def _strength(side_profile):
+            gf = side_profile["actions"]["goals"]["for"]
+            ga = side_profile["actions"]["goals"]["against"]
+            return (gf - ga) if gf is not None and ga is not None else None
+
+        sh, sa = _strength(hp), _strength(ap)
+        if sh is not None and sa is not None:
+            if sh - sa >= 0.4:
+                superiority = {"stronger": "home", "margin": round(sh - sa, 2),
+                               "label": f"{home} llega como equipo superior (mejor diferencia de goles en su split)"}
+            elif sa - sh >= 0.4:
+                superiority = {"stronger": "away", "margin": round(sa - sh, 2),
+                               "label": f"{away} llega como equipo superior pese a jugar fuera"}
+            else:
+                superiority = {"stronger": "balanced", "margin": round(abs(sh - sa), 2),
+                               "label": "Emparejamiento parejo por nivel (diferencia de goles similar)"}
+        else:
+            superiority = {"stronger": "unknown", "label": "Sin muestra suficiente para comparar el nivel"}
+
+        context = {
+            "note": ("El pentágono muestra el estilo del LOCAL en casa y del VISITANTE a domicilio; "
+                     "por eso difiere de su media global. Cada eje es un percentil de la liga en ese split, "
+                     "y los valores 'vs este rival' cruzan lo que un equipo genera con lo que el otro concede."),
+            "superiority": superiority,
+        }
+
         return {
             "method": "percentiles de splits observados casa/fuera; no infiere una formación",
             "home": hp,
@@ -404,6 +515,8 @@ class TrendModel:
                 "home": round(home_pressure, 1) if home_pressure is not None else None,
                 "away": round(away_pressure, 1) if away_pressure is not None else None,
             },
+            "rival_adjusted": rival_adjusted,
+            "context": context,
             "reliability": "alta" if evidence >= 10 else "media" if evidence >= 5 else "baja",
             "minimum_samples": evidence,
             "style_clashes": clashes,

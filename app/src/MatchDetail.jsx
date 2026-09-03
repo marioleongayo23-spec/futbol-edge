@@ -93,28 +93,46 @@ function TacticalProfile({ matchup, home, away }) {
     ["finishing_efficiency", "Eficacia de remate"],
     ["contact_intensity", "Contacto"],
   ];
+  // Cada barra lleva su FUNDAMENTO (número observado, dónde se mide y qué percentil).
+  const bar = (row, fallback, color, key) => {
+    const score = Number.isFinite(row.score) ? row.score : 0;
+    return <div className="style-row" key={key} title={row.foundation || ""}>
+      <div><span>{row.label || fallback}</span><b>{row.score ?? "—"}</b></div>
+      <div className="style-track" aria-label={`${row.label || fallback}: ${row.score ?? "sin datos"}/100`}><i style={{ width: `${score}%`, background: color }} /></div>
+      <small className="style-foundation">{row.foundation || `${row.observed ?? "—"} ${row.unit || ""}`}</small>
+    </div>;
+  };
   const column = (label, side, color) => (
     <div className="style-column">
       <div className="tn">{label}</div>
-      {dimensions.map(([key, fallback]) => {
-        const row = side?.style_vector?.[key] || {};
-        const score = Number.isFinite(row.score) ? row.score : 0;
-        return <div className="style-row" key={key}>
-          <div><span>{row.label || fallback}</span><b>{row.score ?? "—"}</b></div>
-          <div className="style-track" aria-label={`${row.label || fallback}: percentil ${row.score ?? "sin datos"}`}><i style={{ width: `${score}%`, background: color }} /></div>
-          <small>{row.observed ?? "—"} {row.unit || ""}</small>
-        </div>;
-      })}
+      {dimensions.map(([key, fallback]) => bar(side?.style_vector?.[key] || {}, fallback, color, key))}
+      {(side?.extra_metrics || []).length > 0 && (
+        <div className="style-extra">
+          <div className="style-extra-h">Más métricas 0–100</div>
+          {side.extra_metrics.map((m) => bar(m, m.label, color, m.label))}
+        </div>
+      )}
     </div>
   );
+  const sup = matchup.context?.superiority;
+  const ra = matchup.rival_adjusted;
   return <div className="tactical-profile">
+    {sup?.label && <p className="style-context">⚖ {sup.label}</p>}
     <div className="style-grid">
       {column(home, matchup.home, "var(--green)")}
       {column(away, matchup.away, "var(--blue)")}
     </div>
+    {ra && (ra.shots?.home != null || ra.corners?.home != null) && (
+      <div className="chips" style={{ marginTop: 8 }}>
+        <span className="chip" title="Cruza lo que genera cada equipo con lo que concede el rival en su split">🎯 vs este rival · remates <b>{ra.shots?.home ?? "—"}–{ra.shots?.away ?? "—"}</b></span>
+        <span className="chip">córners <b>{ra.corners?.home ?? "—"}–{ra.corners?.away ?? "—"}</b></span>
+        <span className="chip">tarjetas <b>{ra.cards?.home ?? "—"}–{ra.cards?.away ?? "—"}</b></span>
+      </div>
+    )}
     {(matchup.style_clashes || []).length > 0 && <div className="clash-list">
       {(matchup.style_clashes || []).map((clash) => <span className="chip" key={clash.edge}>⚔ {clash.label} · <b>{clash.strength}/100</b></span>)}
     </div>}
+    {matchup.context?.note && <p className="note" style={{ marginTop: 6, color: "var(--muted)" }}>{matchup.context.note}</p>}
   </div>;
 }
 
