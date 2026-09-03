@@ -1,11 +1,10 @@
 import { Fragment, useMemo, useState } from "react";
 import { accent, crestFor, fmtKick } from "./feed";
-import { ah, btts, kelly, matrix, oneXtwo, over, topScores } from "./poisson";
+import { matrix, topScores } from "./poisson";
 import { confidence, countdown, isSurprise } from "./insights";
 import { marketMovementRows, marketMovementSourceLabel } from "./markets";
 import OfficialStatsPanel from "./OfficialStatsPanel";
 import WeatherAdjustmentPanel from "./WeatherAdjustmentPanel";
-import { teamSquad } from "./teams";
 import PredictionTimelinePanel from "./PredictionTimelinePanel";
 import PredictionBuild from "./PredictionBuild";
 import { hasAccess } from "./plans";
@@ -176,23 +175,24 @@ function StyleRadar({ matchup, home, away }) {
   );
 }
 
-function LineupImpact({ impact, home, away }) {
-  if (!impact) return null;
-  const side = (label, row) => <div className="impact-side">
-    <div className="tn">{label}</div>
-    <div className="impact-kpis">
-      <span><b>{row.expected_minutes_avg ?? "—"}</b><small>min previstos</small></span>
-      <span><b>{row.starter_probability_avg_pct ?? "—"}%</b><small>prob. titular</small></span>
-      <span><b>{row.attack_presence_index ?? "—"}</b><small>presencia ataque</small></span>
-      <span><b>{row.official_absences ?? 0}</b><small>bajas oficiales</small></span>
-    </div>
-  </div>;
-  return <div className="card">
-    <div className="row-between"><div className="lbl">Impacto del once</div><span className="pill">evidencia {impact.evidence}</span></div>
-    <div className="impact-grid">{side(home, impact.home || {})}{side(away, impact.away || {})}</div>
-    <div className="kv"><span>Penalización de confianza</span><b>{impact.confidence_penalty_pp ?? 0} pp</b></div>
-    <p className="note source-note">{impact.method}</p>
-  </div>;
+/* Cara a cara: últimos enfrentamientos. Se reutiliza con y sin predicción. */
+function H2H({ h2h }) {
+  if (!Array.isArray(h2h) || !h2h.length) return null;
+  return (
+    <>
+      <div className="lbl">Cara a cara · últimos {h2h.length}</div>
+      <table className="tbl-mk">
+        <tbody>
+          {h2h.slice().reverse().map((g, i) => (
+            <tr key={i}>
+              <td className="tl">{g.home} <b>{g.hg}-{g.ag}</b> {g.away}</td>
+              <td className="dim" style={{ textAlign: "right" }}>{g.date}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </>
+  );
 }
 
 function StateSimulation({ simulation, home, away }) {
@@ -717,12 +717,8 @@ function PlayerMarkets({ pm, home, away }) {
   );
 }
 
-export default function MatchDetail({ m, bankroll, onBack, onTeam, players, plan = "vip", onUpgrade }) {
+export default function MatchDetail({ m, onBack, onTeam, plan = "vip", onUpgrade }) {
   const canProps = hasAccess(plan, "props");
-  const [ouL, setOuL] = useState(2.5);
-  const [hcL, setHcL] = useState(-0.5);
-  const [vSel, setVSel] = useState("1");
-  const [vOdds, setVOdds] = useState(2.0);
   const [copied, setCopied] = useState(false);
 
   const conf = confidence(m);
@@ -746,24 +742,10 @@ export default function MatchDetail({ m, bankroll, onBack, onTeam, players, plan
   // Matriz de marcadores si hay xG. Los partidos jugados también lo traen
   // (para comparar lo esperado con lo real), aunque hasPrediction los excluya.
   const M = useMemo(() => (Array.isArray(m.xg) && m.xg.length === 2 ? matrix(m.xg[0], m.xg[1]) : null), [m]);
-  const p = M ? oneXtwo(M) : null;
 
   const md = m.matchday ? "J" + m.matchday : (m.stage || "");
-  const bank = Number(bankroll) || 1000;
   const abstain = m.recommendation?.decision === "no_pick";
   const jump = (section) => document.getElementById(`match-${section}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
-
-  let vProb = 0;
-  if (M) {
-    if (vSel === "1") vProb = Array.isArray(m.probs) ? m.probs[0] / 100 : p[1];
-    else if (vSel === "X") vProb = Array.isArray(m.probs) ? m.probs[1] / 100 : p.X;
-    else if (vSel === "2") vProb = Array.isArray(m.probs) ? m.probs[2] / 100 : p[2];
-    else if (vSel === "ov") vProb = over(M, ouL);
-    else if (vSel === "un") vProb = 1 - over(M, ouL);
-    else vProb = btts(M);
-  }
-  const edge = vProb * Number(vOdds) - 1;
-  const stake = abstain ? 0 : Math.min(bank * kelly(vProb, Number(vOdds)) * 0.25, bank * 0.05);
 
   return (
     <div>
@@ -785,12 +767,8 @@ export default function MatchDetail({ m, bankroll, onBack, onTeam, players, plan
         </div>
       </div>
 
-      <PredictionTimelinePanel m={m} />
-
-      {m.match_quality && <MatchQualityCard mq={m.match_quality} />}
-
       <nav className="match-nav" aria-label="Secciones del partido">
-        {[['analysis', 'Previa'], ['lineup', 'Onces'], ['prediction', 'Pronóstico'], ['stats', 'Datos']].map(([key, label]) => (
+        {[['prediction', 'Pronóstico'], ['lineup', 'Onces'], ['stats', 'Mercados'], ['context', 'Contexto']].map(([key, label]) => (
           <button type="button" key={key} onClick={() => jump(key)}>{label}</button>
         ))}
       </nav>
@@ -801,116 +779,64 @@ export default function MatchDetail({ m, bankroll, onBack, onTeam, players, plan
         </div>
       )}
 
-      {Array.isArray(m.h2h) && m.h2h.length > 0 && (
-        <div className="card" style={{ padding: "6px 10px", overflowX: "auto" }}>
-          <div className="lbl" style={{ padding: "6px 6px 0" }}>Cara a cara · últimos {m.h2h.length}</div>
-          <table className="tbl-mk">
-            <tbody>
-              {m.h2h.slice().reverse().map((g, i) => (
-                <tr key={i}>
-                  <td className="tl">{g.home} <b>{g.hg}-{g.ag}</b> {g.away}</td>
-                  <td className="dim" style={{ textAlign: "right" }}>{g.date}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      {m.match_quality && <MatchQualityCard mq={m.match_quality} />}
 
-      {m.preview && (
-        <div className="card section-anchor" id="match-analysis">
-          <div className="lbl">📝 Análisis previo</div>
-          {m.preview.split(/\n+/).filter(Boolean).map((par, i) => (
-            <p key={i} style={{ margin: "0 0 8px", lineHeight: 1.55, color: "var(--text)" }}>{par}</p>
-          ))}
-          <p className="note" style={{ color: "var(--muted)", marginTop: 4 }}>Redactado por {m.preview_meta?.provider || "IA"} a partir de los números del modelo{m.preview_meta?.quality != null ? ` · calidad ${Math.round(m.preview_meta.quality * 100)}%` : ""}. No es información de fuentes; interpreta los datos.</p>
-        </div>
-      )}
-
-      <PredictionBuild m={m} />
-      <PredictionMovement m={m} />
-
-      {(m.prediction_factors || []).length > 0 && (
+      {!M && !m.finished && (
         <div className="card">
-          <div className="lbl">Factores del pronóstico</div>
-          {(m.prediction_factors || []).map((factor) => (
-            <div className="kv" key={factor.factor}><span>{factor.factor} <span className="dim">· {factor.detail}</span></span><b>{factor.impact}</b></div>
-          ))}
-          <p className="note" style={{ color: "var(--muted)", marginTop: 6 }}>Las bajas verificadas reducen la confianza. No cambian artificialmente el marcador si falta una valoración fiable del impacto del jugador.</p>
-        </div>
-      )}
-
-      {(m.weather || m.tactical_matchup || m.venue_meta) && (
-        <div className="card">
-          <div className="lbl">Contexto del partido</div>
-          {m.venue_meta && <div className="kv"><span>Estadio</span><b>{m.venue_meta.name} · {m.venue_meta.city}</b></div>}
-          {m.official_context?.referee && <div className="kv"><span>Árbitro</span><b>{m.official_context.referee}{(m.official_context.provider || m.official_context.source) ? ` · ${m.official_context.provider || m.official_context.source}` : ""}</b></div>}
-          <RefereeProfile profile={m.official_context?.referee_profile} />
-          {m.weather && <>
-            <div className="kv"><span>Tiempo al saque inicial</span><b>{m.weather.temperature_c} °C · sensación {m.weather.apparent_temperature_c} °C</b></div>
-            <div className="kv"><span>Lluvia / viento</span><b>{m.weather.precipitation_probability_pct}% · {m.weather.wind_kmh} km/h</b></div>
-            <div className="kv"><span>Estrés térmico</span><b>{m.weather.heat_stress?.level || "—"}</b></div>
-          </>}
-          {m.tactical_matchup && <>
-            <div className="kv"><span>Volumen de remate proyectado</span><b>{m.tactical_matchup.expected_shot_pressure?.home ?? "—"} – {m.tactical_matchup.expected_shot_pressure?.away ?? "—"}</b></div>
-            <div className="kv"><span>Fiabilidad del perfil</span><b>{m.tactical_matchup.reliability} · {m.tactical_matchup.minimum_samples} partidos por split</b></div>
-            <StyleRadar matchup={m.tactical_matchup} home={m.home} away={m.away} />
-            <TacticalProfile matchup={m.tactical_matchup} home={m.home} away={m.away} />
-            {(m.tactical_matchup.notes || []).map((note) => <p className="mut" key={note}>• {note}</p>)}
-          </>}
-          <p className="note source-note">{m.weather ? `Open-Meteo · ${m.weather.license}${m.weather.source_updated_at ? ` · actualizada ${new Date(m.weather.source_updated_at).toLocaleString("es-ES")}` : ""}. ` : ""}El clima y el perfil táctico ajustan explicación/confianza; no alteran el marcador hasta superar validación histórica.</p>
-        </div>
-      )}
-
-      <WeatherAdjustmentPanel adjustment={m.weather_adjustment} />
-      <OfficialStatsPanel match={m} />
-
-      {m.alineacion && <div className="section-anchor" id="match-lineup"><Alineacion m={m} a={m.alineacion} canProps={canProps} onUpgrade={onUpgrade} /></div>}
-      <LineupImpact impact={m.lineup_impact} home={m.home} away={m.away} />
-
-      {m.player_markets && <PlayerMarkets pm={m.player_markets} home={m.home} away={m.away} />}
-
-      {(players || m.alineacion) && (() => {
-        const fromLineup = (names, keys) => (names || []).map((name) => {
-          const prop = (keys || []).find((item) => item.jugador === name) || {};
-          return { player: name, goals: prop.g || 0, assists: prop.a || 0,
-            shots: prop.r || 0, yc: prop.t || 0, min: 0 };
-        });
-        const realHome = teamSquad(players, m.home), realAway = teamSquad(players, m.away);
-        const hs = realHome.length ? realHome : fromLineup(m.alineacion?.local, m.alineacion?.clave_local);
-        const as = realAway.length ? realAway : fromLineup(m.alineacion?.visitante, m.alineacion?.clave_visitante);
-        if (!hs.length && !as.length) return null;
-        const catLine = (icon, label, sq, key) => {
-          const rows = sq.filter((p) => p[key] > 0).sort((a, b) => b[key] - a[key]).slice(0, 2);
-          if (!rows.length) return null;
-          return <div className="kv" style={{ padding: "5px 0" }}><span>{icon} {label}</span><span style={{ textAlign: "right", fontSize: ".82rem" }}>{rows.map((p) => `${p.player} (${p[key]})`).join(" · ")}</span></div>;
-        };
-        const col = (team, sq) => (
-          <div style={{ flex: 1, minWidth: 150 }}>
-            <div className="tn" style={{ marginBottom: 4 }}>{team}</div>
-            {!sq.length ? <div className="dim" style={{ fontSize: ".8rem" }}>Sin datos de jugadores</div> : <>
-              {catLine("⚽", "Gol", sq, "goals")}
-              {catLine("🅰️", "Asist.", sq, "assists")}
-              {catLine("🎯", "Remates", sq, "shots")}
-              {catLine("🟨", "Tarjeta", sq, "yc")}
-            </>}
+          <div className="note">⚠️ Todavía sin predicción del modelo para este partido
+            {m.nota ? ` — ${m.nota}` : " (algún equipo está fuera de la liga base o falta muestra de la temporada)"}.</div>
+          <div className="chips" style={{ marginTop: 10 }}>
+            <span className="chip">Fecha <b>{fmtKick(m.kickoff)}</b></span>
+            <span className="chip">Competición <b>{m.league}</b></span>
+            <span className="chip">Jugadores <b>pendiente</b></span>
+            <span className="chip">Cuotas <b>pendiente</b></span>
           </div>
-        );
-        return (
-          <div className="card">
-            <div className="lbl">Jugadores a seguir <span className="dim">(quién suele hacer cada acción, por forma de la temporada)</span></div>
-            <div className="row" style={{ alignItems: "flex-start", gap: 14 }}>
-              {col(m.home, hs)}
-              {col(m.away, as)}
+        </div>
+      )}
+
+      {/* ============ 1 · PREDICCIÓN DEL RESULTADO ============ */}
+      {M && m.provisional && (
+        <div className="card"><div className="note">⚠️ {m.nota || "Predicción provisional: algún equipo aún sin histórico (recién ascendido). Se afina según juegue."}</div></div>
+      )}
+
+      {M && (
+        <div className="card section-anchor" id="match-prediction">
+          <div className="row-between">
+            <div className="lbl">{m.finished ? "1X2 que daba el modelo" : "Resultado 1X2"}{m.calibrated && <span className="dim" title="Probabilidad del modelo mezclada con la del mercado (calibrada)"> · calibrado</span>}</div>
+            <span className="chip">Motor <b>{m.model_meta?.provider || m.engine}</b></span>
+          </div>
+          {probabilityDelta && probabilityDelta.some((value) => value !== 0) && (
+            <div className="change-explanation">
+              <b>Qué cambió desde {previousSnapshot?.window || "la revisión anterior"}</b>
+              <span>1 {probabilityDelta[0] > 0 ? "+" : ""}{probabilityDelta[0]} pp · X {probabilityDelta[1] > 0 ? "+" : ""}{probabilityDelta[1]} pp · 2 {probabilityDelta[2] > 0 ? "+" : ""}{probabilityDelta[2]} pp</span>
+              <small>{snapshot?.prediction_factors?.filter((factor) => factor.impact !== "pendiente").slice(0, 2).map((factor) => factor.factor).join(" · ") || "cambio de parámetros y datos disponibles"}</small>
             </div>
-            {m.stats && (
-              <p className="note" style={{ color: "var(--muted)" }}>
-                Contexto del modelo (según rival): {m.home} ~{m.stats.shots?.home} remates y {m.stats.yellows?.home} tarjetas; {m.away} ~{m.stats.shots?.away} remates y {m.stats.yellows?.away} tarjetas.
-              </p>
-            )}
+          )}
+          {(() => {
+            const hc = accent(m.homeColors), ac = accent(m.awayColors);
+            const hs = hc && hc.startsWith("#") ? { background: hc, color: "#fff" } : {};
+            const as = ac && ac.startsWith("#") ? { background: ac, color: "#fff" } : {};
+            return (
+              <div className="pbar">
+                <div className="seg s1" style={{ flex: m.probs[0], ...hs }} title={`Gana ${m.home}: ${m.probs[0]}%`}>{m.probs[0] > 8 ? m.probs[0] + "%" : ""}</div>
+                <div className="seg sx" style={{ flex: m.probs[1] }} title={`Empate: ${m.probs[1]}%`}>{m.probs[1] > 8 ? m.probs[1] + "%" : ""}</div>
+                <div className="seg s2" style={{ flex: m.probs[2], ...as }} title={`Gana ${m.away}: ${m.probs[2]}%`}>{m.probs[2] > 8 ? m.probs[2] + "%" : ""}</div>
+              </div>
+            );
+          })()}
+          <div className="chips">
+            <span className="chip" title="Marcador exacto más probable según el modelo">Marcador <b>{m.markets.marcador}</b></span>
+            <span className="chip help" title="Goles esperados (xG): calidad y cantidad de ocasiones que se esperan por equipo">xG <b>{m.xg[0]}–{m.xg[1]}</b></span>
+            <span className="chip help" title="BTTS = ambos equipos marcan (Both Teams To Score)">BTTS <b>{Math.round(m.markets.btts * 100)}%</b></span>
+            {m.score_distribution?.total_goals_p10_p50_p90 && <span className="chip" title="Percentiles 10, 50 y 90 de la distribución de goles">Rango goles P10–P90 <b>{m.score_distribution.total_goals_p10_p50_p90[0]}–{m.score_distribution.total_goals_p10_p50_p90[2]}</b></span>}
           </div>
-        );
-      })()}
+          <MarketMovement odds={m.odds} />
+          <div className="lbl">Mapa de marcadores (local ↓ / visitante →)</div>
+          <Heat M={M} />
+        </div>
+      )}
+
+      {M && !m.finished && <CommittedPick c={m.committed} home={m.home} away={m.away} />}
 
       {m.finished && m.result && (
         <div className="card">
@@ -940,149 +866,109 @@ export default function MatchDetail({ m, bankroll, onBack, onTeam, players, plan
         </div>
       )}
 
-      {!M && !m.finished && (
+      <PredictionBuild m={m} />
+
+      {m.preview && (
         <div className="card">
-          <div className="note">⚠️ Todavía sin predicción del modelo para este partido
-            {m.nota ? ` — ${m.nota}` : " (algún equipo está fuera de la liga base o falta muestra de la temporada)"}.</div>
-          <div className="chips" style={{ marginTop: 10 }}>
-            <span className="chip">Fecha <b>{fmtKick(m.kickoff)}</b></span>
-            <span className="chip">Competición <b>{m.league}</b></span>
-            <span className="chip">Jugadores <b>pendiente</b></span>
-            <span className="chip">Cuotas <b>pendiente</b></span>
-          </div>
+          <div className="lbl">📝 Análisis previo</div>
+          {m.preview.split(/\n+/).filter(Boolean).map((par, i) => (
+            <p key={i} style={{ margin: "0 0 8px", lineHeight: 1.55, color: "var(--text)" }}>{par}</p>
+          ))}
+          <p className="note" style={{ color: "var(--muted)", marginTop: 4 }}>Redactado por {m.preview_meta?.provider || "IA"} a partir de los números del modelo{m.preview_meta?.quality != null ? ` · calidad ${Math.round(m.preview_meta.quality * 100)}%` : ""}. No es información de fuentes; interpreta los datos.</p>
         </div>
       )}
 
-      {M && (
-        <>
-          {m.provisional && (
-            <div className="card"><div className="note">⚠️ {m.nota || "Predicción provisional: algún equipo aún sin histórico (recién ascendido). Se afina según juegue."}</div></div>
-          )}
-          <div className="card section-anchor" id="match-prediction">
-            <div className="row-between">
-              <div className="lbl">{m.finished ? "1X2 que daba el modelo" : "Resultado 1X2"}{m.calibrated && <span className="dim" title="Probabilidad del modelo mezclada con la del mercado (calibrada)"> · calibrado</span>}</div>
-              <span className="chip">Motor <b>{m.model_meta?.provider || m.engine}</b></span>
-            </div>
-            {probabilityDelta && probabilityDelta.some((value) => value !== 0) && (
-              <div className="change-explanation">
-                <b>Qué cambió desde {previousSnapshot?.window || "la revisión anterior"}</b>
-                <span>1 {probabilityDelta[0] > 0 ? "+" : ""}{probabilityDelta[0]} pp · X {probabilityDelta[1] > 0 ? "+" : ""}{probabilityDelta[1]} pp · 2 {probabilityDelta[2] > 0 ? "+" : ""}{probabilityDelta[2]} pp</span>
-                <small>{snapshot?.prediction_factors?.filter((factor) => factor.impact !== "pendiente").slice(0, 2).map((factor) => factor.factor).join(" · ") || "cambio de parámetros y datos disponibles"}</small>
-              </div>
+      {/* ============ 2 · ONCES PROBABLES + JUGADORES ============ */}
+      {m.alineacion && <div className="section-anchor" id="match-lineup"><Alineacion m={m} a={m.alineacion} canProps={canProps} onUpgrade={onUpgrade} /></div>}
+      {m.player_markets && <PlayerMarkets pm={m.player_markets} home={m.home} away={m.away} />}
+
+      {/* ============ 3 · PREDICCIONES POR MERCADO ============ */}
+      {(m.statsReal || (m.finished && m.result)) ? (
+        <div className="section-anchor" id="match-stats"><PostMatchStats m={m} /></div>
+      ) : m.stats && (
+        <div className="card section-anchor" id="match-stats">
+          <div className="lbl">Predicciones por mercado <span className="dim">· por encima / por debajo / exacto, con tendencia</span></div>
+          <StyleSummary m={m} />
+          {m.markets_detail ? <MarketsDetail detail={m.markets_detail} /> : (<>
+            <table>
+              <thead><tr><th>Métrica</th><th>Local</th><th>Visit.</th><th>Total</th><th>Tend.</th></tr></thead>
+              <tbody>
+                {[["goals", "Goles"], ["shots", "Remates"], ["sot", "Tiros a puerta"], ["corners", "Córners"],
+                  ["fouls", "Faltas"], ["yellows", "Amarillas"], ["reds", "Rojas"], ["offsides", "Fueras de juego"]]
+                  .filter(([k]) => m.stats[k]).map(([k, lab]) => (
+                    <tr key={k}><td>{lab}</td><td>{m.stats[k].home}</td><td>{m.stats[k].away}</td><td><b>{m.stats[k].total}</b></td>
+                      <td><TrendArrow t={m.tendencias?.[k]} /></td></tr>
+                  ))}
+              </tbody>
+            </table>
+            {m.tendencias && Object.values(m.tendencias).some((t) => t.dir !== "flat") && (
+              <p className="mut" style={{ marginTop: 8 }}>
+                ↑/↓ = se espera más/menos de lo habitual según la forma reciente y el descanso.
+                {" "}{Object.values(m.tendencias).filter((t) => t.dir !== "flat").map((t) => `${t.label}: ${t.reason}`).join(" · ")}.
+              </p>
             )}
-            {(() => {
-              const hc = accent(m.homeColors), ac = accent(m.awayColors);
-              const hs = hc && hc.startsWith("#") ? { background: hc, color: "#fff" } : {};
-              const as = ac && ac.startsWith("#") ? { background: ac, color: "#fff" } : {};
-              return (
-                <div className="pbar">
-                  <div className="seg s1" style={{ flex: m.probs[0], ...hs }} title={`Gana ${m.home}: ${m.probs[0]}%`}>{m.probs[0] > 8 ? m.probs[0] + "%" : ""}</div>
-                  <div className="seg sx" style={{ flex: m.probs[1] }} title={`Empate: ${m.probs[1]}%`}>{m.probs[1] > 8 ? m.probs[1] + "%" : ""}</div>
-                  <div className="seg s2" style={{ flex: m.probs[2], ...as }} title={`Gana ${m.away}: ${m.probs[2]}%`}>{m.probs[2] > 8 ? m.probs[2] + "%" : ""}</div>
-                </div>
-              );
-            })()}
-            <div className="chips">
-              <span className="chip" title="Marcador exacto más probable según el modelo">Marcador <b>{m.markets.marcador}</b></span>
-              <span className="chip help" title="Goles esperados (xG): calidad y cantidad de ocasiones que se esperan por equipo">xG <b>{m.xg[0]}–{m.xg[1]}</b></span>
-              <span className="chip help" title="BTTS = ambos equipos marcan (Both Teams To Score)">BTTS <b>{Math.round(m.markets.btts * 100)}%</b></span>
-              {m.score_distribution?.total_goals_p10_p50_p90 && <span className="chip" title="Percentiles 10, 50 y 90 de la distribución de goles">Rango goles P10–P90 <b>{m.score_distribution.total_goals_p10_p50_p90[0]}–{m.score_distribution.total_goals_p10_p50_p90[2]}</b></span>}
-            </div>
-            <MarketMovement odds={m.odds} />
-            <div className="lbl">Mapa de marcadores (local ↓ / visitante →)</div>
-            <Heat M={M} />
-          </div>
-
-          {!m.finished && <CommittedPick c={m.committed} home={m.home} away={m.away} />}
-
-          <StateSimulation simulation={m.state_simulation} home={m.home} away={m.away} />
-
-          {!m.finished && (<>
-          <div className="card">
-            <div className="lbl">Over / Under goles</div>
-            <div className="row">
-              <input type="range" min="0.5" max="6.5" step="0.5" value={ouL} className="grow"
-                aria-label="Línea de goles"
-                onChange={(e) => setOuL(Number(e.target.value))} />
-              <span className="pill y">{ouL}</span>
-            </div>
-            <div className="kv"><span>Over {ouL}</span><b>{(over(M, ouL) * 100).toFixed(1)}% · cuota {(1 / over(M, ouL)).toFixed(2)}</b></div>
-            <div className="kv"><span>Under {ouL}</span><b>{((1 - over(M, ouL)) * 100).toFixed(1)}% · cuota {(1 / (1 - over(M, ouL))).toFixed(2)}</b></div>
-          </div>
-
-          <div className="card">
-            <div className="lbl">Hándicap asiático (local)</div>
-            <div className="row">
-              <input type="range" min="-3" max="3" step="0.25" value={hcL} className="grow"
-                aria-label="Línea de hándicap asiático local"
-                onChange={(e) => setHcL(Number(e.target.value))} />
-              <span className="pill y">{hcL > 0 ? "+" + hcL : hcL}</span>
-            </div>
-            {(() => { const r = ah(M, hcL, "home"); return (<>
-              <div className="kv"><span>Gana</span><b>{(r.win * 100).toFixed(1)}%</b></div>
-              <div className="kv"><span>Nulo (push)</span><b>{(r.push * 100).toFixed(1)}%</b></div>
-              <div className="kv"><span>Pierde</span><b>{(r.lose * 100).toFixed(1)}%</b></div>
-            </>); })()}
-          </div>
-
-          <div className="card">
-            <div className="lbl">Calculadora de value</div>
-            <div className="row">
-              <select aria-label="Mercado de la calculadora de value" value={vSel} onChange={(e) => setVSel(e.target.value)}>
-                <option value="1">1</option><option value="X">X</option><option value="2">2</option>
-                <option value="ov">Over (línea de arriba)</option>
-                <option value="un">Under (línea de arriba)</option>
-                <option value="btts">BTTS Sí</option>
-              </select>
-              <input aria-label="Cuota de la calculadora de value" type="number" step="0.01" value={vOdds} style={{ width: 120 }}
-                onChange={(e) => setVOdds(e.target.value)} />
-            </div>
-            <div className="kv"><span>Prob. modelo</span><b>{(vProb * 100).toFixed(1)}%</b></div>
-            <div className="kv"><span>Cuota justa</span><b>{(1 / vProb).toFixed(2)}</b></div>
-            <div className="kv"><span>Edge</span><b className={edge > 0 ? "value-yes" : "value-no"}>{(edge * 100).toFixed(1)}%</b></div>
-            <div className="kv"><span>Recomendación</span>
-              {abstain ? <span className="value-no">NO APOSTAR · confianza insuficiente</span> : edge > 0.02 ? <span className="pill y">APOSTAR · {stake.toFixed(2)}€</span> : <span className="value-no">Sin value</span>}</div>
-          </div>
           </>)}
+        </div>
+      )}
 
-          {(m.statsReal || (m.finished && m.result)) ? (
-            <PostMatchStats m={m} />
-          ) : m.stats && (
-            <div className="card section-anchor" id="match-stats">
-              <div className="lbl">Predicciones por mercado <span className="dim">· por encima / por debajo / exacto, con tendencia</span></div>
-              <StyleSummary m={m} />
-              {m.markets_detail ? <MarketsDetail detail={m.markets_detail} /> : (<>
-                <table>
-                  <thead><tr><th>Métrica</th><th>Local</th><th>Visit.</th><th>Total</th><th>Tend.</th></tr></thead>
-                  <tbody>
-                    {[["goals", "Goles"], ["shots", "Remates"], ["sot", "Tiros a puerta"], ["corners", "Córners"],
-                      ["fouls", "Faltas"], ["yellows", "Amarillas"], ["reds", "Rojas"], ["offsides", "Fueras de juego"]]
-                      .filter(([k]) => m.stats[k]).map(([k, lab]) => (
-                        <tr key={k}><td>{lab}</td><td>{m.stats[k].home}</td><td>{m.stats[k].away}</td><td><b>{m.stats[k].total}</b></td>
-                          <td><TrendArrow t={m.tendencias?.[k]} /></td></tr>
-                      ))}
-                  </tbody>
-                </table>
-                {m.tendencias && Object.values(m.tendencias).some((t) => t.dir !== "flat") && (
-                  <p className="mut" style={{ marginTop: 8 }}>
-                    ↑/↓ = se espera más/menos de lo habitual según la forma reciente y el descanso.
-                    {" "}{Object.values(m.tendencias).filter((t) => t.dir !== "flat").map((t) => `${t.label}: ${t.reason}`).join(" · ")}.
-                  </p>
-                )}
-              </>)}
-            </div>
+      {/* ============ 4 · SIMULADOR DE RESULTADOS ============ */}
+      <StateSimulation simulation={m.state_simulation} home={m.home} away={m.away} />
+
+      {/* ============ 5 · CONTEXTO ============ */}
+      {(m.venue_meta || m.official_context?.referee || m.weather || (m.prediction_factors || []).length > 0 || m.lineup_impact) && (
+        <div className="card section-anchor" id="match-context">
+          <div className="lbl">Contexto</div>
+          {m.venue_meta && <div className="kv"><span>Estadio</span><b>{m.venue_meta.name} · {m.venue_meta.city}</b></div>}
+          {m.official_context?.referee && <div className="kv"><span>Árbitro</span><b>{m.official_context.referee}{(m.official_context.provider || m.official_context.source) ? ` · ${m.official_context.provider || m.official_context.source}` : ""}</b></div>}
+          <RefereeProfile profile={m.official_context?.referee_profile} />
+          {m.weather && <>
+            <div className="kv"><span>Tiempo al saque inicial</span><b>{m.weather.temperature_c} °C · sensación {m.weather.apparent_temperature_c} °C</b></div>
+            <div className="kv"><span>Lluvia / viento</span><b>{m.weather.precipitation_probability_pct}% · {m.weather.wind_kmh} km/h</b></div>
+            <div className="kv"><span>Estrés térmico</span><b>{m.weather.heat_stress?.level || "—"}</b></div>
+          </>}
+          {(m.prediction_factors || []).map((factor) => (
+            <div className="kv" key={factor.factor}><span>{factor.factor} <span className="dim">· {factor.detail}</span></span><b>{factor.impact}</b></div>
+          ))}
+          {m.lineup_impact && ((m.lineup_impact.home?.official_absences ?? 0) + (m.lineup_impact.away?.official_absences ?? 0) > 0 || m.lineup_impact.confidence_penalty_pp) && (
+            <div className="kv"><span>Impacto del once <span className="dim">· evidencia {m.lineup_impact.evidence}</span></span><b>{(m.lineup_impact.home?.official_absences ?? 0) + (m.lineup_impact.away?.official_absences ?? 0)} bajas · −{m.lineup_impact.confidence_penalty_pp ?? 0} pp confianza</b></div>
           )}
+          <p className="note source-note">{m.weather ? `Open-Meteo · ${m.weather.license}${m.weather.source_updated_at ? ` · actualizada ${new Date(m.weather.source_updated_at).toLocaleString("es-ES")}` : ""}. ` : ""}Clima, árbitro y bajas ajustan explicación/confianza; no alteran el marcador hasta superar validación histórica.</p>
+        </div>
+      )}
 
-          <div className="card">
-            <div className="lbl">Marcadores más probables</div>
+      <WeatherAdjustmentPanel adjustment={m.weather_adjustment} />
+      <OfficialStatsPanel match={m} />
+
+      {/* ============ 6 · PERFIL DE EQUIPO ============ */}
+      {m.tactical_matchup && (
+        <div className="card">
+          <div className="lbl">Perfil de equipo <span className="dim">· con fundamento</span></div>
+          <div className="kv"><span>Volumen de remate proyectado</span><b>{m.tactical_matchup.expected_shot_pressure?.home ?? "—"} – {m.tactical_matchup.expected_shot_pressure?.away ?? "—"}</b></div>
+          <div className="kv"><span>Fiabilidad del perfil</span><b>{m.tactical_matchup.reliability} · {m.tactical_matchup.minimum_samples} partidos por split</b></div>
+          <StyleRadar matchup={m.tactical_matchup} home={m.home} away={m.away} />
+          <TacticalProfile matchup={m.tactical_matchup} home={m.home} away={m.away} />
+          {(m.tactical_matchup.notes || []).map((note) => <p className="mut" key={note}>• {note}</p>)}
+        </div>
+      )}
+
+      {/* ============ 7 · CARA A CARA + MARCADORES ============ */}
+      {((Array.isArray(m.h2h) && m.h2h.length > 0) || M) && (
+        <div className="card" style={{ overflowX: "auto" }}>
+          <H2H h2h={m.h2h} />
+          {M && <>
+            <div className="lbl" style={{ marginTop: (Array.isArray(m.h2h) && m.h2h.length > 0) ? 10 : 0 }}>Marcadores más probables</div>
             <div className="chips">
               {topScores(M, 6).map(([x, y, pr]) => (
                 <span key={x + "-" + y} className="chip">{x}-{y} <b>{(pr * 100).toFixed(1)}%</b></span>
               ))}
             </div>
-          </div>
-        </>
+          </>}
+        </div>
       )}
+
+      {/* Secundario: cómo se movió el pronóstico y su cronología */}
+      <PredictionMovement m={m} />
+      <PredictionTimelinePanel m={m} />
     </div>
   );
 }
