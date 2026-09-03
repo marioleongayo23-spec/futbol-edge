@@ -844,7 +844,7 @@ export default function MatchDetail({ m, bankroll, onBack, onTeam, players, plan
         <div className="card">
           <div className="lbl">Contexto del partido</div>
           {m.venue_meta && <div className="kv"><span>Estadio</span><b>{m.venue_meta.name} · {m.venue_meta.city}</b></div>}
-          {m.official_context?.referee && <div className="kv"><span>Árbitro</span><b>{m.official_context.referee} · API-Football</b></div>}
+          {m.official_context?.referee && <div className="kv"><span>Árbitro</span><b>{m.official_context.referee}{(m.official_context.provider || m.official_context.source) ? ` · ${m.official_context.provider || m.official_context.source}` : ""}</b></div>}
           <RefereeProfile profile={m.official_context?.referee_profile} />
           {m.weather && <>
             <div className="kv"><span>Tiempo al saque inicial</span><b>{m.weather.temperature_c} °C · sensación {m.weather.apparent_temperature_c} °C</b></div>

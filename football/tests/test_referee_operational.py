@@ -55,7 +55,9 @@ class FakeRefereeModel:
 
     def adjust_stats(self, stats, referee):
         out = {key: dict(value) for key, value in stats.items()}
-        out["fouls"] = {"home": 12.1, "away": 13.2, "total": 25.3}
+        home = round(float(out["fouls"]["home"]) * 1.1, 2)
+        away = round(float(out["fouls"]["away"]) * 1.1, 2)
+        out["fouls"] = {"home": home, "away": away, "total": round(home + away, 2)}
         return out, ["fouls"]
 
 
@@ -90,3 +92,35 @@ def test_contexto_oficial_aplica_arbitro_solo_mediante_modelo_validado():
     assert match["official_context"]["referee_adjustment_applied"] == ["fouls"]
     assert match["stats"]["fouls"]["total"] == 25.3
     assert match["stats"]["corners"]["total"] == 10.0
+
+
+def test_contexto_oficial_no_aplica_dos_veces_el_mismo_factor():
+    now = datetime(2026, 8, 24, 20, 0, tzinfo=MADRID)
+    match = {
+        "home": "Atletico Madrid",
+        "away": "Valencia",
+        "league": "LaLiga",
+        "kickoff": datetime(2026, 8, 24, 21, 0, tzinfo=MADRID).isoformat(),
+        # football-data.org ya aplicó x1.1 sobre la base 11/12.
+        "stats": {"fouls": {"home": 12.1, "away": 13.2, "total": 25.3}},
+        "official_context": {
+            "referee": "Javier Alberola Rojas",
+            "provider": "football-data.org",
+            "referee_adjustment_applied": ["fouls"],
+            "referee_profile": {
+                "metrics": {"fouls": {"factor": 1.1, "accepted": True}}
+            },
+        },
+    }
+
+    attach_official_context(
+        [match],
+        now,
+        client=FakeClient(),
+        stats_models={"LaLiga": FakeStatsPredictor()},
+    )
+
+    # API-Football confirma el árbitro: se deshace el primer x1.1 y se aplica
+    # una sola vez desde la base. Nunca debe acabar en 27.83 (x1.1 al cuadrado).
+    assert match["stats"]["fouls"] == {"home": 12.1, "away": 13.2, "total": 25.3}
+    assert match["official_context"]["provider"] == "API-Football"

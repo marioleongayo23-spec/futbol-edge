@@ -365,6 +365,7 @@ def fixture_payload(
         if ref_model is not None:
             try:
                 oc = {"referee": fixture.referee, "source": "football-data.org",
+                      "provider": "football-data.org",
                       "source_updated_at": generated_at}
                 profile = ref_model.context(fixture.referee)
                 if profile:

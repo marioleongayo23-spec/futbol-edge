@@ -60,3 +60,9 @@ test("el clima identifica explícitamente la previsión usada a la hora del part
   assert.match(WEATHER_SOURCE, /weather_wind_kmh/);
   assert.match(WEATHER_SOURCE, /última consulta/);
 });
+
+test("el árbitro muestra la procedencia real en vez de fijar un proveedor", () => {
+  const matchDetail = SOURCES.find(({ name }) => name === "MatchDetail.jsx").source;
+  assert.match(matchDetail, /official_context\.provider \|\| m\.official_context\.source/);
+  assert.doesNotMatch(matchDetail, /official_context\.referee\} · API-Football/);
+});

@@ -66,6 +66,7 @@ def test_fixture_payload_enciende_arbitro():
     oc = p.get("official_context") or {}
     assert oc.get("referee") == "Pepe Prieto"
     assert oc.get("source") == "football-data.org"
+    assert oc.get("provider") == "football-data.org"
     assert oc.get("referee_profile")  # ≥6 partidos del árbitro → hay perfil
     # el ajuste (aceptado) marca el mercado de tarjetas
     yellows = next((mk for mk in p.get("markets_detail", []) if mk["stat"] == "yellows"), None)
