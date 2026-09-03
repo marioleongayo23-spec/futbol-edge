@@ -1291,6 +1291,8 @@ def build_dashboard(
         matches, now, previous_matches=(previous or {}).get("matches")
     )
     state_simulations = attach_state_simulations(matches)
+    from .matchday_player_props_fill import attach_player_markets
+    player_markets_count = attach_player_markets(matches, now)
     players = _merge_lineup_players(players, matches)
     annotate_prediction_context(matches)
     market_value = attach_extended_market_value(
@@ -1370,6 +1372,7 @@ def build_dashboard(
             "con_prediccion": sum(1 for m in matches if m.get("engine") in {"dixon-coles", "ensemble", "residual"}),
             "con_cuotas": sum(1 for m in matches if isinstance(m.get("odds"), dict)),
             "con_arbitro": sum(1 for m in matches if (m.get("official_context") or {}).get("referee")),
+            "con_player_markets": sum(1 for m in matches if m.get("player_markets")),
         },
         "matches": matches,
         "errors": errors,

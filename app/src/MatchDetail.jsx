@@ -673,6 +673,50 @@ function RefereeProfile({ profile }) {
   );
 }
 
+/* Top-5 por jugador y métrica (goles, remates, tiros, asistencias, faltas,
+   tarjetas): los 5 de cada equipo con mayor valor esperado y una línea "over"
+   recomendada con su probabilidad. Reparto por rol de la predicción de equipo
+   (o muestra real donde existe); nunca inventa una cuota de casa. */
+const PM_METRIC_TABS = [
+  ["g", "Goles"], ["r", "Remates"], ["rp", "Tiros"], ["a", "Asist."],
+  ["fr", "Faltas rec."], ["fc", "Faltas com."], ["t", "Tarjetas"],
+];
+function PlayerMarkets({ pm, home, away }) {
+  const metrics = pm?.metrics;
+  const [sel, setSel] = useState(metrics?.[0]?.metric || "g");
+  if (!Array.isArray(metrics) || !metrics.length) return null;
+  const cur = metrics.find((x) => x.metric === sel) || metrics[0];
+  const pct = (v) => (v == null ? "—" : `${Math.round(v * 100)}%`);
+  const label = cur.label.toLowerCase();
+  const col = (name, rows, side) => (
+    <div className="pm-col">
+      <div className="tn">{name}</div>
+      {!(rows || []).length ? <div className="dim" style={{ fontSize: ".8rem" }}>sin datos</div> : rows.map((p, i) => {
+        const isBest = cur.best && cur.best.side === side && cur.best.jugador === p.jugador;
+        return (
+          <div className={"pm-row" + (isBest ? " pm-best" : "")} key={p.jugador + i}>
+            <span className="pm-name">{isBest ? "★ " : ""}{p.jugador}{p.pos ? <span className="dim"> · {p.pos}</span> : null}{p.real && <span className="dim" title="Con muestra individual real"> ·✓</span>}</span>
+            <span className="pm-val"><b>{p.value}</b>{p.line != null ? <span className="pm-line"> · Over {p.line} {pct(p.over)}</span> : <span className="dim" title="Probabilidad de al menos 1"> · {pct(p.over05)} de ≥1</span>}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+  return (
+    <div className="card">
+      <div className="row-between"><div className="lbl">Top 5 por jugador y métrica</div>{!pm.has_real_sample && <span className="pill" title="Reparto por rol de la predicción de equipo; sin muestra individual real todavía">estimación por rol</span>}</div>
+      <div className="pm-tabs">
+        {PM_METRIC_TABS.filter(([k]) => metrics.some((x) => x.metric === k)).map(([k, lab]) => (
+          <button type="button" key={k} className={"pm-tab" + (k === sel ? " on" : "")} onClick={() => setSel(k)}>{lab}</button>
+        ))}
+      </div>
+      {cur.best && <div className="pm-bestbet">★ Mejor apuesta: <b>{cur.best.jugador}</b> · Over {cur.best.line} {label} · {pct(cur.best.over)}</div>}
+      <div className="pm-grid">{col(home, cur.home, "home")}{col(away, cur.away, "away")}</div>
+      <p className="note source-note">{pm.method}. «Over» = prob. de superar esa línea (Poisson sobre el valor esperado); no incluye cuota de casa. ·✓ = jugador con muestra individual real.</p>
+    </div>
+  );
+}
+
 export default function MatchDetail({ m, bankroll, onBack, onTeam, players, plan = "vip", onUpgrade }) {
   const canProps = hasAccess(plan, "props");
   const [ouL, setOuL] = useState(2.5);
@@ -823,6 +867,8 @@ export default function MatchDetail({ m, bankroll, onBack, onTeam, players, plan
 
       {m.alineacion && <div className="section-anchor" id="match-lineup"><Alineacion m={m} a={m.alineacion} canProps={canProps} onUpgrade={onUpgrade} /></div>}
       <LineupImpact impact={m.lineup_impact} home={m.home} away={m.away} />
+
+      {m.player_markets && <PlayerMarkets pm={m.player_markets} home={m.home} away={m.away} />}
 
       {(players || m.alineacion) && (() => {
         const fromLineup = (names, keys) => (names || []).map((name) => {
