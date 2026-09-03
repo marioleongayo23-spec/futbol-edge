@@ -1,6 +1,6 @@
 {
   "schema_version": 7,
-  "generated_at": "2026-09-03T12:58:53.923293+02:00",
+  "generated_at": "2026-09-03T13:04:19.939593+02:00",
   "season": 2026,
   "quiniela": {
     "jornada": "4",
@@ -92403,7 +92403,7 @@
           "market_source": "The Odds API",
           "source_updated_at": "2026-09-03T10:56:45Z",
           "weather_adjusted": true,
-          "prediction_refreshed_at": "2026-09-03T12:58:53.923293+02:00"
+          "prediction_refreshed_at": "2026-09-03T13:04:19.939593+02:00"
         },
         {
           "market": "ou25",
@@ -92414,7 +92414,7 @@
           "market_source": "The Odds API",
           "source_updated_at": "2026-09-03T10:56:45Z",
           "weather_adjusted": true,
-          "prediction_refreshed_at": "2026-09-03T12:58:53.923293+02:00"
+          "prediction_refreshed_at": "2026-09-03T13:04:19.939593+02:00"
         },
         {
           "market": "1x2",
@@ -95082,7 +95082,7 @@
           "wind_kmh": 4.3,
           "weather_code": 0
         },
-        "applied_at": "2026-09-03T12:58:53.923293+02:00",
+        "applied_at": "2026-09-03T13:04:19.939593+02:00",
         "reason": "condiciones dentro de umbrales neutros",
         "reasons": [],
         "multipliers": {
@@ -96041,7 +96041,7 @@
           "weather": true,
           "market_odds": true
         },
-        "refreshed_at": "2026-09-03T12:58:53.923293+02:00"
+        "refreshed_at": "2026-09-03T13:04:19.939593+02:00"
       },
       "prediction_factors": [
         {
@@ -96080,7 +96080,7 @@
         "label": "Pronóstico publicable",
         "reasons": [],
         "policy": "abstención automática por incertidumbre o falta de evidencia",
-        "refreshed_at": "2026-09-03T12:58:53.923293+02:00"
+        "refreshed_at": "2026-09-03T13:04:19.939593+02:00"
       },
       "prediction_snapshot": {
         "generated_at": "2026-09-03T10:29:27.810826+02:00",
@@ -96792,7 +96792,9 @@
         "absences_checked_at": "2026-09-03T12:56:35.604066+02:00",
         "absences_check_result": "fixture_not_found",
         "player_props_checked_at": "2026-09-03T12:58:45.704118+02:00",
-        "player_props_check_result": "complete_hybrid"
+        "player_props_check_result": "complete_hybrid",
+        "weather_checked_at": "2026-09-03T13:04:05.147140+02:00",
+        "weather_check_result": "ok"
       },
       "current_squads": {
         "season_context": 2026,
@@ -97190,7 +97192,7 @@
         "provider": "The Odds API"
       },
       "prediction_live_refresh": {
-        "checked_at": "2026-09-03T12:58:53.923293+02:00",
+        "checked_at": "2026-09-03T13:04:19.939593+02:00",
         "cadence_target_minutes": 5,
         "model_retrained": false,
         "pure_model_probs_changed": false,
@@ -97213,10 +97215,10 @@
           },
           "weather": {
             "state": "ok",
-            "required": false,
-            "checked_at": "2026-09-03T10:29:27.810826+02:00",
+            "required": true,
+            "checked_at": "2026-09-03T13:04:05.147140+02:00",
             "source": "Open-Meteo",
-            "detail": "previsión disponible"
+            "detail": "ok"
           },
           "absences": {
             "state": "ok",
@@ -629683,14 +629685,14 @@
     }
   },
   "feature_truth_table": {
-    "generated_at": "2026-09-03T12:58:53.923293+02:00",
+    "generated_at": "2026-09-03T13:04:19.939593+02:00",
     "principle": "candidate -> leakage-safe snapshot -> walk-forward -> compare vs accepted engine + no-vig market -> promote only on improvement",
     "eligible_matches": 489,
     "features": [
       {
         "feature": "dixon_coles_score_model",
         "source": "Resultados históricos reales · Football-Data/API-Football + score model Dixon-Coles",
-        "available_at": "2026-09-03T12:58:53.923293+02:00",
+        "available_at": "2026-09-03T13:04:19.939593+02:00",
         "coverage": {
           "covered": 489,
           "eligible": 489,
@@ -629712,7 +629714,7 @@
       {
         "feature": "elo",
         "source": "Resultados históricos reales transformados en rating Elo",
-        "available_at": "2026-09-03T12:58:53.923293+02:00",
+        "available_at": "2026-09-03T13:04:19.939593+02:00",
         "coverage": {
           "covered": 489,
           "eligible": 489,
@@ -629733,7 +629735,7 @@
       {
         "feature": "team_stat_model",
         "source": "football-data.co.uk · históricos de remates, SOT, córners, faltas y tarjetas",
-        "available_at": "2026-09-03T12:58:53.923293+02:00",
+        "available_at": "2026-09-03T13:04:19.939593+02:00",
         "coverage": {
           "covered": 350,
           "eligible": 489,
@@ -629838,7 +629840,7 @@
       {
         "feature": "tactical_matchup",
         "source": "Perfiles observados casa/fuera derivados de football-data.co.uk",
-        "available_at": "2026-09-03T12:58:53.923293+02:00",
+        "available_at": "2026-09-03T13:04:19.939593+02:00",
         "coverage": {
           "covered": 350,
           "eligible": 489,
