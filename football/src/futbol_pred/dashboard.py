@@ -1310,6 +1310,7 @@ def build_dashboard(
             "jugados": sum(1 for m in matches if m.get("finished")),
             "proximos": sum(1 for m in matches if not m.get("finished")),
             "con_prediccion": sum(1 for m in matches if m.get("engine") in {"dixon-coles", "ensemble", "residual"}),
+            "con_cuotas": sum(1 for m in matches if isinstance(m.get("odds"), dict)),
         },
         "matches": matches,
         "errors": errors,
