@@ -87,3 +87,30 @@
   letter-spacing: 0.04em;
   margin-bottom: 4px;
 }
+
+/* Simulador: márgenes de victoria desglosados. */
+.scenario-margins {
+  display: grid;
+  gap: 6px;
+  margin-top: 4px;
+}
+.scenario-margins > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 5px 8px;
+  background: var(--card2, rgba(255, 255, 255, 0.03));
+  border-radius: 8px;
+}
+.scenario-margins .tn {
+  font-weight: 600;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.scenario-margins small {
+  color: var(--muted);
+  text-align: right;
+}

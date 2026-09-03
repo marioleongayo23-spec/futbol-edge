@@ -62,6 +62,26 @@ def simulate_match_states(
 
     totals = home + away
     neutral_total = max(0.0, float(home_xg) + float(away_xg))
+
+    # Desglose que pedía el simulador: marcadores exactos simulados y márgenes de
+    # victoria. Se obtienen del MISMO recuento Monte Carlo, sin otra hipótesis.
+    from collections import Counter
+
+    pairs = Counter(zip(home.tolist(), away.tolist()))
+    exact_scores = [
+        {"score": f"{h}-{a}", "probability": round(count / n, 4)}
+        for (h, a), count in pairs.most_common(8)
+    ]
+    diff = home - away
+    winning_margins = {
+        "home_by_1": round(float(np.mean(diff == 1)), 4),
+        "home_by_2": round(float(np.mean(diff == 2)), 4),
+        "home_by_3plus": round(float(np.mean(diff >= 3)), 4),
+        "draw": round(float(np.mean(diff == 0)), 4),
+        "away_by_1": round(float(np.mean(diff == -1)), 4),
+        "away_by_2": round(float(np.mean(diff == -2)), 4),
+        "away_by_3plus": round(float(np.mean(diff <= -3)), 4),
+    }
     return {
         "method": "monte_carlo_5min_game_state_v1",
         "status": "scenario_only_not_in_1x2",
@@ -86,6 +106,8 @@ def simulate_match_states(
             int(np.quantile(totals, 0.10, method="lower")),
             int(np.quantile(totals, 0.90, method="higher")),
         ],
+        "exact_scores": exact_scores,
+        "winning_margins": winning_margins,
         "assumptions": {
             "temperature_c": temperature_c,
             "pace_multiplier": pace,

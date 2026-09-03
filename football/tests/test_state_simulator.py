@@ -24,3 +24,18 @@ def test_calor_reduce_ritmo_esperado_sin_tocar_prediccion_publicada():
     assert attach_state_simulations([match]) == 1
     assert match["probs"] == [45, 29, 26]
     assert match["state_simulation"]["status"] == "scenario_only_not_in_1x2"
+
+
+def test_desglose_marcadores_exactos_y_margenes():
+    """El simulador ahora desglosa marcadores exactos y márgenes de victoria,
+    ambos derivados del mismo Monte Carlo (los márgenes suman 1)."""
+    from futbol_pred.model.state_simulator import simulate_match_states
+    s = simulate_match_states(1.8, 1.0, seed="margin", simulations=6000)
+    assert s["exact_scores"] and all("-" in e["score"] and e["probability"] > 0 for e in s["exact_scores"])
+    # ordenados de más a menos probable
+    probs = [e["probability"] for e in s["exact_scores"]]
+    assert probs == sorted(probs, reverse=True)
+    wm = s["winning_margins"]
+    assert abs(sum(wm.values()) - 1.0) < 1e-6
+    # el local es favorito (1.8 vs 1.0): gana por 1 más que pierde por 1
+    assert wm["home_by_1"] > wm["away_by_1"]
