@@ -575,10 +575,14 @@ function MarketsDetail({ detail }) {
       <div className="tbl-wrap">
         <table className="mk2-tbl">
           <thead><tr>
-            <th className="tl">Mercado</th><th>Esperado</th><th>Línea</th>
-            <th title="Probabilidad de quedar por encima de la línea">▲ Over</th>
-            <th title="Probabilidad de quedar por debajo de la línea">▼ Under</th>
-            <th title="Recuento exacto más probable">Exacto</th>
+            <th className="tl">Mercado</th>
+            <th title="Valor esperado del equipo local">Local</th>
+            <th title="Valor esperado del equipo visitante">Visit.</th>
+            <th title="Valor esperado total (global)">Total</th>
+            <th>Línea</th>
+            <th title="Probabilidad de quedar por encima de la línea (sobre el total)">▲ Over</th>
+            <th title="Probabilidad de quedar por debajo de la línea (sobre el total)">▼ Under</th>
+            <th title="Recuento exacto total más probable">Exacto</th>
             <th>Tend.</th>
           </tr></thead>
           <tbody>
@@ -589,7 +593,9 @@ function MarketsDetail({ detail }) {
               return (
                 <tr key={mk.stat}>
                   <td className="tl">{mk.label}{mk.referee_moved && <span className="dim" title="Ajustado por el perfil del árbitro asignado"> · árbitro</span>}</td>
-                  <td><b>{mk.expected?.total}</b>{mk.expected?.home != null && <span className="dim"> · {mk.expected.home}–{mk.expected.away}</span>}</td>
+                  <td>{mk.expected?.home ?? "—"}</td>
+                  <td>{mk.expected?.away ?? "—"}</td>
+                  <td><b>{mk.expected?.total}</b></td>
                   <td>{mk.main_line}</td>
                   <td className={overSel ? "mk2-pick" : ""}>{pct(main.over)}</td>
                   <td className={underSel ? "mk2-pick" : ""}>{pct(main.under)}</td>
