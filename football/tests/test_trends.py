@@ -118,3 +118,38 @@ def test_poco_descanso_empuja_tarjetas():
     tm.last_played["B"] = base
     t = tm.trend("A", "B", kickoff=base + timedelta(days=2))
     assert "descanso" in t["yellows"]["reason"]
+
+
+def test_matchup_profile_con_fundamento_y_rival():
+    """El pentágono ahora explica cada eje (fundamento), compara nivel
+    (superioridad) y expone valores 'vs este rival' y métricas 0-100 extra."""
+    base = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    fixtures, rows = [], []
+    teams = ["A", "B", "C", "D", "E"]
+    gf = {t: 0.6 + 0.5 * i for i, t in enumerate(teams)}
+    d = 0
+    for _ in range(4):
+        for h in teams:
+            for a in teams:
+                if h == a:
+                    continue
+                d += 1
+                k = base + timedelta(days=d)
+                hg, ag = round(gf[h] * 1.4), round(gf[a] * 1.0)
+                fixtures.append(_Fx(h, a, hg, ag, k))
+                rows.append(MatchStats(h, a, {"goals": (hg, ag), "shots": (12, 9),
+                                              "corners": (6, 4), "fouls": (13, 12),
+                                              "yellows": (2, 3)}, kickoff=k))
+    mp = TrendModel().fit(fixtures, rows, _id).matchup_profile("E", "A")
+    # Fundamento por eje del pentágono.
+    av = mp["home"]["style_vector"]["attack_volume"]
+    assert av["foundation"] and "percentil" in av["foundation"]
+    assert av["venue"] == "en casa"
+    # Contexto de superioridad y nota de casa/fuera.
+    assert mp["context"]["superiority"]["stronger"] in ("home", "away", "balanced", "unknown")
+    assert "casa" in mp["context"]["note"]
+    # Valores esperados teniendo en cuenta al rival.
+    assert set(mp["rival_adjusted"]) == {"shots", "corners", "cards"}
+    # Métricas 0-100 extra fuera del pentágono, con solidez/disciplina invertidas.
+    labels = {m["label"] for m in mp["home"]["extra_metrics"]}
+    assert {"Pegada", "Solidez defensiva", "Disciplina"} <= labels
