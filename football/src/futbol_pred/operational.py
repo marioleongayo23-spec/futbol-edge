@@ -83,6 +83,43 @@ def _official_poll_window(minutes_to_kickoff: float, attempts: dict) -> str | No
     return None
 
 
+def _recompute_referee_markets(match: dict, stats_model, applied: list[str]) -> None:
+    """Cuando el árbitro asignado mueve faltas/tarjetas, el mercado de esa
+    estadística (P encima/debajo/exacto) tiene que reflejarlo. Recalcula solo las
+    filas afectadas de ``markets_detail`` con las medias ya ajustadas por el
+    árbitro; el resto de mercados no se toca."""
+    detail = match.get("markets_detail")
+    stats = match.get("stats") or {}
+    if not isinstance(detail, list) or stats_model is None:
+        return
+    try:
+        from .model.market_lines import count_market
+    except Exception:  # noqa: BLE001
+        return
+    tend = match.get("tendencias") or {}
+    trend_for = {"yellows": tend.get("yellows"), "fouls": tend.get("fouls")}
+    index = {row.get("stat"): i for i, row in enumerate(detail) if isinstance(row, dict)}
+    for stat in applied:
+        row = stats.get(stat)
+        pos = index.get(stat)
+        if not isinstance(row, dict) or pos is None:
+            continue
+        try:
+            dispersion = float(stats_model.dispersion(stat))
+        except Exception:  # noqa: BLE001
+            dispersion = 1.2
+        try:
+            new_market = count_market(
+                stat, row["total"], dispersion,
+                mean_home=row.get("home"), mean_away=row.get("away"),
+                trend=trend_for.get(stat),
+            )
+        except Exception:  # noqa: BLE001
+            continue
+        new_market["referee_moved"] = True
+        detail[pos] = new_market
+
+
 def attach_official_context(matches: list[dict], now: datetime, client: ApiFootballClient | None = None, limit: int = 8, stats_models: dict[str, object] | None = None) -> int:
     """Busca el XI oficial en T-60 y, si aún no existe, reintenta en T-30."""
     client = client or ApiFootballClient()
@@ -146,6 +183,9 @@ def attach_official_context(matches: list[dict], now: datetime, client: ApiFootb
                         if applied:
                             match["stats"] = adjusted
                             official_context["referee_adjustment_applied"] = applied
+                            # El mercado de faltas/tarjetas se recalcula con la
+                            # línea que deja el perfil del árbitro asignado.
+                            _recompute_referee_markets(match, stats_model, applied)
                     except Exception:
                         pass
                 match["official_context"] = official_context

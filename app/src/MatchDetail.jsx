@@ -588,7 +588,7 @@ function MarketsDetail({ detail }) {
               const underSel = mk.pick?.side === "under";
               return (
                 <tr key={mk.stat}>
-                  <td className="tl">{mk.label}</td>
+                  <td className="tl">{mk.label}{mk.referee_moved && <span className="dim" title="Ajustado por el perfil del árbitro asignado"> · árbitro</span>}</td>
                   <td><b>{mk.expected?.total}</b>{mk.expected?.home != null && <span className="dim"> · {mk.expected.home}–{mk.expected.away}</span>}</td>
                   <td>{mk.main_line}</td>
                   <td className={overSel ? "mk2-pick" : ""}>{pct(main.over)}</td>
@@ -637,6 +637,32 @@ function CommittedPick({ c, home, away }) {
         {c.next_scoreline && <span className="chip">2º marcador <b>{c.next_scoreline}</b></span>}
       </div>
       <p className="note" style={{ marginTop: 6 }}>{c.why}</p>
+    </div>
+  );
+}
+
+/* Perfil del árbitro asignado: su tendencia histórica de tarjetas/faltas frente a
+   la media de la liga. "aplicado" = superó la validación temporal y ya mueve la
+   línea; "solo informativo" = se muestra pero no toca el número (honestidad). */
+function RefereeProfile({ profile }) {
+  const metrics = profile?.metrics;
+  if (!metrics || !Object.keys(metrics).length) return null;
+  const label = { yellows: "Tarjetas", fouls: "Faltas" };
+  return (
+    <div className="ref-profile">
+      {Object.entries(metrics).map(([stat, row]) => {
+        const pct = Math.round(((row.factor ?? 1) - 1) * 100);
+        const cls = !row.accepted ? "dim" : pct > 0 ? "trend-up" : pct < 0 ? "trend-down" : "";
+        return (
+          <div className="kv" key={stat}>
+            <span>{label[stat] || stat} del árbitro <span className="dim">· {row.n} partidos</span></span>
+            <b className={cls}>
+              {row.referee_avg}/partido <span className="dim">(liga {row.league_avg})</span>
+              {pct ? ` · ${pct > 0 ? "+" : ""}${pct}%` : ""} · {row.accepted ? "aplicado a la predicción" : "solo informativo"}
+            </b>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -769,6 +795,7 @@ export default function MatchDetail({ m, bankroll, onBack, onTeam, players, plan
           <div className="lbl">Contexto del partido</div>
           {m.venue_meta && <div className="kv"><span>Estadio</span><b>{m.venue_meta.name} · {m.venue_meta.city}</b></div>}
           {m.official_context?.referee && <div className="kv"><span>Árbitro</span><b>{m.official_context.referee} · API-Football</b></div>}
+          <RefereeProfile profile={m.official_context?.referee_profile} />
           {m.weather && <>
             <div className="kv"><span>Tiempo al saque inicial</span><b>{m.weather.temperature_c} °C · sensación {m.weather.apparent_temperature_c} °C</b></div>
             <div className="kv"><span>Lluvia / viento</span><b>{m.weather.precipitation_probability_pct}% · {m.weather.wind_kmh} km/h</b></div>
