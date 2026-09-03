@@ -156,31 +156,44 @@ class FootballDataUKClient:
     def get_odds(self, div_filter: str | None = None) -> list[dict]:
         """Cuotas de los próximos partidos desde fixtures.csv (gratis).
 
-        Devuelve [{div, home, away, odds:{'1x2':{...}, 'ou25':{...}}}]. Usa la
-        media de mercado (AvgH/D/A) y cae a Bet365 si falta. Es la vía libre
-        para value bets sin The Odds API.
+        Devuelve [{div, home, away, odds:{'1x2':{...}, 'ou25':{...}}}]. Es la vía
+        libre para value bets SIN The Odds API. fixtures.csv (pre-partido) no trae
+        las columnas de media/cierre (Avg*/*C*), así que se prueban MUCHAS casas
+        (Pinnacle, Bet365, William Hill, VC, Bwin, IW, Max) para no quedarnos sin
+        cuota si una falta. Reintento de red para robustez.
         """
-        try:
-            r = requests.get(FIXTURES_URL, timeout=self.timeout)
-            r.raise_for_status()
-        except requests.RequestException:
+        text = None
+        for attempt in range(3):
+            try:
+                r = requests.get(FIXTURES_URL, timeout=self.timeout)
+                r.raise_for_status()
+                text = _decode(r).lstrip("﻿")
+                break
+            except requests.RequestException:
+                text = None
+        if not text:
+            print("[odds] co.uk fixtures.csv no accesible tras reintentos")
             return []
+
         out: list[dict] = []
-        for row in csv.DictReader(io.StringIO(_decode(r).lstrip("﻿"))):
+        seen_div = 0
+        rows = list(csv.DictReader(io.StringIO(text)))
+        for row in rows:
             div = (row.get("Div") or "").strip()
             if div_filter and div != div_filter:
                 continue
+            seen_div += 1
             home, away = row.get("HomeTeam"), row.get("AwayTeam")
             if not home or not away:
                 continue
-            h = _num(row.get("AvgCH")) or _num(row.get("AvgH")) or _num(row.get("B365CH")) or _num(row.get("B365H"))
-            d = _num(row.get("AvgCD")) or _num(row.get("AvgD")) or _num(row.get("B365CD")) or _num(row.get("B365D"))
-            a = _num(row.get("AvgCA")) or _num(row.get("AvgA")) or _num(row.get("B365CA")) or _num(row.get("B365A"))
-            over = _num(row.get("AvgC>2.5")) or _num(row.get("Avg>2.5")) or _num(row.get("B365C>2.5")) or _num(row.get("B365>2.5"))
-            under = _num(row.get("AvgC<2.5")) or _num(row.get("Avg<2.5")) or _num(row.get("B365C<2.5")) or _num(row.get("B365<2.5"))
+            h = _pick(row, _ODDS_COLS["H"])
+            d = _pick(row, _ODDS_COLS["D"])
+            a = _pick(row, _ODDS_COLS["A"])
+            over = _pick(row, _ODDS_COLS["OV"])
+            under = _pick(row, _ODDS_COLS["UN"])
             ah_line = next((v for v in (_num(row.get("AHCh")), _num(row.get("AHh"))) if v is not None), None)
-            ah_home = next((v for v in (_num(row.get("AvgCAHH")), _num(row.get("AvgAHH")), _num(row.get("B365CAHH")), _num(row.get("B365AHH"))) if v and v > 1), None)
-            ah_away = next((v for v in (_num(row.get("AvgCAHA")), _num(row.get("AvgAHA")), _num(row.get("B365CAHA")), _num(row.get("B365AHA"))) if v and v > 1), None)
+            ah_home = _pick(row, _ODDS_COLS["AHH"])
+            ah_away = _pick(row, _ODDS_COLS["AHA"])
             odds: dict = {}
             if h and d and a:
                 odds["1x2"] = {"1": h, "X": d, "2": a}
@@ -193,6 +206,8 @@ class FootballDataUKClient:
                 if movement:
                     odds["_meta"] = movement
                 out.append({"div": div, "home": home, "away": away, "odds": odds})
+        if div_filter:
+            print(f"[odds] co.uk fixtures.csv: filas={len(rows)} {div_filter}={seen_div} con_1x2={len(out)}")
         return out
 
     def get_historical_closing_odds(self, league: str, season: int) -> list[dict]:
@@ -242,6 +257,37 @@ def _num(v) -> float | None:
         return float(v)
     except (TypeError, ValueError):
         return None
+
+
+# Casas a probar por mercado, en orden de preferencia (media/cierre primero, que
+# solo existen en históricos; luego casas individuales del fixtures.csv pre-partido:
+# Pinnacle, Bet365, William Hill, VC, Bwin, Interwetten, y el máximo de mercado).
+# Cuantas más casas, menos probable quedarse sin cuota si una columna falta.
+_ODDS_COLS = {
+    "H": ("AvgCH", "AvgH", "PSCH", "PSH", "B365CH", "B365H", "WHCH", "WHH",
+          "VCCH", "VCH", "BWCH", "BWH", "IWCH", "IWH", "MaxCH", "MaxH"),
+    "D": ("AvgCD", "AvgD", "PSCD", "PSD", "B365CD", "B365D", "WHCD", "WHD",
+          "VCCD", "VCD", "BWCD", "BWD", "IWCD", "IWD", "MaxCD", "MaxD"),
+    "A": ("AvgCA", "AvgA", "PSCA", "PSA", "B365CA", "B365A", "WHCA", "WHA",
+          "VCCA", "VCA", "BWCA", "BWA", "IWCA", "IWA", "MaxCA", "MaxA"),
+    "OV": ("AvgC>2.5", "Avg>2.5", "PC>2.5", "P>2.5", "B365C>2.5", "B365>2.5",
+           "MaxC>2.5", "Max>2.5"),
+    "UN": ("AvgC<2.5", "Avg<2.5", "PC<2.5", "P<2.5", "B365C<2.5", "B365<2.5",
+           "MaxC<2.5", "Max<2.5"),
+    "AHH": ("AvgCAHH", "AvgAHH", "PCAHH", "PAHH", "B365CAHH", "B365AHH",
+            "MaxCAHH", "MaxAHH"),
+    "AHA": ("AvgCAHA", "AvgAHA", "PCAHA", "PAHA", "B365CAHA", "B365AHA",
+            "MaxCAHA", "MaxAHA"),
+}
+
+
+def _pick(row: dict, cols) -> float | None:
+    """Primera cuota válida (>1) entre una lista priorizada de casas."""
+    for c in cols:
+        v = _num(row.get(c))
+        if v and v > 1.0:
+            return v
+    return None
 
 
 def _int(v) -> int | None:
