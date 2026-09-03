@@ -10,6 +10,7 @@ import PredictionTimelinePanel from "./PredictionTimelinePanel";
 import PredictionBuild from "./PredictionBuild";
 import { hasAccess } from "./plans";
 import { QualityBadge, MatchQualityCard } from "./MatchQuality";
+import "./markets-detail.css";
 
 function Teams({ m, onTeam }) {
   return (
@@ -241,7 +242,13 @@ function TeamHalf({ xi, positions, side, color }) {
     <div className={"pitch-half " + side}>
       {ordered.map((line, li) => (
         <div className="pitch-line" key={li}>
-          {(side === "away" ? line.slice().reverse() : line).map((p) => (
+          {/* Ambas mitades invierten el orden horizontal del XI. La mitad
+             visitante lo revierte de nuevo por CSS (row-reverse), de modo que
+             local y visitante quedan como MITADES ESPEJO: en un campo vertical
+             cada equipo ataca en sentido opuesto, así que el LI del local va a la
+             derecha y el del visitante a la izquierda (antes el local salía con
+             los laterales invertidos respecto al visitante). */}
+          {line.slice().reverse().map((p) => (
             <div className="player" key={p.name} title={`${p.name} · ${p.position}`}>
               <span className="dot" style={{ background: color }} />
               <span className="pn">{_short(p.name)}</span>
@@ -519,6 +526,84 @@ function PredictionMovement({ m }) {
   );
 }
 
+/* Predicciones por mercado: para cada estadística, prob. de quedar por ENCIMA /
+   por DEBAJO de la línea principal y el valor EXACTO más probable, con su
+   tendencia al lado. Es la misma predicción del modelo (matriz de goles + medias
+   esperadas) reexpresada como mercado; no inventa nada nuevo. */
+function MarketsDetail({ detail }) {
+  if (!Array.isArray(detail) || !detail.length) return null;
+  const pct = (v) => (v == null ? "—" : `${Math.round(v * 100)}%`);
+  return (
+    <div className="mk2">
+      <div className="tbl-wrap">
+        <table className="mk2-tbl">
+          <thead><tr>
+            <th className="tl">Mercado</th><th>Esperado</th><th>Línea</th>
+            <th title="Probabilidad de quedar por encima de la línea">▲ Over</th>
+            <th title="Probabilidad de quedar por debajo de la línea">▼ Under</th>
+            <th title="Recuento exacto más probable">Exacto</th>
+            <th>Tend.</th>
+          </tr></thead>
+          <tbody>
+            {detail.map((mk) => {
+              const main = (mk.lines || []).find((l) => l.main) || {};
+              const overSel = mk.pick?.side === "over";
+              const underSel = mk.pick?.side === "under";
+              return (
+                <tr key={mk.stat}>
+                  <td className="tl">{mk.label}</td>
+                  <td><b>{mk.expected?.total}</b>{mk.expected?.home != null && <span className="dim"> · {mk.expected.home}–{mk.expected.away}</span>}</td>
+                  <td>{mk.main_line}</td>
+                  <td className={overSel ? "mk2-pick" : ""}>{pct(main.over)}</td>
+                  <td className={underSel ? "mk2-pick" : ""}>{pct(main.under)}</td>
+                  <td>{mk.most_likely?.value}<span className="dim"> ({pct(mk.most_likely?.prob)})</span></td>
+                  <td><TrendArrow t={mk.trend} /></td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      <div className="chips mk2-picks">
+        {detail.map((mk) => mk.pick && (
+          <span key={mk.stat} className={"chip mk2-lean" + (mk.pick.trend_agrees ? " agree" : "")}
+            title={mk.pick.trend_agrees === false ? "La tendencia empuja al lado contrario: cautela"
+              : mk.pick.trend_agrees ? "Tendencia y probabilidad coinciden" : undefined}>
+            {mk.label}: <b>{mk.pick.side === "over" ? "Over" : "Under"} {mk.pick.line}</b> · {pct(mk.pick.prob)} <span className="dim">{mk.pick.lean}</span>{mk.pick.trend_agrees ? " ✓" : ""}
+          </span>
+        ))}
+      </div>
+      <p className="note source-note">▲/▼ = prob. de superar / no superar la línea principal · Exacto = recuento más probable. Misma predicción del modelo puesta como mercado; ✓ = la tendencia coincide con el lado más probable.</p>
+    </div>
+  );
+}
+
+/* Nos mojamos: UN marcador exacto elegido con toda la información. Un marcador
+   exacto rara vez pasa del ~15%, así que la confianza mide cuánto DESTACA sobre
+   el resto (y cuánto apoya el 1X2 al signo), no una certeza. */
+function CommittedPick({ c, home, away }) {
+  if (!c) return null;
+  return (
+    <div className="card committed">
+      <div className="row-between">
+        <div className="lbl">🎯 Nos mojamos</div>
+        <span className={"pill " + (c.confidence === "alta" ? "y" : "")}>confianza {c.confidence}</span>
+      </div>
+      <div className="committed-score">
+        <span className="ct">{home}</span>
+        <b className="cs">{c.scoreline}</b>
+        <span className="ct">{away}</span>
+      </div>
+      <div className="chips" style={{ justifyContent: "center" }}>
+        <span className="chip">Prob. exacto <b>{Math.round(c.probability * 100)}%</b></span>
+        {c.favourite_sign && <span className={"chip" + (c.sign_aligned === false ? " value-no" : "")} title="Resultado (1X2) más probable del partido">1X2 favorito <b>{c.favourite_sign}</b> · {Math.round((c.favourite_prob ?? c.sign_probability) * 100)}%</span>}
+        {c.next_scoreline && <span className="chip">2º marcador <b>{c.next_scoreline}</b></span>}
+      </div>
+      <p className="note" style={{ marginTop: 6 }}>{c.why}</p>
+    </div>
+  );
+}
+
 export default function MatchDetail({ m, bankroll, onBack, onTeam, players, plan = "vip", onUpgrade }) {
   const canProps = hasAccess(plan, "props");
   const [ouL, setOuL] = useState(2.5);
@@ -792,6 +877,8 @@ export default function MatchDetail({ m, bankroll, onBack, onTeam, players, plan
             <Heat M={M} />
           </div>
 
+          {!m.finished && <CommittedPick c={m.committed} home={m.home} away={m.away} />}
+
           <StateSimulation simulation={m.state_simulation} />
 
           {!m.finished && (<>
@@ -846,25 +933,27 @@ export default function MatchDetail({ m, bankroll, onBack, onTeam, players, plan
             <PostMatchStats m={m} />
           ) : m.stats && (
             <div className="card section-anchor" id="match-stats">
-              <div className="lbl">Estadísticas esperadas</div>
+              <div className="lbl">Predicciones por mercado <span className="dim">· por encima / por debajo / exacto, con tendencia</span></div>
               <StyleSummary m={m} />
-              <table>
-                <thead><tr><th>Métrica</th><th>Local</th><th>Visit.</th><th>Total</th><th>Tend.</th></tr></thead>
-                <tbody>
-                  {[["goals", "Goles"], ["shots", "Remates"], ["sot", "Tiros a puerta"], ["corners", "Córners"],
-                    ["fouls", "Faltas"], ["yellows", "Amarillas"], ["reds", "Rojas"], ["offsides", "Fueras de juego"]]
-                    .filter(([k]) => m.stats[k]).map(([k, lab]) => (
-                      <tr key={k}><td>{lab}</td><td>{m.stats[k].home}</td><td>{m.stats[k].away}</td><td><b>{m.stats[k].total}</b></td>
-                        <td><TrendArrow t={m.tendencias?.[k]} /></td></tr>
-                    ))}
-                </tbody>
-              </table>
-              {m.tendencias && Object.values(m.tendencias).some((t) => t.dir !== "flat") && (
-                <p className="mut" style={{ marginTop: 8 }}>
-                  ↑/↓ = se espera más/menos de lo habitual según la forma reciente y el descanso.
-                  {" "}{Object.values(m.tendencias).filter((t) => t.dir !== "flat").map((t) => `${t.label}: ${t.reason}`).join(" · ")}.
-                </p>
-              )}
+              {m.markets_detail ? <MarketsDetail detail={m.markets_detail} /> : (<>
+                <table>
+                  <thead><tr><th>Métrica</th><th>Local</th><th>Visit.</th><th>Total</th><th>Tend.</th></tr></thead>
+                  <tbody>
+                    {[["goals", "Goles"], ["shots", "Remates"], ["sot", "Tiros a puerta"], ["corners", "Córners"],
+                      ["fouls", "Faltas"], ["yellows", "Amarillas"], ["reds", "Rojas"], ["offsides", "Fueras de juego"]]
+                      .filter(([k]) => m.stats[k]).map(([k, lab]) => (
+                        <tr key={k}><td>{lab}</td><td>{m.stats[k].home}</td><td>{m.stats[k].away}</td><td><b>{m.stats[k].total}</b></td>
+                          <td><TrendArrow t={m.tendencias?.[k]} /></td></tr>
+                      ))}
+                  </tbody>
+                </table>
+                {m.tendencias && Object.values(m.tendencias).some((t) => t.dir !== "flat") && (
+                  <p className="mut" style={{ marginTop: 8 }}>
+                    ↑/↓ = se espera más/menos de lo habitual según la forma reciente y el descanso.
+                    {" "}{Object.values(m.tendencias).filter((t) => t.dir !== "flat").map((t) => `${t.label}: ${t.reason}`).join(" · ")}.
+                  </p>
+                )}
+              </>)}
             </div>
           )}
 
