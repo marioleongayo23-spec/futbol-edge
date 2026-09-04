@@ -108,6 +108,14 @@ def test_collect_defensivo_sin_red():
     assert des == [] and source is None
 
 
+def test_headers_emulan_navegador_para_evitar_406():
+    # El WAF de BeSoccer devuelve HTTP 406 ante el `Accept: */*` de requests; la
+    # cabecera debe declarar text/html y un User-Agent de navegador para pasar.
+    from futbol_pred.ingest.rfef_referees import _HEADERS
+    assert "text/html" in _HEADERS.get("Accept", "")
+    assert "Mozilla/5.0" in _HEADERS.get("User-Agent", "")
+
+
 def test_fetch_and_store_y_load_roundtrip(tmp_path):
     n = fetch_and_store(data_dir=tmp_path, fetch=_fake_fetch(_BES_INDEX_HTML, _ARTICLE))
     assert n == 3

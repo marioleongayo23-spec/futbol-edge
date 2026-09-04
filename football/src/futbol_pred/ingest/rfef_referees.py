@@ -6,8 +6,10 @@ quedaba invisible en los partidos apostables. Las designaciones se publican
 **~1 día antes** de cada partido.
 
 Fuentes por orden de preferencia (``_SOURCES``):
-  1. **BeSoccer** (``es.besoccer.com``) — primaria: sirve el contenido ESTÁTICO
-     (Google indexa las noticias con los árbitros reales), así que es scrapeable.
+  1. **BeSoccer** (``es.besoccer.com``) — primaria: sirve el contenido de las
+     noticias con los árbitros reales (Google las indexa), así que es scrapeable
+     SIN JavaScript. Su WAF sí rechaza el ``Accept: */*`` de ``requests`` con un
+     HTTP 406, por eso emulamos las cabeceras de un navegador (ver ``_HEADERS``).
   2. **RFEF** (``rfef.es``) — respaldo: su web devuelve un muro anti-bot (Drupal
      ``antibot``) que no expone el contenido a un cliente sin JavaScript, así que
      normalmente rinde 0; se mantiene por si cambia.
@@ -42,13 +44,30 @@ from ..normalize import canonical_team
 log = logging.getLogger(__name__)
 
 CACHE_NAME = "referee_designations.json"
-# Cabecera de navegador: algunas fuentes rechazan el User-Agent de requests.
+# Cabecera de navegador COMPLETA. El WAF de BeSoccer devuelve HTTP 406 ("Not
+# Acceptable") ante el `Accept: */*` que `requests` manda por defecto, así que
+# nunca llegábamos a ver el HTML. Emular Chrome —sobre todo un `Accept:
+# text/html` real y las cabeceras `Sec-Fetch-*`— hace pasar la petición. El
+# contenido es público (designaciones arbitrales); esto solo evita el bloqueo
+# por bot, no accede a nada privado.
 _HEADERS = {
     "User-Agent": (
-        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
-        "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
     ),
-    "Accept-Language": "es-ES,es;q=0.9",
+    "Accept": (
+        "text/html,application/xhtml+xml,application/xml;q=0.9,"
+        "image/avif,image/webp,image/apng,*/*;q=0.8"
+    ),
+    "Accept-Language": "es-ES,es;q=0.9,en;q=0.8",
+    "Accept-Encoding": "gzip, deflate",
+    "Connection": "keep-alive",
+    "Upgrade-Insecure-Requests": "1",
+    "Sec-Fetch-Dest": "document",
+    "Sec-Fetch-Mode": "navigate",
+    "Sec-Fetch-Site": "none",
+    "Sec-Fetch-User": "?1",
+    "Cache-Control": "max-age=0",
 }
 # Cuántas noticias de designación leer (cubre jornada en curso + la siguiente si
 # ya se publicó a mitad de semana).
@@ -205,17 +224,45 @@ def parse_designations(text: str) -> list[Designation]:
     return designations
 
 
-def _fetch(url: str, timeout: int = 20) -> str | None:
-    """Descarga defensiva; None ante cualquier problema (incl. egress bloqueado)."""
+_session = None
+
+
+def _get_session():
+    """Sesión `requests` cacheada por ejecución: reutiliza las cookies entre el
+    índice y las noticias (algunos WAF sirven una cookie en la primera respuesta
+    y la exigen en la siguiente). Devuelve None si `requests` no está instalado
+    (entorno ligero del hot-refresh)."""
+    global _session
+    if _session is not None:
+        return _session
     try:
         import requests
-        resp = requests.get(url, headers=_HEADERS, timeout=timeout)
+    except Exception:  # noqa: BLE001 - entorno ligero sin requests
+        return None
+    session = requests.Session()
+    session.headers.update(_HEADERS)
+    _session = session
+    return _session
+
+
+def _fetch(url: str, timeout: int = 20) -> str | None:
+    """Descarga defensiva; None ante cualquier problema (incl. egress bloqueado)."""
+    session = _get_session()
+    if session is None:
+        return None
+    try:
+        resp = session.get(url, timeout=timeout)
         if resp.status_code != 200 or not resp.text:
-            log.warning("RFEF %s -> HTTP %s", url, resp.status_code)
+            snippet = _clean(getattr(resp, "text", "") or "")[:200]
+            log.warning("designaciones %s -> HTTP %s %s", url, resp.status_code, snippet)
             return None
+        # Preserva los acentos de los nombres de árbitro cuando la cabecera no
+        # declara charset (requests asumiría latin-1 y rompería 'González').
+        if not resp.encoding or resp.encoding.lower() in ("iso-8859-1", "latin-1"):
+            resp.encoding = resp.apparent_encoding or "utf-8"
         return resp.text
     except Exception as exc:  # noqa: BLE001 - red no disponible / bloqueada
-        log.warning("RFEF fetch falló para %s: %s", url, exc)
+        log.warning("designaciones: fetch falló para %s: %s", url, exc)
         return None
 
 
