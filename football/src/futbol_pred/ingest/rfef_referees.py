@@ -5,11 +5,14 @@ Las APIs gratis (football-data.org, API-Football en su plan free) no exponen el
 quedaba invisible en los partidos apostables. Las designaciones se publican
 **~1 día antes** de cada partido.
 
-Fuentes por orden de preferencia (``_SOURCES``):
-  1. **BeSoccer** (``es.besoccer.com``) — primaria: sirve el contenido de las
-     noticias con los árbitros reales (Google las indexa), así que es scrapeable
-     SIN JavaScript. Su WAF sí rechaza el ``Accept: */*`` de ``requests`` con un
-     HTTP 406, por eso emulamos las cabeceras de un navegador (ver ``_HEADERS``).
+Fuentes por orden de preferencia:
+  0. **Prensa vía Google News RSS** (``collect_from_media``) — PRIMARIA: las
+     cabeceras (AS, Marca, Soccerway…) publican la ronda de designaciones el día
+     del partido y Google News las indexa. Reusa la misma tubería sin muro que ya
+     alimenta las alineaciones probables, así que es la que de verdad funciona.
+  1. **BeSoccer** (``es.besoccer.com``) — respaldo: su WAF devuelve HTTP 406
+     incluso con cabeceras de navegador (bloqueo por huella), así que rinde 0; se
+     mantiene por si cambia.
   2. **RFEF** (``rfef.es``) — respaldo: su web devuelve un muro anti-bot (Drupal
      ``antibot``) que no expone el contenido a un cliente sin JavaScript, así que
      normalmente rinde 0; se mantiene por si cambia.
@@ -34,9 +37,14 @@ from __future__ import annotations
 import json
 import logging
 import re
+import unicodedata
+import xml.etree.ElementTree as ET
 from dataclasses import dataclass, asdict
 from datetime import datetime, timezone
+from email.utils import parsedate_to_datetime
+from html import unescape
 from pathlib import Path
+from urllib.parse import urlencode
 
 from ..config import DATA_DIR
 from ..normalize import canonical_team
@@ -224,6 +232,77 @@ def parse_designations(text: str) -> list[Designation]:
     return designations
 
 
+# --- Prensa deportiva: formato de ronda "<árbitro> para el <local>-<visitante>"
+# Las cabeceras (AS, Marca, Soccerway…) publican la ronda de designaciones ~1 día
+# antes y el día del partido con titulares del tipo: "Los árbitros de la jornada
+# 3: Gil Manzano para el Barça-Valencia; Sánchez Martínez para el Betis-Madrid".
+# parse_designations ya cubre "Local - Visitante: Árbitro"; esto añade la forma
+# "Árbitro para el Local-Visitante" (y dirigirá/arbitrará), que es la dominante en
+# prensa.
+#
+# Apodos de prensa que canonical_team(strict) no resuelve (claves normalizadas:
+# minúsculas, sin acentos). Solo los inequívocos; el cruce se valida luego contra
+# el partido REAL del feed, así que un apodo mal mapeado como mucho PIERDE una
+# designación, nunca la aplica al partido equivocado.
+_NICKNAMES = {
+    "barca": "Barcelona", "barsa": "Barcelona",
+    "atleti": "Atlético de Madrid", "atletico": "Atlético de Madrid",
+    "colchoneros": "Atlético de Madrid",
+    "rayo": "Rayo Vallecano",
+    "la real": "Real Sociedad", "txuri urdin": "Real Sociedad",
+    "madrid": "Real Madrid",
+    "leones": "Athletic Club",
+}
+_ROUNDUP_REF_FIRST = re.compile(
+    r"([A-ZÁÉÍÓÚÑ][\wÁÉÍÓÚÑáéíóúñ.'’\-]+(?:\s+[A-ZÁÉÍÓÚÑ][\wÁÉÍÓÚÑáéíóúñ.'’\-]+){0,3})"
+    r"\s+(?:para|dirigir[áa]|arbitrar[áa]|pit[ae]r[áa]?)\s+(?:el|la)\s+"
+    r"([^;,.:]+?[-‐-―][^;,.:]+?)(?=\s*[;,.:]|\s+[-‐-―]\s|\s+[ye]\s|$)",
+)
+
+
+def _norm_key(value: str) -> str:
+    text = unicodedata.normalize("NFKD", str(value or ""))
+    text = "".join(c for c in text if not unicodedata.combining(c)).casefold()
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def _resolve_side(text: str) -> str | None:
+    """Un lado de un enfrentamiento de prensa -> equipo canónico, tolerando apodos
+    ('Barça', 'Atleti') y sufijos/prefijos ('Rayo Vallecano')."""
+    raw = _clean(text).strip(" .:;-‐-― ")
+    if not raw:
+        return None
+    nick = _NICKNAMES.get(_norm_key(raw))
+    if nick:
+        return _known(nick)
+    return _known(raw) or _team_suffix(raw) or _team_prefix(raw)[0]
+
+
+def parse_media_text(text: str) -> list[Designation]:
+    """Designaciones de un texto de prensa (titular + entradilla).
+
+    Une dos gramáticas: la de ronda '<árbitro> para el <local>-<visitante>' y la
+    de parse_designations ('<local> - <visitante>: <árbitro>'). Valida ambos
+    equipos contra el registro y descarta lo que no cuadre."""
+    out: list[Designation] = []
+    seen: set[tuple[str, str]] = set()
+    for m in _ROUNDUP_REF_FIRST.finditer(text or ""):
+        parts = re.split(r"\s*[-‐-―]\s*", m.group(2), maxsplit=1)
+        if len(parts) != 2:
+            continue
+        home, away = _resolve_side(parts[0]), _resolve_side(parts[1])
+        ref = _referee_from(m.group(1))
+        if home and away and home != away and ref and (home, away) not in seen:
+            seen.add((home, away))
+            out.append(Designation(home=home, away=away, referee=ref,
+                                    raw_home=_clean(parts[0]), raw_away=_clean(parts[1])))
+    for d in parse_designations(text or ""):
+        if (d.home, d.away) not in seen:
+            seen.add((d.home, d.away))
+            out.append(d)
+    return out
+
+
 _session = None
 
 
@@ -250,8 +329,18 @@ def _fetch(url: str, timeout: int = 20) -> str | None:
     session = _get_session()
     if session is None:
         return None
+    # Google News RSS es un endpoint pensado para clientes, no un WAF: reproduce
+    # las cabeceras simples que ya usa el colector de alineaciones (evita que un
+    # Accept: text/html + Sec-Fetch de "navegador" devuelva un interstitial en vez
+    # del XML).
+    headers = None
+    if "news.google.com" in url:
+        headers = {
+            "User-Agent": "FutbolEdge/1.0 referee-research",
+            "Accept": "application/rss+xml, application/xml, text/xml, */*",
+        }
     try:
-        resp = session.get(url, timeout=timeout)
+        resp = session.get(url, timeout=timeout, headers=headers)
         if resp.status_code != 200 or not resp.text:
             snippet = _clean(getattr(resp, "text", "") or "")[:200]
             log.warning("designaciones %s -> HTTP %s %s", url, resp.status_code, snippet)
@@ -302,11 +391,119 @@ def discover_articles(index_html: str, base: str, slug_re: "re.Pattern[str]",
     return urls[:_MAX_ARTICLES]
 
 
-def collect_designations(fetch=_fetch) -> tuple[list[Designation], str | None]:
-    """Prueba las fuentes en orden de preferencia (BeSoccer primero, RFEF de
-    respaldo) y devuelve (designaciones, fuente) de la primera que dé datos.
-    Nunca lanza; registra muestras amplias para poder afinar el parser desde los
-    logs del cron cuando una fuente devuelve HTML pero no se extrae nada."""
+# --- Prensa vía Google News RSS (fuente PRIMARIA, sin muro anti-bot) ----------
+# Reusa la misma tubería que ya alimenta las alineaciones probables: Google News
+# como índice, filtrando a cabeceras de confianza. No amurallada (a diferencia de
+# RFEF/BeSoccer), así que es la fuente principal; RFEF/BeSoccer quedan de respaldo.
+NEWS_RSS = "https://news.google.com/rss/search"
+_MEDIA_QUERIES = (
+    "designaciones arbitrales jornada",
+    "árbitros de la jornada LaLiga",
+    "árbitros de la jornada Segunda",
+)
+# Ventana amplia: la ronda se publica ~1 día antes y se re-publica el día del
+# partido; el cruce exacto con el fixture del feed evita arrastrar jornadas viejas.
+_MEDIA_MAX_AGE_H = 120
+# Cabeceras fiables para un hecho oficial (claves normalizadas: minúsculas, sin
+# acentos). Un blog cualquiera no basta; el equipo+árbitro se validan estructural-
+# mente, pero restringir la fuente descarta ruido.
+_TRUSTED_SOURCES = {
+    "as": "AS", "diario as": "AS", "marca": "MARCA",
+    "mundo deportivo": "Mundo Deportivo", "sport": "SPORT", "relevo": "Relevo",
+    "estadio deportivo": "Estadio Deportivo", "superdeporte": "Superdeporte",
+    "el desmarque": "ElDesmarque", "eldesmarque": "ElDesmarque",
+    "soccerway": "Soccerway", "es.soccerway.com": "Soccerway",
+    "cadena ser": "Cadena SER", "cadena cope": "COPE", "cope": "COPE",
+    "el espanol": "El Español", "besoccer": "BeSoccer", "futbolfantasy": "FutbolFantasy",
+}
+
+
+def _news_url(query: str) -> str:
+    return NEWS_RSS + "?" + urlencode(
+        {"q": query, "hl": "es", "gl": "ES", "ceid": "ES:es"})
+
+
+def _rss_items(xml_text: str) -> list:
+    try:
+        root = ET.fromstring((xml_text or "").encode("utf-8"))
+        return list(root.findall("./channel/item"))
+    except (ET.ParseError, ValueError, TypeError):
+        return []
+
+
+def _clean_tags(value: str | None) -> str:
+    return _clean(re.sub(r"<[^>]+>", " ", unescape(str(value or ""))))
+
+
+def _fresh_media(pub_date: str | None, now: datetime) -> bool:
+    if not pub_date:
+        return True  # sin fecha: no descartamos; el cruce con el fixture ya filtra
+    try:
+        stamp = parsedate_to_datetime(pub_date)
+        if stamp.tzinfo is None:
+            stamp = stamp.replace(tzinfo=timezone.utc)
+        age = (now.astimezone(timezone.utc) - stamp.astimezone(timezone.utc)).total_seconds() / 3600
+        return -2 <= age <= _MEDIA_MAX_AGE_H
+    except (TypeError, ValueError, OverflowError):
+        return True
+
+
+def collect_from_media(fetch=_fetch, now: datetime | None = None) -> list[Designation]:
+    """Designaciones desde la prensa deportiva vía Google News RSS.
+
+    Google News se usa solo como índice; el árbitro se extrae del titular/entradilla
+    (que ya trae 'X para el Local-Visitante'). Solo cabeceras de confianza y frescas.
+    Nunca lanza; auto-observable: registra una muestra si no extrae nada."""
+    now = now or datetime.now(timezone.utc)
+    out: list[Designation] = []
+    seen: set[tuple[str, str]] = set()
+    sources: set[str] = set()
+    sample = ""
+    for query in _MEDIA_QUERIES:
+        xml = fetch(_news_url(query))
+        if not xml:
+            continue
+        for item in _rss_items(xml):
+            src_el = item.find("source")
+            src_raw = (src_el.text or "").strip() if src_el is not None else ""
+            outlet = _TRUSTED_SOURCES.get(_norm_key(src_raw))
+            if not outlet:
+                continue
+            if not _fresh_media(item.findtext("pubDate"), now):
+                continue
+            title = _clean_tags(item.findtext("title"))
+            desc = _clean_tags(item.findtext("description"))
+            # Google News añade ' - <Cabecera>' al final del título; parsea también
+            # una versión sin ese sufijo por si fagocita la última designación.
+            title_stripped = re.sub(r"\s+[-‐-―]\s+[^-‐-―]+$", "", title)
+            if not sample:
+                sample = title
+            for chunk in (title, title_stripped, desc):
+                for d in parse_media_text(chunk):
+                    if (d.home, d.away) not in seen:
+                        seen.add((d.home, d.away))
+                        d.source = outlet
+                        out.append(d)
+                        sources.add(outlet)
+    if out:
+        log.info("prensa: %d designaciones vía Google News (%s)",
+                 len(out), ", ".join(sorted(sources)))
+    else:
+        log.info("prensa: 0 designaciones vía Google News (%d consultas). Muestra: %s",
+                 len(_MEDIA_QUERIES), sample[:300] or "(sin ítems de confianza)")
+    return out
+
+
+def collect_designations(fetch=_fetch, now: datetime | None = None) -> tuple[list[Designation], str | None]:
+    """Reúne designaciones de la primera fuente que dé datos.
+
+    Orden: (1) PRENSA vía Google News RSS —sin muro, la que funciona—; de respaldo
+    (2) BeSoccer y (3) RFEF, que suelen rendir 0 por WAF pero se conservan por si
+    cambian. Nunca lanza; registra muestras amplias para afinar el parser desde los
+    logs del cron cuando una fuente devuelve contenido pero no se extrae nada."""
+    media = collect_from_media(fetch=fetch, now=now)
+    if media:
+        return media, "prensa"
     for source, base, index_urls, slug_re in _SOURCES:
         for index_url in index_urls:
             index = fetch(index_url)
@@ -341,13 +538,14 @@ def collect_designations(fetch=_fetch) -> tuple[list[Designation], str | None]:
     return [], None
 
 
-def fetch_and_store(data_dir: Path | None = None, fetch=_fetch) -> int:
+def fetch_and_store(data_dir: Path | None = None, fetch=_fetch,
+                    now: datetime | None = None) -> int:
     """Descarga y cachea designaciones. Devuelve cuántas guardó.
 
     Si no consigue ninguna, NO borra un cache previo válido (una jornada ya
     descargada sigue sirviendo aunque una descarga puntual falle)."""
     data_dir = Path(data_dir or DATA_DIR)
-    designations, source = collect_designations(fetch=fetch)
+    designations, source = collect_designations(fetch=fetch, now=now)
     if not designations:
         return 0
     payload = {

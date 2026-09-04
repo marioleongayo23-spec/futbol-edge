@@ -138,3 +138,85 @@ def test_load_directory_defensivo(tmp_path):
     assert len(load_directory(tmp_path)) == 0
     (tmp_path / "referee_designations.json").write_text("{ roto", encoding="utf-8")
     assert len(load_directory(tmp_path)) == 0
+
+
+# --- Prensa vía Google News RSS (fuente primaria, sin muro) ------------------
+from datetime import datetime, timezone
+from email.utils import format_datetime
+
+from futbol_pred.ingest.rfef_referees import parse_media_text, collect_from_media
+
+_NOW = datetime(2026, 9, 4, 12, 0, tzinfo=timezone.utc)
+
+
+def test_parse_media_ronda_para_el_con_apodos_y_separadores():
+    # Formato dominante en prensa: "<árbitro> para el <local>-<visitante>", con
+    # apodos (Barça, Atleti, Rayo, Madrid), separador ';' y ' y ', y sufijo de
+    # cabecera ' - AS' que añade Google News al final del titular.
+    txt = ("Los árbitros de la jornada 3: Gil Manzano para el Barça-Valencia; "
+           "Alberola Rojas para el Atleti-Rayo y Soto Grado para el Betis-Madrid - AS")
+    got = {(d.home, d.away): d.referee for d in parse_media_text(txt)}
+    assert got[("Barcelona", "Valencia")] == "Gil Manzano"
+    assert got[("Ath Madrid", "Vallecano")] == "Alberola Rojas"
+    assert got[("Betis", "Real Madrid")] == "Soto Grado"
+
+
+def test_parse_media_dirigira_y_arbitrara():
+    assert parse_media_text("De Burgos Bengoetxea dirigirá el Real Madrid-Real Sociedad")[0] == \
+        Designation(home="Real Madrid", away="Sociedad", referee="De Burgos Bengoetxea",
+                    raw_home="Real Madrid", raw_away="Real Sociedad")
+    d = parse_media_text("Hernández Hernández arbitrará el Villarreal-Osasuna")
+    assert d and (d[0].home, d[0].away, d[0].referee) == ("Villarreal", "Osasuna", "Hernández Hernández")
+
+
+def test_parse_media_tambien_admite_formato_local_visitante_arbitro():
+    # parse_designations sigue cubriendo "Local - Visitante: Árbitro".
+    d = parse_media_text("Real Betis - Real Madrid: González Fuertes (Comité Asturiano)")
+    assert d and (d[0].home, d[0].away, d[0].referee) == ("Betis", "Real Madrid", "González Fuertes")
+
+
+def _rss(items_xml: str) -> str:
+    return ('<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"><channel>'
+            + items_xml + "</channel></rss>")
+
+
+def _item(title, source, when=_NOW, desc="x"):
+    return (f"<item><title>{title}</title><description>{desc}</description>"
+            f'<source url="https://x">{source}</source>'
+            f"<pubDate>{format_datetime(when)}</pubDate><link>https://x/a</link></item>")
+
+
+def _news_fetch(rss_xml):
+    def fetch(url, timeout=20):
+        return rss_xml if "news.google.com" in url else None
+    return fetch
+
+
+def test_collect_from_media_extrae_de_cabecera_confiable():
+    rss = _rss(_item("Gil Manzano para el Barça-Valencia; Soto Grado para el Betis-Madrid - AS", "AS"))
+    des = collect_from_media(fetch=_news_fetch(rss), now=_NOW)
+    got = {(d.home, d.away): (d.referee, d.source) for d in des}
+    assert got[("Barcelona", "Valencia")] == ("Gil Manzano", "AS")
+    assert got[("Betis", "Real Madrid")] == ("Soto Grado", "AS")
+
+
+def test_collect_from_media_ignora_fuente_no_confiable():
+    rss = _rss(_item("Gil Manzano para el Barça-Valencia", "Blog Random"))
+    assert collect_from_media(fetch=_news_fetch(rss), now=_NOW) == []
+
+
+def test_collect_from_media_ignora_noticia_vieja():
+    old = datetime(2026, 8, 1, 12, 0, tzinfo=timezone.utc)  # >120h antes de _NOW
+    rss = _rss(_item("Gil Manzano para el Barça-Valencia", "AS", when=old))
+    assert collect_from_media(fetch=_news_fetch(rss), now=_NOW) == []
+
+
+def test_collect_designations_usa_prensa_como_primaria():
+    rss = _rss(_item("Mateu Lahoz para el Sevilla-Getafe", "MARCA"))
+    des, source = collect_designations(fetch=_news_fetch(rss), now=_NOW)
+    assert source == "prensa"
+    assert des and (des[0].home, des[0].away, des[0].referee) == ("Sevilla", "Getafe", "Mateu Lahoz")
+
+
+def test_collect_from_media_defensivo_sin_red():
+    assert collect_from_media(fetch=lambda u, timeout=20: None, now=_NOW) == []
