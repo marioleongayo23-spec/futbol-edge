@@ -372,7 +372,8 @@ def fixture_payload(
     # ajusta faltas/tarjetas ANTES de construir los mercados y se expone como
     # official_context. Reutiliza el modelo validado del Bloque 2. Fuentes, por
     # orden: lo que traiga la API (football-data.org) y, si no, las designaciones
-    # de la RFEF (publicadas ~1 día antes; único origen pre-partido gratis).
+    # de prensa vía Google News (AS/Marca/Soccerway…, el día del partido; RFEF/
+    # BeSoccer de respaldo). Único origen pre-partido gratis y sin muro.
     # (Latente si ninguna fuente trae árbitro; API-Football lo sobrescribe más
     # tarde en attach_official_context cuando existe.)
     if not finished_with_result and not getattr(fixture, "referee", None):
@@ -1395,7 +1396,7 @@ def build_dashboard(
             "con_prediccion": sum(1 for m in matches if m.get("engine") in {"dixon-coles", "ensemble", "residual"}),
             "con_cuotas": sum(1 for m in matches if isinstance(m.get("odds"), dict)),
             "con_arbitro": sum(1 for m in matches if (m.get("official_context") or {}).get("referee")),
-            "con_arbitro_rfef": sum(1 for m in matches if (m.get("official_context") or {}).get("provider") in ("BeSoccer", "RFEF")),
+            "con_arbitro_rfef": sum(1 for m in matches if (m.get("official_context") or {}).get("provider") in ("prensa", "BeSoccer", "RFEF")),
             "con_player_markets": sum(1 for m in matches if m.get("player_markets")),
         },
         "matches": matches,
