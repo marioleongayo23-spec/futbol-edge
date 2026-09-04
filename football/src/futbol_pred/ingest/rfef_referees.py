@@ -701,6 +701,19 @@ def _load_cache(path: Path) -> dict:
         return {}
 
 
+_NON_PRESS_SOURCES = {"BeSoccer", "RFEF"}
+
+
+def _normalize_source(src: str | None) -> str:
+    """Normaliza la fuente por fila a su CATEGORÍA. Caches antiguos guardaban el
+    medio ('AS', 'MARCA', 'Mundo Deportivo'); todo lo que no sea BeSoccer/RFEF es
+    prensa, para que dashboard lo cuente en con_arbitro_rfef (review Codex)."""
+    s = (src or "").strip()
+    if not s or s in _NON_PRESS_SOURCES:
+        return s
+    return "prensa"
+
+
 def fetch_and_store(data_dir: Path | None = None, fetch=_fetch,
                     now: datetime | None = None) -> int:
     """Descarga y cachea designaciones. Devuelve cuántas designaciones nuevas trajo.
@@ -731,6 +744,7 @@ def fetch_and_store(data_dir: Path | None = None, fetch=_fetch,
         if row_ts < cutoff:
             continue
         row["fetched_at"] = row_ts  # re-sella para que porte fecha y caduque en el futuro
+        row["source"] = _normalize_source(row.get("source"))  # migra 'AS'/'MARCA' -> 'prensa'
         merged[(h, a)] = row
     for d in designations:  # lo nuevo gana
         row = asdict(d)
@@ -757,7 +771,7 @@ class RefereeDirectory:
         # usar la fuente top-level para todas etiquetaría mal las retenidas (Codex).
         self._by_pair: dict[tuple[str, str], tuple[str, str]] = {}
         for d in designations:
-            self._by_pair[(d.home, d.away)] = (d.referee, d.source or self.source)
+            self._by_pair[(d.home, d.away)] = (d.referee, _normalize_source(d.source) or self.source)
 
     def __len__(self) -> int:
         return len(self._by_pair)
