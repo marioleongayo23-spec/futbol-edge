@@ -164,3 +164,25 @@ def test_contexto_oficial_no_borra_arbitro_rfef_si_api_no_lo_trae():
     assert oc["referee_adjustment_applied"] == ["fouls"]
     assert oc["referee_profile"]["metrics"]["fouls"]["accepted"] is True
     assert oc["venue"] == "San Mamés"                 # sí se enriquece la sede
+
+
+def test_contexto_oficial_no_arrastra_arbitro_basura_de_medio():
+    # Un árbitro basura de un parseo viejo ('Mundo Deportivo. El') NO debe
+    # arrastrarse pasada tras pasada: se purga en vez de conservarse.
+    now = datetime(2026, 8, 24, 20, 0, tzinfo=MADRID)
+    match = {
+        "home": "Atletico Madrid", "away": "Valencia", "league": "LaLiga",
+        "kickoff": datetime(2026, 8, 24, 21, 0, tzinfo=MADRID).isoformat(),
+        "stats": {"fouls": {"home": 12.1, "away": 13.2, "total": 25.3}},
+        "official_context": {
+            "referee": "Mundo Deportivo. El", "provider": "prensa", "source": "prensa",
+        },
+    }
+
+    attach_official_context([match], now, client=FakeClientSinArbitro(),
+                            stats_models={"LaLiga": FakeStatsPredictor()})
+
+    oc = match["official_context"]
+    assert not oc.get("referee")            # la basura no se arrastra
+    assert oc.get("provider") != "prensa"   # ni su procedencia falsa
+    assert oc["venue"] == "San Mamés"       # el resto del contexto sí se rellena
