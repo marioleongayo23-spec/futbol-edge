@@ -220,3 +220,65 @@ def test_collect_designations_usa_prensa_como_primaria():
 
 def test_collect_from_media_defensivo_sin_red():
     assert collect_from_media(fetch=lambda u, timeout=20: None, now=_NOW) == []
+
+
+# --- Consulta POR PARTIDO + fixes de review (Codex P2) ----------------------
+from futbol_pred.ingest.rfef_referees import referee_in_text, _fixture_pairs
+
+_FIXTURE = [("Real Betis Balompié", "Real Madrid CF", "Betis", "Real Madrid")]
+
+
+def test_referee_in_text_formatos_frecuentes():
+    assert referee_in_text("Munuera Montero, árbitro del Betis-Real Madrid") == "Munuera Montero"
+    assert referee_in_text("El árbitro del partido será Díaz de Mera Escuderos") == "Díaz de Mera Escuderos"
+    assert referee_in_text("Hernández Hernández pitará el choque") == "Hernández Hernández"
+    # 'colegiado X … en el VAR' es el VAR, no el árbitro principal.
+    assert referee_in_text("El colegiado Gil Manzano estará en el VAR") is None
+    # un equipo no es un árbitro.
+    assert referee_in_text("Real Madrid, árbitro del derbi") is None
+
+
+def test_parse_media_preserva_particulas_en_el_nombre():
+    # Codex P2: no truncar 'Díaz de Mera Escuderos' a 'Mera Escuderos'.
+    des = parse_media_text("Díaz de Mera Escuderos para el Sevilla-Getafe")
+    assert des and des[0].referee == "Díaz de Mera Escuderos"
+
+
+def test_collect_from_media_por_partido_extrae_el_nombre():
+    rss = _rss(_item("Munuera Montero será el árbitro del Betis - Real Madrid de este sábado - AS", "AS"))
+    des = collect_from_media(fetch=_news_fetch(rss), now=_NOW, fixtures=_FIXTURE)
+    assert [(d.home, d.away, d.referee, d.source) for d in des] == [("Betis", "Real Madrid", "Munuera Montero", "AS")]
+
+
+def test_collect_from_media_descarta_otra_competicion():
+    # Codex P2: una pieza de Copa del Rey de los mismos clubes NO fija el árbitro de Liga.
+    rss = _rss(_item("Munuera Montero, árbitro del Betis-Real Madrid de Copa del Rey - AS", "AS"))
+    assert collect_from_media(fetch=_news_fetch(rss), now=_NOW, fixtures=_FIXTURE) == []
+
+
+def test_fetch_and_store_merge_no_borra_designaciones_previas(tmp_path):
+    # Codex P2: un resultado PARCIAL de prensa no debe borrar el resto de la jornada.
+    (tmp_path / "referee_designations.json").write_text(json.dumps({
+        "fetched_at": _NOW.isoformat(), "source": "prensa",
+        "designations": [{"home": "Sevilla", "away": "Getafe", "referee": "Gil Manzano",
+                          "fetched_at": _NOW.isoformat()}]}), encoding="utf-8")
+    (tmp_path / "dashboard.json").write_text(json.dumps({"matches": [
+        {"home": "Real Betis Balompié", "away": "Real Madrid CF",
+         "kickoff": "2026-09-06T20:00:00+02:00"}]}), encoding="utf-8")
+    rss = _rss(_item("Munuera Montero será el árbitro del Betis - Real Madrid - AS", "AS"))
+    n = fetch_and_store(data_dir=tmp_path, fetch=_news_fetch(rss), now=_NOW)
+    d = load_directory(tmp_path)
+    assert n == 1
+    assert d.lookup("Sevilla", "Getafe") == "Gil Manzano"          # NO borrado
+    assert d.lookup("Real Betis Balompié", "Real Madrid CF") == "Munuera Montero"  # añadido
+
+
+def test_fixture_pairs_salta_los_que_ya_tienen_arbitro(tmp_path):
+    (tmp_path / "dashboard.json").write_text(json.dumps({"matches": [
+        {"home": "Sevilla FC", "away": "Getafe CF", "kickoff": "2026-09-05T20:00:00+02:00",
+         "official_context": {"referee": "Ya asignado"}},
+        {"home": "Real Betis Balompié", "away": "Real Madrid CF",
+         "kickoff": "2026-09-06T20:00:00+02:00"}]}), encoding="utf-8")
+    canon = {(p[2], p[3]) for p in _fixture_pairs(tmp_path, _NOW)}
+    assert ("Betis", "Real Madrid") in canon
+    assert ("Sevilla", "Getafe") not in canon  # ya tiene árbitro de la API

@@ -40,7 +40,7 @@ import re
 import unicodedata
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass, asdict
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
 from html import unescape
 from pathlib import Path
@@ -114,7 +114,8 @@ class Designation:
     referee: str       # árbitro principal (tal cual lo publica la fuente)
     raw_home: str = ""  # nombre tal cual aparecía (diagnóstico)
     raw_away: str = ""
-    source: str = ""    # fuente de la que salió (BeSoccer, RFEF…)
+    source: str = ""    # fuente de la que salió (prensa, BeSoccer, RFEF…)
+    fetched_at: str = ""  # ISO UTC de cuándo se recogió (para expirar el cache)
 
 
 def _known(name: str) -> str | None:
@@ -174,10 +175,12 @@ def _referee_from(text: str) -> str | None:
     # Descarta cabeceras genéricas (no son nombres de árbitro).
     if not raw or not any(c.isalpha() for c in raw) or len(raw) < 3:
         return None
+    # Nunca termina en partícula suelta ('… y', '… de'): recórtala.
+    raw = re.sub(r"\s+(?:de|del|la|los|las|y|da|di|dos|van|von)$", "", raw, flags=re.I).strip()
     low = raw.casefold()
-    if low.startswith(("jornada", "laliga", "primera", "segunda", "viernes",
-                       "sábado", "sabado", "domingo", "lunes", "martes",
-                       "miércoles", "miercoles", "jueves")):
+    if not raw or low.startswith(("jornada", "laliga", "primera", "segunda", "viernes",
+                                  "sábado", "sabado", "domingo", "lunes", "martes",
+                                  "miércoles", "miercoles", "jueves")):
         return None
     return raw
 
@@ -253,11 +256,42 @@ _NICKNAMES = {
     "madrid": "Real Madrid",
     "leones": "Athletic Club",
 }
+# Nombre de árbitro: palabra Mayúscula inicial + continuaciones que pueden ser
+# partículas en minúscula ('de', 'del', 'la'…) o más palabras Mayúsculas, para no
+# truncar 'Díaz de Mera Escuderos' ni 'De Burgos Bengoetxea' (review Codex P2).
+_NAME = (
+    r"[A-ZÁÉÍÓÚÑ][\wÁÉÍÓÚÑáéíóúñ.'’\-]+"
+    r"(?:\s+(?:de|del|la|los|las|di|da|dos|van|von|y|"
+    r"[A-ZÁÉÍÓÚÑ][\wÁÉÍÓÚÑáéíóúñ.'’\-]+)){0,4}"
+)
 _ROUNDUP_REF_FIRST = re.compile(
-    r"([A-ZÁÉÍÓÚÑ][\wÁÉÍÓÚÑáéíóúñ.'’\-]+(?:\s+[A-ZÁÉÍÓÚÑ][\wÁÉÍÓÚÑáéíóúñ.'’\-]+){0,3})"
+    r"(" + _NAME + r")"
     r"\s+(?:para|dirigir[áa]|arbitrar[áa]|pit[ae]r[áa]?)\s+(?:el|la)\s+"
     r"([^;,.:]+?[-‐-―][^;,.:]+?)(?=\s*[;,.:]|\s+[-‐-―]\s|\s+[ye]\s|$)",
 )
+# Extracción del árbitro cuando YA conocemos el partido (consulta por partido):
+# basta hallar el nombre junto a una etiqueta ('árbitro', 'colegiado') o un verbo
+# ('dirigirá', 'arbitrará'). Flags de caso acotadas para no romper la Mayúscula
+# inicial del nombre.
+_REF_PATTERNS = [
+    # nombre ANTES de la etiqueta: 'Munuera Montero, árbitro del Betis-Madrid'
+    re.compile(r"(?P<ref>" + _NAME + r")\s*,?\s+(?i:árbitro|arbitro|colegiado)\b"),
+    # etiqueta ANTES: 'árbitro del partido (será|:) Díaz de Mera'
+    re.compile(r"(?i:árbitro|arbitro|colegiado)"
+               r"(?:\s+(?i:principal|del partido|del encuentro|del choque|designado))?"
+               r"(?:\s*[:\-–—]|\s+(?i:ser[áa]|es|fue)(?:\s+el)?)?\s+(?P<ref>" + _NAME + r")"),
+    # verbo tras el nombre: 'X será el árbitro | dirigirá | arbitrará | pitará'
+    re.compile(r"(?P<ref>" + _NAME + r")\s*,?\s+(?i:ser[áa] el árbitro|dirigir[áa]|arbitrar[áa]|pitar[áa]|pita)\b"),
+    # verbo antes del nombre: 'dirigirá (el encuentro) X'
+    re.compile(r"(?i:dirigir[áa]|arbitrar[áa]|pitar[áa])\s+(?:(?i:el|la|este|el partido|el encuentro|el choque)\s+)?"
+               r"(?P<ref>" + _NAME + r")"),
+    re.compile(r"(?i:designad[oa])\s+(?:(?i:a|al)\s+)?(?P<ref>" + _NAME + r")"),
+]
+# Descarta piezas de otra competición para el mismo par de clubes (Copa, Liga F,
+# juvenil, europeas): su árbitro ≠ el de LaLiga/Segunda (review Codex P2).
+_EXCLUDE_COMP = re.compile(
+    r"(?i:copa del rey|\bcopa\b|supercopa|femenin|liga f\b|juvenil|cadete|"
+    r"champions|europa league|conference|mundial|amistoso|selecci)")
 
 
 def _norm_key(value: str) -> str:
@@ -300,6 +334,66 @@ def parse_media_text(text: str) -> list[Designation]:
         if (d.home, d.away) not in seen:
             seen.add((d.home, d.away))
             out.append(d)
+    return out
+
+
+def referee_in_text(text: str) -> str | None:
+    """Nombre del árbitro suelto en un texto cuando el partido YA se conoce.
+
+    A diferencia de parse_media_text (que deriva el partido del texto), aquí solo
+    hace falta el nombre: lo localiza junto a una etiqueta ('árbitro', 'colegiado')
+    o un verbo ('dirigirá', 'arbitrará'). Descarta lo que sea un equipo conocido."""
+    text = text or ""
+    for pat in _REF_PATTERNS:
+        for m in pat.finditer(text):
+            # 'colegiado X … en el VAR' designa al VAR, no al árbitro principal.
+            if re.search(r"\bVAR\b", text[m.end():m.end() + 18]):
+                continue
+            ref = _referee_from(m.group("ref"))
+            # un nombre de equipo no es un árbitro (evita 'dirigirá el Betis…')
+            if ref and not _known(ref) and not _team_suffix(ref):
+                return ref
+    return None
+
+
+_PRESS_STOP = {
+    "cf", "fc", "cd", "ud", "sd", "rc", "rcd", "sad", "club", "de", "del",
+    "balompie", "balompié", "futbol", "fútbol", "deportivo", "deportiva",
+}
+
+
+def _press_core(name: str) -> str:
+    """Núcleo periodístico del nombre para la consulta ('Real Betis Balompié' ->
+    'Real Betis'). Conserva el orden; descarta sufijos jurídicos/genéricos."""
+    toks = [t for t in re.findall(r"[0-9A-Za-zÁÉÍÓÚÑáéíóúñ]+", name or "")
+            if _norm_key(t) not in _PRESS_STOP]
+    return " ".join(toks) or _clean(name)
+
+
+def _fixture_pairs(data_dir: Path, now: datetime, horizon_days: int = 6) -> list[tuple[str, str, str, str]]:
+    """(local_raw, visitante_raw, local_canon, visitante_canon) de los próximos
+    partidos SIN árbitro en el feed publicado. Lee el dashboard.json del build
+    anterior (sin red); ausente/ilegible -> []."""
+    try:
+        payload = json.loads((Path(data_dir) / "dashboard.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return []
+    lo = now.date().isoformat()
+    hi = (now + timedelta(days=horizon_days)).date().isoformat()
+    out: list[tuple[str, str, str, str]] = []
+    seen: set[tuple[str, str]] = set()
+    for m in payload.get("matches") or []:
+        oc = m.get("official_context") or {}
+        if oc.get("referee"):
+            continue  # ya tiene árbitro (API); no hace falta la prensa
+        kickoff = (oc.get("kickoff") or m.get("kickoff") or "")[:10]
+        if not (lo <= kickoff <= hi):
+            continue
+        home, away = m.get("home") or "", m.get("away") or ""
+        ch, ca = _known(home), _known(away)
+        if ch and ca and ch != ca and (ch, ca) not in seen:
+            seen.add((ch, ca))
+            out.append((home, away, ch, ca))
     return out
 
 
@@ -448,60 +542,102 @@ def _fresh_media(pub_date: str | None, now: datetime) -> bool:
         return True
 
 
-def collect_from_media(fetch=_fetch, now: datetime | None = None) -> list[Designation]:
+def _src(item) -> str:
+    el = item.find("source")
+    return (el.text or "").strip() if el is not None else ""
+
+
+def _mentions(text: str, core: str) -> bool:
+    """El texto menciona a un equipo: exige su token MÁS DISTINTIVO (apellido/ciudad,
+    no 'Real'/'Club'), para no atribuir una pieza de un solo equipo a un partido."""
+    toks = [t for t in _norm_key(core).split() if len(t) >= 4] or _norm_key(core).split()
+    longest = max(toks, key=len, default="")
+    return bool(longest) and re.search(rf"\b{re.escape(longest)}", _norm_key(text)) is not None
+
+
+def collect_from_media(fetch=_fetch, now: datetime | None = None,
+                       fixtures: list[tuple[str, str, str, str]] | None = None) -> list[Designation]:
     """Designaciones desde la prensa deportiva vía Google News RSS.
 
-    Google News se usa solo como índice; el árbitro se extrae del titular/entradilla
-    (que ya trae 'X para el Local-Visitante'). Solo cabeceras de confianza y frescas.
-    Nunca lanza; auto-observable: registra una muestra si no extrae nada."""
+    Dos pasadas: (1) POR PARTIDO —conocido el fixture, basta hallar el nombre del
+    árbitro junto a ambos equipos (lo más fiable); (2) RONDA global —titulares tipo
+    'X para el A-B; Y para el C-D'. Solo cabeceras de confianza y frescas, y descarta
+    otras competiciones. Nunca lanza; auto-observable: registra hasta 5 titulares de
+    muestra si no extrae nada."""
     now = now or datetime.now(timezone.utc)
     out: list[Designation] = []
     seen: set[tuple[str, str]] = set()
     sources: set[str] = set()
-    sample = ""
+    samples: list[str] = []
+
+    def _accept(d: Designation, outlet: str) -> bool:
+        if (d.home, d.away) in seen:
+            return False
+        seen.add((d.home, d.away))
+        d.source = outlet
+        out.append(d)
+        sources.add(outlet)
+        return True
+
+    # 1) POR PARTIDO: consulta dirigida; conocemos el fixture, solo falta el nombre.
+    for home, away, ch, ca in (fixtures or []):
+        hc, ac = _press_core(home), _press_core(away)
+        xml = fetch(_news_url(f"{hc} {ac} árbitro designado"))
+        if not xml:
+            continue
+        for item in _rss_items(xml):
+            outlet = _TRUSTED_SOURCES.get(_norm_key(_src(item)))
+            if not outlet or not _fresh_media(item.findtext("pubDate"), now):
+                continue
+            text = f"{_clean_tags(item.findtext('title'))}. {_clean_tags(item.findtext('description'))}"
+            if _EXCLUDE_COMP.search(text) or not (_mentions(text, hc) and _mentions(text, ac)):
+                continue
+            ref = referee_in_text(text)
+            if ref and _accept(Designation(home=ch, away=ca, referee=ref, raw_home=home, raw_away=away), outlet):
+                break
+            if not ref and len(samples) < 5:
+                samples.append(text[:160])
+
+    # 2) RONDA GLOBAL: recoge los partidos que la prensa lista juntos.
     for query in _MEDIA_QUERIES:
         xml = fetch(_news_url(query))
         if not xml:
             continue
         for item in _rss_items(xml):
-            src_el = item.find("source")
-            src_raw = (src_el.text or "").strip() if src_el is not None else ""
-            outlet = _TRUSTED_SOURCES.get(_norm_key(src_raw))
-            if not outlet:
-                continue
-            if not _fresh_media(item.findtext("pubDate"), now):
+            outlet = _TRUSTED_SOURCES.get(_norm_key(_src(item)))
+            if not outlet or not _fresh_media(item.findtext("pubDate"), now):
                 continue
             title = _clean_tags(item.findtext("title"))
             desc = _clean_tags(item.findtext("description"))
-            # Google News añade ' - <Cabecera>' al final del título; parsea también
-            # una versión sin ese sufijo por si fagocita la última designación.
+            if _EXCLUDE_COMP.search(f"{title}. {desc}"):
+                continue
+            if len(samples) < 5:
+                samples.append(title[:160])
+            # Google News añade ' - <Cabecera>' al título; parsea también sin sufijo.
             title_stripped = re.sub(r"\s+[-‐-―]\s+[^-‐-―]+$", "", title)
-            if not sample:
-                sample = title
             for chunk in (title, title_stripped, desc):
                 for d in parse_media_text(chunk):
-                    if (d.home, d.away) not in seen:
-                        seen.add((d.home, d.away))
-                        d.source = outlet
-                        out.append(d)
-                        sources.add(outlet)
+                    _accept(d, outlet)
     if out:
         log.info("prensa: %d designaciones vía Google News (%s)",
                  len(out), ", ".join(sorted(sources)))
     else:
-        log.info("prensa: 0 designaciones vía Google News (%d consultas). Muestra: %s",
-                 len(_MEDIA_QUERIES), sample[:300] or "(sin ítems de confianza)")
+        log.info("prensa: 0 designaciones vía Google News (%d fixtures, %d consultas). Muestras: %s",
+                 len(fixtures or []), len(_MEDIA_QUERIES),
+                 " || ".join(samples) or "(sin ítems de confianza)")
     return out
 
 
-def collect_designations(fetch=_fetch, now: datetime | None = None) -> tuple[list[Designation], str | None]:
+def collect_designations(fetch=_fetch, now: datetime | None = None,
+                         fixtures: list[tuple[str, str, str, str]] | None = None
+                         ) -> tuple[list[Designation], str | None]:
     """Reúne designaciones de la primera fuente que dé datos.
 
     Orden: (1) PRENSA vía Google News RSS —sin muro, la que funciona—; de respaldo
     (2) BeSoccer y (3) RFEF, que suelen rendir 0 por WAF pero se conservan por si
     cambian. Nunca lanza; registra muestras amplias para afinar el parser desde los
     logs del cron cuando una fuente devuelve contenido pero no se extrae nada."""
-    media = collect_from_media(fetch=fetch, now=now)
+    media = collect_from_media(fetch=fetch, now=now, fixtures=fixtures)
     if media:
         return media, "prensa"
     for source, base, index_urls, slug_re in _SOURCES:
@@ -538,22 +674,42 @@ def collect_designations(fetch=_fetch, now: datetime | None = None) -> tuple[lis
     return [], None
 
 
+_CACHE_TTL_DAYS = 10
+
+
+def _load_cache_rows(path: Path) -> list[dict]:
+    try:
+        return json.loads(path.read_text(encoding="utf-8")).get("designations") or []
+    except (OSError, ValueError, AttributeError):
+        return []
+
+
 def fetch_and_store(data_dir: Path | None = None, fetch=_fetch,
                     now: datetime | None = None) -> int:
-    """Descarga y cachea designaciones. Devuelve cuántas guardó.
+    """Descarga y cachea designaciones. Devuelve cuántas designaciones nuevas trajo.
 
-    Si no consigue ninguna, NO borra un cache previo válido (una jornada ya
-    descargada sigue sirviendo aunque una descarga puntual falle)."""
+    MERGE con el cache previo (no pisa designaciones válidas de la jornada con un
+    resultado PARCIAL de prensa, que suele cubrir solo unos partidos; review Codex).
+    Si no trae ninguna, NO reescribe: el cache previo sigue sirviendo tal cual."""
     data_dir = Path(data_dir or DATA_DIR)
-    designations, source = collect_designations(fetch=fetch, now=now)
+    now = now or datetime.now(timezone.utc)
+    stamp = now.isoformat()
+    fixtures = _fixture_pairs(data_dir, now)
+    designations, source = collect_designations(fetch=fetch, now=now, fixtures=fixtures)
     if not designations:
-        return 0
-    payload = {
-        "fetched_at": datetime.now(timezone.utc).isoformat(),
-        "source": source or "",
-        "designations": [asdict(d) for d in designations],
-    }
+        return 0  # nada nuevo -> no toques el cache
     path = data_dir / CACHE_NAME
+    cutoff = (now - timedelta(days=_CACHE_TTL_DAYS)).isoformat()
+    merged: dict[tuple[str, str], dict] = {}
+    for row in _load_cache_rows(path):  # conserva lo previo aún vigente
+        h, a, r = row.get("home"), row.get("away"), row.get("referee")
+        if h and a and r and (row.get("fetched_at") or stamp) >= cutoff:
+            merged[(h, a)] = row
+    for d in designations:  # lo nuevo gana
+        row = asdict(d)
+        row["fetched_at"] = stamp
+        merged[(d.home, d.away)] = row
+    payload = {"fetched_at": stamp, "source": source or "", "designations": list(merged.values())}
     try:
         path.write_text(json.dumps(payload, ensure_ascii=False, indent=1), encoding="utf-8")
     except OSError as exc:
