@@ -376,10 +376,11 @@ def fixture_payload(
     # (Latente si ninguna fuente trae árbitro; API-Football lo sobrescribe más
     # tarde en attach_official_context cuando existe.)
     if not finished_with_result and not getattr(fixture, "referee", None):
-        designated = _rfef_directory().lookup(fixture.home_team, fixture.away_team)
+        _dir = _rfef_directory()
+        designated = _dir.lookup(fixture.home_team, fixture.away_team)
         if designated:
             fixture.referee = designated
-            fixture.referee_source = "RFEF"
+            fixture.referee_source = _dir.source or "designación oficial"
     if not finished_with_result and getattr(fixture, "referee", None) and stats is not None:
         ref_model = getattr(stats, "referee_model", None)
         if ref_model is not None:
@@ -1394,7 +1395,7 @@ def build_dashboard(
             "con_prediccion": sum(1 for m in matches if m.get("engine") in {"dixon-coles", "ensemble", "residual"}),
             "con_cuotas": sum(1 for m in matches if isinstance(m.get("odds"), dict)),
             "con_arbitro": sum(1 for m in matches if (m.get("official_context") or {}).get("referee")),
-            "con_arbitro_rfef": sum(1 for m in matches if (m.get("official_context") or {}).get("provider") == "RFEF"),
+            "con_arbitro_rfef": sum(1 for m in matches if (m.get("official_context") or {}).get("provider") in ("BeSoccer", "RFEF")),
             "con_player_markets": sum(1 for m in matches if m.get("player_markets")),
         },
         "matches": matches,
