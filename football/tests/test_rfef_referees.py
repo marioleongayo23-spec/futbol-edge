@@ -270,6 +270,22 @@ def test_directory_conserva_la_fuente_por_partido():
     assert d.source_for("Sevilla FC", "Getafe CF") == "BeSoccer"  # NO 'prensa'
 
 
+def test_directory_normaliza_fuente_legacy_de_medio(tmp_path):
+    # Codex P2: caches antiguos guardaban el MEDIO ('AS'); normalízalo a 'prensa'
+    # para que dashboard lo cuente en con_arbitro_rfef (BeSoccer/RFEF se conservan).
+    (tmp_path / "referee_designations.json").write_text(json.dumps({
+        "fetched_at": _NOW.isoformat(), "source": "prensa",
+        "designations": [
+            {"home": "Sevilla", "away": "Getafe", "referee": "Gil Manzano",
+             "source": "AS", "fetched_at": _NOW.isoformat()},
+            {"home": "Betis", "away": "Real Madrid", "referee": "Munuera",
+             "source": "BeSoccer", "fetched_at": _NOW.isoformat()},
+        ]}), encoding="utf-8")
+    d = load_directory(tmp_path)
+    assert d.source_for("Sevilla FC", "Getafe CF") == "prensa"       # 'AS' -> 'prensa'
+    assert d.source_for("Real Betis Balompié", "Real Madrid CF") == "BeSoccer"  # conservado
+
+
 def test_fetch_and_store_caduca_filas_legacy_sin_fecha(tmp_path):
     # Codex P2: filas del cache antiguo (sin fetched_at) se migran con el sello
     # top-level del payload y caducan de verdad (no 'ahora').
