@@ -1,8 +1,6 @@
-"""Scraper de designaciones RFEF: parseo tolerante, cruce por equipo y defensa.
-
-No toca la red: usa `fetch` inyectado y HTML/txt de muestra. Valida que el
-árbitro pre-partido se extrae en los formatos plausibles de RFEF y que
-cualquier fallo deja el sistema en vacío (feed intacto).
+"""Scraper de designaciones (BeSoccer primario, RFEF de respaldo): parseo
+tolerante, cruce por equipo y defensa. No toca la red: usa `fetch` inyectado y
+HTML/txt de muestra.
 """
 from __future__ import annotations
 
@@ -11,7 +9,7 @@ import json
 from futbol_pred.ingest.rfef_referees import (
     parse_designations, discover_articles, collect_designations,
     fetch_and_store, load_directory, RefereeDirectory, Designation, _to_text,
-    INDEX_URL,
+    BESOCCER_BASE,
 )
 
 _ARTICLE = """LALIGA EA SPORTS - JORNADA 6
@@ -24,56 +22,60 @@ Real Madrid CF - Athletic Club
 Sevilla FC - Getafe CF: González Fuertes (Comité Asturiano)
 """
 
+_BES_INDEX_URL = "https://es.besoccer.com/competicion/noticias/primera"
+_BES_ARTICLE_URL = "https://es.besoccer.com/noticia/designaciones-arbitrales-jornada-6-1400000"
+_BES_INDEX_HTML = (
+    '<a href="/noticia/designaciones-arbitrales-jornada-6-1400000">Designaciones J6</a>'
+    '<a href="/noticia/otra-cosa">nada</a>'
+)
+
 
 def test_parse_formato_etiquetado_e_inline():
     des = parse_designations(_ARTICLE)
     got = {(d.home, d.away): d.referee for d in des}
-    assert got[("Barcelona", "Valencia")] == "Gil Manzano"          # etiquetado + hora delante
-    assert got[("Real Madrid", "Ath Bilbao")] == "Sánchez Martínez"  # etiquetado línea siguiente
-    assert got[("Sevilla", "Getafe")] == "González Fuertes"          # inline con dos puntos
+    assert got[("Barcelona", "Valencia")] == "Gil Manzano"
+    assert got[("Real Madrid", "Ath Bilbao")] == "Sánchez Martínez"
+    assert got[("Sevilla", "Getafe")] == "González Fuertes"
+
+
+def test_parse_admite_separador_vs():
+    # BeSoccer/prensa a veces usan "vs" en vez de guion.
+    des = parse_designations("FC Barcelona vs Valencia CF\nÁrbitro: Gil Manzano")
+    assert des and des[0].home == "Barcelona" and des[0].referee == "Gil Manzano"
 
 
 def test_parse_ignora_ruido_y_equipos_desconocidos():
-    ruido = "Comité Técnico - Nota de prensa. VAR - sistema. Jornada 2025-2026"
-    assert parse_designations(ruido) == []
-    # un enfrentamiento con un equipo que no reconocemos no se emite
+    assert parse_designations("Comité Técnico - Nota de prensa. VAR - sistema. Jornada 2025-2026") == []
     assert parse_designations("FC Barcelona - Equipo Inventado FC\nÁrbitro: Fulano") == []
 
 
 def test_parse_requiere_arbitro():
-    # sin árbitro localizable no hay designación (no inventamos)
     assert parse_designations("FC Barcelona - Valencia CF\nAsistentes varios") == []
 
 
 def test_discover_articles_filtra_indice():
-    html = ('<a href="/es/noticias/designaciones-arbitros-sexta-jornada">a</a>'
-            '<a href="/es/noticias/arbitros/designaciones">indice</a>'
-            '<a href="https://rfef.es/es/noticias/designaciones-septima-jornada">b</a>')
-    urls = discover_articles(html)
-    assert "https://rfef.es/es/noticias/designaciones-arbitros-sexta-jornada" in urls
-    assert "https://rfef.es/es/noticias/designaciones-septima-jornada" in urls
-    assert all("arbitros/designaciones" not in u.rsplit("/", 1)[-1] for u in urls)
+    from futbol_pred.ingest.rfef_referees import _SOURCES
+    _, _, _, bes_slug = _SOURCES[0]  # BeSoccer
+    urls = discover_articles(_BES_INDEX_HTML, BESOCCER_BASE, bes_slug, _BES_INDEX_URL)
+    assert _BES_ARTICLE_URL in urls
+    assert all("designaciones" in u for u in urls)  # solo enlaces de designación
 
 
 def test_directory_lookup_respeta_direccion():
     des = parse_designations(_ARTICLE)
     d = RefereeDirectory(des)
     assert d.lookup("FC Barcelona", "Valencia CF") == "Gil Manzano"
-    assert d.lookup("Barcelona", "Valencia") == "Gil Manzano"          # alias -> canónico
+    assert d.lookup("Barcelona", "Valencia") == "Gil Manzano"
     assert d.lookup("Equipo Raro", "Otro") is None
 
 
 def test_no_hereda_arbitro_en_el_partido_de_vuelta():
-    # RFEF designa A-B para esta jornada; la vuelta B-A (meses después, aún sin
-    # designar) NO debe heredar ese árbitro por el orden inverso (regresión P1).
     d = RefereeDirectory([Designation(home="Barcelona", away="Valencia", referee="Gil Manzano")])
     assert d.lookup("FC Barcelona", "Valencia CF") == "Gil Manzano"
     assert d.lookup("Valencia CF", "FC Barcelona") is None
 
 
 def test_to_text_preserva_limites_html_multiples_designaciones():
-    # Con filas separadas por <td>/<br> (sin saltos literales), text_content()
-    # dejaría todo en una línea y solo saldría la primera designación (regresión P2).
     html = ("<p>LALIGA EA SPORTS - JORNADA 6</p><table>"
             "<tr><td>FC Barcelona - Valencia CF</td><td>Árbitro: Gil Manzano</td></tr>"
             "<tr><td>Real Madrid CF - Athletic Club</td><td>Árbitro: Sánchez Martínez</td></tr>"
@@ -86,36 +88,45 @@ def test_to_text_preserva_limites_html_multiples_designaciones():
 
 def _fake_fetch(index_html, article_html):
     def fetch(url, timeout=20):
-        return index_html if url == INDEX_URL else article_html
+        if url == _BES_INDEX_URL:
+            return index_html
+        if url == _BES_ARTICLE_URL:
+            return article_html
+        return None  # resto de candidatas de BeSoccer y RFEF -> sin datos
     return fetch
 
 
+def test_collect_usa_besoccer_como_primaria():
+    des, source = collect_designations(fetch=_fake_fetch(_BES_INDEX_HTML, _ARTICLE))
+    assert source == "BeSoccer"
+    assert {(d.home, d.away) for d in des} >= {("Barcelona", "Valencia"), ("Sevilla", "Getafe")}
+    assert all(d.source == "BeSoccer" for d in des)
+
+
 def test_collect_defensivo_sin_red():
-    assert collect_designations(fetch=lambda u, timeout=20: None) == []
+    des, source = collect_designations(fetch=lambda u, timeout=20: None)
+    assert des == [] and source is None
 
 
 def test_fetch_and_store_y_load_roundtrip(tmp_path):
-    idx = '<a href="/es/noticias/designaciones-sexta-jornada">x</a>'
-    n = fetch_and_store(data_dir=tmp_path, fetch=_fake_fetch(idx, _ARTICLE))
+    n = fetch_and_store(data_dir=tmp_path, fetch=_fake_fetch(_BES_INDEX_HTML, _ARTICLE))
     assert n == 3
     cache = json.loads((tmp_path / "referee_designations.json").read_text(encoding="utf-8"))
-    assert len(cache["designations"]) == 3 and cache["source"].startswith("rfef.es")
+    assert cache["source"] == "BeSoccer" and len(cache["designations"]) == 3
     d = load_directory(tmp_path)
-    assert len(d) == 3
+    assert len(d) == 3 and d.source == "BeSoccer"
     assert d.lookup("Real Madrid CF", "Athletic Club") == "Sánchez Martínez"
 
 
 def test_fetch_and_store_no_borra_cache_si_falla(tmp_path):
-    # cache previo válido
-    fetch_and_store(data_dir=tmp_path, fetch=_fake_fetch('<a href="/es/noticias/designaciones-x">x</a>', _ARTICLE))
+    fetch_and_store(data_dir=tmp_path, fetch=_fake_fetch(_BES_INDEX_HTML, _ARTICLE))
     before = (tmp_path / "referee_designations.json").read_text(encoding="utf-8")
-    # descarga posterior falla del todo -> no toca el cache
     n = fetch_and_store(data_dir=tmp_path, fetch=lambda u, timeout=20: None)
     assert n == 0
     assert (tmp_path / "referee_designations.json").read_text(encoding="utf-8") == before
 
 
 def test_load_directory_defensivo(tmp_path):
-    assert len(load_directory(tmp_path)) == 0            # fichero ausente
+    assert len(load_directory(tmp_path)) == 0
     (tmp_path / "referee_designations.json").write_text("{ roto", encoding="utf-8")
-    assert len(load_directory(tmp_path)) == 0            # json corrupto
+    assert len(load_directory(tmp_path)) == 0

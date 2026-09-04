@@ -1,26 +1,31 @@
-"""Designaciones arbitrales de la RFEF (árbitro **pre-partido**).
+"""Designaciones arbitrales (árbitro **pre-partido**) desde fuentes públicas.
 
 Las APIs gratis (football-data.org, API-Football en su plan free) no exponen el
 árbitro antes del pitido inicial, así que el efecto del árbitro del Bloque 2
-quedaba invisible en los partidos apostables. La RFEF/CTA publica las
-designaciones **~1 día antes** de cada partido (antes de las 16:00) en
-``rfef.es/es/noticias/arbitros/designaciones``: cada jornada es una noticia con
-el árbitro principal de cada encuentro.
+quedaba invisible en los partidos apostables. Las designaciones se publican
+**~1 día antes** de cada partido.
+
+Fuentes por orden de preferencia (``_SOURCES``):
+  1. **BeSoccer** (``es.besoccer.com``) — primaria: sirve el contenido ESTÁTICO
+     (Google indexa las noticias con los árbitros reales), así que es scrapeable.
+  2. **RFEF** (``rfef.es``) — respaldo: su web devuelve un muro anti-bot (Drupal
+     ``antibot``) que no expone el contenido a un cliente sin JavaScript, así que
+     normalmente rinde 0; se mantiene por si cambia.
 
 Este módulo descarga esas noticias, extrae ``(local, visitante) -> árbitro`` y
-lo cachea en ``data/referee_designations.json``. El build del feed lee ese
-fichero (sin red en el camino caliente) y rellena ``fixture.referee`` cuando la
-API no lo trae, encendiendo el perfil del árbitro y el ajuste de faltas/tarjetas
-ya existentes.
+lo cachea en ``data/referee_designations.json`` (con la ``source``). El build del
+feed lee ese fichero (sin red en el camino caliente) y rellena ``fixture.referee``
+cuando la API no lo trae, encendiendo el perfil del árbitro y el ajuste de
+faltas/tarjetas ya existentes.
 
 Diseño **defensivo**: cualquier fallo de red o de parseo deja el fichero como
 estaba (o vacío) y el feed sigue exactamente igual. El árbitro es siempre
 opcional; nunca puede tumbar la generación del feed.
 
-Parser **auto-observable**: si descarga una noticia pero no consigue extraer
-designaciones, registra una muestra del texto para poder afinar el parseo desde
-los logs del cron (la estructura HTML real de RFEF no es accesible desde el
-entorno de desarrollo por egress).
+Parser **auto-observable**: si descarga una noticia pero no extrae designaciones,
+registra una muestra amplia del texto para afinar el parseo desde los logs del
+cron (la estructura HTML real no es accesible desde el entorno de desarrollo por
+egress).
 """
 from __future__ import annotations
 
@@ -36,10 +41,8 @@ from ..normalize import canonical_team
 
 log = logging.getLogger(__name__)
 
-INDEX_URL = "https://rfef.es/es/noticias/arbitros/designaciones"
-BASE_URL = "https://rfef.es"
 CACHE_NAME = "referee_designations.json"
-# Cabecera de navegador: RFEF suele rechazar el User-Agent por defecto de requests.
+# Cabecera de navegador: algunas fuentes rechazan el User-Agent de requests.
 _HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
@@ -49,10 +52,27 @@ _HEADERS = {
 }
 # Cuántas noticias de designación leer (cubre jornada en curso + la siguiente si
 # ya se publicó a mitad de semana).
-_MAX_ARTICLES = 4
-_ARTICLE_SLUG = re.compile(r"/es/noticias/[^\"'#?]*designaciones[^\"'#?]*", re.I)
-# "Local - Visitante": admite guion normal, medio o largo, con espacios.
-_PAIR = re.compile(r"(.+?)\s+[-‐-―]\s+(.+)")
+_MAX_ARTICLES = 6
+
+# --- Fuentes de designaciones, por orden de preferencia ---------------------
+# BeSoccer sirve el contenido ESTÁTICO (Google lo indexa con los árbitros
+# reales), así que es la fuente primaria. RFEF queda como respaldo aunque su
+# web devuelva un muro anti-bot (contenido vacío -> 0, sin romper nada).
+BESOCCER_BASE = "https://es.besoccer.com"
+RFEF_BASE = "https://rfef.es"
+# Índice/listado del que sacar los enlaces a las noticias de designaciones.
+_SOURCES = (
+    ("BeSoccer", BESOCCER_BASE,
+     ("https://es.besoccer.com/competicion/noticias/primera",
+      "https://es.besoccer.com/competicion/noticias/segunda_division",
+      "https://es.besoccer.com/noticias"),
+     re.compile(r"/noticia/[^\"'#?]*designaciones[^\"'#?]*", re.I)),
+    ("RFEF", RFEF_BASE,
+     ("https://rfef.es/es/noticias/arbitros/designaciones",),
+     re.compile(r"/es/noticias/[^\"'#?]*designaciones[^\"'#?]*", re.I)),
+)
+# "Local - Visitante": admite guion (normal/medio/largo) o "vs" con espacios.
+_PAIR = re.compile(r"(.+?)\s+(?:vs\.?|[-‐-―])\s+(.+)", re.I)
 # Etiqueta explícita del árbitro principal en el texto de la noticia.
 _REF_LABEL = re.compile(
     r"(?:árbitro|arbitro)(?:\s+principal)?\s*:?\s*([A-ZÁÉÍÓÚÑ][\wÁÉÍÓÚÑáéíóúñ.'\- ]{3,60})",
@@ -64,9 +84,10 @@ _REF_LABEL = re.compile(
 class Designation:
     home: str          # nombre canónico del local
     away: str          # nombre canónico del visitante
-    referee: str       # árbitro principal (tal cual lo publica RFEF)
+    referee: str       # árbitro principal (tal cual lo publica la fuente)
     raw_home: str = ""  # nombre tal cual aparecía (diagnóstico)
     raw_away: str = ""
+    source: str = ""    # fuente de la que salió (BeSoccer, RFEF…)
 
 
 def _known(name: str) -> str | None:
@@ -218,14 +239,15 @@ def _to_text(html: str) -> str:
         return re.sub(r"<[^>]+>", " ", html)
 
 
-def discover_articles(index_html: str) -> list[str]:
-    """URLs absolutas de las noticias de designación, más recientes primero."""
+def discover_articles(index_html: str, base: str, slug_re: "re.Pattern[str]",
+                      index_url: str = "") -> list[str]:
+    """URLs absolutas de las noticias de designación halladas en un índice."""
     urls: list[str] = []
     seen: set[str] = set()
-    for href in _ARTICLE_SLUG.findall(index_html or ""):
-        url = href if href.startswith("http") else BASE_URL + href
-        # el propio índice también casa el slug: descártalo.
-        if url.rstrip("/") == INDEX_URL.rstrip("/"):
+    for href in slug_re.findall(index_html or ""):
+        url = href if href.startswith("http") else base + href
+        # el propio índice puede casar el patrón (RFEF): descártalo.
+        if index_url and url.rstrip("/") == index_url.rstrip("/"):
             continue
         if url not in seen:
             seen.add(url)
@@ -233,33 +255,43 @@ def discover_articles(index_html: str) -> list[str]:
     return urls[:_MAX_ARTICLES]
 
 
-def collect_designations(fetch=_fetch) -> list[Designation]:
-    """Orquesta índice -> noticias -> designaciones. Nunca lanza."""
-    index = fetch(INDEX_URL)
-    if not index:
-        return []
-    articles = discover_articles(index)
-    if not articles:
-        log.warning("RFEF: índice sin enlaces de designación (¿cambió el HTML?)")
-        return []
-    out: list[Designation] = []
-    keys: set[tuple[str, str]] = set()
-    for url in articles:
-        html = fetch(url)
-        if not html:
-            continue
-        text = _to_text(html)
-        parsed = parse_designations(text)
-        if not parsed:
-            # Auto-observable: deja una muestra para afinar el parser desde logs.
-            log.warning("RFEF: 0 designaciones en %s. Muestra: %s", url, _clean(text)[:600])
-            continue
-        for d in parsed:
-            if (d.home, d.away) not in keys:
-                keys.add((d.home, d.away))
-                out.append(d)
-    log.info("RFEF: %d designaciones de %d noticias", len(out), len(articles))
-    return out
+def collect_designations(fetch=_fetch) -> tuple[list[Designation], str | None]:
+    """Prueba las fuentes en orden de preferencia (BeSoccer primero, RFEF de
+    respaldo) y devuelve (designaciones, fuente) de la primera que dé datos.
+    Nunca lanza; registra muestras amplias para poder afinar el parser desde los
+    logs del cron cuando una fuente devuelve HTML pero no se extrae nada."""
+    for source, base, index_urls, slug_re in _SOURCES:
+        for index_url in index_urls:
+            index = fetch(index_url)
+            if not index:
+                continue
+            articles = discover_articles(index, base, slug_re, index_url)
+            if not articles:
+                log.info("%s: %s sin enlaces de designación", source, index_url)
+                continue
+            out: list[Designation] = []
+            keys: set[tuple[str, str]] = set()
+            for url in articles:
+                html = fetch(url)
+                if not html:
+                    continue
+                text = _to_text(html)
+                parsed = parse_designations(text)
+                if not parsed:
+                    log.warning("%s: 0 designaciones en %s. Muestra(1200): %s",
+                                source, url, _clean(text)[:1200])
+                    continue
+                for d in parsed:
+                    if (d.home, d.away) not in keys:
+                        keys.add((d.home, d.away))
+                        d.source = source
+                        out.append(d)
+            if out:
+                log.info("%s: %d designaciones de %d noticias (%s)",
+                         source, len(out), len(articles), index_url)
+                return out, source
+    log.warning("Designaciones: ninguna fuente devolvió datos")
+    return [], None
 
 
 def fetch_and_store(data_dir: Path | None = None, fetch=_fetch) -> int:
@@ -268,19 +300,19 @@ def fetch_and_store(data_dir: Path | None = None, fetch=_fetch) -> int:
     Si no consigue ninguna, NO borra un cache previo válido (una jornada ya
     descargada sigue sirviendo aunque una descarga puntual falle)."""
     data_dir = Path(data_dir or DATA_DIR)
-    designations = collect_designations(fetch=fetch)
+    designations, source = collect_designations(fetch=fetch)
     if not designations:
         return 0
     payload = {
         "fetched_at": datetime.now(timezone.utc).isoformat(),
-        "source": "rfef.es/es/noticias/arbitros/designaciones",
+        "source": source or "",
         "designations": [asdict(d) for d in designations],
     }
     path = data_dir / CACHE_NAME
     try:
         path.write_text(json.dumps(payload, ensure_ascii=False, indent=1), encoding="utf-8")
     except OSError as exc:
-        log.warning("RFEF: no pude escribir %s: %s", path, exc)
+        log.warning("Designaciones: no pude escribir %s: %s", path, exc)
         return 0
     return len(designations)
 
@@ -288,8 +320,10 @@ def fetch_and_store(data_dir: Path | None = None, fetch=_fetch) -> int:
 class RefereeDirectory:
     """Búsqueda ``(local, visitante) -> árbitro`` por nombre canónico."""
 
-    def __init__(self, designations: list[Designation], fetched_at: str | None = None):
+    def __init__(self, designations: list[Designation], fetched_at: str | None = None,
+                 source: str | None = None):
         self.fetched_at = fetched_at
+        self.source = source or ""
         self._by_pair: dict[tuple[str, str], str] = {}
         for d in designations:
             self._by_pair[(d.home, d.away)] = d.referee
@@ -317,20 +351,20 @@ def load_directory(data_dir: Path | None = None) -> RefereeDirectory:
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
         rows = payload.get("designations") or []
-        des = [Designation(**{k: r.get(k, "") for k in ("home", "away", "referee", "raw_home", "raw_away")})
+        des = [Designation(**{k: r.get(k, "") for k in ("home", "away", "referee", "raw_home", "raw_away", "source")})
                for r in rows if r.get("home") and r.get("away") and r.get("referee")]
-        return RefereeDirectory(des, payload.get("fetched_at"))
+        return RefereeDirectory(des, payload.get("fetched_at"), payload.get("source"))
     except FileNotFoundError:
         return RefereeDirectory([])
     except Exception as exc:  # noqa: BLE001 - json corrupto, etc.
-        log.warning("RFEF: cache ilegible %s: %s", path, exc)
+        log.warning("Designaciones: cache ilegible %s: %s", path, exc)
         return RefereeDirectory([])
 
 
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
     n = fetch_and_store()
-    print(f"RFEF designaciones guardadas: {n}")
+    print(f"Designaciones arbitrales guardadas: {n}")
 
 
 if __name__ == "__main__":
