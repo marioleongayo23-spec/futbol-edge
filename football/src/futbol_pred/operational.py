@@ -241,6 +241,17 @@ def attach_official_context(matches: list[dict], now: datetime, client: ApiFootb
                             official_context["referee_adjustment_applied"] = applied
                     except Exception:
                         pass
+                # No perder un árbitro ya conocido (p.ej. la designación RFEF
+                # pre-partido) si esta pasada de API-Football aún no trae árbitro:
+                # su fixture_context siempre devuelve dict con referee=None.
+                if not official_context.get("referee") and previous_context.get("referee"):
+                    for _k in ("referee", "referee_profile", "referee_adjustment_applied"):
+                        if previous_context.get(_k) is not None:
+                            official_context[_k] = previous_context[_k]
+                    official_context["provider"] = previous_context.get(
+                        "provider", official_context.get("provider"))
+                    official_context["source"] = previous_context.get(
+                        "source", previous_context.get("provider"))
                 match["official_context"] = official_context
         if not official:
             _merge_absences(match.get("alineacion") or {}, match, absences, now_local)
