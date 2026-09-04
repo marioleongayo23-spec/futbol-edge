@@ -124,3 +124,43 @@ def test_contexto_oficial_no_aplica_dos_veces_el_mismo_factor():
     # una sola vez desde la base. Nunca debe acabar en 27.83 (x1.1 al cuadrado).
     assert match["stats"]["fouls"] == {"home": 12.1, "away": 13.2, "total": 25.3}
     assert match["official_context"]["provider"] == "API-Football"
+
+
+class FakeClientSinArbitro(FakeClient):
+    """API-Football responde el fixture pero SIN árbitro (típico pre-partido)."""
+
+    def get_fixture_details(self, fixture_ids):
+        return {99: {"fixture": {"id": 99, "referee": None,
+                                 "venue": {"name": "San Mamés", "city": "Bilbao"}},
+                     "lineups": []}}
+
+    def fixture_context(self, detail):
+        v = detail["fixture"]["venue"]
+        return {"provider": "API-Football", "referee": None,
+                "venue": v["name"], "city": v["city"]}
+
+
+def test_contexto_oficial_no_borra_arbitro_rfef_si_api_no_lo_trae():
+    # La designación RFEF ya encendió el árbitro en el build; una pasada posterior
+    # de API-Football sin árbitro NO debe borrarlo (regresión del scraper RFEF).
+    now = datetime(2026, 8, 24, 20, 0, tzinfo=MADRID)
+    match = {
+        "home": "Atletico Madrid", "away": "Valencia", "league": "LaLiga",
+        "kickoff": datetime(2026, 8, 24, 21, 0, tzinfo=MADRID).isoformat(),
+        "stats": {"fouls": {"home": 12.1, "away": 13.2, "total": 25.3}},
+        "official_context": {
+            "referee": "Gil Manzano", "provider": "RFEF", "source": "RFEF",
+            "referee_adjustment_applied": ["fouls"],
+            "referee_profile": {"metrics": {"fouls": {"factor": 1.1, "accepted": True}}},
+        },
+    }
+
+    attach_official_context([match], now, client=FakeClientSinArbitro(),
+                            stats_models={"LaLiga": FakeStatsPredictor()})
+
+    oc = match["official_context"]
+    assert oc["referee"] == "Gil Manzano"            # se conserva
+    assert oc["provider"] == "RFEF"                   # procedencia real intacta
+    assert oc["referee_adjustment_applied"] == ["fouls"]
+    assert oc["referee_profile"]["metrics"]["fouls"]["accepted"] is True
+    assert oc["venue"] == "San Mamés"                 # sí se enriquece la sede

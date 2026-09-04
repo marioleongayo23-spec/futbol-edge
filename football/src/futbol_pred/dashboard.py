@@ -21,6 +21,7 @@ from .elo import EloRatings
 from .feed_quality import load_feed, preserve_last_known_good, write_feed_safely
 from .ingest.api_football import ApiFootballClient, Fixture
 from .ingest.football_data import FootballDataClient
+from .ingest.rfef_referees import RefereeDirectory, load_directory as _load_rfef_designations
 from .normalize import canonical_team
 from .market_calibration import learn_market_calibration
 from .model.market_lines import committed_scoreline, count_market, goals_market
@@ -135,6 +136,18 @@ def _previous_residual_params(previous: dict | None, league: str) -> dict:
         return {**production, "accepted": True}
     except (KeyError, TypeError):
         return {"accepted": False}
+
+
+_RFEF_DIRECTORY: RefereeDirectory | None = None
+
+
+def _rfef_directory() -> RefereeDirectory:
+    """Designaciones RFEF cacheadas una vez por proceso (lectura de fichero,
+    sin red). Ausente/ilegible -> directorio vacío (feed idéntico)."""
+    global _RFEF_DIRECTORY
+    if _RFEF_DIRECTORY is None:
+        _RFEF_DIRECTORY = _load_rfef_designations()
+    return _RFEF_DIRECTORY
 
 
 def fixture_payload(
@@ -355,17 +368,25 @@ def fixture_payload(
         except (KeyError, ValueError):
             pass
 
-    # Árbitro designado (football-data.org): si se conoce el árbitro del partido,
-    # su perfil histórico ajusta faltas/tarjetas ANTES de construir los mercados y
-    # se expone como official_context. Reutiliza el modelo validado del Bloque 2.
-    # (Latente si la fuente no trae árbitro; la asignación de API-Football, cuando
-    # exista, lo sobrescribe más adelante en attach_official_context.)
+    # Árbitro designado: si se conoce el árbitro del partido, su perfil histórico
+    # ajusta faltas/tarjetas ANTES de construir los mercados y se expone como
+    # official_context. Reutiliza el modelo validado del Bloque 2. Fuentes, por
+    # orden: lo que traiga la API (football-data.org) y, si no, las designaciones
+    # de la RFEF (publicadas ~1 día antes; único origen pre-partido gratis).
+    # (Latente si ninguna fuente trae árbitro; API-Football lo sobrescribe más
+    # tarde en attach_official_context cuando existe.)
+    if not finished_with_result and not getattr(fixture, "referee", None):
+        designated = _rfef_directory().lookup(fixture.home_team, fixture.away_team)
+        if designated:
+            fixture.referee = designated
+            fixture.referee_source = "RFEF"
     if not finished_with_result and getattr(fixture, "referee", None) and stats is not None:
         ref_model = getattr(stats, "referee_model", None)
         if ref_model is not None:
             try:
-                oc = {"referee": fixture.referee, "source": "football-data.org",
-                      "provider": "football-data.org",
+                _ref_src = getattr(fixture, "referee_source", None) or "football-data.org"
+                oc = {"referee": fixture.referee, "source": _ref_src,
+                      "provider": _ref_src,
                       "source_updated_at": generated_at}
                 profile = ref_model.context(fixture.referee)
                 if profile:
@@ -1373,6 +1394,7 @@ def build_dashboard(
             "con_prediccion": sum(1 for m in matches if m.get("engine") in {"dixon-coles", "ensemble", "residual"}),
             "con_cuotas": sum(1 for m in matches if isinstance(m.get("odds"), dict)),
             "con_arbitro": sum(1 for m in matches if (m.get("official_context") or {}).get("referee")),
+            "con_arbitro_rfef": sum(1 for m in matches if (m.get("official_context") or {}).get("provider") == "RFEF"),
             "con_player_markets": sum(1 for m in matches if m.get("player_markets")),
         },
         "matches": matches,

@@ -38,6 +38,7 @@ class Fixture:
     home_tla: str | None = None
     away_tla: str | None = None
     referee: str | None = None
+    referee_source: str | None = None
 
 
 class ApiFootballClient:

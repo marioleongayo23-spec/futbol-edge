@@ -87,6 +87,11 @@ jobs:
           AI_REFRESH_RUN: ${{ github.event_name == 'schedule' && '1' || '0' }}
           FORCE_AI: ${{ github.event_name == 'workflow_dispatch' && inputs.force_ai && '1' || '0' }}
         run: |
+          # 0) Árbitro pre-partido: designaciones RFEF (~1 día antes). Cachea
+          # data/referee_designations.json que el build lee para encender el
+          # perfil del árbitro y el ajuste de faltas/tarjetas. Nunca bloquea.
+          python -m futbol_pred.ingest.rfef_referees || true
+
           # 1) Genera la base pesada: históricos, calendario y modelos.
           python -m futbol_pred.dashboard_lineup_safe
 
