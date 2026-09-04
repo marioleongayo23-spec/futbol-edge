@@ -1311,15 +1311,6 @@ def build_dashboard(
     _attach_lineups(matches, now, squads=all_squads)
     prefinal_updates = refresh_prefinal_lineups(matches, now)
     official_updates = attach_official_context(matches, now, stats_models=stats_models_by_league)
-    # Purga final: ningún partido publica un árbitro basura (nombre de medio de un
-    # parseo viejo que quedó pegado en official_context pasada tras pasada). Cubre
-    # también los partidos FUTUROS, que el last-mile (solo hoy) nunca toca.
-    for _m in matches:
-        _oc = _m.get("official_context")
-        if _oc and _oc.get("referee") and _is_junk_referee(_oc.get("referee")):
-            for _k in ("referee", "referee_profile", "referee_adjustment_applied",
-                       "provider", "source"):
-                _oc.pop(_k, None)
     finished_stats_updates = attach_finished_stats(
         matches, now, previous_matches=(previous or {}).get("matches")
     )
@@ -1342,6 +1333,16 @@ def build_dashboard(
         force=_force_ai(),
     )
     annotate_prediction_context(matches)
+    # Purga FINAL del árbitro basura (nombre de medio de un parseo viejo), DESPUÉS
+    # del restore de snapshots: ese restore reintroducía el official_context viejo
+    # con la basura y deshacía una purga anterior (review Codex P1). Aquí ya es el
+    # estado definitivo, así que ningún partido —de hoy o futuro— la publica.
+    for _m in matches:
+        _oc = _m.get("official_context")
+        if _oc and _oc.get("referee") and _is_junk_referee(_oc.get("referee")):
+            for _k in ("referee", "referee_profile", "referee_adjustment_applied",
+                       "provider", "source"):
+                _oc.pop(_k, None)
     first_audit = content_audit(matches, players, now)
     retried = _retry_incomplete(matches, first_audit, now)
     players = _merge_lineup_players(players, matches)
