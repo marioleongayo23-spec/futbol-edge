@@ -254,6 +254,15 @@ def refresh_payload(payload: dict, now: datetime | None = None) -> tuple[bool, d
         stats["covered_players"] += 22
         stats["real_players"] += real_count
         stats["model_players"] += 22 - real_count
+    # Top-5 por jugador y métrica: recomputa SIEMPRE desde el once vigente (todos
+    # los próximos en ventana, no solo los _critical). Este paso corre tarde en el
+    # pipeline, después del refresco de onces, así que corrige la foto antigua que
+    # el build del feed pudo dejar (once de la temporada anterior). Así el Top-5
+    # muestra la plantilla ACTUAL, no jugadores que ya no están en el equipo.
+    pm_refreshed = attach_player_markets(payload.get("matches") or [], now_local)
+    if pm_refreshed:
+        changed = True
+        stats["player_markets_refreshed"] = pm_refreshed
     if changed:
         payload["generated_at"] = now_local.isoformat()
     return changed, stats
@@ -292,7 +301,9 @@ def attach_player_markets(matches: list[dict], now: datetime | None = None) -> i
         if len(local) != 11 or len(away) != 11:
             continue
         markets = build_player_markets(local, away)
-        if markets:
+        # Idempotente: solo reescribe (y cuenta como cambio) si difiere de lo que
+        # ya hay, para no forzar re-publicaciones del feed cuando nada cambió.
+        if markets and markets != match.get("player_markets"):
             match["player_markets"] = markets
             count += 1
     return count

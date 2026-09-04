@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime, timezone, timedelta
 
 from futbol_pred.model.player_markets import player_line, build_player_markets
-from futbol_pred.matchday_player_props_fill import attach_player_markets
+from futbol_pred.matchday_player_props_fill import attach_player_markets, refresh_payload
 
 
 def test_player_line_sube_hasta_perder_solidez():
@@ -71,3 +71,39 @@ def test_attach_salta_once_retenido():
     m["alineacion"]["display_withheld"] = True
     assert attach_player_markets([m]) == 0
     assert "player_markets" not in m
+
+
+def test_top5_refleja_once_actual_y_es_idempotente():
+    # El Top-5 debe salir SIEMPRE del once vigente (no de una foto antigua) y
+    # recomputarse sin churn cuando nada cambia.
+    m = _match(3)
+    assert attach_player_markets([m]) == 1
+    xi = set(m["alineacion"]["local"])
+    top = {p["jugador"] for met in m["player_markets"]["metrics"] for p in met["home"]}
+    assert top and top.issubset(xi)                 # solo jugadores del once actual
+    assert attach_player_markets([m]) == 0          # 2ª pasada: idempotente, sin cambios
+
+
+def test_cambio_de_once_descarta_jugadores_viejos():
+    # Si cambia la plantilla/once (nueva temporada), el Top-5 se recompone con los
+    # nuevos y NINGÚN jugador antiguo permanece (el bug reportado por el usuario).
+    m = _match(3)
+    attach_player_markets([m])
+    viejos = set(m["alineacion"]["local"])
+    m["alineacion"]["local"] = [f"Nuevo{i}" for i in range(11)]
+    assert attach_player_markets([m]) == 1
+    top = {p["jugador"] for met in m["player_markets"]["metrics"] for p in met["home"]}
+    assert top and top.issubset(set(m["alineacion"]["local"]))
+    assert not (top & viejos)                       # ni un solo jugador viejo
+
+
+def test_refresh_payload_recompone_top5_fuera_de_critico():
+    # refresh_payload corre tarde en el cron; aunque el partido no sea _critical,
+    # debe refrescar player_markets desde el once vigente y descartar la foto antigua.
+    m = _match(3)                                    # 3 días: NO es _critical
+    m["player_markets"] = {"metrics": [], "foto_antigua": True}
+    changed, stats = refresh_payload({"matches": [m]})
+    assert changed and stats.get("player_markets_refreshed", 0) >= 1
+    assert "foto_antigua" not in m["player_markets"]
+    top = {p["jugador"] for met in m["player_markets"]["metrics"] for p in met["home"]}
+    assert top.issubset(set(m["alineacion"]["local"]))
