@@ -286,6 +286,21 @@ def test_directory_normaliza_fuente_legacy_de_medio(tmp_path):
     assert d.source_for("Real Betis Balompié", "Real Madrid CF") == "BeSoccer"  # conservado
 
 
+def test_load_directory_descarta_arbitro_basura_de_medio(tmp_path):
+    # Un parseo antiguo dejó 'Mundo Deportivo. El' en el cache; al leer se descarta
+    # (no se sirve al feed) mientras se conserva la designación buena de la jornada.
+    (tmp_path / "referee_designations.json").write_text(json.dumps({
+        "fetched_at": _NOW.isoformat(), "source": "prensa", "designations": [
+            {"home": "Ath Bilbao", "away": "Ath Madrid", "referee": "Mundo Deportivo. El",
+             "source": "prensa", "fetched_at": _NOW.isoformat()},
+            {"home": "Valladolid", "away": "Andorra", "referee": "Morilla Turrión",
+             "source": "prensa", "fetched_at": _NOW.isoformat()},
+        ]}), encoding="utf-8")
+    d = load_directory(tmp_path)
+    assert d.lookup("Athletic Club", "Club Atlético de Madrid") is None  # basura descartada
+    assert d.lookup("Valladolid", "Andorra") == "Morilla Turrión"        # bueno conservado
+
+
 def test_fetch_and_store_caduca_filas_legacy_sin_fecha(tmp_path):
     # Codex P2: filas del cache antiguo (sin fetched_at) se migran con el sello
     # top-level del payload y caducan de verdad (no 'ahora').

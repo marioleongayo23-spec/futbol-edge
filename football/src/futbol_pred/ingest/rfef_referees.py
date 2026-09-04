@@ -714,6 +714,16 @@ def _normalize_source(src: str | None) -> str:
     return "prensa"
 
 
+def _is_junk_referee(referee: str | None) -> bool:
+    """Una designación cacheada cuyo 'árbitro' es basura (nombre de medio o
+    demasiado corto): suele venir de un parseo antiguo ya corregido. Se descarta
+    al leer y al mergear, para no servirla ni retenerla en el cache."""
+    r = (referee or "").strip()
+    if len(r) < 3:
+        return True
+    return bool(set(re.findall(r"[a-z0-9]+", _norm_key(r))) & _OUTLET_WORDS)
+
+
 def fetch_and_store(data_dir: Path | None = None, fetch=_fetch,
                     now: datetime | None = None) -> int:
     """Descarga y cachea designaciones. Devuelve cuántas designaciones nuevas trajo.
@@ -738,7 +748,7 @@ def fetch_and_store(data_dir: Path | None = None, fetch=_fetch,
     merged: dict[tuple[str, str], dict] = {}
     for row in prev.get("designations") or []:  # conserva lo previo aún vigente
         h, a, r = row.get("home"), row.get("away"), row.get("referee")
-        if not (h and a and r):
+        if not (h and a and r) or _is_junk_referee(r):  # purga basura de parseos viejos
             continue
         row_ts = row.get("fetched_at") or legacy
         if row_ts < cutoff:
@@ -806,7 +816,9 @@ def load_directory(data_dir: Path | None = None) -> RefereeDirectory:
         payload = json.loads(path.read_text(encoding="utf-8"))
         rows = payload.get("designations") or []
         des = [Designation(**{k: r.get(k, "") for k in ("home", "away", "referee", "raw_home", "raw_away", "source")})
-               for r in rows if r.get("home") and r.get("away") and r.get("referee")]
+               for r in rows
+               if r.get("home") and r.get("away") and r.get("referee")
+               and not _is_junk_referee(r.get("referee"))]
         return RefereeDirectory(des, payload.get("fetched_at"), payload.get("source"))
     except FileNotFoundError:
         return RefereeDirectory([])
