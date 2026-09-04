@@ -161,11 +161,14 @@ def _team_prefix(text: str) -> tuple[str | None, str]:
 
 # Palabras de cabeceras/medios: un nombre de árbitro que las contenga es basura
 # (p.ej. 'Mundo Deportivo' colado como árbitro).
+# Tokens de cabeceras/medios (normalizados). Deben cubrir TODAS las fuentes de
+# _TRUSTED_SOURCES, incl. las de un solo token cortas como 'as' y 'eldesmarque'
+# (si no, un 'AS. El' cacheado por el parser viejo se colaría; review Codex).
 _OUTLET_WORDS = {
-    "mundo", "deportivo", "deportiva", "marca", "sport", "relevo", "estadio",
-    "superdeporte", "desmarque", "soccerway", "cadena", "ser", "cope", "diario",
-    "radio", "onda", "prensa", "besoccer", "futbolfantasy", "eurosport", "dazn",
-    "goal", "gol", "espanol", "confidencial", "vozpopuli", "okdiario",
+    "as", "mundo", "deportivo", "deportiva", "marca", "sport", "relevo", "estadio",
+    "superdeporte", "desmarque", "eldesmarque", "soccerway", "cadena", "ser", "cope",
+    "diario", "radio", "onda", "prensa", "besoccer", "futbolfantasy", "eurosport",
+    "dazn", "goal", "gol", "espanol", "confidencial", "vozpopuli", "okdiario",
 }
 
 
