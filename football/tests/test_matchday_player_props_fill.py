@@ -100,3 +100,20 @@ def test_matchday_props_fill_skips_non_critical_or_incomplete_lineup():
     # 10 días) para no quedarse con una foto antigua de la plantilla.
     assert stats.get("player_markets_refreshed", 0) == 1
     assert changed is True
+
+
+def test_refresh_payload_sobrevive_entorno_ligero_sin_scipy(monkeypatch):
+    # El hot-refresh instala solo 'requests' (sin numpy/scipy). Si el import del
+    # modelo del Top-5 falla, refresh_payload debe OMITIRLO sin tumbar el feed;
+    # el pipeline pesado (futbol-pred) ya lo refresca.
+    import futbol_pred.matchday_player_props_fill as mod
+
+    def _boom(*args, **kwargs):
+        raise ImportError("No module named 'scipy'")
+
+    monkeypatch.setattr(mod, "attach_player_markets", _boom)
+    now = datetime(2026, 8, 27, 10, 0, tzinfo=MADRID)
+    match = _match(now)
+    match["kickoff"] = (now + timedelta(hours=5)).isoformat()
+    changed, stats = mod.refresh_payload({"matches": [match]}, now=now)  # no debe lanzar
+    assert "player_markets_refreshed" not in stats

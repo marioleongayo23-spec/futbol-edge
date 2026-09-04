@@ -259,7 +259,16 @@ def refresh_payload(payload: dict, now: datetime | None = None) -> tuple[bool, d
     # pipeline, después del refresco de onces, así que corrige la foto antigua que
     # el build del feed pudo dejar (once de la temporada anterior). Así el Top-5
     # muestra la plantilla ACTUAL, no jugadores que ya no están en el equipo.
-    pm_refreshed = attach_player_markets(payload.get("matches") or [], now_local)
+    #
+    # Defensivo con el entorno LIGERO del hot-refresh (instala solo `requests`,
+    # sin numpy/scipy): attach_player_markets importa el modelo (scipy). Si ese
+    # import falla, se OMITE el Top-5 aquí —el pipeline pesado (futbol-pred, que sí
+    # tiene scipy) lo refresca cada ~30 min— en vez de tumbar la publicación del
+    # feed. Nunca se enmascara un error real de cálculo: solo el import ausente.
+    try:
+        pm_refreshed = attach_player_markets(payload.get("matches") or [], now_local)
+    except ImportError:
+        pm_refreshed = 0
     if pm_refreshed:
         changed = True
         stats["player_markets_refreshed"] = pm_refreshed
