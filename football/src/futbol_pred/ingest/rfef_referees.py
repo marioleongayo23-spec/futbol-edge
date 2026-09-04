@@ -199,7 +199,18 @@ def _fetch(url: str, timeout: int = 20) -> str | None:
 
 
 def _to_text(html: str) -> str:
-    """HTML -> texto plano con lxml si está; si no, un desnudado básico."""
+    """HTML -> texto plano PRESERVANDO los límites de fila.
+
+    RFEF separa cada partido/árbitro con ``<br>``/``<p>``/``<td>``…, no con
+    saltos literales; ``text_content()`` los perdería y dejaría todo en una línea
+    (una sola designación parseada, el resto absorbido o descartado). Por eso
+    inyectamos ``\\n`` en esos límites ANTES de extraer el texto."""
+    html = html or ""
+    html = re.sub(r"(?i)<\s*br\s*/?>", "\n", html)
+    html = re.sub(
+        r"(?i)</\s*(?:p|div|tr|li|ul|ol|h[1-6]|td|th|section|article|table)\s*>",
+        "\n", html,
+    )
     try:
         from lxml import html as lxml_html
         return lxml_html.fromstring(html).text_content()
@@ -287,14 +298,17 @@ class RefereeDirectory:
         return len(self._by_pair)
 
     def lookup(self, home: str, away: str) -> str | None:
-        """Árbitro designado para ese local-visitante, o None.
+        """Árbitro designado para ese local-visitante EXACTO, o None.
 
-        Casa por nombre canónico y, como respaldo, en cualquier orden (por si la
-        fuente invierte local/visitante)."""
+        Respeta la dirección local/visitante: NO cae al orden inverso. El partido
+        de vuelta (B-A) tiene su propia designación, distinta y normalmente aún sin
+        publicar; cruzar el par como no ordenado aplicaría el árbitro equivocado
+        (y su ajuste de faltas/tarjetas) al partido de vuelta meses antes. RFEF
+        publica el local/visitante correctos, así que el cruce exacto basta."""
         ch, ca = _known(home), _known(away)
         if not ch or not ca:
             return None
-        return self._by_pair.get((ch, ca)) or self._by_pair.get((ca, ch))
+        return self._by_pair.get((ch, ca))
 
 
 def load_directory(data_dir: Path | None = None) -> RefereeDirectory:

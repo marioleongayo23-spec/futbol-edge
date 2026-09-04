@@ -10,7 +10,8 @@ import json
 
 from futbol_pred.ingest.rfef_referees import (
     parse_designations, discover_articles, collect_designations,
-    fetch_and_store, load_directory, RefereeDirectory, INDEX_URL,
+    fetch_and_store, load_directory, RefereeDirectory, Designation, _to_text,
+    INDEX_URL,
 )
 
 _ARTICLE = """LALIGA EA SPORTS - JORNADA 6
@@ -54,13 +55,33 @@ def test_discover_articles_filtra_indice():
     assert all("arbitros/designaciones" not in u.rsplit("/", 1)[-1] for u in urls)
 
 
-def test_directory_lookup_canonico_y_orden_invertido():
+def test_directory_lookup_respeta_direccion():
     des = parse_designations(_ARTICLE)
     d = RefereeDirectory(des)
     assert d.lookup("FC Barcelona", "Valencia CF") == "Gil Manzano"
-    assert d.lookup("Valencia CF", "FC Barcelona") == "Gil Manzano"   # invierte local/visitante
     assert d.lookup("Barcelona", "Valencia") == "Gil Manzano"          # alias -> canónico
     assert d.lookup("Equipo Raro", "Otro") is None
+
+
+def test_no_hereda_arbitro_en_el_partido_de_vuelta():
+    # RFEF designa A-B para esta jornada; la vuelta B-A (meses después, aún sin
+    # designar) NO debe heredar ese árbitro por el orden inverso (regresión P1).
+    d = RefereeDirectory([Designation(home="Barcelona", away="Valencia", referee="Gil Manzano")])
+    assert d.lookup("FC Barcelona", "Valencia CF") == "Gil Manzano"
+    assert d.lookup("Valencia CF", "FC Barcelona") is None
+
+
+def test_to_text_preserva_limites_html_multiples_designaciones():
+    # Con filas separadas por <td>/<br> (sin saltos literales), text_content()
+    # dejaría todo en una línea y solo saldría la primera designación (regresión P2).
+    html = ("<p>LALIGA EA SPORTS - JORNADA 6</p><table>"
+            "<tr><td>FC Barcelona - Valencia CF</td><td>Árbitro: Gil Manzano</td></tr>"
+            "<tr><td>Real Madrid CF - Athletic Club</td><td>Árbitro: Sánchez Martínez</td></tr>"
+            "</table>Sevilla FC - Getafe CF<br>Árbitro: González Fuertes")
+    got = {(d.home, d.away): d.referee for d in parse_designations(_to_text(html))}
+    assert got.get(("Barcelona", "Valencia")) == "Gil Manzano"
+    assert got.get(("Real Madrid", "Ath Bilbao")) == "Sánchez Martínez"
+    assert got.get(("Sevilla", "Getafe")) == "González Fuertes"
 
 
 def _fake_fetch(index_html, article_html):
