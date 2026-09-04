@@ -141,7 +141,7 @@ def test_load_directory_defensivo(tmp_path):
 
 
 # --- Prensa vía Google News RSS (fuente primaria, sin muro) ------------------
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from email.utils import format_datetime
 
 from futbol_pred.ingest.rfef_referees import parse_media_text, collect_from_media
@@ -196,8 +196,9 @@ def test_collect_from_media_extrae_de_cabecera_confiable():
     rss = _rss(_item("Gil Manzano para el Barça-Valencia; Soto Grado para el Betis-Madrid - AS", "AS"))
     des = collect_from_media(fetch=_news_fetch(rss), now=_NOW)
     got = {(d.home, d.away): (d.referee, d.source) for d in des}
-    assert got[("Barcelona", "Valencia")] == ("Gil Manzano", "AS")
-    assert got[("Betis", "Real Madrid")] == ("Soto Grado", "AS")
+    # La fuente por fila es la CATEGORÍA 'prensa' (no el medio), para provenance/contador.
+    assert got[("Barcelona", "Valencia")] == ("Gil Manzano", "prensa")
+    assert got[("Betis", "Real Madrid")] == ("Soto Grado", "prensa")
 
 
 def test_collect_from_media_ignora_fuente_no_confiable():
@@ -247,7 +248,44 @@ def test_parse_media_preserva_particulas_en_el_nombre():
 def test_collect_from_media_por_partido_extrae_el_nombre():
     rss = _rss(_item("Munuera Montero será el árbitro del Betis - Real Madrid de este sábado - AS", "AS"))
     des = collect_from_media(fetch=_news_fetch(rss), now=_NOW, fixtures=_FIXTURE)
-    assert [(d.home, d.away, d.referee, d.source) for d in des] == [("Betis", "Real Madrid", "Munuera Montero", "AS")]
+    assert [(d.home, d.away, d.referee, d.source) for d in des] == [("Betis", "Real Madrid", "Munuera Montero", "prensa")]
+
+
+def test_referee_in_text_descarta_medio_y_no_cruza_frase():
+    # El bug real del cron: 'Athletic-Atlético - Mundo Deportivo. El colegiado…'
+    # colaba 'Mundo Deportivo. El' como árbitro (el '.' cruzaba la frase).
+    assert referee_in_text("en el Athletic-Atlético - Mundo Deportivo. El colegiado vasco repite") is None
+    assert referee_in_text("Cadena SER, árbitro del derbi") is None
+    # el correcto sigue saliendo
+    assert referee_in_text("Morilla Turrión será el árbitro del Valladolid-Andorra") == "Morilla Turrión"
+
+
+def test_directory_conserva_la_fuente_por_partido():
+    # Codex P2: cada designación conserva SU fuente; no la top-level del cache.
+    d = RefereeDirectory([
+        Designation(home="Betis", away="Real Madrid", referee="Munuera", source="prensa"),
+        Designation(home="Sevilla", away="Getafe", referee="Gil Manzano", source="BeSoccer"),
+    ], source="prensa")
+    assert d.source_for("Real Betis Balompié", "Real Madrid CF") == "prensa"
+    assert d.source_for("Sevilla FC", "Getafe CF") == "BeSoccer"  # NO 'prensa'
+
+
+def test_fetch_and_store_caduca_filas_legacy_sin_fecha(tmp_path):
+    # Codex P2: filas del cache antiguo (sin fetched_at) se migran con el sello
+    # top-level del payload y caducan de verdad (no 'ahora').
+    old = (_NOW - timedelta(days=30)).isoformat()
+    (tmp_path / "referee_designations.json").write_text(json.dumps({
+        "fetched_at": old, "source": "prensa",
+        "designations": [{"home": "Sevilla", "away": "Getafe", "referee": "ViejoÁrbitro"}]}),
+        encoding="utf-8")
+    (tmp_path / "dashboard.json").write_text(json.dumps({"matches": [
+        {"home": "Real Betis Balompié", "away": "Real Madrid CF",
+         "kickoff": "2026-09-06T20:00:00+02:00"}]}), encoding="utf-8")
+    rss = _rss(_item("Munuera Montero será el árbitro del Betis - Real Madrid - AS", "AS"))
+    fetch_and_store(data_dir=tmp_path, fetch=_news_fetch(rss), now=_NOW)
+    d = load_directory(tmp_path)
+    assert d.lookup("Sevilla", "Getafe") is None  # caducó (30 días > TTL)
+    assert d.lookup("Real Betis Balompié", "Real Madrid CF") == "Munuera Montero"
 
 
 def test_collect_from_media_descarta_otra_competicion():

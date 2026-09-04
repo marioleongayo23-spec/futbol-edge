@@ -159,6 +159,16 @@ def _team_prefix(text: str) -> tuple[str | None, str]:
     return best, " ".join(words[best_k:])
 
 
+# Palabras de cabeceras/medios: un nombre de árbitro que las contenga es basura
+# (p.ej. 'Mundo Deportivo' colado como árbitro).
+_OUTLET_WORDS = {
+    "mundo", "deportivo", "deportiva", "marca", "sport", "relevo", "estadio",
+    "superdeporte", "desmarque", "soccerway", "cadena", "ser", "cope", "diario",
+    "radio", "onda", "prensa", "besoccer", "futbolfantasy", "eurosport", "dazn",
+    "goal", "gol", "espanol", "confidencial", "vozpopuli", "okdiario",
+}
+
+
 def _referee_from(text: str) -> str | None:
     """Nombre del árbitro a partir de un fragmento (etiqueta 'Árbitro:' o el
     resto tras el visitante). Corta en comité/asistentes/VAR."""
@@ -181,6 +191,9 @@ def _referee_from(text: str) -> str | None:
     if not raw or low.startswith(("jornada", "laliga", "primera", "segunda", "viernes",
                                   "sábado", "sabado", "domingo", "lunes", "martes",
                                   "miércoles", "miercoles", "jueves")):
+        return None
+    # Descarta nombres de medios ('Mundo Deportivo', 'Cadena SER'…).
+    if set(re.findall(r"[a-z0-9]+", _norm_key(raw))) & _OUTLET_WORDS:
         return None
     return raw
 
@@ -259,10 +272,13 @@ _NICKNAMES = {
 # Nombre de árbitro: palabra Mayúscula inicial + continuaciones que pueden ser
 # partículas en minúscula ('de', 'del', 'la'…) o más palabras Mayúsculas, para no
 # truncar 'Díaz de Mera Escuderos' ni 'De Burgos Bengoetxea' (review Codex P2).
+# Sin '.' en la clase de caracteres: un punto es fin de frase, no parte del
+# nombre. Incluirlo hacía que 'Mundo Deportivo. El colegiado…' se capturara como
+# un solo nombre cruzando la frase (falso positivo con el nombre del medio).
 _NAME = (
-    r"[A-ZÁÉÍÓÚÑ][\wÁÉÍÓÚÑáéíóúñ.'’\-]+"
+    r"[A-ZÁÉÍÓÚÑ][\wÁÉÍÓÚÑáéíóúñ'’\-]+"
     r"(?:\s+(?:de|del|la|los|las|di|da|dos|van|von|y|"
-    r"[A-ZÁÉÍÓÚÑ][\wÁÉÍÓÚÑáéíóúñ.'’\-]+)){0,4}"
+    r"[A-ZÁÉÍÓÚÑ][\wÁÉÍÓÚÑáéíóúñ'’\-]+)){0,4}"
 )
 _ROUNDUP_REF_FIRST = re.compile(
     r"(" + _NAME + r")"
@@ -574,7 +590,7 @@ def collect_from_media(fetch=_fetch, now: datetime | None = None,
         if (d.home, d.away) in seen:
             return False
         seen.add((d.home, d.away))
-        d.source = outlet
+        d.source = "prensa"  # categoría (para provenance/contador); el medio va al log
         out.append(d)
         sources.add(outlet)
         return True
@@ -677,11 +693,12 @@ def collect_designations(fetch=_fetch, now: datetime | None = None,
 _CACHE_TTL_DAYS = 10
 
 
-def _load_cache_rows(path: Path) -> list[dict]:
+def _load_cache(path: Path) -> dict:
     try:
-        return json.loads(path.read_text(encoding="utf-8")).get("designations") or []
-    except (OSError, ValueError, AttributeError):
-        return []
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        return payload if isinstance(payload, dict) else {}
+    except (OSError, ValueError):
+        return {}
 
 
 def fetch_and_store(data_dir: Path | None = None, fetch=_fetch,
@@ -700,11 +717,21 @@ def fetch_and_store(data_dir: Path | None = None, fetch=_fetch,
         return 0  # nada nuevo -> no toques el cache
     path = data_dir / CACHE_NAME
     cutoff = (now - timedelta(days=_CACHE_TTL_DAYS)).isoformat()
+    prev = _load_cache(path)
+    # Filas del cache antiguo sin 'fetched_at' se migran con el sello top-level del
+    # payload (no con 'ahora'): así caducan de verdad y no arrastran un árbitro de
+    # una temporada pasada si el par se repite (Codex).
+    legacy = prev.get("fetched_at") or stamp
     merged: dict[tuple[str, str], dict] = {}
-    for row in _load_cache_rows(path):  # conserva lo previo aún vigente
+    for row in prev.get("designations") or []:  # conserva lo previo aún vigente
         h, a, r = row.get("home"), row.get("away"), row.get("referee")
-        if h and a and r and (row.get("fetched_at") or stamp) >= cutoff:
-            merged[(h, a)] = row
+        if not (h and a and r):
+            continue
+        row_ts = row.get("fetched_at") or legacy
+        if row_ts < cutoff:
+            continue
+        row["fetched_at"] = row_ts  # re-sella para que porte fecha y caduque en el futuro
+        merged[(h, a)] = row
     for d in designations:  # lo nuevo gana
         row = asdict(d)
         row["fetched_at"] = stamp
@@ -725,12 +752,21 @@ class RefereeDirectory:
                  source: str | None = None):
         self.fetched_at = fetched_at
         self.source = source or ""
-        self._by_pair: dict[tuple[str, str], str] = {}
+        # Guarda (árbitro, fuente) POR PARTIDO: el cache puede mezclar filas de
+        # distinta procedencia (prensa/BeSoccer/RFEF) y cada una conserva la suya;
+        # usar la fuente top-level para todas etiquetaría mal las retenidas (Codex).
+        self._by_pair: dict[tuple[str, str], tuple[str, str]] = {}
         for d in designations:
-            self._by_pair[(d.home, d.away)] = d.referee
+            self._by_pair[(d.home, d.away)] = (d.referee, d.source or self.source)
 
     def __len__(self) -> int:
         return len(self._by_pair)
+
+    def _row(self, home: str, away: str) -> tuple[str, str] | None:
+        ch, ca = _known(home), _known(away)
+        if not ch or not ca:
+            return None
+        return self._by_pair.get((ch, ca))
 
     def lookup(self, home: str, away: str) -> str | None:
         """Árbitro designado para ese local-visitante EXACTO, o None.
@@ -738,12 +774,15 @@ class RefereeDirectory:
         Respeta la dirección local/visitante: NO cae al orden inverso. El partido
         de vuelta (B-A) tiene su propia designación, distinta y normalmente aún sin
         publicar; cruzar el par como no ordenado aplicaría el árbitro equivocado
-        (y su ajuste de faltas/tarjetas) al partido de vuelta meses antes. RFEF
+        (y su ajuste de faltas/tarjetas) al partido de vuelta meses antes. La fuente
         publica el local/visitante correctos, así que el cruce exacto basta."""
-        ch, ca = _known(home), _known(away)
-        if not ch or not ca:
-            return None
-        return self._by_pair.get((ch, ca))
+        row = self._row(home, away)
+        return row[0] if row else None
+
+    def source_for(self, home: str, away: str) -> str | None:
+        """Fuente (prensa/BeSoccer/RFEF) de ESA designación en concreto, o None."""
+        row = self._row(home, away)
+        return row[1] if row else None
 
 
 def load_directory(data_dir: Path | None = None) -> RefereeDirectory:

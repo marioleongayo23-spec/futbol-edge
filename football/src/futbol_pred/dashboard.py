@@ -381,7 +381,7 @@ def fixture_payload(
         designated = _dir.lookup(fixture.home_team, fixture.away_team)
         if designated:
             fixture.referee = designated
-            fixture.referee_source = _dir.source or "designación oficial"
+            fixture.referee_source = _dir.source_for(fixture.home_team, fixture.away_team) or "designación oficial"
     if not finished_with_result and getattr(fixture, "referee", None) and stats is not None:
         ref_model = getattr(stats, "referee_model", None)
         if ref_model is not None:
