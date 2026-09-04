@@ -21,7 +21,7 @@ from .elo import EloRatings
 from .feed_quality import load_feed, preserve_last_known_good, write_feed_safely
 from .ingest.api_football import ApiFootballClient, Fixture
 from .ingest.football_data import FootballDataClient
-from .ingest.rfef_referees import RefereeDirectory, load_directory as _load_rfef_designations
+from .ingest.rfef_referees import RefereeDirectory, load_directory as _load_rfef_designations, _is_junk_referee
 from .normalize import canonical_team
 from .market_calibration import learn_market_calibration
 from .model.market_lines import committed_scoreline, count_market, goals_market
@@ -1311,6 +1311,15 @@ def build_dashboard(
     _attach_lineups(matches, now, squads=all_squads)
     prefinal_updates = refresh_prefinal_lineups(matches, now)
     official_updates = attach_official_context(matches, now, stats_models=stats_models_by_league)
+    # Purga final: ningún partido publica un árbitro basura (nombre de medio de un
+    # parseo viejo que quedó pegado en official_context pasada tras pasada). Cubre
+    # también los partidos FUTUROS, que el last-mile (solo hoy) nunca toca.
+    for _m in matches:
+        _oc = _m.get("official_context")
+        if _oc and _oc.get("referee") and _is_junk_referee(_oc.get("referee")):
+            for _k in ("referee", "referee_profile", "referee_adjustment_applied",
+                       "provider", "source"):
+                _oc.pop(_k, None)
     finished_stats_updates = attach_finished_stats(
         matches, now, previous_matches=(previous or {}).get("matches")
     )

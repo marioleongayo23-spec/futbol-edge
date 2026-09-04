@@ -9,6 +9,7 @@ from zoneinfo import ZoneInfo
 from .ingest.api_football import ApiFootballClient
 from .ingest.api_football_players import fetch_team_player_rates, props_for_official_starters
 from .ingest.lineups_ai import _best_props, _formation
+from .ingest.rfef_referees import _is_junk_referee
 from .model.state_simulator import simulate_match_states
 
 MADRID = ZoneInfo("Europe/Madrid")
@@ -241,10 +242,13 @@ def attach_official_context(matches: list[dict], now: datetime, client: ApiFootb
                             official_context["referee_adjustment_applied"] = applied
                     except Exception:
                         pass
-                # No perder un árbitro ya conocido (p.ej. la designación RFEF
+                # No perder un árbitro ya conocido (p.ej. la designación de prensa
                 # pre-partido) si esta pasada de API-Football aún no trae árbitro:
-                # su fixture_context siempre devuelve dict con referee=None.
-                if not official_context.get("referee") and previous_context.get("referee"):
+                # su fixture_context siempre devuelve dict con referee=None. Pero NO
+                # arrastres un árbitro basura de un parseo viejo (p.ej. 'Mundo
+                # Deportivo. El'): eso se quedaba pegado en el feed pasada tras pasada.
+                if (not official_context.get("referee") and previous_context.get("referee")
+                        and not _is_junk_referee(previous_context.get("referee"))):
                     for _k in ("referee", "referee_profile", "referee_adjustment_applied"):
                         if previous_context.get(_k) is not None:
                             official_context[_k] = previous_context[_k]
@@ -252,6 +256,12 @@ def attach_official_context(matches: list[dict], now: datetime, client: ApiFootb
                         "provider", official_context.get("provider"))
                     official_context["source"] = previous_context.get(
                         "source", previous_context.get("provider"))
+                # Purga defensiva: nunca publiques un árbitro basura en el feed
+                # (solo si HAY un nombre y es basura; un contexto sin árbitro es normal).
+                if official_context.get("referee") and _is_junk_referee(official_context.get("referee")):
+                    for _k in ("referee", "referee_profile", "referee_adjustment_applied",
+                               "provider", "source"):
+                        official_context.pop(_k, None)
                 match["official_context"] = official_context
         if not official:
             _merge_absences(match.get("alineacion") or {}, match, absences, now_local)
