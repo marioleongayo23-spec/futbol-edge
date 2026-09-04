@@ -1161,6 +1161,40 @@ def _fill_missing_free_squads(
             squads_by_league.setdefault(league, {})[team] = squad
 
 
+# Campos que se descartan cuando el árbitro resultó ser un nombre de medio
+# (parseo viejo). Se quitan juntos para no dejar procedencia ni ajuste huérfanos.
+_JUNK_REFEREE_KEYS = (
+    "referee", "referee_profile", "referee_adjustment_applied", "provider", "source",
+)
+
+
+def _scrub_official_context_referee(oc) -> None:
+    """Quita in-place el árbitro basura (nombre de un medio) de un official_context."""
+    if isinstance(oc, dict) and oc.get("referee") and _is_junk_referee(oc.get("referee")):
+        for key in _JUNK_REFEREE_KEYS:
+            oc.pop(key, None)
+
+
+def _purge_junk_referee(match: dict) -> None:
+    """Purga el árbitro basura del official_context visible Y de sus copias
+    congeladas en los snapshots (prediction_snapshot + prediction_history).
+
+    ``official_context`` es uno de los campos que apply_prediction_snapshots
+    congela y restaura, así que una captura en ventana T-12/T-6 dejaba el nombre
+    de medio dentro del snapshot inmutable —que viaja en el payload y se
+    re-restaura en cada ejecución— aunque el official_context de arriba quedara
+    limpio (review Codex P2). Saneando también las copias congeladas, la basura
+    ni se publica ni se arrastra.
+    """
+    _scrub_official_context_referee(match.get("official_context"))
+    snapshot = match.get("prediction_snapshot")
+    if isinstance(snapshot, dict):
+        _scrub_official_context_referee(snapshot.get("official_context"))
+    for item in match.get("prediction_history") or []:
+        if isinstance(item, dict):
+            _scrub_official_context_referee(item.get("official_context"))
+
+
 def build_dashboard(
     now: datetime | None = None,
     horizon_days: int = 10,  # sin uso: ahora incluimos TODA la temporada
@@ -1335,14 +1369,12 @@ def build_dashboard(
     annotate_prediction_context(matches)
     # Purga FINAL del árbitro basura (nombre de medio de un parseo viejo), DESPUÉS
     # del restore de snapshots: ese restore reintroducía el official_context viejo
-    # con la basura y deshacía una purga anterior (review Codex P1). Aquí ya es el
-    # estado definitivo, así que ningún partido —de hoy o futuro— la publica.
+    # con la basura y deshacía una purga anterior (review Codex P1). Cubre además
+    # las copias congeladas en prediction_snapshot/prediction_history (review Codex
+    # P2). Aquí ya es el estado definitivo, así que ningún partido —de hoy o
+    # futuro— publica la basura ni la deja atrapada en un snapshot inmutable.
     for _m in matches:
-        _oc = _m.get("official_context")
-        if _oc and _oc.get("referee") and _is_junk_referee(_oc.get("referee")):
-            for _k in ("referee", "referee_profile", "referee_adjustment_applied",
-                       "provider", "source"):
-                _oc.pop(_k, None)
+        _purge_junk_referee(_m)
     first_audit = content_audit(matches, players, now)
     retried = _retry_incomplete(matches, first_audit, now)
     players = _merge_lineup_players(players, matches)

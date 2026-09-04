@@ -12,9 +12,56 @@ from futbol_pred.ingest.football_data_uk import MatchStats
 from futbol_pred.model.stats_markets import StatsPredictor
 from futbol_pred.model.referee_adjustment import RefereeAdjustmentModel
 from futbol_pred.pipeline import fit_model_from_fixtures
-from futbol_pred.dashboard import fixture_payload, _canon
+from futbol_pred.dashboard import fixture_payload, _canon, _purge_junk_referee
 
 warnings.simplefilter("ignore")
+
+
+def test_purge_junk_referee_limpia_official_context_y_snapshots():
+    # 'Mundo Deportivo. El' es un nombre de medio que un parseo viejo dejó pegado.
+    # Debe purgarse del official_context visible Y de las copias congeladas en el
+    # snapshot y el historial (que viajan en el payload y se re-restauran cada run).
+    junk = {"referee": "Mundo Deportivo. El", "provider": "prensa", "source": "prensa",
+            "referee_profile": {"x": 1}, "referee_adjustment_applied": ["yellows"],
+            "venue": "San Mamés"}
+    match = {
+        "official_context": dict(junk),
+        "prediction_snapshot": {"window": "T-6h", "official_context": dict(junk)},
+        "prediction_history": [
+            {"window": "T-24h", "official_context": dict(junk)},
+            {"window": "T-12h", "official_context": dict(junk)},
+        ],
+    }
+
+    _purge_junk_referee(match)
+
+    for oc in (match["official_context"],
+               match["prediction_snapshot"]["official_context"],
+               *(h["official_context"] for h in match["prediction_history"])):
+        assert not oc.get("referee")            # la basura no se publica
+        assert oc.get("provider") != "prensa"   # ni su procedencia falsa
+        assert "referee_profile" not in oc
+        assert "referee_adjustment_applied" not in oc
+        assert oc.get("venue") == "San Mamés"   # el resto del contexto se conserva
+
+
+def test_purge_junk_referee_respeta_arbitro_real():
+    real = {"referee": "Jesús Gil Manzano", "provider": "RFEF", "source": "RFEF",
+            "referee_adjustment_applied": ["yellows"]}
+    match = {
+        "official_context": dict(real),
+        "prediction_snapshot": {"window": "T-6h", "official_context": dict(real)},
+        "prediction_history": [{"window": "T-12h", "official_context": dict(real)}],
+    }
+
+    _purge_junk_referee(match)
+
+    for oc in (match["official_context"],
+               match["prediction_snapshot"]["official_context"],
+               match["prediction_history"][0]["official_context"]):
+        assert oc.get("referee") == "Jesús Gil Manzano"   # árbitro real intacto
+        assert oc.get("provider") == "RFEF"
+        assert oc.get("referee_adjustment_applied") == ["yellows"]
 
 
 def test_referee_extrae_el_principal():
