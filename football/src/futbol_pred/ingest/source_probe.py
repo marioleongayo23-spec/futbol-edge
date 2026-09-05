@@ -344,6 +344,16 @@ def main() -> int:
             print(f"[probe]   data: {json.dumps(da, ensure_ascii=False)}")
         if res.get("feed"):
             print(f"[probe]   feed: {json.dumps(res['feed'], ensure_ascii=False)[:400]}")
+        if res.get("pages"):
+            for pkey, sniff in res["pages"].items():
+                print(f"[probe]   page[{pkey}]: {json.dumps(sniff, ensure_ascii=False)}")
+        for extra in ("headers_bypass_403", "real_data_pages", "api_needs_key"):
+            if extra in res:
+                print(f"[probe]   {extra}: {res[extra]}")
+
+    # Volcado completo (pequeño, sin cuerpos) para inspección directa en logs.
+    print("\n[probe] === INFORME COMPLETO ===")
+    print(json.dumps(report, ensure_ascii=False, indent=2))
 
     try:
         with open("data/source_probe_report.json", "w", encoding="utf-8") as fh:
