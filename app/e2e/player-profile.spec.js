@@ -80,7 +80,7 @@ async function openPlayers(page) {
 }
 
 test("abre una ficha premium de jugador con datos reales y percentiles posicionales", async ({ page }) => {
-  await page.route("**/dashboard.json?*", (route) => route.fulfill({ status: 200, contentType: "application/json", body: feed }));
+  await page.route("**/dashboard.json*", (route) => route.fulfill({ status: 200, contentType: "application/json", body: feed }));
   await page.goto("/");
   await openPlayers(page);
 

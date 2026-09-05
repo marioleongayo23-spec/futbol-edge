@@ -27,6 +27,7 @@ class FakeResult:
         for i in range(50):
             actual = "1" if i % 3 else "X"
             self.records.append({
+                "kickoff": datetime(2025, 8, 1, tzinfo=timezone.utc).timestamp() + i * 86400,
                 "home": "Real Madrid", "away": "Barcelona",
                 "probs": {"1": 0.52, "X": 0.27, "2": 0.21},
                 "actual": actual, "odds": prices,

@@ -23,7 +23,7 @@ target.official_context = {
 const feed = JSON.stringify(feedData);
 
 async function openApp(page) {
-  await page.route("**/dashboard.json?*", (route) => route.fulfill({
+  await page.route("**/dashboard.json*", (route) => route.fulfill({
     status: 200,
     contentType: "application/json",
     body: feed,

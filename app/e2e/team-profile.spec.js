@@ -83,7 +83,7 @@ async function gotoMatches(page) {
 }
 
 test("perfil premium de equipo conecta táctica, XI, matchup y jugadores", async ({ page }) => {
-  await page.route("**/dashboard.json?*", (route) => route.fulfill({ status: 200, contentType: "application/json", body: feed }));
+  await page.route("**/dashboard.json*", (route) => route.fulfill({ status: 200, contentType: "application/json", body: feed }));
   await page.goto("/");
   await gotoMatches(page);
 

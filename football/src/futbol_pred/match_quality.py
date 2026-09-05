@@ -27,15 +27,15 @@ def _state_score(item: dict[str, Any] | None) -> float:
     state = str(item.get("state") or "").casefold()
     if state == "ok":
         return 1.0
-    # Scheduled means the data is not required yet, so it must not penalise
-    # an early prediction. Estimated/partial are useful but not equivalent to
-    # a verified source.
+    # Evidence and collection schedules are separate concepts. Estimated or
+    # partial data is useful but not equivalent to a verified source.
     if state == "estimated":
         return 0.45
     if state == "partial":
         return 0.55
     if state in {"scheduled", "waiting"}:
-        return 1.0 if not item.get("required") else 0.25
+        # Not due yet is a scheduling fact, never verified evidence.
+        return 0.0
     return 0.0
 
 

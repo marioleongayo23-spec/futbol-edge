@@ -36,7 +36,7 @@ async function gotoPortfolio(page) {
 }
 
 test("la cartera calcula CLV solo contra un cierre real", async ({ page }) => {
-  await page.route("**/dashboard.json?*", (route) => route.fulfill({
+  await page.route("**/dashboard.json*", (route) => route.fulfill({
     status: 200,
     contentType: "application/json",
     body: feed,

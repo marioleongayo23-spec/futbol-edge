@@ -19,9 +19,15 @@ test("el acierto solo utiliza el snapshot publicado", () => {
     finished: true,
     result: [0, 2],
     probs: [90, 5, 5],
-    prediction_snapshot: { probs: [20, 20, 60] },
+    kickoff: "2026-09-05T20:00:00Z",
+    prediction_snapshot: { probs: [20, 20, 60], generated_at: "2026-09-05T19:00:00Z" },
   }];
   assert.deepEqual(modelAccuracy(matches), { hits: 1, total: 1, pct: 100 });
+  const invalid = [
+    {...matches[0], prediction_snapshot: {probs: [20, 20, 60]}},
+    {...matches[0], prediction_snapshot: {probs: [20, 20, 60], generated_at: "2026-09-05T22:00:00Z"}},
+  ];
+  assert.deepEqual(modelAccuracy(invalid), {hits: 0, total: 0, pct: null});
 });
 
 test("los mercados cliente forman una distribución coherente", () => {
