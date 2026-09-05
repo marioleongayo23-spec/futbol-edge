@@ -444,6 +444,49 @@ class ApiFootballClient:
                 })
         return out if len(out) == 2 else []
 
+    # Endpoints de leaderboard de jugadores → (campo del stat, sub-clave).
+    _LEADERBOARD = {
+        "topscorers": ("goals", "total"),
+        "topassists": ("goals", "assists"),
+        "topyellowcards": ("cards", "yellow"),
+        "topredcards": ("cards", "red"),
+    }
+
+    def player_leaderboard(self, kind: str, league: str, season: int | None = None,
+                           top: int = 15) -> list[dict]:
+        """Ranking de jugadores de API-Football (topscorers/topassists/topcards).
+
+        Devuelve ``[{rank, player, team, value}]`` (misma forma que as.com/fbref)
+        para encajar en el efecto cascada de rankings. Vacío si no hay clave, la
+        liga no está mapeada, el plan no ofrece el dato o se agotó la cuota.
+        """
+
+        field, subkey = self._LEADERBOARD.get(kind, (None, None))
+        if self.offline or field is None or league not in LEAGUES:
+            return []
+        try:
+            response = self._get(
+                f"players/{kind}",
+                {"league": LEAGUES[league], "season": season or settings.season},
+            ).get("response") or []
+        except Exception:
+            return []
+        out = []
+        for index, item in enumerate(response[:top]):
+            player = item.get("player") or {}
+            name = str(player.get("name") or "").strip()
+            stats = (item.get("statistics") or [{}])[0] or {}
+            value = (stats.get(field) or {}).get(subkey)
+            if not name:
+                continue
+            out.append({
+                "rank": index + 1,
+                "player": name,
+                "team": str((stats.get("team") or {}).get("name") or "").strip(),
+                "value": float(value) if isinstance(value, (int, float)) else None,
+            })
+        return out
+
     def get_absences(self, fixture_id: int) -> list[dict]:
         """Lesiones/sanciones declaradas por API-Football; vacío si el plan no lo ofrece."""
 
