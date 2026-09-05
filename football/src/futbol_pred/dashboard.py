@@ -1327,8 +1327,10 @@ def build_dashboard(
         matches, now, previous_matches=(previous or {}).get("matches")
     )
     archived_weather_updates = _attach_archived_weather(matches, now)
+    _player_rankings_meta: dict = {}
     base_players = _merge_squad_players(
-        _load_players(season), squads_by_league, (previous or {}).get("players")
+        _load_players(season, previous=previous, now=now, _meta_out=_player_rankings_meta),
+        squads_by_league, (previous or {}).get("players")
     )
     for league, teams in _squads_from_players(base_players).items():
         known = squads_by_league.setdefault(league, {})
@@ -1398,6 +1400,7 @@ def build_dashboard(
             _load_quiniela_oficial(), matches, league_bundles, generated_at, now
         ),
         "players": players,
+        "player_rankings_meta": _player_rankings_meta.get("player_rankings_meta"),
         "model": model_report,
         "stats_backtest": stats_backtest,
         "market_calibration": market_calibration or None,
@@ -1660,20 +1663,40 @@ def _build_stats_method(stats_backtest: dict | None) -> dict:
     return out
 
 
-def _load_players(season: int) -> dict | None:
-    """Rankings de jugadores (goleadores, asistencias...) por liga, AUTO-REFRESCADOS.
+# Rankings de API-Football: se refrescan ~1/día. En contenedores efímeros no hay
+# disco persistente, así que la caché viaja en player_rankings_meta del feed y solo
+# se vuelve a llamar tras el TTL, respetando el presupuesto diario de la API.
+_AF_RANKINGS_TTL_HOURS = 18
 
-    Antes se devolvía tal cual football/data/players.json (una foto estática que
-    tapaba el fetch en vivo y se quedaba desactualizada). Ahora se REFRESCA en
-    cada ejecución desde football-data.org (misma clave que los fixtures, fiable
-    en CI): goleadores y asistentes de LaLiga y Champions. Ese fetch se SUPERPONE
-    sobre el fichero estático, que queda solo como base/fallback para las
-    categorías que la fuente en vivo no da (remates/xG/amarillas de understat) y
-    para cuando no hay clave. Así los goleadores están siempre al día y Champions
-    —que antes salía vacío— se rellena.
 
-    Devuelve {liga: {label, rankings:{cat:{label, players[]}}}} o None.
+def _cascade_rankings(*sources: dict | None) -> dict:
+    """Efecto cascada por categoría: la PRIMERA fuente con la categoría no vacía
+    manda; las siguientes solo rellenan las categorías que aún falten."""
+
+    merged: dict = {}
+    for src in sources:
+        for slug, block in (src or {}).items():
+            if (isinstance(block, dict) and block.get("players")
+                    and not (merged.get(slug) or {}).get("players")):
+                merged[slug] = block
+    return merged
+
+
+def _load_players(season: int, previous: dict | None = None,
+                  now: datetime | None = None, _meta_out: dict | None = None) -> dict | None:
+    """Rankings de jugadores (goleadores, asistencias...) por liga, EN CASCADA.
+
+    Orden de relleno (efecto cascada): API-Football (primaria) -> football-data.org
+    -> fichero estático understat. Cada fuente solo aporta las categorías que la
+    anterior no rellenó, así siempre sale el mejor dato disponible sin huecos.
+
+    API-Football se cachea en el feed (player_rankings_meta) con TTL para no gastar
+    presupuesto en cada ejecución; football-data y el estático son gratis y se
+    consultan siempre. Devuelve {liga: {label, rankings:{cat:{label, players[]}}}}.
     """
+    now = now or datetime.now(timezone.utc)
+    labels = {"laliga": "LaLiga", "segunda": "LaLiga Hypermotion", "champions": "Champions League"}
+
     # 1) Base estática (understat, más categorías pero puede envejecer).
     static: dict = {}
     path = Path(DATA_DIR) / "players.json"
@@ -1684,35 +1707,62 @@ def _load_players(season: int) -> dict | None:
         except Exception:
             static = {}
 
-    # 2) Fetch en vivo (football-data.org /scorers: LaLiga PD y Champions CL).
-    live: dict = {}
-    try:
-        from .ingest.players_football_data import get_top_players
+    # 2a) API-Football (PRIMARIA), cacheada con TTL en el feed anterior.
+    prev_meta = (previous or {}).get("player_rankings_meta") or {}
+    af_age = _age_hours(now, prev_meta.get("af_fetched_at"))
+    if af_age is not None and af_age < _AF_RANKINGS_TTL_HOURS and prev_meta.get("af"):
+        af = dict(prev_meta.get("af") or {})
+        af_fetched_at = prev_meta.get("af_fetched_at")
+    else:
+        af = {}
+        try:
+            from .ingest.players_api_football import get_top_players as af_top
+            for league in labels:
+                try:
+                    r = af_top(season, league=league)
+                except Exception:
+                    r = None
+                if r:
+                    af[league] = r
+        except Exception:
+            af = {}
+        # Si el refresco no trajo nada pero había caché, se conserva (nunca peor).
+        if af:
+            af_fetched_at = now.isoformat()
+        else:
+            af = dict(prev_meta.get("af") or {})
+            af_fetched_at = prev_meta.get("af_fetched_at")
 
-        for league, label in (("laliga", "LaLiga"), ("segunda", "LaLiga Hypermotion"),
-                              ("champions", "Champions League")):
+    # 2b) football-data.org /scorers (vivo, fiable en CI). Rellena lo que AF no dé.
+    fd: dict = {}
+    try:
+        from .ingest.players_football_data import get_top_players as fd_top
+        for league in labels:
             try:
-                r = get_top_players(season, league=league)
+                r = fd_top(season, league=league)
             except Exception:
                 r = None
             if r:
-                live[league] = {"label": label, "rankings": r}
+                fd[league] = r
     except Exception:
-        live = {}
+        fd = {}
 
-    # 3) Fusión: base estática + categorías frescas del vivo (el vivo manda en
-    #    goles/asistencias; se conservan las categorías extra del estático).
+    # 3) Cascada por liga: API-Football -> football-data -> estático.
     out: dict = {}
-    for league in set(static) | set(live):
-        s = static.get(league) or {}
-        lv = live.get(league) or {}
-        rankings = dict(s.get("rankings") or {})
-        rankings.update(lv.get("rankings") or {})
+    for league in set(static) | set(fd) | set(af):
+        rankings = _cascade_rankings(
+            af.get(league),
+            fd.get(league),
+            (static.get(league) or {}).get("rankings"),
+        )
         if rankings:
             out[league] = {
-                "label": lv.get("label") or s.get("label") or league,
+                "label": labels.get(league) or (static.get(league) or {}).get("label") or league,
                 "rankings": rankings,
             }
+
+    if _meta_out is not None:
+        _meta_out["player_rankings_meta"] = {"af_fetched_at": af_fetched_at, "af": af}
     return out or None
 
 
