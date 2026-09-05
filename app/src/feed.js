@@ -1,3 +1,5 @@
+import { displayPercentages, validProbabilities } from "./predictionEvidence.js";
+
 // Carga del feed real. Los datos rápidos y el pipeline pesado pueden tener cadencias distintas.
 
 export const FEED_URL =
@@ -20,26 +22,6 @@ const WITHHELD_MODELS = new Set(["squad-stats-v1"]);
 const ESTIMATE_QUALITIES = new Set(["fallback_with_media", "media_partial", "roster_grounded"]);
 const ROSTER_ESTIMATE_MODELS = new Set(["squad-only-v3"]);
 const LIVE_REFRESH_MS = 60_000;
-
-// App.jsx consume loadFeed() con `.then(setData)`. Conservamos esa API y usamos
-// ese setter como suscriptor del feed para que una pestaña abierta reciba cambios
-// de dashboard.json sin F5 ni redeploy. Solo publicamos al React state cuando el
-// fingerprint cambia; si el remoto falla, se conserva el último feed bueno.
-let liveSubscriber = null;
-let liveTimer = null;
-let liveSignature = null;
-let liveRefreshInFlight = false;
-
-function feedSignature(data) {
-  if (!data || typeof data !== "object") return "";
-  const market = data.source_health?.the_odds_api || {};
-  return [
-    data.generated_at || "",
-    data.feed_quality?.score ?? "",
-    market.checked_at || "",
-    market.remaining ?? "",
-  ].join("|");
-}
 
 function normalizeAvailability(rows) {
   if (!Array.isArray(rows)) return rows;
@@ -67,7 +49,9 @@ export function normalizeFeedForDisplay(data) {
   if (!data || !Array.isArray(data.matches)) return data;
   return {
     ...data,
-    matches: data.matches.map((match) => {
+    matches: data.matches.map((raw) => {
+      const percentages = displayPercentages(raw.probs);
+      const match = percentages ? { ...raw, probs: percentages } : raw;
       const lineup = match?.alineacion;
       if (!lineup || typeof lineup !== "object") return match;
       const normalized = {
@@ -126,7 +110,9 @@ export function normalizeFeedForDisplay(data) {
 }
 
 async function fetchJson(url) {
-  const r = await fetch(url + (url.includes("?") ? "&" : "?") + "t=" + Date.now());
+  // A stable URL permits HTTP cache revalidation instead of downloading the
+  // entire season under a new cache key at every poll.
+  const r = await fetch(url, { cache: "no-cache", signal: AbortSignal.timeout(12_000) });
   if (!r.ok) throw new Error("HTTP " + r.status);
   const data = await r.json();
   if (!isUsableFeed(data)) throw new Error("Feed incompleto o regresivo");
@@ -163,51 +149,42 @@ async function loadFeedOnce() {
   }
 }
 
-async function refreshLiveFeed() {
-  if (!liveSubscriber || liveRefreshInFlight || typeof window === "undefined") return;
-  liveRefreshInFlight = true;
-  try {
-    const data = await loadFeedOnce();
-    const signature = feedSignature(data);
-    if (signature && signature !== liveSignature) {
-      liveSignature = signature;
-      liveSubscriber(data);
-    }
-  } catch {
-    // Background refresh es best-effort: la UI conserva el último feed válido.
-  } finally {
-    liveRefreshInFlight = false;
-  }
-}
-
-function startLiveRefresh(subscriber) {
-  if (typeof window === "undefined" || typeof subscriber !== "function") return;
-  liveSubscriber = subscriber;
-  if (liveTimer) return;
-
-  liveTimer = window.setInterval(refreshLiveFeed, LIVE_REFRESH_MS);
-  window.addEventListener("focus", refreshLiveFeed);
-  if (typeof document !== "undefined") {
-    document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "visible") refreshLiveFeed();
-    });
-  }
-}
-
 export function loadFeed() {
-  const promise = loadFeedOnce();
-  // Interceptamos el `.then(setData)` ya existente de App.jsx sin romper los
-  // consumidores que hacen `await loadFeed()`: estos siguen recibiendo un Promise.
-  const nativeThen = promise.then.bind(promise);
-  promise.then = (onFulfilled, onRejected) => {
-    if (typeof onFulfilled !== "function") return nativeThen(onFulfilled, onRejected);
-    startLiveRefresh(onFulfilled);
-    return nativeThen((data) => {
-      liveSignature = feedSignature(data);
-      return onFulfilled(data);
-    }, onRejected);
+  return loadFeedOnce();
+}
+
+// A normal subscription with cleanup is safe under React StrictMode, remounts,
+// and failed requests. A failed refresh cannot downgrade a live feed to a
+// bundled copy, or leave the currently opened match frozen in React state.
+export function subscribeFeed(onData, onError = () => {}) {
+  let active = true, inFlight = false, current = null;
+  const refresh = async () => {
+    if (!active || inFlight) return;
+    inFlight = true;
+    try {
+      const next = await loadFeedOnce();
+      if (!active) return;
+      const oldTime = Date.parse(current?.generated_at || "");
+      const newTime = Date.parse(next?.generated_at || "");
+      if (current && ((next._fromFallback && !current._fromFallback)
+          || (Number.isFinite(oldTime) && (!Number.isFinite(newTime) || newTime < oldTime)))) return;
+      current = next;
+      onData(next);
+    } catch (error) {
+      if (active && !current) onError(error);
+    } finally { inFlight = false; }
   };
-  return promise;
+  const visible = () => { if (document.visibilityState === "visible") refresh(); };
+  const timer = window.setInterval(refresh, LIVE_REFRESH_MS);
+  window.addEventListener("focus", refresh);
+  document.addEventListener("visibilitychange", visible);
+  refresh();
+  return () => {
+    active = false;
+    window.clearInterval(timer);
+    window.removeEventListener("focus", refresh);
+    document.removeEventListener("visibilitychange", visible);
+  };
 }
 
 // Devuelve la antigüedad del feed en horas (o null si no hay fecha).
@@ -293,4 +270,4 @@ export function fmtKick(iso) {
   }
 }
 
-export const hasPrediction = (m) => !m.finished && Array.isArray(m.xg);
+export const hasPrediction = (m) => !m.finished && validProbabilities(m.probs) && Array.isArray(m.xg) && m.xg.length === 2 && m.xg.every(v => Number.isFinite(v) && v >= 0);

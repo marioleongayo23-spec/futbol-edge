@@ -1,5 +1,6 @@
 // Utilidades analíticas para la UI: aciertos del modelo, confianza, forma,
 // mejores value bets y favoritos. Todo se calcula en cliente desde el feed.
+import { validProbabilities } from "./probabilityContract.js";
 
 const SIGN = (hg, ag) => (hg > ag ? "1" : hg < ag ? "2" : "X");
 
@@ -8,7 +9,12 @@ export function modelAccuracy(matches) {
   let hits = 0, total = 0;
   for (const m of matches) {
     const probs = m.prediction_snapshot?.probs;
-    if (!m.finished || !Array.isArray(m.result) || !Array.isArray(probs)) continue;
+    const publishedAt = Date.parse(m.prediction_snapshot?.generated_at || "");
+    const kickoff = Date.parse(m.kickoff || "");
+    if (!m.finished || !Array.isArray(m.result) || m.result.length !== 2
+        || !m.result.every(v => Number.isInteger(v) && v >= 0)
+        || !validProbabilities(probs)
+        || !Number.isFinite(publishedAt) || !Number.isFinite(kickoff) || publishedAt >= kickoff) continue;
     const fav = ["1", "X", "2"][probs.indexOf(Math.max(...probs))];
     const real = SIGN(m.result[0], m.result[1]);
     total++; if (fav === real) hits++;

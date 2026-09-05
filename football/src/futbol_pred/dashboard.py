@@ -37,7 +37,7 @@ from .real_market import attach_closing_snapshots, attach_extended_market_value
 from .weather_effects import apply_weather_adjustments
 from .historical_seed import build_historical_seeds
 from .pipeline import fit_model_from_fixtures, get_fixtures, predict_match, run_model_report
-from .prediction_snapshots import apply_prediction_snapshots, latest_pre_match_snapshot
+from .prediction_snapshots import MODEL_VERSION, apply_prediction_snapshots, latest_pre_match_snapshot
 from .prefinal_lineups import refresh_prefinal_lineups
 
 MADRID = ZoneInfo("Europe/Madrid")
@@ -110,7 +110,10 @@ def _previous_ensemble_params(previous: dict | None, league: str) -> dict:
     """Parámetros OOF del feed anterior; defaults conservadores si aún no hay muestra."""
 
     try:
-        ensemble = previous["model"][league]["ensemble"]
+        report = previous["model"][league]
+        if report.get("model_version") != MODEL_VERSION:
+            return {"dc_weight": 1.0, "temperature": 1.0, "accepted": False}
+        ensemble = report["ensemble"]
         if not ensemble.get("accepted"):
             return {"dc_weight": 1.0, "temperature": 1.0, "accepted": False}
         production = ensemble["production"]
@@ -129,7 +132,10 @@ def _previous_ensemble_params(previous: dict | None, league: str) -> dict:
 def _previous_residual_params(previous: dict | None, league: str) -> dict:
     """Solo expone pesos residuales si el informe temporal aprobó el gate."""
     try:
-        residual = previous["model"][league]["residual"]
+        report = previous["model"][league]
+        if report.get("model_version") != MODEL_VERSION:
+            return {"accepted": False}
+        residual = report["residual"]
         production = residual["production"]
         if not residual.get("accepted") or not production.get("converged"):
             return {"accepted": False}
@@ -287,7 +293,7 @@ def fixture_payload(
         "model_probs": [round(probs["1"] * 100, 2), round(probs["X"] * 100, 2), round(probs["2"] * 100, 2)],
         "xg": [round(eh, 2), round(ea, 2)],
         "model_meta": {
-            "version": "edge-2.0",
+            "version": MODEL_VERSION,
             "provider": (
                 "Residual validado (Dixon-Coles + Elo)" if residual_active
                 else "Dixon-Coles + Elo calibrado" if ensemble_active else "Dixon-Coles híbrido"
@@ -316,6 +322,15 @@ def fixture_payload(
             "marcador": f"{top[0]}-{top[1]}",
         },
         "score_distribution": matrix.distribution_summary(),
+        # Preserve the exact server distribution: xg is rounded and cannot
+        # reproduce the Dixon-Coles correlation in a browser.
+        "score_matrix": {
+            "version": 1,
+            "basis": "dixon_coles",
+            "matrix": matrix.matrix.tolist(),
+            "one_x_two": matrix.one_x_two(),
+            "includes_market_calibration": False,
+        },
     })
     if not finished_with_result:
         payload["engine"] = "residual" if residual_active else "ensemble" if ensemble_active else "dixon-coles"
@@ -1212,10 +1227,12 @@ def build_dashboard(
     stats_method_by_league = _build_stats_method(stats_backtest)
     calibration_source = {"model": model_report} if model_report else previous
     previous_seed = (previous or {}).get("historical_seed") if (previous or {}).get("season") == season else None
+    if previous_seed and any(seed.get("model_version") != MODEL_VERSION for seed in previous_seed.values()):
+        previous_seed = None
     historical_seeds = previous_seed or build_historical_seeds(season)
     market_calibration = {}
     for league, label in (("laliga", "LaLiga"), ("segunda", "LaLiga Hypermotion")):
-        learned = learn_market_calibration((previous or {}).get("matches") or [], label)
+        learned = learn_market_calibration((previous or {}).get("matches") or [], label, model_version=MODEL_VERSION)
         if learned:
             market_calibration[league] = {**learned, "scope": "current_season"}
         else:
@@ -1242,7 +1259,7 @@ def build_dashboard(
             train = _seed_fixtures(league, season) + fixtures
             try:
                 model = fit_model_from_fixtures(
-                    train, as_of=now.replace(tzinfo=None), name_fn=_canon
+                    train, as_of=now, name_fn=_canon
                 )
             except (ValueError, KeyError):
                 model = None

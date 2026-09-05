@@ -1,0 +1,88 @@
+{
+  "dataset_sha256": "ca477d5563ea26f1b9ac516eebe2d1fd080df42a8be3caa6b2e99bbf7729f70f",
+  "rows": 380,
+  "baseline_ref": "598ada967ccd96f92892e5f472317907a5104825",
+  "method": "three expanding chronological blocks, identical evaluation fixtures",
+  "scope": "Dixon-Coles likelihood correction only; excludes Elo, pseudo-xG, market blending and betting returns",
+  "folds": [
+    {
+      "train_n": 209,
+      "test_n": 57,
+      "cutoff": "2026-01-30T00:00:00+00:00",
+      "previous": {
+        "n": 57,
+        "log_loss": 1.0285986714232995,
+        "brier": 0.609073196797578,
+        "rps": 0.20727824259408353,
+        "accuracy": 0.45614035087719296
+      },
+      "corrected": {
+        "n": 57,
+        "log_loss": 1.0292799191385145,
+        "brier": 0.6065699222038109,
+        "rps": 0.2069950353594415,
+        "accuracy": 0.45614035087719296
+      }
+    },
+    {
+      "train_n": 265,
+      "test_n": 57,
+      "cutoff": "2026-03-08T00:00:00+00:00",
+      "previous": {
+        "n": 57,
+        "log_loss": 1.0240047751938461,
+        "brier": 0.6138917074949483,
+        "rps": 0.2169500043157414,
+        "accuracy": 0.543859649122807
+      },
+      "corrected": {
+        "n": 57,
+        "log_loss": 1.02737151780095,
+        "brier": 0.6156787489776006,
+        "rps": 0.2174230306307324,
+        "accuracy": 0.543859649122807
+      }
+    },
+    {
+      "train_n": 321,
+      "test_n": 57,
+      "cutoff": "2026-04-25T00:00:00+00:00",
+      "previous": {
+        "n": 57,
+        "log_loss": 0.987376841538269,
+        "brier": 0.5799885340639077,
+        "rps": 0.21064946286742042,
+        "accuracy": 0.5789473684210527
+      },
+      "corrected": {
+        "n": 57,
+        "log_loss": 0.9892826170471848,
+        "brier": 0.5804929377465354,
+        "rps": 0.21066078816537875,
+        "accuracy": 0.5789473684210527
+      }
+    }
+  ],
+  "metrics": {
+    "previous": {
+      "n": 171,
+      "log_loss": 1.0133267627184714,
+      "brier": 0.6009844794521446,
+      "rps": 0.21162590325908182,
+      "accuracy": 0.5263157894736842
+    },
+    "corrected": {
+      "n": 171,
+      "log_loss": 1.015311351328883,
+      "brier": 0.600913869642649,
+      "rps": 0.2116929513851842,
+      "accuracy": 0.5263157894736842
+    }
+  },
+  "delta_corrected_minus_previous": {
+    "log_loss": 0.0019845886104115085,
+    "brier": -7.060980949558093e-05,
+    "rps": 6.704812610239252e-05,
+    "accuracy": 0.0
+  }
+}

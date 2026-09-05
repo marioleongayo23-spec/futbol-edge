@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { crestFor, feedAgeHours, fmtKick, hasPrediction, isStale, loadFeed } from "./feed";
+import { crestFor, feedAgeHours, fmtKick, hasPrediction, isStale, subscribeFeed } from "./feed";
 import { entropy, fairProbs, kelly, overround, plenoSign } from "./poisson";
 import { leaguesIn, projectedTable } from "./standings";
 import { teamProfile, teamSquad } from "./teams";
 import { bestValue, countdown, getFavs, modelAccuracy, recentForm, toggleFav } from "./insights";
 import MatchDetail from "./MatchDetail";
+import { picksForDay, wilsonInterval } from "./predictionEvidence";
 import { QualityBadge } from "./MatchQuality";
 import PlayerProfile from "./PlayerProfile";
 import TeamIntelligencePanel from "./TeamIntelligencePanel";
@@ -87,19 +88,19 @@ function MatchRow({ m, onOpen, formMap }) {
       <span className="mrow-body">
         <span className="mrow-line">
           <span className="mrow-team"><img className="crest xs" alt="" loading="lazy" src={crestFor(m.home, m.homeColors, m.homeCrest)} onError={(e) => (e.target.src = crestFor(m.home, m.homeColors, null))} /><span className="tn">{m.home}</span>{formMap && <FormDots form={formMap[m.home]} />}</span>
-          <span className="mrow-cen">{m.finished && m.result ? `${m.result[0]}–${m.result[1]}` : (m.markets?.marcador || "·")}</span>
+          <span className="mrow-cen">{m.finished && m.result ? `${m.result[0]}–${m.result[1]}` : (m.markets?.marcador || "·")}<small>{m.finished ? "Final" : "Más probable"}</small></span>
           <span className="mrow-team rev"><span className="tn">{m.away}</span>{formMap && <FormDots form={formMap[m.away]} />}<img className="crest xs" alt="" loading="lazy" src={crestFor(m.away, m.awayColors, m.awayCrest)} onError={(e) => (e.target.src = crestFor(m.away, m.awayColors, null))} /></span>
         </span>
         {pred && (
-          <span className="mrow-bar">
+          <span className="mrow-probabilities">{["1", "X", "2"].map((sign, i) => <span key={sign}>{sign} <b>{m.probs[i]}%</b></span>)}<span className="mrow-bar">
             <i className="s1" style={{ flex: m.probs[0] }} /><i className="sx" style={{ flex: m.probs[1] }} /><i className="s2" style={{ flex: m.probs[2] }} />
-          </span>
+          </span></span>
         )}
       </span>
       {m.match_quality && <QualityBadge mq={m.match_quality} compact />}
       <span className="mrow-tag">
         {val && <span className="tag-val" title={`Value ${val.selection}: edge ${(val.edge * 100).toFixed(1)}%`}>◆</span>}
-        {m.league.replace("LaLiga", "1ª").replace("Hypermotion", "").replace("Champions League", "UCL")}{best ? ` · ${best}` : ""}
+        {({ LaLiga: "1ª", "LaLiga Hypermotion": "2ª", "Champions League": "UCL" }[m.league] || m.league)}{best ? ` · ${best}` : ""}
       </span>
     </button>
   );
@@ -143,9 +144,8 @@ function Resumen({ data, matches, onOpen, goto, favs, onTeam }) {
     return map;
   }, [matches, dayMatches]);
   // Picks del día (servidor): valor cuando hay cuotas, confianza cuando no.
-  const picks = (data?.picks || []).slice(0, 5);
-  const accPct = data?.accuracy?.pct_1x2 ?? null;
-  const roi = data?.performance?.overall?.roi ?? null;
+  const picks = picksForDay(data?.picks, matches, day);
+  const accuracyInterval = wilsonInterval(acc.hits, acc.total);
   const favList = useMemo(() => {
     if (!favs || !favs.size) return [];
     return [...favs].map((t) => {
@@ -164,47 +164,11 @@ function Resumen({ data, matches, onOpen, goto, favs, onTeam }) {
     <>
       <div className="stat-tiles">
         <div className="stat"><span className="stat-k">Partidos</span><b className="stat-v">{dayMatches.length}</b><span className="stat-s">{dayLong(day)}</span></div>
-        <div className="stat"><span className="stat-k">Pick del día</span><b className="stat-v accent">{pick ? `${pick.s} · ${pick.mx}%` : "—"}</b><span className="stat-s">{pick ? `${pick.m.home}–${pick.m.away}` : "sin predicción"}</span></div>
-        <div className="stat"><span className="stat-k">Picks fuertes</span><b className="stat-v">{strong}</b><span className="stat-s">confianza ≥ 55%</span></div>
-        <div className="stat"><span className="stat-k">Goles esperados</span><b className="stat-v">{goalsDay.toFixed(2)}</b><span className="stat-s">media xG por partido</span></div>
-        <div className="stat" title="Aciertos 1X2 del modelo en partidos ya jugados esta temporada"><span className="stat-k">Acierto modelo</span><b className="stat-v accent">{acc.pct != null ? acc.pct + "%" : "—"}</b><span className="stat-s">{acc.total ? `${acc.hits}/${acc.total} aciertos 1X2` : "sin datos aún"}</span></div>
+        <div className="stat"><span className="stat-k">Favorito del día</span><b className="stat-v accent">{pick ? `${pick.s} · ${pick.mx}%` : "—"}</b><span className="stat-s">{pick ? `${pick.m.home}–${pick.m.away}` : "sin predicción"}</span></div>
+        <div className="stat"><span className="stat-k">Favoritos ≥ 55%</span><b className="stat-v">{strong}</b><span className="stat-s">probabilidad, no tasa de acierto</span></div>
+        <div className="stat"><span className="stat-k">Goles esperados</span><b className="stat-v">{goalsDay.toFixed(2)}</b><span className="stat-s">media del modelo por partido</span></div>
+        <div className="stat" title="Aciertos 1X2 del modelo en partidos ya jugados esta temporada"><span className="stat-k">Acierto modelo</span><b className="stat-v accent">{acc.pct != null ? acc.pct + "%" : "—"}</b><span className="stat-s">{acc.total ? `${acc.hits}/${acc.total} · intervalo 95%: ${accuracyInterval.map(v => Math.round(v * 100)).join("–")}%` : "sin datos aún"}</span></div>
       </div>
-
-      {picks.length > 0 && (
-        <div className="card">
-          <div className="lbl">◆ Picks del día
-            <span className="dim">
-              {accPct != null ? ` · modelo ${accPct}% acierto 1X2` : ""}
-              {roi != null ? `, ROI ${roi > 0 ? "+" : ""}${roi}%` : ""}
-            </span>
-          </div>
-          {picks.map((p) => {
-            const m = matches.find((x) => x.id === p.match_id);
-            return (
-              <button type="button" key={`${p.match_id}-${p.market}-${p.selection}`} className="vd-row click row-button" onClick={() => m && onOpen(m)}>
-                <span className="vd-team">{p.home} <span className="dim">vs</span> {p.away}</span>
-                <span className="chips">
-                  <span className="chip">{pickSelLabel(p, m)}</span>
-                  {p.kind === "value" ? (
-                    <>
-                      <span className="chip">Cuota <b>{Number(p.odds).toFixed(2)}</b></span>
-                      <span className="pill y" title="Valor: el modelo da más probabilidad que la cuota del mercado">+{(p.edge * 100).toFixed(1)}%</span>
-                    </>
-                  ) : (
-                    <>
-                      <span className="chip">Prob <b>{Math.round(p.modelProb * 100)}%</b></span>
-                      <span className="chip" title="Cuota justa implícita del modelo (1 / probabilidad)">cuota justa {Number(p.fairOdds).toFixed(2)}</span>
-                    </>
-                  )}
-                </span>
-              </button>
-            );
-          })}
-          <div className="note dim">
-            Valor = el modelo ve más probabilidad que la cuota del mercado. Sin cuotas de The Odds API se muestra la predicción de mayor confianza con su cuota justa.
-          </div>
-        </div>
-      )}
 
       <div className="cal">
         <div className="cal-nav">
@@ -231,6 +195,37 @@ function Resumen({ data, matches, onOpen, goto, favs, onTeam }) {
         {dayMatches.length ? dayMatches.map((m) => <MatchRow key={m.id} m={m} onOpen={onOpen} formMap={formMap} />)
           : <div className="state">No hay partidos este día.</div>}
       </div>
+
+      {picks.length > 0 && (
+        <div className="card">
+          <div className="row-between"><div className="lbl">Selecciones del {dayLong(day)}</div><button type="button" className="link-button" onClick={() => goto("datos")}>Ver resultados y muestra</button></div>
+          {picks.map((p) => {
+            const m = matches.find((x) => x.id === p.match_id);
+            return (
+              <button type="button" key={`${p.match_id}-${p.market}-${p.selection}`} className="vd-row click row-button" onClick={() => m && onOpen(m)}>
+                <span className="vd-team">{p.home} <span className="dim">vs</span> {p.away}</span>
+                <span className="chips">
+                  <span className="chip">{pickSelLabel(p, m)}</span>
+                  {p.kind === "value" ? (
+                    <>
+                      <span className="chip">Cuota <b>{Number(p.odds).toFixed(2)}</b></span>
+                      <span className="pill y" title="Retorno esperado teórico: probabilidad × cuota − 1. No es un beneficio garantizado.">EV +{(p.edge * 100).toFixed(1)}%</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="chip">Prob <b>{Math.round(p.modelProb * 100)}%</b></span>
+                      <span className="chip" title="Cuota justa implícita del modelo (1 / probabilidad)">cuota justa {Number(p.fairOdds).toFixed(2)}</span>
+                    </>
+                  )}
+                </span>
+              </button>
+            );
+          })}
+          <div className="note dim">
+            EV es el retorno esperado teórico con esa cuota. Las selecciones sin cuota son escenarios del modelo. Consulta la fuente y la revisión del partido antes de interpretar una ventaja.
+          </div>
+        </div>
+      )}
 
       {favList.length > 0 && (
         <div className="card">
@@ -1304,7 +1299,7 @@ export default function App() {
   const [dob, setDob] = useState(4);
   const [menuOpen, setMenuOpen] = useState(false);
 
-  useEffect(() => { loadFeed().then(setData).catch((e) => setErr(e.message)); }, []);
+  useEffect(() => subscribeFeed((next) => { setData(next); setErr(""); }, (e) => setErr(e.message)), []);
   const matches = useMemo(() => data?.matches || [], [data]);
 
   const open = (m) => { setPlayerSel(null); setSel(m); window.scrollTo(0, 0); };
@@ -1326,16 +1321,17 @@ export default function App() {
 
   return (
     <div className={"layout" + (menuOpen ? " open" : "")}>
+      <a className="skip-link" href="#main-content">Saltar al contenido</a>
       <aside className="side">
         <div className="brand">
           <div className="logo">⚡</div>
           <div><div className="bname">Fútbol Edge</div><div className="btag">PRIVATE INTELLIGENCE</div></div>
         </div>
-        <nav className="snav">
+        <nav className="snav" aria-label="Navegación principal">
           {NAV.map(([k, l]) => {
             const locked = VIEW_FEATURE[k] && !hasAccess(plan, VIEW_FEATURE[k]);
             return (
-              <button type="button" key={k} className={"snav-item" + (view === k && !sel ? " on" : "") + (k === "planes" ? " snav-plans" : "")} onClick={() => goto(k)}>
+              <button type="button" key={k} aria-current={view === k && !sel ? "page" : undefined} className={"snav-item" + (view === k && !sel ? " on" : "") + (k === "planes" ? " snav-plans" : "")} onClick={() => goto(k)}>
                 <Icon name={k === "clasificacion" ? "clasificacion" : k === "value" ? "value" : k} /> <span>{l}</span>
                 {locked && <span className="snav-lock" aria-label="Requiere plan superior">🔒</span>}
               </button>
@@ -1344,9 +1340,9 @@ export default function App() {
         </nav>
         <div className="side-foot">
           <div className="cal-card">
-            <div className="cal-h">Calendario <b className="value-yes">conectado</b></div>
+            <div className="cal-h">Datos <b>{data ? (data._fromFallback ? "de respaldo" : isStale(data) ? "por actualizar" : "cargados") : "cargando"}</b></div>
             <div className="cal-bar"><span /></div>
-            <div className="cal-sub">Fuente: {data?.data_sources?.fixtures || "Calendario verificado"}<br />Motor: {data?.engine === "ensemble" ? "Dixon-Coles + Elo calibrado" : (data?.engine || "Dixon-Coles")}</div>
+            <div className="cal-sub">Fuente: {data?.data_sources?.fixtures || "Pendiente de identificar"}<br />Motor: {data?.engine === "ensemble" ? "Dixon-Coles + Elo" : (data?.engine || "Pendiente")}</div>
           </div>
           <div className="user">
             <div className="avatar">{userName.slice(0, 2).toUpperCase()}</div>
@@ -1371,23 +1367,23 @@ export default function App() {
           <div className="search"><Icon name="search" /><input aria-label="Buscar equipo o competición" placeholder="Buscar equipo o competición…" value={q}
             onChange={(e) => { const v = e.target.value; setQ(v); if (v.trim()) { setPlayerSel(null); setSel(null); setTeamSel(null); setView("partidos"); } }} /></div>
           <div className="top-right">
-            <span className="badge-cal"><span className="dot d-ucl" /> {data ? "Calendario verificado" : "Cargando…"}</span>
+            <span className="badge-cal"><span className="dot d-ucl" /> {data ? (data._fromFallback ? "Copia de respaldo" : isStale(data) ? "Revisión pendiente" : !Number.isFinite(Date.parse(data.generated_at)) ? "Datos sin fecha" : `Datos · ${new Date(data.generated_at).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Madrid" })} Madrid`) : "Cargando…"}</span>
             <input type="checkbox" className="theme-btn theme-toggle"
               defaultChecked={savedLightTheme()} title="Cambiar tema" aria-label="Alternar tema claro u oscuro" />
           </div>
         </header>
 
-        <main className="content">
+        <main className="content" id="main-content">
           {data && isStale(data) && <div className="banner warn">⚠️ El feed puede estar desactualizado (hace {Math.round(feedAgeHours(data))} h). Se revisa a las 00:15 y 10:15, con control adicional cuando hay onces oficiales.</div>}
           {data?.alerts?.some((item) => item.severity === "critical") && <div className="banner warn">⚠️ {[...new Set(data.alerts.filter((item) => item.severity === "critical").map((item) => item.message))].join(" · ")}</div>}
-          {data?.alerts?.some((item) => item.severity === "warning") && <div className="banner">ℹ️ {[...new Set(data.alerts.filter((item) => item.severity === "warning").map((item) => item.message))].join(" · ")}</div>}
+          {data?.alerts?.some((item) => item.severity === "warning") && <details className="system-notice"><summary>Hay fuentes con incidencias · ver detalle</summary><p>{[...new Set(data.alerts.filter((item) => item.severity === "warning").map((item) => item.message))].join(" · ")}</p></details>}
           {data?._fromFallback && <div className="banner">Mostrando copia local del feed (no se pudo cargar el remoto).</div>}
           {err && <div className="state">No se pudo cargar el feed.<br />{err}</div>}
           {!data && !err && <Skeletons n={5} />}
 
           {data && playerSel && <PlayerProfile candidate={playerSel} players={data.players} matches={matches} onBack={() => setPlayerSel(null)} onTeam={openTeam} />}
 
-          {data && !playerSel && sel && <MatchDetail m={sel} onBack={() => setSel(null)} onTeam={openTeam} plan={plan} onUpgrade={() => { setSel(null); goto("planes"); }} />}
+          {data && !playerSel && sel && <MatchDetail m={matches.find(m => m.id === sel.id) || sel} onBack={() => setSel(null)} onTeam={openTeam} plan={plan} onUpgrade={() => { setSel(null); goto("planes"); }} />}
 
           {data && !playerSel && !sel && teamSel && <TeamPage team={teamSel} matches={matches} players={data.players} onBack={() => setTeamSel(null)} onOpen={open} onPlayer={openPlayer} isFav={favs.has(teamSel)} onFav={onFav} />}
 

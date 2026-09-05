@@ -7,7 +7,7 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 MADRID = ZoneInfo("Europe/Madrid")
-MODEL_VERSION = "edge-2.0"
+MODEL_VERSION = "edge-2.1"
 
 # El cron corre cada 15 minutos. La tolerancia absorbe pequeños retrasos del
 # runner sin etiquetar una captura lejana como si fuera el hito exacto.
@@ -45,6 +45,7 @@ _SNAPSHOT_FIELDS = (
     "prediction_factors",
     "recommendation",
     "score_distribution",
+    "score_matrix",
 )
 
 

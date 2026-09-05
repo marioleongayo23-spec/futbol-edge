@@ -24,6 +24,10 @@ class ScoreMatrix:
     matrix: np.ndarray
 
     def __post_init__(self) -> None:
+        self.matrix = np.asarray(self.matrix, dtype=float)
+        if (self.matrix.ndim != 2 or not self.matrix.size
+                or not np.isfinite(self.matrix).all() or (self.matrix < 0).any()):
+            raise ValueError("La matriz debe ser bidimensional, finita y no negativa")
         total = self.matrix.sum()
         if total <= 0:
             raise ValueError("La matriz de probabilidad no puede sumar 0")
@@ -77,7 +81,7 @@ class ScoreMatrix:
         if abs(line - round(line)) < 1e-9:
             dist = self.total_goals_dist()
             k = int(round(line))
-            if k < len(dist):
+            if 0 <= k < len(dist):
                 return float(dist[k])
         return 0.0
 
@@ -124,7 +128,7 @@ class ScoreMatrix:
 
     # ---- Resultado exacto -------------------------------------------------
     def correct_score(self, home: int, away: int) -> float:
-        if home > self.max_goals or away > self.max_goals:
+        if home < 0 or away < 0 or home >= self.matrix.shape[0] or away >= self.matrix.shape[1]:
             return 0.0
         return float(self.matrix[home, away])
 

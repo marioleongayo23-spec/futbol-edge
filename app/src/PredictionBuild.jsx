@@ -38,9 +38,9 @@ export default function PredictionBuild({ m }) {
   const home = m.home, away = m.away;
 
   const stages = [];
-  if (dc) stages.push({ k: "dc", label: "Dixon-Coles", sub: `ataque · defensa · ventaja de campo${ens.dc_weight != null ? ` — peso ${round(ens.dc_weight * 100)}%` : ""}`, probs: dc });
-  if (elo) stages.push({ k: "elo", label: "Elo", sub: `fuerza relativa acumulada${ens.elo_weight != null ? ` — peso ${round(ens.elo_weight * 100)}%` : ""}`, probs: elo });
-  if (model && (dc || elo)) stages.push({ k: "model", label: "Modelo combinado", sub: "mezcla ponderada de los dos motores", probs: model, strong: true });
+  if (dc) stages.push({ k: "dc", label: "Dixon-Coles", sub: `ataque · defensa · ventaja de campo${ens.accepted && ens.dc_weight != null ? ` — peso ${round(ens.dc_weight * 100)}%` : ""}`, probs: dc });
+  if (elo) stages.push({ k: "elo", label: ens.accepted || meta.residual?.accepted ? "Elo" : "Elo · referencia, sin peso activo", sub: `fuerza relativa acumulada${ens.accepted && ens.elo_weight != null ? ` — peso ${round(ens.elo_weight * 100)}%` : ""}`, probs: elo });
+  if (model && (dc || elo)) stages.push({ k: "model", label: meta.residual?.accepted ? "Modelo residual validado" : ens.accepted ? "Modelo combinado" : "Modelo Dixon-Coles", sub: meta.residual?.accepted ? "corrección residual aceptada por validación" : ens.accepted ? "mezcla geométrica y temperatura validadas" : "Elo se muestra como referencia; no interviene en el 1X2", probs: model, strong: true });
 
   const base = model || final;
   if (mc && base) {
@@ -64,7 +64,7 @@ export default function PredictionBuild({ m }) {
 
   // Ajustes de contexto que sí movieron algo (informativo).
   const adj = [];
-  if (m.weather_adjustment?.applied) adj.push(`clima (${m.weather_adjustment.reason || "condiciones relevantes"})`);
+  if (m.weather_adjustment?.applied) adj.push("clima aplicado al escenario de simulación");
   const li = m.lineup_impact || {};
   if (li.probability_adjustment) adj.push("once y bajas confirmadas");
   else if (li.confidence_penalty_pp) adj.push(`bajas: −${li.confidence_penalty_pp} pp de confianza`);
@@ -89,8 +89,8 @@ export default function PredictionBuild({ m }) {
           {i < stages.length - 1 && <div className="pb-arrow">↓</div>}
         </div>
       ))}
-      {adj.length > 0 && <p className="note" style={{ marginTop: 6 }}>Además ajustan: {adj.join(" · ")}.</p>}
-      <p className="note dim" style={{ marginTop: 6 }}>Dos motores —forma/ataque-defensa (Dixon-Coles) y fuerza relativa (Elo)— se combinan y luego se recalibran con el mercado. Clima, once y bajas ajustan solo cuando hay señal fiable.</p>
+      {adj.length > 0 && <p className="note" style={{ marginTop: 6 }}>Contexto adicional: {adj.join(" · ")}.</p>}
+      <p className="note dim" style={{ marginTop: 6 }}>Las etapas indican qué modelo está activo. Solo se combinan motores si superan la validación. La mezcla con cuotas se identifica por separado. Clima, once y bajas aportan contexto y solidez; no implican por sí solos un cambio del 1X2.</p>
     </div>
   );
 }

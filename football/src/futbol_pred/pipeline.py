@@ -1,7 +1,7 @@
 """Orquestación: ingesta -> ajuste del modelo -> predicción -> value bets.
 
-Es la pieza que ejecuta el cron. Todo el flujo funciona offline (con datos de
-ejemplo) si no hay claves, para poder probar el pipeline de punta a punta.
+Es la pieza que ejecuta el cron. El modo demo requiere una opción explícita;
+una fuente sin credenciales nunca introduce partidos sintéticos en producción.
 """
 
 from __future__ import annotations
@@ -13,6 +13,7 @@ from .config import settings
 from .ingest.api_football import ApiFootballClient, Fixture
 from .ingest.football_data import FootballDataClient
 from .model import DixonColesModel
+from .prediction_snapshots import MODEL_VERSION
 from .value import BankrollPolicy, scan_market
 
 
@@ -24,51 +25,50 @@ def _dbg(msg: str) -> None:
         print(f"[ingest] {msg}", file=sys.stderr)
 
 
-def get_fixtures(league: str, season: int | None = None) -> list[Fixture]:
-    """Fuente de fixtures con prioridad y fallback gratis.
+def get_fixtures(league: str, season: int | None = None, *, demo: bool = False) -> list[Fixture]:
+    """Resolve a season through independent providers, without synthetic fallback.
 
-    football-data.org (LaLiga/Champions en plan de pago) → API-Football →
-    OpenFootball (gratis, ideal para Segunda). Se devuelve la primera fuente con
-    datos de la temporada pedida (sin mezclar temporadas).
+    Credential availability for one adapter must not gate another adapter.
+    Demo fixtures are available only through an explicit development option.
+    A failed/empty provider advances to the next; a valid response is selected
+    as one coherent calendar, never merged by loose team-name similarity.
     """
     from .ingest.openfootball import OpenFootballClient
+    from .ingest.football_data_uk import FootballDataUKClient
 
     season = season or settings.season
-    fd = FootballDataClient()
+    fd, af = FootballDataClient(), ApiFootballClient()
+    if demo:
+        from .ingest.api_football import _sample_fixtures
+        return _sample_fixtures(league, season)
+    providers = []
     if not fd.offline:
+        providers.append(("football-data", lambda: fd.get_matches(league, season=season)))
+    if not af.offline:
+        providers.append(("api-football", lambda: af.get_fixtures(league, season=season)))
+    providers.extend([
+        ("openfootball", lambda: OpenFootballClient().get_matches(league, season=season)),
+        ("football-data.co.uk", lambda: FootballDataUKClient().get_fixtures(league, season)),
+    ])
+    for name, fetch in providers:
         try:
-            fx = fd.get_matches(league, season=season)
-            _dbg(f"{league} {season}: football-data -> {len(fx)}")
-            if fx:
-                return fx
+            fixtures = fetch()
+            seen, valid = set(), []
+            for fixture in fixtures or []:
+                if (fixture.season != season or fixture.league != league
+                        or not fixture.home_team or not fixture.away_team
+                        or fixture.home_team == fixture.away_team or not fixture.kickoff):
+                    continue
+                key = (fixture.home_team, fixture.away_team, fixture.kickoff.date())
+                if key not in seen:
+                    seen.add(key)
+                    valid.append(fixture)
+            _dbg(f"{league} {season}: {name} -> {len(valid)} valid fixtures")
+            if valid:
+                return valid
         except Exception as exc:
-            _dbg(f"{league} {season}: football-data ERROR {type(exc).__name__} "
-                 f"{getattr(getattr(exc, 'response', None), 'status_code', '')}")
-
-        af = ApiFootballClient()
-        if not af.offline:
-            try:
-                fx = af.get_fixtures(league, season=season)
-                _dbg(f"{league} {season}: api-football -> {len(fx)}")
-                if fx:
-                    return fx
-            except Exception as exc:
-                _dbg(f"{league} {season}: api-football ERROR {type(exc).__name__}")
-
-        of = OpenFootballClient().get_matches(league, season=season)
-        _dbg(f"{league} {season}: openfootball -> {len(of)}")
-        if of:
-            return of
-
-        # co.uk (gratis): vía para Segunda, que football-data.org no da en free.
-        from .ingest.football_data_uk import FootballDataUKClient
-
-        uk = FootballDataUKClient().get_fixtures(league, season)
-        _dbg(f"{league} {season}: co.uk -> {len(uk)}")
-        if uk:
-            return uk
-        return []
-    return ApiFootballClient().get_fixtures(league, season=season)
+            _dbg(f"{league} {season}: {name} ERROR {type(exc).__name__}")
+    return []
 
 
 @dataclass
@@ -93,19 +93,22 @@ def fit_model_from_fixtures(
     (p. ej. ``canonical_team``), para que un mismo club en distintas fuentes o
     divisiones enlace bajo un único identificador.
     """
-    played = [f for f in fixtures if f.home_goals is not None]
+    def utc(value):
+        return value.replace(tzinfo=timezone.utc) if value.tzinfo is None else value.astimezone(timezone.utc)
+    as_of = utc(as_of or datetime.now(timezone.utc))
+    played = [f for f in fixtures if f.home_goals is not None and f.away_goals is not None
+              and utc(f.kickoff) < as_of and str(f.status).upper() in {"FINISHED", "FT", "AET", "PEN", "AWARDED"}]
     if not played:
         raise ValueError("No hay partidos jugados para ajustar el modelo")
 
     name_fn = name_fn or (lambda n: n)
-    as_of = as_of or datetime.now(timezone.utc).replace(tzinfo=None)
     home_teams, away_teams, hg, ag, days = [], [], [], [], []
     for f in played:
         home_teams.append(name_fn(f.home_team))
         away_teams.append(name_fn(f.away_team))
         hg.append(f.home_goals)
         ag.append(f.away_goals)
-        ko = f.kickoff.replace(tzinfo=None) if f.kickoff.tzinfo else f.kickoff
+        ko = utc(f.kickoff)
         days.append(max(0.0, (as_of - ko).total_seconds() / 86400))
 
     model = DixonColesModel()
@@ -133,10 +136,9 @@ def predict_match(
     )
 
 
-def run_pipeline(league: str = "laliga", season: int | None = None) -> dict:
+def run_pipeline(league: str = "laliga", season: int | None = None, *, demo: bool = False) -> dict:
     """Ejecuta el flujo completo para una liga y devuelve un informe."""
-    fd = FootballDataClient()
-    fixtures = get_fixtures(league, season=season)
+    fixtures = get_fixtures(league, season=season, demo=demo)
     model = fit_model_from_fixtures(fixtures)
 
     # Predice el "próximo enfrentamiento" de ejemplo entre los dos primeros.
@@ -144,7 +146,7 @@ def run_pipeline(league: str = "laliga", season: int | None = None) -> dict:
     report = {
         "league": league,
         "season": season or settings.season,
-        "offline": fd.offline and ApiFootballClient().offline,
+        "offline": demo,
         "n_fixtures": len(fixtures),
         "teams_ranked_by_attack": teams[:8],
         "sample_prediction": None,
@@ -171,7 +173,9 @@ def fixtures_to_matches(
     walk-forward de demostración).
     """
     played = sorted(
-        [f for f in fixtures if f.home_goals is not None], key=lambda f: f.kickoff
+        [f for f in fixtures if f.home_goals is not None and f.away_goals is not None
+         and str(f.status).upper() in {"FINISHED", "FT", "AET", "PEN", "AWARDED"}],
+        key=lambda f: f.kickoff,
     )
     out = []
     for i, f in enumerate(played):
@@ -189,6 +193,8 @@ def fixtures_to_matches(
             "kickoff": f.kickoff.timestamp(),
             "status": "FINISHED",
             "competition": f.league,
+            "season": f.season,
+            "available_at": f.kickoff.timestamp() + 3 * 3600,
         })
     return out
 
@@ -300,6 +306,7 @@ def run_model_report(league: str = "laliga", season: int | None = None) -> dict 
         "season": season or settings.season,
         "n_matches": len(matches),
         "n_predicciones": n_pred,
+        "model_version": MODEL_VERSION,
         "predictors": metrics,
         "calibration": calibration,
         "ensemble": ensemble,

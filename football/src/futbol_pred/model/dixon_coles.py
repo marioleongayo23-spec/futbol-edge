@@ -25,11 +25,12 @@ from .score_matrix import ScoreMatrix
 
 def _tau(x: np.ndarray, y: np.ndarray, lh: float, la: float, rho: float) -> np.ndarray:
     """Corrección Dixon-Coles para resultados bajos."""
+    x, y, lh, la = np.broadcast_arrays(x, y, lh, la)
     out = np.ones_like(x, dtype=float)
-    out[(x == 0) & (y == 0)] = 1 - lh * la * rho
-    out[(x == 0) & (y == 1)] = 1 + lh * rho
-    out[(x == 1) & (y == 0)] = 1 + la * rho
-    out[(x == 1) & (y == 1)] = 1 - rho
+    out = np.where((x == 0) & (y == 0), 1 - lh * la * rho, out)
+    out = np.where((x == 0) & (y == 1), 1 + lh * rho, out)
+    out = np.where((x == 1) & (y == 0), 1 + la * rho, out)
+    out = np.where((x == 1) & (y == 1), 1 - rho, out)
     return out
 
 
@@ -102,7 +103,9 @@ class DixonColesModel:
             lh = np.clip(lh, 1e-6, 30)
             la = np.clip(la, 1e-6, 30)
             ll = poisson.logpmf(hg, lh) + poisson.logpmf(ag, la)
-            tau = _tau(hg, ag, lh.mean(), la.mean(), rho)
+            # Each observation has its own intensities. League means fit a
+            # different likelihood from the distribution used at prediction.
+            tau = _tau(hg, ag, lh, la, rho)
             tau = np.clip(tau, 1e-9, None)
             ll = ll + np.log(tau)
             # Ridge: penaliza ataque (centrado) y defensa hacia 0 (media de liga).
@@ -111,6 +114,9 @@ class DixonColesModel:
 
         bounds = [(-2, 2)] * (2 * n) + [(-1, 1), (-0.2, 0.2)]
         res = minimize(neg_log_like, init, method="L-BFGS-B", bounds=bounds)
+
+        if not res.success or not np.isfinite(res.fun) or not np.isfinite(res.x).all():
+            raise ValueError(f"Dixon-Coles no convergió: {res.message}")
 
         p = res.x
         att = p[:n] - p[:n].mean()

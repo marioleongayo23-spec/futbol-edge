@@ -7,7 +7,7 @@ import math
 import numpy as np
 from scipy.optimize import minimize
 
-from .ensemble import GATE_METRICS, _paired, candidate_beats_all_baselines
+from .ensemble import GATE_METRICS, _paired, candidate_beats_all_baselines, temporal_split_index
 from .metrics import aggregate
 
 SIGNS = ("1", "X", "2")
@@ -95,6 +95,10 @@ def fit_walk_forward_residual(
             "minimum_required": MIN_RECORDS,
         }
     split = max(55, min(len(rows) - 20, round(len(rows) * (1 - validation_fraction))))
+    split = temporal_split_index(dc_records, elo_records, split, 55, 20)
+    if split is None:
+        return {"method": "residual-logit-temporal", "accepted": False,
+                "status": "blocked_no_temporal_boundary", "n": len(rows)}
     train, validation = rows[:split], rows[split:]
     fitted = _fit(train)
     metrics = aggregate([

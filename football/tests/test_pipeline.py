@@ -13,7 +13,7 @@ from futbol_pred.ingest.api_football import ApiFootballClient
 
 
 def test_pipeline_offline_corre_de_punta_a_punta():
-    report = run_pipeline(league="laliga")
+    report = run_pipeline(league="laliga", demo=True)
     assert report["offline"] is True
     assert report["n_fixtures"] > 0
     assert report["sample_prediction"] is not None

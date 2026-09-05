@@ -6,6 +6,8 @@ import warnings
 
 from .backtest import DixonColesPredictor, walk_forward
 from .backtest.metrics import aggregate, calibration_table
+from .backtest.ensemble import grouped_split_index
+from .prediction_snapshots import MODEL_VERSION
 from .config import LEAGUE_META
 from .ingest.football_data_uk import FootballDataUKClient
 from .market_calibration import _blend, _fit, market_candidate_beats_model
@@ -76,18 +78,24 @@ def prior_season_seed(league: str, current_season: int) -> dict | None:
     rows = []
     model_rows = []
     market_rows = []
-    for record in result.records:
+    blocks = []
+    for record in sorted(result.records, key=lambda record: record.get("kickoff") or 0):
         model = record.get("probs")
         market = _fair_1x2(record.get("odds") or {})
         actual = record.get("actual")
         if model and market and actual in {"1", "X", "2"}:
             rows.append((model, market, actual))
+            stamp = record.get("kickoff")
+            blocks.append(int(stamp // 86400) if stamp is not None else tuple(record.get("round") or ()))
             model_rows.append((model, actual))
             market_rows.append((market, actual))
     if len(rows) < 30:
         return None
 
     split = max(20, min(len(rows) - 10, round(len(rows) * 0.70)))
+    split = grouped_split_index(blocks, split, 20, 10)
+    if split is None:
+        return None
     train, validation = rows[:split], rows[split:]
     weight, temp = _fit(train)
     candidate_rows = [(_blend(model, market, weight, temp), actual) for model, market, actual in validation]
@@ -100,12 +108,14 @@ def prior_season_seed(league: str, current_season: int) -> dict | None:
 
     return {
         "league": league,
+        "model_version": MODEL_VERSION,
         "scope": "historical_seed",
         "evaluation_season": previous,
         "current_season": current_season,
         "source": "walk-forward Dixon-Coles + football-data.co.uk historical closing odds",
         "cost": "football-data.co.uk CSV: sin API key; coste monetario 0",
         "market_calibration": {
+            "model_version": MODEL_VERSION,
             "accepted": accepted,
             "n": len(rows),
             "n_validation": len(validation),

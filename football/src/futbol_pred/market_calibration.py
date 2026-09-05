@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import math
+from datetime import datetime
 
 from scipy.optimize import minimize_scalar
 
-from .backtest.ensemble import candidate_beats_all_baselines, temperature_scale
+from .backtest.ensemble import candidate_beats_all_baselines, grouped_split_index, temperature_scale
 from .backtest.metrics import aggregate
 from .prediction_snapshots import latest_pre_match_snapshot
 
@@ -56,8 +57,9 @@ def market_candidate_beats_model(candidate: dict, champion: dict) -> bool:
     return candidate_beats_all_baselines(candidate, {"model": champion})
 
 
-def learn_market_calibration(matches: list[dict], league: str) -> dict | None:
+def learn_market_calibration(matches: list[dict], league: str, *, model_version: str | None = None) -> dict | None:
     rows = []
+    blocks = []
     selected = sorted(
         (match for match in matches if match.get("league") == league and match.get("finished") and match.get("result")),
         key=lambda match: str(match.get("kickoff") or ""),
@@ -65,6 +67,8 @@ def learn_market_calibration(matches: list[dict], league: str) -> dict | None:
     for match in selected:
         snapshot = latest_pre_match_snapshot(match)
         if not snapshot:
+            continue
+        if model_version is not None and snapshot.get("model_version") != model_version:
             continue
         model = _dict(snapshot.get("model_probs"))
         odds = snapshot.get("odds")
@@ -75,11 +79,19 @@ def learn_market_calibration(matches: list[dict], league: str) -> dict | None:
         result = match["result"]
         actual = "1" if result[0] > result[1] else "2" if result[0] < result[1] else "X"
         if model and market:
+            try:
+                day = int(datetime.fromisoformat(match["kickoff"]).timestamp() // 86400)
+            except (KeyError, TypeError, ValueError):
+                continue
             rows.append((model, market, actual))
+            blocks.append(day)
     if len(rows) < 30:
         return None
 
     split = max(20, min(len(rows) - 10, round(len(rows) * 0.70)))
+    split = grouped_split_index(blocks, split, 20, 10)
+    if split is None:
+        return None
     train, validation = rows[:split], rows[split:]
     weight, temp = _fit(train)
     candidate = [(_blend(model, market, weight, temp), actual) for model, market, actual in validation]
@@ -89,6 +101,7 @@ def learn_market_calibration(matches: list[dict], league: str) -> dict | None:
     accepted = market_candidate_beats_model(candidate_metrics, champion_metrics)
     prod_weight, prod_temp = _fit(rows)
     return {
+        "model_version": model_version,
         "accepted": accepted,
         "n": len(rows),
         "n_validation": len(validation),
