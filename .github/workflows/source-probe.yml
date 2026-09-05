@@ -1,0 +1,42 @@
+name: source-probe (fuentes candidatas)
+
+# Probe READ-ONLY de SofaScore / BeSoccer / FlashScore desde un runner con
+# salida abierta (el proxy de dev bloquea estos hosts). No integra nada ni
+# commitea: solo reporta en logs + artefacto qué se puede sacar de cada fuente.
+# Se dispara al empujar el propio probe (cualquier rama) o a mano.
+
+on:
+  push:
+    paths:
+      - "football/src/futbol_pred/ingest/source_probe.py"
+      - ".github/workflows/source-probe.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: football
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # Solo stdlib: sin pip install. Ejecutar como script evita importar el
+      # paquete y sus dependencias pesadas.
+      - name: Ejecutar probe de fuentes
+        run: python src/futbol_pred/ingest/source_probe.py
+
+      - name: Subir informe del probe
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: source-probe-report
+          path: football/data/source_probe_report.json
+          if-no-files-found: warn
