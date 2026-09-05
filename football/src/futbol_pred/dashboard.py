@@ -1667,6 +1667,9 @@ def _build_stats_method(stats_backtest: dict | None) -> dict:
 # disco persistente, así que la caché viaja en player_rankings_meta del feed y solo
 # se vuelve a llamar tras el TTL, respetando el presupuesto diario de la API.
 _AF_RANKINGS_TTL_HOURS = 18
+# Tras un refresco vacío o parcial no se reintenta antes de esto (backoff), para
+# no gastar el presupuesto en cada ejecución del cron cuando la fuente falla.
+_AF_RETRY_BACKOFF_HOURS = 6
 
 
 def _cascade_rankings(*sources: dict | None) -> dict:
@@ -1708,13 +1711,24 @@ def _load_players(season: int, previous: dict | None = None,
             static = {}
 
     # 2a) API-Football (PRIMARIA), cacheada con TTL en el feed anterior.
+    #     Se distingue el último refresco COMPLETO con datos (af_fetched_at) del
+    #     último INTENTO (af_attempted_at): así un refresco vacío o parcial no
+    #     dispara los 9 requests en cada ejecución —hay backoff aunque falle— y
+    #     nunca se pierden ligas que hoy fallen, porque se fusiona sobre la caché
+    #     previa por liga/categoría (revisión Codex P1/P2).
     prev_meta = (previous or {}).get("player_rankings_meta") or {}
+    prev_af = dict(prev_meta.get("af") or {})
     af_age = _age_hours(now, prev_meta.get("af_fetched_at"))
-    if af_age is not None and af_age < _AF_RANKINGS_TTL_HOURS and prev_meta.get("af"):
-        af = dict(prev_meta.get("af") or {})
+    attempt_age = _age_hours(now, prev_meta.get("af_attempted_at"))
+    complete_and_fresh = af_age is not None and af_age < _AF_RANKINGS_TTL_HOURS and bool(prev_af)
+    backed_off = attempt_age is not None and attempt_age < _AF_RETRY_BACKOFF_HOURS
+    if complete_and_fresh or backed_off:
+        af = prev_af
         af_fetched_at = prev_meta.get("af_fetched_at")
+        af_attempted_at = prev_meta.get("af_attempted_at")
     else:
-        af = {}
+        af = dict(prev_af)  # parte de la caché: una liga que falle hoy no se pierde
+        fetched = 0
         try:
             from .ingest.players_api_football import get_top_players as af_top
             for league in labels:
@@ -1723,15 +1737,15 @@ def _load_players(season: int, previous: dict | None = None,
                 except Exception:
                     r = None
                 if r:
-                    af[league] = r
+                    af[league] = {**(af.get(league) or {}), **r}  # fusión por categoría
+                    fetched += 1
         except Exception:
-            af = {}
-        # Si el refresco no trajo nada pero había caché, se conserva (nunca peor).
-        if af:
-            af_fetched_at = now.isoformat()
-        else:
-            af = dict(prev_meta.get("af") or {})
-            af_fetched_at = prev_meta.get("af_fetched_at")
+            pass
+        af_attempted_at = now.isoformat()  # SIEMPRE registra el intento -> backoff
+        # Solo cuenta como refresco COMPLETO si TODAS las ligas trajeron datos;
+        # si fue parcial/vacío, af_fetched_at sigue "viejo" y se reintenta al
+        # vencer el backoff (no en cada ejecución).
+        af_fetched_at = now.isoformat() if fetched >= len(labels) else prev_meta.get("af_fetched_at")
 
     # 2b) football-data.org /scorers (vivo, fiable en CI). Rellena lo que AF no dé.
     fd: dict = {}
@@ -1762,7 +1776,11 @@ def _load_players(season: int, previous: dict | None = None,
             }
 
     if _meta_out is not None:
-        _meta_out["player_rankings_meta"] = {"af_fetched_at": af_fetched_at, "af": af}
+        _meta_out["player_rankings_meta"] = {
+            "af_fetched_at": af_fetched_at,
+            "af_attempted_at": af_attempted_at,
+            "af": af,
+        }
     return out or None
 
 

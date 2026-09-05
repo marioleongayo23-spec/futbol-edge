@@ -89,15 +89,13 @@ def test_load_players_ttl_reusa_cache_sin_llamar_api(monkeypatch):
     assert meta_out["player_rankings_meta"]["af"]["laliga"]               # conserva la caché
 
 
-def test_load_players_ttl_refresca_si_caduca(monkeypatch):
+def test_load_players_ttl_refresca_completo_si_caduca(monkeypatch):
     called = {"af": 0}
 
     def fresh(season, league="laliga", top=15, **k):
         called["af"] += 1
-        if league == "laliga":
-            return {"goles": {"label": "Goleadores",
-                              "players": [{"rank": 1, "player": "FRESCO", "team": "X", "value": 1}]}}
-        return None
+        return {"goles": {"label": "Goleadores",
+                          "players": [{"rank": 1, "player": f"FRESCO-{league}", "team": "X", "value": 1}]}}
 
     monkeypatch.setattr(paf, "get_top_players", fresh)
     monkeypatch.setattr(pfd, "get_top_players", lambda *a, **k: None)
@@ -106,6 +104,64 @@ def test_load_players_ttl_refresca_si_caduca(monkeypatch):
         "af_fetched_at": (now - timedelta(hours=40)).isoformat(), "af": {}}}
     meta_out: dict = {}
     out = _load_players(2026, previous=previous, now=now, _meta_out=meta_out)
-    assert called["af"] >= 1                                              # caducó -> refresca
-    assert out["laliga"]["rankings"]["goles"]["players"][0]["player"] == "FRESCO"
-    assert meta_out["player_rankings_meta"]["af_fetched_at"] == now.isoformat()
+    assert called["af"] == 3                                              # las 3 ligas
+    assert out["laliga"]["rankings"]["goles"]["players"][0]["player"] == "FRESCO-laliga"
+    m = meta_out["player_rankings_meta"]
+    assert m["af_fetched_at"] == now.isoformat()      # refresco COMPLETO -> fresco ahora
+    assert m["af_attempted_at"] == now.isoformat()
+
+
+def test_load_players_backoff_tras_refresco_vacio(monkeypatch):
+    # P1: un refresco caducado que vuelve VACÍO no debe reintentar en cada build.
+    called = {"af": 0}
+
+    def empty(season, league="laliga", top=15, **k):
+        called["af"] += 1
+        return None
+
+    monkeypatch.setattr(paf, "get_top_players", empty)
+    monkeypatch.setattr(pfd, "get_top_players", lambda *a, **k: None)
+    now = datetime(2026, 9, 5, 12, tzinfo=timezone.utc)
+    cached = {"laliga": {"goles": {"label": "Goleadores",
+                                   "players": [{"rank": 1, "player": "OLD", "team": "Y", "value": 2}]}}}
+    previous = {"player_rankings_meta": {
+        "af_fetched_at": (now - timedelta(hours=40)).isoformat(), "af": cached}}
+    meta_out: dict = {}
+    out = _load_players(2026, previous=previous, now=now, _meta_out=meta_out)
+    assert called["af"] == 3                                    # intentó (caducado)...
+    assert out["laliga"]["rankings"]["goles"]["players"][0]["player"] == "OLD"  # ...pero no se pierde
+    m = meta_out["player_rankings_meta"]
+    assert m["af_attempted_at"] == now.isoformat()             # backoff registrado
+    assert m["af"]["laliga"]                                   # caché conservada
+
+    # Segundo build 1h después: dentro del backoff -> NO vuelve a intentar.
+    called["af"] = 0
+    out2 = _load_players(2026, previous={"player_rankings_meta": m},
+                         now=now + timedelta(hours=1), _meta_out={})
+    assert called["af"] == 0                                    # presupuesto respetado
+    assert out2["laliga"]["rankings"]["goles"]["players"][0]["player"] == "OLD"
+
+
+def test_load_players_parcial_conserva_ligas(monkeypatch):
+    # P2: si hoy solo responde laliga, champions cacheado NO se pierde y NO se
+    # marca como refresco completo (se reintentará champions tras el backoff).
+    def partial(season, league="laliga", top=15, **k):
+        if league == "laliga":
+            return {"goles": {"label": "Goleadores",
+                              "players": [{"rank": 1, "player": "LA-NEW", "team": "X", "value": 9}]}}
+        return None
+
+    monkeypatch.setattr(paf, "get_top_players", partial)
+    monkeypatch.setattr(pfd, "get_top_players", lambda *a, **k: None)
+    now = datetime(2026, 9, 5, 12, tzinfo=timezone.utc)
+    cached = {"champions": {"goles": {"label": "Goleadores",
+                                      "players": [{"rank": 1, "player": "CL-OLD", "team": "Bayern", "value": 6}]}}}
+    previous = {"player_rankings_meta": {
+        "af_fetched_at": (now - timedelta(hours=40)).isoformat(), "af": cached}}
+    meta_out: dict = {}
+    out = _load_players(2026, previous=previous, now=now, _meta_out=meta_out)
+    assert out["laliga"]["rankings"]["goles"]["players"][0]["player"] == "LA-NEW"      # nuevo
+    assert out["champions"]["rankings"]["goles"]["players"][0]["player"] == "CL-OLD"   # conservado
+    m = meta_out["player_rankings_meta"]
+    assert m["af"]["champions"]                                # champions no se pierde
+    assert m["af_fetched_at"] == previous["player_rankings_meta"]["af_fetched_at"]  # parcial != completo
