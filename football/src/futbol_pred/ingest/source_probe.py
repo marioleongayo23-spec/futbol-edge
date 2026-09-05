@@ -159,6 +159,32 @@ def summarize_sofascore_event(detail: dict, lineups: dict, statistics: dict) -> 
     return found
 
 
+def sniff_html(res: dict) -> dict:
+    """Caracteriza una respuesta HTML: ¿contenido real o reto de Cloudflare?
+    ¿trae marcadores de árbitro / alineación / enlaces a partidos?"""
+
+    import re
+
+    body = res.get("body") or b""
+    text = body.decode("utf-8", "replace") if isinstance(body, bytes) else str(body)
+    low = text.lower()
+    title = ""
+    m = re.search(r"<title[^>]*>(.*?)</title>", text, re.I | re.S)
+    if m:
+        title = re.sub(r"\s+", " ", m.group(1)).strip()[:120]
+    return {
+        "status": res.get("status"),
+        "len": res.get("len"),
+        "cf_challenge": any(s in low for s in (
+            "just a moment", "cf-chl", "challenge-platform",
+            "enable javascript and cookies", "attention required")),
+        "has_arbitro": any(s in low for s in ("árbitro", "arbitro", "colegiado", "designacion")),
+        "has_alineacion": any(s in low for s in ("alineaci", "once inicial", "lineup")),
+        "has_match_links": ("/partido" in low or "/match" in low),
+        "title": title,
+    }
+
+
 def summarize_flashscore(feed_res: dict) -> dict:
     body = feed_res.get("body") or b""
     text = body.decode("utf-8", "replace") if isinstance(body, bytes) else str(body)
@@ -184,6 +210,16 @@ def probe_sofascore() -> dict:
     live_json = _as_json(live)
     if live_json is not None:
         report["data_available"]["live_events"] = len(live_json.get("events") or [])
+    elif live.get("status") == 403:
+        # ¿El 403 cede con cabeceras de navegador completas (Referer/Origin)?
+        retry = _get(f"{base}/sport/football/events/live", headers={
+            "Referer": "https://www.sofascore.com/",
+            "Origin": "https://www.sofascore.com",
+        })
+        retry_brief = _brief(retry)
+        retry_brief["note"] = "reintento con Referer/Origin"
+        report["endpoints"].append(retry_brief)
+        report["headers_bypass_403"] = bool(retry.get("ok") and retry.get("status") == 200)
 
     # LaLiga = unique-tournament 8. Buscamos la temporada vigente y un partido.
     event_id = None
@@ -229,21 +265,39 @@ def probe_sofascore() -> dict:
 
 
 def probe_besoccer() -> dict:
-    report = {"source": "besoccer", "endpoints": [], "verdict": ""}
-    web = _get("https://www.besoccer.com/")
-    report["endpoints"].append(_brief(web))
-    # API oficial: requiere key; sin ella debe responder 401/403/400.
+    report = {"source": "besoccer", "endpoints": [], "pages": {}, "verdict": ""}
+    # Páginas de DATOS reales (no solo la home): árbitros/designaciones,
+    # clasificación y partidos del día. Sniff del HTML para distinguir
+    # contenido real de un reto de Cloudflare, y ver si trae árbitro/alineación.
+    pages = {
+        "home_es": "https://es.besoccer.com/",
+        "arbitros": "https://es.besoccer.com/competicion/arbitros/primera",
+        "designaciones": "https://es.besoccer.com/competicion/designaciones/primera",
+        "clasificacion": "https://es.besoccer.com/competicion/clasificacion/primera",
+        "partidos_hoy": "https://es.besoccer.com/partidos",
+    }
+    referer = {"Referer": "https://es.besoccer.com/"}
+    real = 0
+    for key, url in pages.items():
+        res = _get(url, headers=referer)
+        report["endpoints"].append(_brief(res))
+        sniff = sniff_html(res)
+        report["pages"][key] = sniff
+        if res.get("status") == 200 and not sniff["cf_challenge"] and (res.get("len") or 0) > 5000:
+            real += 1
+    # API oficial: sin key debe responder 401/403/400 (o 404 si la ruta cambió).
     api = _get("https://api.besoccer.com/scraper/matches")
     report["endpoints"].append(_brief(api))
-    web_ok = web.get("ok") and web.get("status") == 200
-    report["accessible_web"] = bool(web_ok)
     report["api_needs_key"] = api.get("status") in (400, 401, 403)
-    if web_ok:
-        report["verdict"] = "web accesible (revisar si trae árbitro/alineaciones en HTML)"
-    elif web.get("status") == 406:
-        report["verdict"] = "web con WAF (406, fingerprint) — solo API de pago con key"
+
+    report["real_data_pages"] = real
+    arb = report["pages"].get("arbitros", {}) or report["pages"].get("designaciones", {})
+    if real == 0:
+        report["verdict"] = "muro/challenge: la home responde pero sin HTML de datos utilizable"
+    elif arb.get("has_arbitro") and not arb.get("cf_challenge"):
+        report["verdict"] = f"web scrapeable: {real} páginas con HTML real, árbitros presente en HTML"
     else:
-        report["verdict"] = f"web status={web.get('status')} — probable muro; API requiere key"
+        report["verdict"] = f"web scrapeable: {real} páginas con HTML real (revisar campos por página)"
     return report
 
 

@@ -4,7 +4,27 @@
 from futbol_pred.ingest.source_probe import (
     summarize_sofascore_event,
     summarize_flashscore,
+    sniff_html,
 )
+
+
+def test_sniff_html_detecta_contenido_real_con_arbitro():
+    html = ("<html><head><title>Designaciones árbitros Primera</title></head>"
+            "<body><a href='/partido/x'>Gil Manzano</a> alineaciones once inicial"
+            "</body></html>").encode("utf-8")
+    out = sniff_html({"status": 200, "len": len(html), "body": html})
+    assert out["cf_challenge"] is False
+    assert out["has_arbitro"] is True
+    assert out["has_alineacion"] is True
+    assert out["has_match_links"] is True
+    assert "Designaciones" in out["title"]
+
+
+def test_sniff_html_detecta_reto_cloudflare():
+    html = b"<html><head><title>Just a moment...</title></head><body>Enable JavaScript and cookies to continue</body></html>"
+    out = sniff_html({"status": 200, "len": len(html), "body": html})
+    assert out["cf_challenge"] is True
+    assert out["has_arbitro"] is False
 
 
 def test_summarize_sofascore_event_extrae_campos_valiosos():
