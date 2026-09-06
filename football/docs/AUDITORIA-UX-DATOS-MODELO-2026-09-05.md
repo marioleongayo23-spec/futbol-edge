@@ -91,3 +91,9 @@ Fundamentos: [Dixon y Coles, artículo original](https://research.lancaster-univ
 7. **Cobertura real:** resolver los huecos de cuotas, árbitros y estadísticas individuales con disponibilidad efectiva de los proveedores. No comprar planes ni prometer cobertura sin verificar licencias, presupuesto y cuota de consulta.
 
 Criterio de aceptación: ninguna fuente ausente se convierte en evidencia, ninguna evaluación usa información futura y ninguna mejora predictiva se anuncia sin comparación temporal adecuada. La publicación debe mostrar claramente lo observado, lo estimado y lo todavía desconocido.
+
+## Actualización de entrega · 6 de septiembre de 2026
+
+El usuario autorizó explícitamente publicar e integrar los cambios. La PR #110 contiene la auditoría y el rediseño de estilo centro de control: navegación sobria, panel de partido destacado, distribución 1X2 accesible y métricas con muestra e intervalo. La vista previa de Vercel ya es accesible y se inspeccionaron ambos temas y el detalle de fuentes. Los dos nuevos escenarios visuales E2E de escritorio y móvil pasaron, incluyendo ausencia de desbordamiento horizontal. La suite completa se vuelve a ejecutar tras corregir el porcentaje del perfil de equipo y el tratamiento de consultas sin partido encontrado. Los bloqueos de entrega descritos arriba documentan el estado del 5 de septiembre; no son bloqueos vigentes.
+
+La nota de fiabilidad predictiva demostrada sigue siendo **5/10**: mejorar la presentación y corregir errores estadísticos no acredita por sí mismo una mejora de precisión. La comparación temporal documentada no muestra una ganancia concluyente. Las identidades entre proveedores, la validación integral y los huecos de cobertura siguen siendo trabajo necesario.

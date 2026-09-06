@@ -41,10 +41,11 @@ export function coverageRows(m, now = Date.now()) {
   const oddsRequired = minutes == null || minutes <= 24 * 60;
   const predictionRequired = predictionOk && (minutes == null || minutes <= 18 * 60);
 
-  const fixtureOk = Boolean(m?.id && m?.status);
+  const fixtureOk = Boolean(m?.id && m?.status)
+    && !["not_found", "fixture_not_found", "error", "failed", "unavailable"].includes(checks.fixture_check_result);
   const weatherOk = Boolean(weather);
   const absencesOk = Boolean(checks.absences_checked_at)
-    && !["error", "unavailable", "failed"].includes(checks.absences_check_result);
+    && checks.absences_check_result === "ok";
   const probableOk = ["probable", "confirmado"].includes(status)
     && (lineup.local || []).length === 11 && (lineup.visitante || []).length === 11
     && !["model_only", "statistical_fallback", "roster_grounded", "media_partial"].includes(lineup.source_quality);
