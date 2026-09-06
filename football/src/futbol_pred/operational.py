@@ -1,6 +1,8 @@
 """Control operativo: onces oficiales, completitud y alertas del feed."""
 from __future__ import annotations
 
+from .normalize import same_team
+
 from datetime import datetime
 import re
 import unicodedata
@@ -34,10 +36,9 @@ def _key(value: str) -> str:
 
 
 def _side_for(team: str, home: str, away: str) -> str | None:
-    target = _key(team)
-    if target and (target in _key(home) or _key(home) in target):
+    if same_team(team, home):
         return "local"
-    if target and (target in _key(away) or _key(away) in target):
+    if same_team(team, away):
         return "visitante"
     return None
 

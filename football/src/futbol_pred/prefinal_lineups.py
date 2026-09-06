@@ -8,6 +8,8 @@ la alineación oficial de API-Football siempre prevalece en T-60/T-30.
 """
 from __future__ import annotations
 
+from .normalize import same_team
+
 from collections import Counter
 from datetime import datetime
 import json
@@ -49,8 +51,7 @@ def _entity_key(value: str | None) -> str:
 
 
 def _same_team(left: str | None, right: str | None) -> bool:
-    a, b = _entity_key(left), _entity_key(right)
-    return bool(a and b and (a == b or a in b or b in a))
+    return same_team(left, right)
 
 
 def _valid_xi(lineup: dict | None) -> bool:

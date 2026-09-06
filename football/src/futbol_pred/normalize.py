@@ -162,3 +162,17 @@ def register_team(canonical: str, aliases: list[str]) -> None:
 
 def known_teams() -> list[str]:
     return sorted({e.canonical for e in _REGISTRY})
+
+
+def same_team(left: str | None, right: str | None) -> bool:
+    """Match registered aliases, never substrings or an arbitrary search result."""
+    if not left or not right:
+        return False
+    def identity(value):
+        key = _key(str(value))
+        if key in _ALIAS_INDEX:
+            return _key(_ALIAS_INDEX[key])
+        # Unknown clubs may differ only in an explicit club prefix/suffix.
+        return re.sub(r"\s+", " ", re.sub(r"\b(fc|cf|cd|ud|sd|club)\b", "", key)).strip()
+    a, b = identity(left), identity(right)
+    return bool(a and b and a == b)

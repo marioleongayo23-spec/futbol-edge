@@ -7,6 +7,8 @@ para recalcular probabilidades, props, impactos y snapshots auditables.
 """
 from __future__ import annotations
 
+from .normalize import same_team
+
 from copy import deepcopy
 from datetime import datetime, timezone
 import json
@@ -46,8 +48,7 @@ def _key(value: str | None) -> str:
 
 
 def _same_team(left: str | None, right: str | None) -> bool:
-    a, b = _key(left), _key(right)
-    return bool(a and b and (a == b or a in b or b in a))
+    return same_team(left, right)
 
 
 def _near_target(minutes_to_kickoff: float, targets: tuple[int, ...]) -> bool:

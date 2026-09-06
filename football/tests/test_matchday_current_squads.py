@@ -109,6 +109,7 @@ def test_reutiliza_plantilla_actual_cacheada_sin_consumir_api():
                 "team": team,
                 "position": "POR" if i == 0 else "DFC",
                 "current_squad_member": True,
+                "team_identity_version": 2,
                 "current_squad_checked_at": now.isoformat(),
             }
             for i in range(11)
