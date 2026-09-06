@@ -11,6 +11,8 @@ no se rejuvenece una foto vieja solo por leerla de nuevo.
 """
 from __future__ import annotations
 
+from .normalize import same_team
+
 from copy import deepcopy
 from datetime import datetime, timezone
 import json
@@ -100,8 +102,7 @@ def _resolve_squad_name(name: str, exact: dict[str, str], tokens: list[tuple[set
 
 
 def _same_team(left: str | None, right: str | None) -> bool:
-    a, b = _key(left), _key(right)
-    return bool(a and b and (a == b or a in b or b in a))
+    return same_team(left, right)
 
 
 def _age_hours(value, now_local: datetime) -> float | None:
@@ -124,7 +125,7 @@ def _cached_squad(payload: dict, league: str, team: str, now_local: datetime) ->
     for row in rows:
         if not isinstance(row, dict) or not _same_team(row.get("team"), team):
             continue
-        if not row.get("current_squad_member"):
+        if not row.get("current_squad_member") or row.get("team_identity_version") != 2:
             continue
         stamp = _parse(row.get("current_squad_checked_at"))
         if stamp is None:
@@ -207,6 +208,7 @@ def _sync_team_players(
         current = dict(row)
         current.update({
             "current_squad_member": True,
+            "team_identity_version": 2,
             "current_squad_checked_at": checked_at,
             "current_squad_source": source_label,
             "current_squad_season_context": season,
@@ -239,6 +241,7 @@ def _sync_team_players(
             "goals": 0, "assists": 0, "shots": 0, "yc": 0, "min": 0,
             "source": source_label,
             "current_squad_member": True,
+            "team_identity_version": 2,
             "current_squad_checked_at": checked_at,
             "current_squad_source": source_label,
             "current_squad_season_context": season,
@@ -379,7 +382,7 @@ def _api_fallback_squad(client, team: str) -> list[dict]:
     # Compatibilidad con fakes de tests.
     try:
         rows = client._get("teams", {"search": team}).get("response") or []
-        chosen = next((row for row in rows if _same_team((row.get("team") or {}).get("name"), team)), rows[0] if rows else None)
+        chosen = next((row for row in rows if _same_team((row.get("team") or {}).get("name"), team)), None)
         team_id = ((chosen or {}).get("team") or {}).get("id")
         if not team_id:
             return []

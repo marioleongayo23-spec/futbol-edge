@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from difflib import SequenceMatcher
+from ..normalize import same_team
 import re
 import unicodedata
 
@@ -104,11 +104,10 @@ class ApiFootballClient:
             teams = self._get("teams", {"search": team_name}).get("response") or []
             if not teams:
                 return []
-            wanted = str(team_name).casefold()
-            chosen = min(
-                teams,
-                key=lambda item: 0 if str((item.get("team") or {}).get("name") or "").casefold() == wanted else 1,
-            )
+            candidates = [item for item in teams if same_team((item.get("team") or {}).get("name"), team_name)]
+            if len(candidates) != 1:
+                return []
+            chosen = candidates[0]
             team_id = (chosen.get("team") or {}).get("id")
             if not team_id:
                 return []
@@ -140,19 +139,12 @@ class ApiFootballClient:
                 self._day_cache[day] = self._get("fixtures", {"date": day}).get("response") or []
             except Exception:
                 self._day_cache[day] = []
-        wanted_home, wanted_away = self._team_key(home), self._team_key(away)
-        best = None
+        candidates = []
         for item in self._day_cache[day]:
             teams = item.get("teams") or {}
-            actual_home = self._team_key((teams.get("home") or {}).get("name"))
-            actual_away = self._team_key((teams.get("away") or {}).get("name"))
-            score = (
-                SequenceMatcher(None, wanted_home, actual_home).ratio()
-                + SequenceMatcher(None, wanted_away, actual_away).ratio()
-            ) / 2
-            if best is None or score > best[0]:
-                best = (score, item)
-        return best[1] if best and best[0] >= 0.72 else None
+            if same_team(home, (teams.get("home") or {}).get("name")) and same_team(away, (teams.get("away") or {}).get("name")):
+                candidates.append(item)
+        return candidates[0] if len(candidates) == 1 else None
 
     @staticmethod
     def _grid_coords(grid: str | None) -> tuple[int, int]:

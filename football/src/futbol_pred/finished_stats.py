@@ -13,6 +13,7 @@ from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from .ingest.api_football import ApiFootballClient
+from .normalize import same_team
 
 MADRID = ZoneInfo("Europe/Madrid")
 FINAL_STATUSES = {"FT", "AET", "PEN"}
@@ -45,17 +46,8 @@ def _identity(match: dict) -> str:
 
 
 def _pick_team_stats(rows: dict, wanted: str) -> dict | None:
-    target = _team_key(wanted)
-    if not target:
-        return None
-    exact = [(name, values) for name, values in rows.items() if _team_key(name) == target]
-    if exact:
-        return exact[0][1]
-    fuzzy = [
-        values for name, values in rows.items()
-        if target in _team_key(name) or _team_key(name) in target
-    ]
-    return fuzzy[0] if len(fuzzy) == 1 else None
+    candidates = [values for name, values in rows.items() if same_team(name, wanted)]
+    return candidates[0] if len(candidates) == 1 else None
 
 
 def _real_stats_from_detail(detail: dict, home: str, away: str, result=None) -> dict | None:

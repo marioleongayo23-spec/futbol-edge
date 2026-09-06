@@ -68,14 +68,38 @@ def _record_key(record: dict) -> tuple:
     )
 
 
-def _paired(dc_records: list[dict], elo_records: list[dict]) -> list[tuple[dict, dict, str]]:
+def _paired_records(dc_records: list[dict], elo_records: list[dict]) -> list[tuple[dict, dict]]:
     elo_by_key = {_record_key(record): record for record in elo_records}
     paired = []
     for dc in dc_records:
         elo = elo_by_key.get(_record_key(dc))
         if elo and dc.get("probs") and elo.get("probs") and dc.get("actual"):
-            paired.append((dc["probs"], elo["probs"], dc["actual"]))
+            paired.append((dc, elo))
+    # Postponed games can appear out of order in a round-based backtest.
+    if paired and all(isinstance(dc.get("kickoff"), (int, float)) for dc, _ in paired):
+        paired.sort(key=lambda pair: pair[0]["kickoff"])
     return paired
+
+
+def _paired(dc_records: list[dict], elo_records: list[dict]) -> list[tuple[dict, dict, str]]:
+    return [(dc["probs"], elo["probs"], dc["actual"]) for dc, elo in _paired_records(dc_records, elo_records)]
+
+
+def temporal_split_index(dc_records: list[dict], elo_records: list[dict], desired: int,
+                         min_train: int, min_validation: int) -> int | None:
+    """Keep simultaneous games on one side of the calibration boundary."""
+    paired = _paired_records(dc_records, elo_records)
+    def block(record):
+        stamp = record.get("kickoff")
+        return ("day", int(stamp // 86400)) if isinstance(stamp, (int, float)) else ("round", tuple(record.get("round") or ()))
+    return grouped_split_index([block(dc) for dc, _ in paired], desired, min_train, min_validation)
+
+
+def grouped_split_index(blocks: list, desired: int, min_train: int, min_validation: int) -> int | None:
+    """Choose a boundary without sharing a collection day/round across splits."""
+    choices = [i for i in range(max(1, min_train), len(blocks) - max(1, min_validation) + 1)
+               if blocks[i - 1] != blocks[i]]
+    return min(choices, key=lambda i: abs(i - desired)) if choices else None
 
 
 def _mean_log_loss(rows: list[tuple[dict, dict, str]], weight: float, temp: float) -> float:
@@ -148,6 +172,9 @@ def fit_walk_forward_ensemble(
     if len(rows) < 30:
         return None
     split = max(20, min(len(rows) - 10, round(len(rows) * (1.0 - validation_fraction))))
+    split = temporal_split_index(dc_records, elo_records, split, 20, 10)
+    if split is None:
+        return None
     train, validation = rows[:split], rows[split:]
     train_weight, train_temp = _fit_params(train)
     validation_predictions = [

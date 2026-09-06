@@ -81,7 +81,7 @@ target.value = [
 const feed = JSON.stringify(feedData);
 
 async function openApp(page) {
-  await page.route("**/dashboard.json?*", (route) => route.fulfill({ status: 200, contentType: "application/json", body: feed }));
+  await page.route("**/dashboard.json*", (route) => route.fulfill({ status: 200, contentType: "application/json", body: feed }));
   await page.addInitScript(() => localStorage.clear());
   await page.goto("/");
   const mobile = (page.viewportSize()?.width || 1000) <= 860;

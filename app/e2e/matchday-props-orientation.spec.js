@@ -64,7 +64,7 @@ async function gotoMatch(page, target) {
 
 test("las predicciones individuales híbridas aparecen para los 22 jugadores", async ({ page }) => {
   const { feed, target } = matchdayFeed();
-  await page.route("**/dashboard.json?*", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(feed) }));
+  await page.route("**/dashboard.json*", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(feed) }));
   await page.goto("/");
   await gotoMatch(page, target);
 
@@ -76,7 +76,7 @@ test("las predicciones individuales híbridas aparecen para los 22 jugadores", a
 
 test("LI queda visualmente a la izquierda y LD a la derecha también en el visitante", async ({ page }) => {
   const { feed, target } = matchdayFeed();
-  await page.route("**/dashboard.json?*", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(feed) }));
+  await page.route("**/dashboard.json*", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(feed) }));
   await page.goto("/");
   await gotoMatch(page, target);
 

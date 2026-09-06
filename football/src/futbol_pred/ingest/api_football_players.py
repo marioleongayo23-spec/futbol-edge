@@ -17,6 +17,7 @@ import re
 import unicodedata
 
 from .api_football import ApiFootballClient
+from ..normalize import same_team
 
 MIN_PLAYER_MINUTES = 270
 
@@ -53,11 +54,11 @@ def _team_id(client: ApiFootballClient, team_name: str) -> int | None:
     if not rows:
         cache[cache_key] = None
         return None
-    wanted = _key(team_name)
-    chosen = min(
-        rows,
-        key=lambda item: 0 if _key((item.get("team") or {}).get("name")) == wanted else 1,
-    )
+    candidates = [item for item in rows if same_team((item.get("team") or {}).get("name"), team_name)]
+    if len(candidates) != 1:
+        cache[cache_key] = None
+        return None
+    chosen = candidates[0]
     value = (chosen.get("team") or {}).get("id")
     try:
         result = int(value) if value is not None else None

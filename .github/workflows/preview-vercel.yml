@@ -1,0 +1,49 @@
+name: Vercel preview
+
+on:
+  pull_request:
+    paths:
+      - "app/**"
+      - "scripts/**"
+      - "vercel.json"
+      - ".github/workflows/preview-vercel.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vercel-preview-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  preview:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      VERCEL_ORG_ID: team_UezD7A1MDWJVnLCRCRh4bdOc
+      VERCEL_PROJECT_ID: prj_x059Hz47Zb5f8g2ibGEwUVBpNtU2
+      VERCEL_GIT_COMMIT_SHA: ${{ github.event.pull_request.head.sha }}
+      VERCEL_GIT_COMMIT_REF: ${{ github.head_ref }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - name: Build and deploy preview
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -n "${VERCEL_TOKEN:-}"
+          npm install -g vercel@latest
+          vercel pull --yes --environment=preview --token="$VERCEL_TOKEN"
+          vercel build --token="$VERCEL_TOKEN"
+          url="$(vercel deploy --prebuilt --token="$VERCEL_TOKEN")"
+          vercel inspect "$url" --token="$VERCEL_TOKEN"
+          echo "Preview: $url" >> "$GITHUB_STEP_SUMMARY"
+          echo "Commit: $VERCEL_GIT_COMMIT_SHA" >> "$GITHUB_STEP_SUMMARY"

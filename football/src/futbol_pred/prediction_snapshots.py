@@ -7,7 +7,7 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 MADRID = ZoneInfo("Europe/Madrid")
-MODEL_VERSION = "edge-2.0"
+MODEL_VERSION = "edge-2.1"
 
 # El cron corre cada 15 minutos. La tolerancia absorbe pequeños retrasos del
 # runner sin etiquetar una captura lejana como si fuera el hito exacto.
@@ -45,6 +45,7 @@ _SNAPSHOT_FIELDS = (
     "prediction_factors",
     "recommendation",
     "score_distribution",
+    "score_matrix",
 )
 
 
@@ -161,6 +162,10 @@ def _restore(match: dict, snapshot: dict, *, finished: bool) -> None:
     for field in _SNAPSHOT_FIELDS:
         if field in snapshot:
             match[field] = deepcopy(snapshot[field])
+        elif field == "score_matrix":
+            # Legacy snapshots did not publish a matrix. A newly fitted one
+            # may contain post-kickoff results and cannot fill that absence.
+            match.pop(field, None)
     match["prediction_snapshot"] = deepcopy(snapshot)
     # El estado real del partido manda sobre el motor histórico mostrado.
     if not finished:

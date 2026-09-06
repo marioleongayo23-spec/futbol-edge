@@ -16,6 +16,7 @@ from ..scheduling import is_finished
 
 def _round_key(m: dict) -> tuple:
     return (m.get("competition", "league"), m.get("stage") or "REGULAR",
+            m.get("season"),
             m.get("matchday"))
 
 
@@ -63,7 +64,17 @@ def walk_forward(
     for i, rk in enumerate(rounds):
         round_matches = by_round[rk]
         if i >= min_train_rounds:
-            predictor.fit(seen)
+            # A postponed fixture in a previous round is not yet known at
+            # this round's cutoff. Round numbering alone leaks future scores.
+            cutoff = min(m["kickoff"] for m in round_matches if m.get("kickoff") is not None)
+            training = sorted(
+                (m for m in seen if m.get("kickoff") is not None and m.get("available_at", m["kickoff"]) < cutoff),
+                key=lambda m: m["kickoff"],
+            )
+            if not training:
+                seen.extend(m for m in round_matches if is_finished(m))
+                continue
+            predictor.fit(training)
             for m in round_matches:
                 if not is_finished(m):
                     continue
@@ -74,6 +85,8 @@ def walk_forward(
                 result.predictions.append((probs, actual))
                 result.records.append({
                     "round": rk,
+                    "kickoff": m.get("kickoff"),
+                    "training_cutoff": cutoff,
                     "home": m["home"],
                     "away": m["away"],
                     "probs": probs,

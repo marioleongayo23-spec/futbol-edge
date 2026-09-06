@@ -48,7 +48,7 @@ async function gotoMatches(page) {
 }
 
 test("la ficha muestra props reales de los 22 titulares cuando existe muestra", async ({ page }) => {
-  await page.route("**/dashboard.json?*", (route) => route.fulfill({ status: 200, contentType: "application/json", body: feed }));
+  await page.route("**/dashboard.json*", (route) => route.fulfill({ status: 200, contentType: "application/json", body: feed }));
   await page.goto("/");
   await gotoMatches(page);
   const row = page.locator('tr[role="button"]').filter({ hasText: target.home }).filter({ hasText: target.away }).first();

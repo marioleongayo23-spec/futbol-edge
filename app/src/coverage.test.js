@@ -36,7 +36,7 @@ test("una comprobación de bajas con cero incidencias cuenta como cobertura", ()
     id: "m2", status: "SCHEDULED", kickoff: "2026-08-26T21:00:00+02:00",
     alineacion: xi("probable"), weather: { temperature_c: 24 },
     odds: { "1x2": { "1": 2 } },
-    operational_checks: { absences_checked_at: "2026-08-26T18:58:00+02:00" },
+    operational_checks: { absences_checked_at: "2026-08-26T18:58:00+02:00", absences_check_result: "ok" },
   };
   const coverage = coverageRows(m, NOW);
   const absences = coverage.rows.find((row) => row.key === "absences");
@@ -49,7 +49,7 @@ test("XI parcial a T-30 nunca se presenta como oficial completo", () => {
     alineacion: xi("probable"), weather: { temperature_c: 24 },
     odds: { "1x2": { "1": 2 } },
     operational_checks: {
-      absences_checked_at: "2026-08-26T18:58:00+02:00",
+      absences_checked_at: "2026-08-26T18:58:00+02:00", absences_check_result: "ok",
       lineup_checked_at: "2026-08-26T18:59:00+02:00",
       lineup_check_result: "partial",
     },
@@ -65,9 +65,9 @@ test("XI confirmado 11+11 cierra la pieza oficial", () => {
   const m = {
     id: "m4", status: "SCHEDULED", kickoff: "2026-08-26T19:30:00+02:00",
     alineacion: xi("confirmado"), weather: { temperature_c: 24 },
-    odds: { "1x2": { "1": 2 } },
+    odds: { "1x2": { "1": 2, "X": 3, "2": 4 } },
     operational_checks: {
-      absences_checked_at: "2026-08-26T18:58:00+02:00",
+      absences_checked_at: "2026-08-26T18:58:00+02:00", absences_check_result: "ok",
       lineup_checked_at: "2026-08-26T18:59:00+02:00",
       lineup_check_result: "published",
     },
@@ -75,4 +75,34 @@ test("XI confirmado 11+11 cierra la pieza oficial", () => {
   const coverage = coverageRows(m, NOW);
   assert.equal(coverage.rows.find((row) => row.key === "lineup_official").state, "ok");
   assert.equal(coverage.complete, true);
+});
+
+test("vacíos y cuotas incompletas no acreditan cobertura", () => {
+  const result = coverageRows({ id: "m", status: "SCHEDULED", kickoff: "2026-08-26T19:30:00+02:00",
+    alineacion: {status: "probable", disponibilidad_local: [], disponibilidad_visitante: []},
+    odds: {"1x2": {"1": 2}}, operational_checks: {} }, NOW);
+  for (const key of ["absences", "lineup_probable", "odds"]) {
+    assert.equal(result.rows.find(row => row.key === key).state, "missing");
+  }
+});
+
+test("la fecha del feed no rejuvenece observaciones y respeta cobertura del servidor", () => {
+  const result = coverageRows({ id: "m", status: "SCHEDULED", kickoff: "2026-08-26T19:30:00+02:00",
+    updatedAt: new Date(NOW).toISOString(), coverage: {schema_version: 2, items: {
+      odds: {state: "ok", required: true, source: "Provider", checked_at: "2026-08-25T18:00:00Z"},
+      absences: {state: "unavailable", required: true, detail: "error del proveedor"},
+    }}}, NOW);
+  assert.equal(result.rows.find(row => row.key === "odds").state, "stale");
+  assert.equal(result.rows.find(row => row.key === "odds").source, "Provider");
+  assert.equal(result.rows.find(row => row.key === "absences").state, "unavailable");
+  assert.equal(result.complete, false);
+});
+
+ test("una consulta sin partido encontrado no acredita calendario ni bajas", () => {
+  const m = { id: "missing", status: "SCHEDULED", kickoff: "2026-08-26T21:00:00+02:00",
+    operational_checks: { fixture_check_result: "not_found", absences_check_result: "fixture_not_found",
+      absences_checked_at: "2026-08-26T18:58:00+02:00" } };
+  const rows = coverageRows(m, NOW).rows;
+  assert.equal(rows.find(r => r.key === "fixture").state, "missing");
+  assert.equal(rows.find(r => r.key === "absences").state, "missing");
 });

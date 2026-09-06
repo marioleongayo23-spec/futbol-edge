@@ -71,23 +71,28 @@ def coverage_for_match(match: dict, now: datetime) -> dict | None:
     checks = match.get("operational_checks") or {}
     status = str(lineup.get("status") or "sin confirmar").casefold()
 
-    has_availability = (
-        "disponibilidad_local" in lineup or "disponibilidad_visitante" in lineup
-    )
     lineup_stamp = lineup.get("source_updated_at") or lineup.get("generated_at") or lineup.get("ts")
     weather = match.get("weather") or {}
     odds = match.get("odds")
 
     fixture_ok = bool(match.get("id") and match.get("status"))
     weather_ok = bool(weather)
-    absences_ok = bool(checks.get("absences_checked_at") or has_availability)
-    probable_ok = status in {"probable", "confirmado"}
+    absences_ok = bool(checks.get("absences_checked_at")) and checks.get("absences_check_result") not in {"error", "unavailable", "failed"}
+    probable_ok = (status in {"probable", "confirmado"}
+        and len(lineup.get("local") or []) == 11
+        and len(lineup.get("visitante") or []) == 11
+        and lineup.get("source_quality") not in {"model_only", "statistical_fallback", "roster_grounded", "media_partial"})
     official_ok = (
         status == "confirmado"
         and len(lineup.get("local") or []) == 11
         and len(lineup.get("visitante") or []) == 11
     )
-    odds_ok = not _pending(odds)
+    odds_meta = odds.get("meta") or {} if isinstance(odds, dict) else {}
+    one = (odds.get("1x2") or {}) if isinstance(odds, dict) else {}
+    one = one if isinstance(one, dict) else {}
+    prices = one.get("odds") or one
+    prices = prices if isinstance(prices, dict) else {}
+    odds_ok = all(isinstance(prices.get(k), (int, float)) and 1 < prices[k] < float("inf") for k in ("1", "X", "2"))
 
     weather_required = minutes <= 8 * 60
     absences_required = minutes <= 6 * 60
@@ -110,7 +115,7 @@ def coverage_for_match(match: dict, now: datetime) -> dict | None:
         "weather": _item(
             "ok" if weather_ok else "scheduled" if not weather_required else "unavailable" if weather_result == "unavailable" else "missing",
             weather_required,
-            checked_at=checks.get("weather_checked_at") or weather.get("source_updated_at"),
+            checked_at=weather.get("source_updated_at") or checks.get("weather_checked_at"),
             source=weather.get("source") or ("Open-Meteo" if weather_ok else None),
             detail=weather_result or ("previsión disponible" if weather_ok else "ventana T−8h" if not weather_required else "sin previsión"),
         ),
@@ -124,7 +129,7 @@ def coverage_for_match(match: dict, now: datetime) -> dict | None:
         "lineup_probable": _item(
             "ok" if probable_ok else "scheduled" if not probable_required else "estimated" if status == "estimado" else "missing",
             probable_required,
-            checked_at=lineup.get("prefinal_attempt_at") or lineup_stamp,
+            checked_at=lineup_stamp,
             source=lineup.get("provider") or lineup.get("fuente"),
             detail=("XI respaldado por fuente" if probable_ok else "ventana T−3h" if not probable_required else "solo estimación" if status == "estimado" else "sin XI probable fiable"),
         ),
@@ -138,16 +143,33 @@ def coverage_for_match(match: dict, now: datetime) -> dict | None:
         "odds": _item(
             "ok" if odds_ok else "scheduled" if not odds_required else "missing",
             odds_required,
-            source=(odds.get("source") if isinstance(odds, dict) else None),
+            source=odds_meta.get("provider") or (odds.get("source") if isinstance(odds, dict) else None),
+            checked_at=odds_meta.get("source_updated_at") or odds_meta.get("checked_at"),
             detail="cuotas reales disponibles" if odds_ok else "se exige en las 24 h previas" if odds_required else "fuera de ventana",
         ),
     }
+
+    # Review timestamps are source specific: regenerating the feed cannot
+    # turn an old observation into a fresh one. Unknown timestamps stay
+    # explicit; only dated evidence can be classified as expired.
+    ttl_hours = {"weather": 12, "absences": 12, "lineup_probable": 24, "odds": 6}
+    for key, ttl in ttl_hours.items():
+        item = items[key]
+        stamp = _parse(item.get("checked_at"))
+        if item["state"] == "ok" and stamp is not None:
+            age = (now_local - stamp).total_seconds() / 3600
+            if age > ttl or age < -0.25:
+                item["state"] = "stale"
+                item["detail"] = "fecha de fuente fuera de la ventana de frescura"
+        item["freshness_known"] = stamp is not None
+        item["ttl_hours"] = ttl
 
     missing_required = [
         key for key, value in items.items()
         if value["required"] and value["state"] != "ok"
     ]
     return {
+        "schema_version": 2,
         "complete": not missing_required,
         "items": items,
         "missing_required": missing_required,

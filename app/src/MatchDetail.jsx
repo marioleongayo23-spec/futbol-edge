@@ -1,6 +1,6 @@
 import { Fragment, useMemo, useState } from "react";
 import { accent, crestFor, fmtKick } from "./feed";
-import { matrix, topScores } from "./poisson";
+import { topScores } from "./poisson";
 import { confidence, countdown, isSurprise } from "./insights";
 import { marketMovementRows, marketMovementSourceLabel } from "./markets";
 import OfficialStatsPanel from "./OfficialStatsPanel";
@@ -10,6 +10,8 @@ import PredictionBuild from "./PredictionBuild";
 import { hasAccess } from "./plans";
 import { QualityBadge, MatchQualityCard } from "./MatchQuality";
 import "./markets-detail.css";
+import PredictionEvidence from "./PredictionEvidence";
+import { publishedMatrix, validProbabilities } from "./predictionEvidence";
 
 function Teams({ m, onTeam }) {
   return (
@@ -43,7 +45,7 @@ function Teams({ m, onTeam }) {
 
 function Heat({ M }) {
   // Mini mapa de calor de los marcadores 0..5.
-  const max = Math.max(...M.slice(0, 6).map((r) => Math.max(...r.slice(0, 6))));
+  const max = Math.max(1e-12, ...M.slice(0, 6).map((r) => Math.max(...r.slice(0, 6))));
   return (
     <div className="heat">
       <div className="hh"></div>
@@ -52,7 +54,7 @@ function Heat({ M }) {
         <Fragment key={"r" + x}>
           <div className="hh">{x}</div>
           {[0, 1, 2, 3, 4, 5].map((y) => {
-            const v = M[x][y]; const a = Math.min(1, v / max);
+            const v = M[x]?.[y] || 0; const a = Math.min(1, v / max);
             return <div key={x + "-" + y}
               style={{ background: `rgba(34,201,138,${a.toFixed(2)})`, color: a > 0.5 ? "#04110b" : "var(--muted)" }}>
               {(v * 100).toFixed(0)}</div>;
@@ -741,7 +743,8 @@ export default function MatchDetail({ m, onBack, onTeam, plan = "vip", onUpgrade
 
   // Matriz de marcadores si hay xG. Los partidos jugados también lo traen
   // (para comparar lo esperado con lo real), aunque hasPrediction los excluya.
-  const M = useMemo(() => (Array.isArray(m.xg) && m.xg.length === 2 ? matrix(m.xg[0], m.xg[1]) : null), [m]);
+  const M = useMemo(() => publishedMatrix(m), [m]);
+  const hasForecast = validProbabilities(m.probs) && Array.isArray(m.xg);
 
   const md = m.matchday ? "J" + m.matchday : (m.stage || "");
   const abstain = m.recommendation?.decision === "no_pick";
@@ -756,8 +759,8 @@ export default function MatchDetail({ m, onBack, onTeam, plan = "vip", onUpgrade
         <div className="chips" style={{ justifyContent: "center" }}>
           {cd && <span className="countdown">⏱ {cd}</span>}
           {conf && !m.finished && (
-            <span className="chip" title={`Confianza ${conf.label} · favorito al ${conf.mx}% · desacuerdo DC/Elo ${(conf.disagreement * 100).toFixed(1)} pp`}>
-              Confianza {conf.score != null ? <b>{conf.score}/100 </b> : null}<span className="conf-stars">{[1, 2, 3].map((i) => <span key={i} className={i <= conf.stars ? "on" : "off"}>★</span>)}</span>
+            <span className="chip" title={`Indicador heurístico de evidencia ${conf.label}; no es probabilidad de acierto · favorito al ${conf.mx}% · desacuerdo DC/Elo ${(conf.disagreement * 100).toFixed(1)} pp`}>
+              Solidez {conf.score != null ? <b>{conf.score}/100 </b> : null}<span className="conf-stars">{[1, 2, 3].map((i) => <span key={i} className={i <= conf.stars ? "on" : "off"}>★</span>)}</span>
             </span>
           )}
           {snapshot?.generated_at && <span className="chip" title="Snapshot inmutable utilizado para evaluar el modelo">Predicción <b>{snapshot.window || new Date(snapshot.generated_at).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}</b></span>}
@@ -779,9 +782,10 @@ export default function MatchDetail({ m, onBack, onTeam, plan = "vip", onUpgrade
         </div>
       )}
 
-      {m.match_quality && <MatchQualityCard mq={m.match_quality} />}
+      {!m.finished && <PredictionEvidence m={m} />}
+      {m.match_quality && <details className="evidence-details"><summary>Desglose de cobertura de datos</summary><MatchQualityCard mq={m.match_quality} /></details>}
 
-      {!M && !m.finished && (
+      {!hasForecast && !m.finished && (
         <div className="card">
           <div className="note">⚠️ Todavía sin predicción del modelo para este partido
             {m.nota ? ` — ${m.nota}` : " (algún equipo está fuera de la liga base o falta muestra de la temporada)"}.</div>
@@ -795,14 +799,14 @@ export default function MatchDetail({ m, onBack, onTeam, plan = "vip", onUpgrade
       )}
 
       {/* ============ 1 · PREDICCIÓN DEL RESULTADO ============ */}
-      {M && m.provisional && (
+      {hasForecast && m.provisional && (
         <div className="card"><div className="note">⚠️ {m.nota || "Predicción provisional: algún equipo aún sin histórico (recién ascendido). Se afina según juegue."}</div></div>
       )}
 
-      {M && (
+      {hasForecast && (
         <div className="card section-anchor" id="match-prediction">
           <div className="row-between">
-            <div className="lbl">{m.finished ? "1X2 que daba el modelo" : "Resultado 1X2"}{m.calibrated && <span className="dim" title="Probabilidad del modelo mezclada con la del mercado (calibrada)"> · calibrado</span>}</div>
+            <div className="lbl">{m.finished ? "1X2 que daba el modelo" : "Resultado 1X2"}{m.calibrated && <span className="dim" title="Probabilidad del modelo mezclada con cuotas de mercado; no implica calibración estadística demostrada"> · con mercado</span>}</div>
             <span className="chip">Motor <b>{m.model_meta?.provider || m.engine}</b></span>
           </div>
           {probabilityDelta && probabilityDelta.some((value) => value !== 0) && (
@@ -826,17 +830,21 @@ export default function MatchDetail({ m, onBack, onTeam, plan = "vip", onUpgrade
           })()}
           <div className="chips">
             <span className="chip" title="Marcador exacto más probable según el modelo">Marcador <b>{m.markets.marcador}</b></span>
-            <span className="chip help" title="Goles esperados (xG): calidad y cantidad de ocasiones que se esperan por equipo">xG <b>{m.xg[0]}–{m.xg[1]}</b></span>
+            <span className="chip help" title="Media de goles estimada por el modelo; no es xG observado de ocasiones">Goles medios <b>{m.xg[0]}–{m.xg[1]}</b></span>
             <span className="chip help" title="BTTS = ambos equipos marcan (Both Teams To Score)">BTTS <b>{Math.round(m.markets.btts * 100)}%</b></span>
             {m.score_distribution?.total_goals_p10_p50_p90 && <span className="chip" title="Percentiles 10, 50 y 90 de la distribución de goles">Rango goles P10–P90 <b>{m.score_distribution.total_goals_p10_p50_p90[0]}–{m.score_distribution.total_goals_p10_p50_p90[2]}</b></span>}
           </div>
           <MarketMovement odds={m.odds} />
-          <div className="lbl">Mapa de marcadores (local ↓ / visitante →)</div>
-          <Heat M={M} />
+          <details className="evidence-details"><summary>Distribución de goles y marcadores</summary>
+            <p className="note dim">Distribución base Dixon-Coles para goles. No incluye los ajustes de clima, Elo o mercado que pueden aparecer en otros indicadores. Filas: goles locales; columnas: visitantes. Celdas en %.</p>
+            {M ? <><div className="lbl">Mapa de marcadores · % (local ↓ / visitante →)</div><Heat M={M} /></>
+              : <p className="note dim">Este feed aún no incluye la matriz completa. Se muestran los marcadores publicados por el servidor.</p>}
+            <div className="chips">{(m.score_distribution?.top_scores || []).map(row => <span className="chip" key={row.score}>{row.score} <b>{(row.probability * 100).toFixed(1)}%</b></span>)}</div>
+          </details>
         </div>
       )}
 
-      {M && !m.finished && <CommittedPick c={m.committed} home={m.home} away={m.away} />}
+      {hasForecast && !m.finished && <CommittedPick c={m.committed} home={m.home} away={m.away} />}
 
       {m.finished && m.result && (
         <div className="card">
