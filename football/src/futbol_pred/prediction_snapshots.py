@@ -162,6 +162,10 @@ def _restore(match: dict, snapshot: dict, *, finished: bool) -> None:
     for field in _SNAPSHOT_FIELDS:
         if field in snapshot:
             match[field] = deepcopy(snapshot[field])
+        elif field == "score_matrix":
+            # Legacy snapshots did not publish a matrix. A newly fitted one
+            # may contain post-kickoff results and cannot fill that absence.
+            match.pop(field, None)
     match["prediction_snapshot"] = deepcopy(snapshot)
     # El estado real del partido manda sobre el motor histórico mostrado.
     if not finished:

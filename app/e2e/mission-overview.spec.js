@@ -1,0 +1,30 @@
+import { expect, test } from '@playwright/test';
+import { readFileSync } from 'node:fs';
+const source = JSON.parse(readFileSync(new URL('../../football/data/dashboard.json', import.meta.url), 'utf8'));
+const sample = structuredClone(source);
+const next = sample.matches.find(m => !m.finished && Array.isArray(m.probs));
+if (!next) throw new Error('Fixture with a forecast required');
+next.kickoff = new Date(Date.now() + 2 * 3600000).toISOString();
+next.date = new Intl.DateTimeFormat('en-CA', {timeZone: 'Europe/Madrid'}).format(new Date(next.kickoff));
+next.probs = [61, 24, 15];
+next.xg = [1.6, .9];
+
+test('overview and evidence work in both themes without viewport overflow', async ({ page }, testInfo) => {
+  await page.route('**/dashboard.json*', route => route.fulfill({status: 200, contentType: 'application/json', body: JSON.stringify(sample)}));
+  await page.goto('/');
+  const spotlight = page.getByRole('region', {name: 'Partido destacado'});
+  await expect(spotlight).toBeVisible();
+  await expect(spotlight.getByRole('img', {name: /Probabilidades: local/})).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
+  await testInfo.attach('overview-dark', {body: await page.screenshot(), contentType: 'image/png'});
+  await page.getByRole('checkbox', {name: 'Alternar tema claro u oscuro'}).check();
+  await expect(spotlight).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
+  await testInfo.attach('overview-light', {body: await page.screenshot(), contentType: 'image/png'});
+  await page.getByRole('button', {name: 'Abrir análisis'}).click();
+  const evidence = page.getByRole('region', {name: 'Lectura de la predicción'});
+  await expect(evidence).toBeVisible();
+  await evidence.locator('summary').click();
+  await expect(evidence.getByRole('heading', {name: 'Cuotas', exact: true})).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
+});

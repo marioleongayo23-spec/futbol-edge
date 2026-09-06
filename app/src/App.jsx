@@ -5,6 +5,7 @@ import { leaguesIn, projectedTable } from "./standings";
 import { teamProfile, teamSquad } from "./teams";
 import { bestValue, countdown, getFavs, modelAccuracy, recentForm, toggleFav } from "./insights";
 import MatchDetail from "./MatchDetail";
+import MissionOverview from "./MissionOverview";
 import { picksForDay, wilsonInterval } from "./predictionEvidence";
 import { QualityBadge } from "./MatchQuality";
 import PlayerProfile from "./PlayerProfile";
@@ -162,13 +163,10 @@ function Resumen({ data, matches, onOpen, goto, favs, onTeam }) {
 
   return (
     <>
-      <div className="stat-tiles">
-        <div className="stat"><span className="stat-k">Partidos</span><b className="stat-v">{dayMatches.length}</b><span className="stat-s">{dayLong(day)}</span></div>
-        <div className="stat"><span className="stat-k">Favorito del día</span><b className="stat-v accent">{pick ? `${pick.s} · ${pick.mx}%` : "—"}</b><span className="stat-s">{pick ? `${pick.m.home}–${pick.m.away}` : "sin predicción"}</span></div>
-        <div className="stat"><span className="stat-k">Favoritos ≥ 55%</span><b className="stat-v">{strong}</b><span className="stat-s">probabilidad, no tasa de acierto</span></div>
-        <div className="stat"><span className="stat-k">Goles esperados</span><b className="stat-v">{goalsDay.toFixed(2)}</b><span className="stat-s">media del modelo por partido</span></div>
-        <div className="stat" title="Aciertos 1X2 del modelo en partidos ya jugados esta temporada"><span className="stat-k">Acierto modelo</span><b className="stat-v accent">{acc.pct != null ? acc.pct + "%" : "—"}</b><span className="stat-s">{acc.total ? `${acc.hits}/${acc.total} · intervalo 95%: ${accuracyInterval.map(v => Math.round(v * 100)).join("–")}%` : "sin datos aún"}</span></div>
-      </div>
+      <MissionOverview pick={pick} dayMatches={dayMatches} predicted={predicted} strong={strong}
+        goalsDay={goalsDay} acc={acc} interval={accuracyInterval} onOpen={onOpen} />
+
+      <div className="section-heading"><h2>Agenda de partidos</h2><span>{dayLong(day)}</span></div>
 
       <div className="cal">
         <div className="cal-nav">
@@ -1324,8 +1322,8 @@ export default function App() {
       <a className="skip-link" href="#main-content">Saltar al contenido</a>
       <aside className="side">
         <div className="brand">
-          <div className="logo">⚡</div>
-          <div><div className="bname">Fútbol Edge</div><div className="btag">PRIVATE INTELLIGENCE</div></div>
+          <div className="logo" aria-hidden="true"><svg viewBox="0 0 40 40"><circle cx="20" cy="20" r="14" fill="none" stroke="currentColor" strokeWidth="1.5"/><path d="M9 29 26 9h6L15 31" fill="none" stroke="currentColor" strokeWidth="2"/><circle cx="29" cy="11" r="3" fill="currentColor"/></svg></div>
+          <div><div className="bname">Fútbol Edge</div><div className="btag">FOOTBALL INTELLIGENCE</div></div>
         </div>
         <nav className="snav" aria-label="Navegación principal">
           {NAV.map(([k, l]) => {
@@ -1389,7 +1387,7 @@ export default function App() {
 
           {data && !playerSel && !sel && !teamSel && (
             <>
-              <h1 className="view-title">{(NAV.find(([k]) => k === view) || [null, "Resumen"])[1]}</h1>
+              <div className="view-heading"><div><span className="eyebrow">Fútbol Edge <span aria-hidden="true">/</span> Intelligence</span><h1 className="view-title">{(NAV.find(([k]) => k === view) || [null, "Resumen"])[1]}</h1></div><span className="workspace-label">ANÁLISIS · TEMPORADA {data.season ? `${data.season}/${String(data.season + 1).slice(-2)}` : 'ACTUAL'}</span></div>
               {view === "planes" && <Pricing current={plan} session={session} authEnabled={authEnabled} onLogin={login} />}
               {gated && <Paywall feature={viewFeature} plan={plan} onUpgrade={() => goto("planes")} />}
               {!gated && view === "resumen" && <Resumen data={data} matches={matches} q={q} onOpen={open} goto={goto} favs={favs} onTeam={openTeam} />}

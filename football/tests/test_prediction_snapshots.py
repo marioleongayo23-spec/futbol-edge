@@ -238,3 +238,25 @@ def test_final_t60_no_se_reemplaza_por_una_segunda_final_t30():
     apply_prediction_snapshots([second], [first], datetime(2026, 8, 24, 20, 30, tzinfo=MADRID))
     assert second["prediction_snapshot"]["window"] == "final_T-60_official"
     assert second["probs"] == [55, 28, 17]
+
+
+def test_legacy_snapshot_does_not_inherit_a_post_match_matrix():
+    old = _match([50, 30, 20])
+    apply_prediction_snapshots([old], [], datetime(2026, 8, 23, 15, tzinfo=MADRID))
+    current = _match([80, 10, 10])
+    current.update(finished=True, result=[2, 0], score_matrix={'matrix': [[.1, .2], [.6, .1]]})
+    apply_prediction_snapshots([current], [old], datetime(2026, 8, 25, 12, tzinfo=MADRID))
+    assert current['probs'] == [50, 30, 20]
+    assert 'score_matrix' not in current
+
+
+def test_published_matrix_is_restored_without_post_match_refitting():
+    old = _match([50, 30, 20])
+    matrix = {'matrix': [[.3, .2], [.4, .1]]}
+    old['score_matrix'] = matrix
+    apply_prediction_snapshots([old], [], datetime(2026, 8, 23, 15, tzinfo=MADRID))
+    current = _match([80, 10, 10])
+    current.update(finished=True, result=[2, 0], score_matrix={'matrix': [[.1, .2], [.6, .1]]})
+    apply_prediction_snapshots([current], [old], datetime(2026, 8, 25, 12, tzinfo=MADRID))
+    assert current['score_matrix'] == matrix
+    assert current['score_matrix'] is not matrix

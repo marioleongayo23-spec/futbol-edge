@@ -9,7 +9,8 @@ const team = target.home;
 const rival = target.away;
 target.finished = false;
 target.kickoff = new Date(Date.now() + 24 * 36e5).toISOString();
-target.probs = [.58, .24, .18];
+target.date = target.kickoff.slice(0, 10);
+target.probs = [58, 24, 18];
 target.xg = [1.86, .92];
 target.venue = "Estadio Intelligence";
 
