@@ -1,9 +1,10 @@
 import { useMemo } from "react";
 import { crestFor, fmtKick } from "./feed";
+import { validProbabilities } from "./probabilityContract";
 import { TEAM_STYLE_DIMENSIONS, teamIntelligence, teamStyleTraits } from "./teamIntelligenceData";
 import "./team-intelligence.css";
 
-const pct = (value) => Number.isFinite(Number(value)) ? `${Math.round(Number(value) * 100)}%` : "—";
+const pct = (value) => Number.isFinite(Number(value)) ? `${Math.round(Number(value))}%` : "—";
 const num = (value, digits = 1) => Number.isFinite(Number(value)) ? Number(value).toFixed(digits).replace(/\.0$/, "") : "—";
 
 function Radar({ home, away }) {
@@ -63,7 +64,7 @@ function NextMatch({ data, team }) {
   const rivalCrest = next.isHome ? m.awayCrest : m.homeCrest;
   const rivalColors = next.isHome ? m.awayColors : m.homeColors;
   const ownXg = Array.isArray(m.xg) ? m.xg[next.isHome ? 0 : 1] : null;
-  const ownProb = Array.isArray(m.probs) ? m.probs[next.isHome ? 0 : 2] : null;
+  const ownProb = validProbabilities(m.probs) ? m.probs[next.isHome ? 0 : 2] : null;
   return <div className="ti-next">
     <div className="ti-next-head">
       <img className="crest" alt="" src={crestFor(next.opponent, rivalColors, rivalCrest)} onError={(e) => (e.currentTarget.src = crestFor(next.opponent, rivalColors, null))} />
