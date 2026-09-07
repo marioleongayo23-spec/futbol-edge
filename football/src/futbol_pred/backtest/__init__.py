@@ -4,6 +4,7 @@ from .ensemble import ensemble_probabilities, fit_walk_forward_ensemble
 from .metrics import aggregate, brier_score, calibration_table, log_loss, rps
 from .predictors import BaselineRates, DixonColesPredictor, EloPredictor, HybridDixonColesPredictor
 from .residual import fit_walk_forward_residual, residual_probabilities
+from .rolling import paired_rolling_comparison, rolling_origin_report
 
 __all__ = [
     "BacktestResult",
@@ -24,4 +25,6 @@ __all__ = [
     "simulate_bets",
     "fit_walk_forward_residual",
     "residual_probabilities",
+    "rolling_origin_report",
+    "paired_rolling_comparison",
 ]
