@@ -99,6 +99,15 @@ def build_feature_truth_table(payload: dict) -> dict:
             _nested(match, "market_hot_refresh", "captured_at"),
         )
     )
+    movement_stamp = _latest(
+        item.get("captured_at")
+        for match in matches
+        for item in (match.get("market_history") or [])
+        if isinstance(item, dict)
+    )
+    advanced_stamp = _latest(
+        _nested(match, "advanced_stats", "available_at") for match in matches
+    )
     weather_stamp = _latest(
         value
         for match in matches
@@ -120,6 +129,9 @@ def build_feature_truth_table(payload: dict) -> dict:
 
     ensemble_accepted = any(bool(_nested(match, "model_meta", "ensemble", "accepted")) for match in matches)
     residual_accepted = any(bool(_nested(match, "model_meta", "residual", "accepted")) for match in matches)
+    movement_accepted = any(
+        bool(_nested(match, "market_movement_adjustment", "beta")) for match in matches
+    )
 
     features = [
         _row(
@@ -165,6 +177,28 @@ def build_feature_truth_table(payload: dict) -> dict:
             leakage_risk="low",
             status="production",
             notes="Opening/current se conserva con timestamp; closing solo puede puntuar históricos si fue capturado antes del cierre definido.",
+        ),
+        _row(
+            feature="market_movement",
+            source="The Odds API · snapshots 1X2 live sin vig capturados antes del kickoff",
+            coverage=_coverage(matches, lambda m: len(m.get("market_history") or []) >= 2),
+            available_at=movement_stamp,
+            uses=["1x2_challenger", "market_intelligence", "display"],
+            gate="min_60_live_snapshot_matches + same_temporal_tail + strictly_better_log_loss_and_rps",
+            leakage_risk="low_when_live_snapshots_exist",
+            status="production_gated" if movement_accepted else "challenger_collecting_evidence",
+            notes="Nunca rellena huecos con closing odds futuros; sin muestra o gate aceptado no modifica 1X2.",
+        ),
+        _row(
+            feature="advanced_xg_goalkeeper",
+            source="Snapshot offline versionado · FBref/soccerdata o fuente avanzada compatible; xG/npxG + PSxG",
+            coverage=_coverage(matches, lambda m: isinstance(m.get("advanced_stats"), dict)),
+            available_at=advanced_stamp,
+            uses=["xg_context", "goalkeeper_context", "future_residual_challenger", "display"],
+            gate="available_at_before_cutoff + historical_as_of_archive + rolling_walk_forward_vs_champion_pending",
+            leakage_risk="medium_until_archive_coverage",
+            status="candidate_context_only",
+            notes="PSxG del portero se encoge por minutos hacia la media; no altera lambdas ni 1X2 en esta fase.",
         ),
         _row(
             feature="weather_forecast",
