@@ -7,7 +7,13 @@ import math
 import numpy as np
 from scipy.optimize import minimize
 
-from .ensemble import GATE_METRICS, _paired, candidate_beats_all_baselines, temporal_split_index
+from .ensemble import (
+    GATE_METRICS,
+    _paired_records,
+    _record_key,
+    candidate_beats_all_baselines,
+    temporal_split_index,
+)
 from .metrics import aggregate
 
 SIGNS = ("1", "X", "2")
@@ -59,6 +65,9 @@ def _fit(rows, l2: float = 0.12) -> dict:
     result = minimize(objective, np.zeros(3 * x.shape[1]), method="L-BFGS-B")
     weights = result.x.reshape(3, x.shape[1]) if result.success else np.zeros((3, x.shape[1]))
     return {
+        "schema": "outcome-residual-v2",
+        "features": ["base_minus_elo_1", "base_minus_elo_x", "base_minus_elo_2",
+                     "base_home_away_gap", "base_entropy"],
         "weights": weights.round(8).tolist(),
         "feature_mean": mean.round(8).tolist(),
         "feature_scale": scale.round(8).tolist(),
@@ -68,7 +77,7 @@ def _fit(rows, l2: float = 0.12) -> dict:
 
 
 def residual_probabilities(dc: dict[str, float], elo: dict[str, float], params: dict) -> dict[str, float]:
-    """Aplica parámetros validados; ante metadatos rotos cae de forma segura a DC."""
+    """Aplica parámetros validados; ante metadatos rotos cae de forma segura al base."""
     try:
         weights = np.asarray(params["weights"], dtype=float)
         mean = np.asarray(params["feature_mean"], dtype=float)
@@ -84,41 +93,85 @@ def residual_probabilities(dc: dict[str, float], elo: dict[str, float], params: 
 
 
 def fit_walk_forward_residual(
-    dc_records: list[dict], elo_records: list[dict], validation_fraction: float = 0.30,
+    dc_records: list[dict],
+    elo_records: list[dict],
+    validation_fraction: float = 0.30,
+    *,
+    base_name: str = "dixon_coles",
+    extra_baseline_records: dict[str, list[dict]] | None = None,
 ) -> dict:
-    """Entrena en el pasado y deja una cola temporal totalmente fuera de muestra."""
-    rows = _paired(dc_records, elo_records)
+    """Entrena en el pasado y deja una cola temporal totalmente fuera de muestra.
+
+    ``dc_records`` representa el motor base sobre el que se aprende la corrección.
+    En P1.2 puede ser el híbrido DC+pseudo-xG. ``extra_baseline_records`` contiene
+    baselines OBLIGATORIOS: si alguno no cubre exactamente la misma cola temporal,
+    la promoción queda bloqueada en lugar de facilitarse silenciosamente.
+    """
+    paired = _paired_records(dc_records, elo_records)
+    rows = [(base["probs"], elo["probs"], base["actual"]) for base, elo in paired]
     if len(rows) < MIN_RECORDS:
         return {
-            "method": "residual-logit-temporal", "accepted": False,
+            "method": "residual-logit-temporal-v2", "accepted": False,
             "status": "blocked_insufficient_sample", "n": len(rows),
             "minimum_required": MIN_RECORDS,
         }
     split = max(55, min(len(rows) - 20, round(len(rows) * (1 - validation_fraction))))
     split = temporal_split_index(dc_records, elo_records, split, 55, 20)
     if split is None:
-        return {"method": "residual-logit-temporal", "accepted": False,
+        return {"method": "residual-logit-temporal-v2", "accepted": False,
                 "status": "blocked_no_temporal_boundary", "n": len(rows)}
     train, validation = rows[:split], rows[split:]
+    validation_pairs = paired[split:]
     fitted = _fit(train)
     metrics = aggregate([
         (residual_probabilities(dc, elo, fitted), actual)
         for dc, elo, actual in validation
     ])
     baselines = {
-        "dixon_coles": aggregate([(dc, actual) for dc, _elo, actual in validation]),
+        base_name: aggregate([(dc, actual) for dc, _elo, actual in validation]),
         "elo": aggregate([(elo, actual) for _dc, elo, actual in validation]),
     }
-    accepted = fitted["converged"] and candidate_beats_all_baselines(metrics, baselines)
+    baseline_coverage: dict[str, dict] = {}
+    complete_required_baselines = True
+    for name, records in (extra_baseline_records or {}).items():
+        by_key = {_record_key(record): record for record in records}
+        samples = []
+        for base_record, _elo_record in validation_pairs:
+            other = by_key.get(_record_key(base_record))
+            if other and other.get("probs"):
+                samples.append((other["probs"], base_record["actual"]))
+        complete = len(samples) == len(validation_pairs) and bool(samples)
+        baseline_coverage[name] = {
+            "n": len(samples),
+            "required": len(validation_pairs),
+            "complete": complete,
+        }
+        if complete:
+            baselines[name] = aggregate(samples)
+        else:
+            complete_required_baselines = False
+
+    accepted = (
+        fitted["converged"]
+        and complete_required_baselines
+        and candidate_beats_all_baselines(metrics, baselines)
+    )
+    if not complete_required_baselines:
+        status = "blocked_incomplete_baseline_coverage"
+    else:
+        status = "accepted" if accepted else "blocked_by_gate"
     return {
-        "method": "residual-logit-temporal",
+        "method": "residual-logit-temporal-v2",
         "accepted": bool(accepted),
-        "status": "accepted" if accepted else "blocked_by_gate",
+        "status": status,
         "n_train": len(train), "n_validation": len(validation),
         "validation": metrics, "validation_baselines": baselines,
+        "baseline_coverage": baseline_coverage or None,
         "acceptance_gate": {
-            "rule": "strictly_better_than_dixon_coles_and_elo",
+            "rule": "strictly_better_than_every_required_baseline_same_validation_set",
             "metrics": list(GATE_METRICS),
+            "baselines": list(baselines),
+            "require_complete_extra_baselines": True,
         },
         "production": _fit(rows),
     }

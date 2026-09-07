@@ -8,13 +8,17 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 
 from .config import settings
 from .ingest.api_football import ApiFootballClient, Fixture
 from .ingest.football_data import FootballDataClient
 from .model import DixonColesModel
+from .normalize import canonical_team
 from .prediction_snapshots import MODEL_VERSION
 from .value import BankrollPolicy, scan_market
+
+MADRID = ZoneInfo("Europe/Madrid")
 
 
 def _dbg(msg: str) -> None:
@@ -141,7 +145,6 @@ def run_pipeline(league: str = "laliga", season: int | None = None, *, demo: boo
     fixtures = get_fixtures(league, season=season, demo=demo)
     model = fit_model_from_fixtures(fixtures)
 
-    # Predice el "próximo enfrentamiento" de ejemplo entre los dos primeros.
     teams = sorted(model.attack, key=lambda t: model.attack[t], reverse=True)
     report = {
         "league": league,
@@ -163,15 +166,37 @@ def run_pipeline(league: str = "laliga", season: int | None = None, *, demo: boo
     return report
 
 
-def fixtures_to_matches(
-    fixtures: list[Fixture], teams_per_round: int | None = None
-) -> list[dict]:
-    """Convierte fixtures jugados al formato de dict del backtest.
+def _aware(value: datetime) -> datetime:
+    return value if value.tzinfo is not None else value.replace(tzinfo=timezone.utc)
 
-    Si los fixtures no traen jornada, se sintetiza agrupando en rondas de
-    ``teams_per_round`` partidos por orden cronológico (suficiente para el
-    walk-forward de demostración).
+
+def _stat_match_key(home: str, away: str, kickoff: datetime | None) -> tuple | None:
+    if kickoff is None:
+        return None
+    return (
+        canonical_team(home),
+        canonical_team(away),
+        _aware(kickoff).astimezone(MADRID).date().isoformat(),
+    )
+
+
+def fixtures_to_matches(
+    fixtures: list[Fixture],
+    teams_per_round: int | None = None,
+    stats_rows: list | None = None,
+) -> list[dict]:
+    """Convierte fixtures jugados al formato causal del backtest.
+
+    ``stats_rows`` se enlaza solo mediante equipo local canónico + visitante
+    canónico + fecha Madrid. No hay fuzzy matching. Si no existe correspondencia
+    exacta, el partido conserva únicamente el resultado y el híbrido cae a DC.
     """
+    stat_index = {}
+    for row in stats_rows or []:
+        key = _stat_match_key(row.home_team, row.away_team, row.kickoff)
+        if key is not None and key not in stat_index:
+            stat_index[key] = row
+
     played = sorted(
         [f for f in fixtures if f.home_goals is not None and f.away_goals is not None
          and str(f.status).upper() in {"FINISHED", "FT", "AET", "PEN", "AWARDED"}],
@@ -179,11 +204,10 @@ def fixtures_to_matches(
     )
     out = []
     for i, f in enumerate(played):
-        # Preferimos la jornada real del fixture; si no la trae, la sintetizamos.
         md = f.matchday
         if md is None:
             md = (i // teams_per_round + 1) if teams_per_round else None
-        out.append({
+        item = {
             "home": f.home_team,
             "away": f.away_team,
             "home_goals": f.home_goals,
@@ -195,7 +219,16 @@ def fixtures_to_matches(
             "competition": f.league,
             "season": f.season,
             "available_at": f.kickoff.timestamp() + 3 * 3600,
-        })
+        }
+        stat_row = stat_index.get(_stat_match_key(f.home_team, f.away_team, f.kickoff))
+        if stat_row is not None:
+            item["stats"] = {
+                key: [float(values[0]), float(values[1])]
+                for key, values in stat_row.stats.items()
+            }
+            if stat_row.referee:
+                item["referee"] = stat_row.referee
+        out.append(item)
     return out
 
 
@@ -227,38 +260,48 @@ def run_backtest(league: str = "laliga", season: int | None = None) -> dict:
 
 
 def run_model_report(league: str = "laliga", season: int | None = None) -> dict | None:
-    """Informe de calibración y comparación de modelos (walk-forward).
+    """Informe walk-forward del motor de resultado y sus challengers.
 
-    Devuelve, para la liga indicada, las métricas de baseline/Elo/Dixon-Coles
-    y la tabla de calibración (prob. predicha vs frecuencia real) del modelo en
-    producción (Dixon-Coles) para los tres signos 1/X/2. None si no hay datos.
+    P1.2 añade un espejo del camino real de producción: Dixon-Coles puede ser
+    corregido por pseudo-xG de tiros/SOT antes de alimentar el residual. Esa capa
+    solo usa estadísticas de partidos anteriores disponibles en cada corte.
     """
     from .backtest import (
         BaselineRates,
         DixonColesPredictor,
         EloPredictor,
+        HybridDixonColesPredictor,
         fit_walk_forward_ensemble,
         fit_walk_forward_residual,
         walk_forward,
     )
     from .config import LEAGUE_META
+    from .ingest.football_data_uk import FootballDataUKClient
 
+    actual_season = season or settings.season
     try:
         tpr = LEAGUE_META.get(league, {}).get("teams_per_round")
-        fixtures = get_fixtures(league, season=season)
-        matches = fixtures_to_matches(fixtures, teams_per_round=tpr)
+        fixtures = get_fixtures(league, season=actual_season)
+        try:
+            stats_rows = FootballDataUKClient().get_stats(league, actual_season)
+        except Exception:
+            stats_rows = []
+        matches = fixtures_to_matches(fixtures, teams_per_round=tpr, stats_rows=stats_rows)
     except Exception:
         return None
     if not matches:
         return None
 
+    stats_coverage_n = sum(1 for match in matches if match.get("stats"))
     predictors = {
         "baseline": BaselineRates(),
         "elo": EloPredictor(),
         "dixon_coles": DixonColesPredictor(min_matches=30),
+        "hybrid_dixon_coles": HybridDixonColesPredictor(min_matches=30),
     }
     metrics: dict = {}
     dc_result = None
+    hybrid_result = None
     elo_result = None
     for name, pred in predictors.items():
         try:
@@ -272,14 +315,27 @@ def run_model_report(league: str = "laliga", season: int | None = None) -> dict 
                          for k, v in m.items()}
         if name == "dixon_coles":
             dc_result = res
+        elif name == "hybrid_dixon_coles":
+            hybrid_result = res
         elif name == "elo":
             elo_result = res
 
     ensemble = None
     residual = None
     if dc_result is not None and elo_result is not None:
+        # Conservamos el ensemble histórico sin cambiar su contrato en este PR.
         ensemble = fit_walk_forward_ensemble(dc_result.records, elo_result.records)
-        residual = fit_walk_forward_residual(dc_result.records, elo_result.records)
+
+        residual_base = hybrid_result if hybrid_result is not None else dc_result
+        base_name = "hybrid_dixon_coles" if hybrid_result is not None else "dixon_coles"
+        extras = ({"dixon_coles": dc_result.records}
+                  if hybrid_result is not None else None)
+        residual = fit_walk_forward_residual(
+            residual_base.records,
+            elo_result.records,
+            base_name=base_name,
+            extra_baseline_records=extras,
+        )
         if ensemble and ensemble.get("validation", {}).get("n"):
             metrics["ensemble"] = {
                 key: (round(value, 4) if isinstance(value, float) else value)
@@ -295,17 +351,24 @@ def run_model_report(league: str = "laliga", season: int | None = None) -> dict 
         return None
 
     calibration = {}
+    calibration_result = hybrid_result or dc_result
     n_pred = 0
-    if dc_result is not None:
-        n_pred = len(dc_result.predictions)
+    if calibration_result is not None:
+        n_pred = len(calibration_result.predictions)
         for sign in ("1", "X", "2"):
-            calibration[sign] = dc_result.calibration(selection=sign, bins=10)
+            calibration[sign] = calibration_result.calibration(selection=sign, bins=10)
 
     return {
         "league": league,
-        "season": season or settings.season,
+        "season": actual_season,
         "n_matches": len(matches),
         "n_predicciones": n_pred,
+        "stats_coverage": {
+            "n": stats_coverage_n,
+            "pct": round(100 * stats_coverage_n / len(matches), 1) if matches else 0.0,
+            "join": "canonical_home+canonical_away+madrid_date",
+            "source": "football-data.co.uk",
+        },
         "model_version": MODEL_VERSION,
         "predictors": metrics,
         "calibration": calibration,
