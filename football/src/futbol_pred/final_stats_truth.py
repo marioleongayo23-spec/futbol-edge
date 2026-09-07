@@ -105,6 +105,14 @@ def _api_stats(match: dict) -> dict:
     return _normalise_stats(match.get("statsReal"))
 
 
+def _cached_fduk_stats(match: dict) -> dict:
+    """Lee solo stats del dashboard atribuidas explícitamente a co.uk."""
+    source = str(match.get("statsRealSource") or "").casefold()
+    if "football-data.co.uk" not in source:
+        return {}
+    return _normalise_stats(match.get("statsReal"))
+
+
 def _fduk_stats(row: MatchStats) -> dict:
     return _normalise_stats(row.stats)
 
@@ -163,6 +171,7 @@ def build_observations(
     ambiguous = 0
     api_matches = 0
     fduk_matches = 0
+    cached_fduk_matches = 0
 
     for match in matches:
         if not match.get("finished"):
@@ -193,6 +202,7 @@ def build_observations(
 
         key = (_canon(home), _canon(away), date)
         candidates = index.get(key) or []
+        cached_fduk = _cached_fduk_stats(match)
         if len(candidates) == 1:
             stats = _fduk_stats(candidates[0])
             if stats:
@@ -205,17 +215,37 @@ def build_observations(
                     away=away,
                     stats=stats,
                     captured_at=captured_at,
-                    meta={"referee": candidates[0].referee},
+                    meta={"referee": candidates[0].referee, "capture": "live_csv"},
                 ))
                 fduk_matches += 1
         elif len(candidates) > 1:
+            # La ambigüedad de identidad es un hard stop. El caché no la tapa.
             ambiguous += 1
+        elif cached_fduk:
+            observations.append(_observation(
+                source=SOURCE_FDUK,
+                league=league,
+                season=season,
+                kickoff=kickoff,
+                home=home,
+                away=away,
+                stats=cached_fduk,
+                captured_at=captured_at,
+                meta={
+                    "source_label": match.get("statsRealSource"),
+                    "capture": "dashboard_cache",
+                    "provenance": match.get("statsRealProvenance") or {},
+                },
+            ))
+            fduk_matches += 1
+            cached_fduk_matches += 1
 
     return observations, {
         "league": league,
         "season": int(season),
         "api_matches": api_matches,
         "football_data_uk_matches": fduk_matches,
+        "cached_football_data_uk_matches": cached_fduk_matches,
         "ambiguous_football_data_uk_matches": ambiguous,
         "observations": len(observations),
     }

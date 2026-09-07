@@ -23,6 +23,8 @@ from .normalize import same_team
 MADRID = ZoneInfo("Europe/Madrid")
 FINAL_STATUSES = {"FT", "AET", "PEN"}
 REAL_STAT_KEYS = ("goals", "xg", "shots", "sot", "corners", "fouls", "yellows", "reds")
+LEGACY_FDUK_SOURCE = "football-data.co.uk · legacy cached"
+_LEGACY_FDUK_REQUIRED = {"goals", "shots", "sot", "corners", "fouls", "yellows", "reds"}
 
 
 def _aware(value: datetime) -> datetime:
@@ -157,6 +159,27 @@ def _context_with_optional_xg(detail: dict, context: dict) -> dict:
     return merged
 
 
+def _is_legacy_fduk_stats(stats: dict | None) -> bool:
+    """Reconoce solo el antiguo contrato co.uk; nunca adivina una fuente arbitraria."""
+    if not isinstance(stats, dict):
+        return False
+    keys = set(stats)
+    return _LEGACY_FDUK_REQUIRED.issubset(keys) and "xg" not in keys
+
+
+def _label_legacy_fduk(match: dict) -> None:
+    if match.get("statsRealSource") or match.get("statsRealUpdatedAt"):
+        return
+    if not _is_legacy_fduk_stats(match.get("statsReal")):
+        return
+    match["statsRealSource"] = LEGACY_FDUK_SOURCE
+    match["statsRealProvenance"] = {
+        "kind": "legacy_schema_migration",
+        "contract": "unlabeled_seven_stat_fixture_payload",
+        "inferred": True,
+    }
+
+
 def _inherit_previous_stats(match: dict, previous: dict | None) -> None:
     if not previous or not previous.get("statsReal"):
         return
@@ -173,8 +196,11 @@ def _inherit_previous_stats(match: dict, previous: dict | None) -> None:
         match["statsRealSource"] = previous["statsRealSource"]
     if previous.get("statsRealUpdatedAt"):
         match["statsRealUpdatedAt"] = previous["statsRealUpdatedAt"]
+    if previous.get("statsRealProvenance"):
+        match["statsRealProvenance"] = previous["statsRealProvenance"]
     if previous.get("official_context") and not match.get("official_context"):
         match["official_context"] = previous["official_context"]
+    _label_legacy_fduk(match)
 
 
 def attach_finished_stats(
@@ -210,6 +236,8 @@ def attach_finished_stats(
     for match in matches:
         old = old_by_id.get(match.get("id")) or old_by_key.get(_identity(match))
         _inherit_previous_stats(match, old)
+        # Cubre también un cierre co.uk recién construido en esta misma pasada.
+        _label_legacy_fduk(match)
         if not match.get("finished") or not match.get("result"):
             continue
         kickoff = _parse(match.get("kickoff"))
@@ -251,6 +279,7 @@ def attach_finished_stats(
         match["statsReal"] = merged
         match["statsRealSource"] = "API-Football · final"
         match["statsRealUpdatedAt"] = now_local.isoformat()
+        match.pop("statsRealProvenance", None)
         context = _context_with_optional_xg(detail, ApiFootballClient.fixture_context(detail))
         if context:
             context["source_updated_at"] = now_local.isoformat()

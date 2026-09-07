@@ -201,8 +201,8 @@ ALGO_LABEL = {
 FORM_WINDOW = 5   # partidos recientes para la forma
 REST_CAP = 10.0   # tope de días de descanso (evita outliers de parón)
 MIN_TEAM = 8      # partidos mínimos del equipo en el 20% para evaluarlo aparte
-ADOPT_MIN = 12    # partidos mínimos del equipo para CAMBIAR su método en producción
-ADOPT_MARGIN = 0.10  # el nuevo método debe bajar el error ≥10% para adoptarse
+ADOPT_MIN = 12    # umbral histórico conservado solo para reporting legacy
+ADOPT_MARGIN = 0.10  # umbral histórico conservado solo para reporting legacy
 
 # Variables del modelo multi-variable por equipo (además de local/visitante, que
 # entra como indicador). Orden = columnas de la regresión enriquecida.
@@ -263,12 +263,13 @@ def compare_stat_algorithms(predictor, train: list, test: list, stats=STATS) -> 
     Incluye un modelo multi-variable por equipo (equipo+rival, forma reciente,
     descanso, árbitro, local/visitante) y expone qué variable influye en cada
     estadística. Devuelve, por estadística, el MAE de cada candidato, el ganador
-    y la influencia de cada variable.
+    y la influencia de cada variable. P3.4 mantiene este banco como observabilidad:
+    la promoción de producción vive exclusivamente en StatsPredictor.
     """
     import numpy as np
 
     out: dict = {}
-    team_acc: dict = {}  # equipo -> {stats: {stat: mejor método para ESE equipo}}
+    team_acc: dict = {}
     for s in stats:
         lh = predictor.league_home[s].for_avg
         la = predictor.league_away[s].for_avg
@@ -278,14 +279,14 @@ def compare_stat_algorithms(predictor, train: list, test: list, stats=STATS) -> 
         ctx = _causal_context(train + test, s)
         ref_means, ref_league = _referee_means(train, s)
 
-        def _feat(m, home: bool):  # simple: [ataque propio, defensa rival, media liga]
+        def _feat(m, home: bool):
             H, A = m.home_team, m.away_team
             if home:
                 return [_rate(predictor, H, s, True, True), _rate(predictor, A, s, False, False), lh]
             return [_rate(predictor, A, s, False, True), _rate(predictor, H, s, True, False), la]
 
-        def _feat_plus(m, home: bool):  # + forma, descanso, árbitro, local
-            base = _feat(m, home)  # [own, opp, liga]
+        def _feat_plus(m, home: bool):
+            base = _feat(m, home)
             c = ctx.get(id(m), {}).get("home" if home else "away", {})
             forma = c.get("form")
             forma = forma if forma is not None else base[0]
@@ -294,7 +295,6 @@ def compare_stat_algorithms(predictor, train: list, test: list, stats=STATS) -> 
             arb = ref_means.get(m.referee, ref_league) if m.referee else ref_league
             return [base[0], base[1], forma, descanso, arb, 1.0 if home else 0.0]
 
-        # Ajuste de las dos regresiones (pesos aprendidos) sobre el TRAIN.
         rows, rows_p, targets = [], [], []
         for m in train:
             r = m.stats.get(s)
@@ -310,7 +310,7 @@ def compare_stat_algorithms(predictor, train: list, test: list, stats=STATS) -> 
             coef_p, *_ = np.linalg.lstsq(Xp, y, rcond=None)
 
         errs: dict[str, list] = {k: [] for k in ALGO_LABEL}
-        team_errs: dict = defaultdict(lambda: defaultdict(list))  # equipo -> método -> errores
+        team_errs: dict = defaultdict(lambda: defaultdict(list))
         for m in test:
             r = m.stats.get(s)
             if not r:
@@ -330,7 +330,7 @@ def compare_stat_algorithms(predictor, train: list, test: list, stats=STATS) -> 
             for name, (ph, pa) in preds.items():
                 errs[name].append(abs(ph - r[0]))
                 errs[name].append(abs(pa - r[1]))
-                if name != "liga":  # POR EQUIPO nunca usamos la media de liga
+                if name != "liga":
                     team_errs[Hc][name].append(abs(ph - r[0]))
                     team_errs[Ac][name].append(abs(pa - r[1]))
 
@@ -346,8 +346,6 @@ def compare_stat_algorithms(predictor, train: list, test: list, stats=STATS) -> 
             "best_label": ALGO_LABEL[best],
             "best_mae": algos[best],
         }
-        # Influencia: aporte real de cada variable = |peso| × dispersión de esa
-        # variable en el train, normalizado (suma 1). Dice qué mueve cada stat.
         if coef_p is not None:
             Xp = np.asarray(rows_p)
             contrib = np.abs(coef_p[:len(PLUS_VARS)]) * Xp[:, :len(PLUS_VARS)].std(axis=0)
@@ -358,9 +356,6 @@ def compare_stat_algorithms(predictor, train: list, test: list, stats=STATS) -> 
                 }
         out[s] = entry
 
-        # --- POR EQUIPO: mejor método para ESTE equipo en ESTA estadística ---
-        # Se evalúa sobre los partidos del propio equipo en el 20% oculto; la
-        # base es su PROPIA media (no la de liga), como pediste.
         for team, methods in team_errs.items():
             own = methods.get("equipo")
             if not own or len(own) < MIN_TEAM:
@@ -370,16 +365,15 @@ def compare_stat_algorithms(predictor, train: list, test: list, stats=STATS) -> 
                 continue
             bteam = min(maes, key=maes.get)
             base = maes["equipo"]
-            # Guardia de adopción en producción: por defecto se mantiene el
-            # método actual (ataque_defensa). Solo se cambia el método de ESTE
-            # equipo+estadística si "equipo" (el único no-default aplicable hoy
-            # en el pipeline) lo supera de forma ROBUSTA en su propio 20%.
             default_mae = maes.get("ataque_defensa")
+            # P3.4: este banco ya no puede promover producción. Conservamos la
+            # recomendación analítica y el gain, pero ``adopt`` permanece default.
             adopt, adopt_gain = "ataque_defensa", None
-            if default_mae and len(own) >= ADOPT_MIN:
-                eq = maes.get("equipo")
-                if eq is not None and eq <= default_mae * (1 - ADOPT_MARGIN):
-                    adopt, adopt_gain = "equipo", round((1 - eq / default_mae) * 100, 1)
+            analytic_gain = None
+            if default_mae:
+                candidate = maes.get(bteam)
+                if candidate is not None and bteam != "ataque_defensa":
+                    analytic_gain = round((1 - candidate / default_mae) * 100, 1)
             team_acc.setdefault(team, {"equipo": team, "stats": {}})["stats"][s] = {
                 "label": STAT_LABEL[s],
                 "n": len(own),
@@ -391,6 +385,8 @@ def compare_stat_algorithms(predictor, train: list, test: list, stats=STATS) -> 
                 "default_mae": round(default_mae, 3) if default_mae is not None else None,
                 "adopt": adopt,
                 "adopt_gain": adopt_gain,
+                "analytic_gain": analytic_gain,
+                "production_selector": "StatsPredictor.validate_regression_champions",
             }
     return {"comparison": out, "by_team": team_acc}
 
