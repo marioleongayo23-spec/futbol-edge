@@ -262,9 +262,9 @@ def run_backtest(league: str = "laliga", season: int | None = None) -> dict:
 def run_model_report(league: str = "laliga", season: int | None = None) -> dict | None:
     """Informe walk-forward del motor de resultado y sus challengers.
 
-    P1.2 añade un espejo del camino real de producción: Dixon-Coles puede ser
-    corregido por pseudo-xG de tiros/SOT antes de alimentar el residual. Esa capa
-    solo usa estadísticas de partidos anteriores disponibles en cada corte.
+    P1.2 replica el camino híbrido de producción (DC + pseudo-xG). P1.3 añade
+    observabilidad rolling-origin por jornada sobre LOS MISMOS records causales:
+    no reentrena ni crea un segundo universo de evaluación.
     """
     from .backtest import (
         BaselineRates,
@@ -273,6 +273,8 @@ def run_model_report(league: str = "laliga", season: int | None = None) -> dict 
         HybridDixonColesPredictor,
         fit_walk_forward_ensemble,
         fit_walk_forward_residual,
+        paired_rolling_comparison,
+        rolling_origin_report,
         walk_forward,
     )
     from .config import LEAGUE_META
@@ -300,9 +302,8 @@ def run_model_report(league: str = "laliga", season: int | None = None) -> dict 
         "hybrid_dixon_coles": HybridDixonColesPredictor(min_matches=30),
     }
     metrics: dict = {}
-    dc_result = None
-    hybrid_result = None
-    elo_result = None
+    results: dict = {}
+    rolling_origin: dict = {}
     for name, pred in predictors.items():
         try:
             res = walk_forward(matches, pred, min_train_rounds=3)
@@ -313,12 +314,26 @@ def run_model_report(league: str = "laliga", season: int | None = None) -> dict 
             continue
         metrics[name] = {k: (round(v, 4) if isinstance(v, float) else v)
                          for k, v in m.items()}
-        if name == "dixon_coles":
-            dc_result = res
-        elif name == "hybrid_dixon_coles":
-            hybrid_result = res
-        elif name == "elo":
-            elo_result = res
+        results[name] = res
+        rolling_origin[name] = rolling_origin_report(res.records, trailing_rounds=5)
+
+    dc_result = results.get("dixon_coles")
+    hybrid_result = results.get("hybrid_dixon_coles")
+    elo_result = results.get("elo")
+
+    rolling_comparisons: dict = {}
+    if hybrid_result is not None and dc_result is not None:
+        rolling_comparisons["hybrid_vs_dixon_coles"] = paired_rolling_comparison(
+            hybrid_result.records,
+            dc_result.records,
+            trailing_rounds=5,
+        )
+    if dc_result is not None and elo_result is not None:
+        rolling_comparisons["dixon_coles_vs_elo"] = paired_rolling_comparison(
+            dc_result.records,
+            elo_result.records,
+            trailing_rounds=5,
+        )
 
     ensemble = None
     residual = None
@@ -372,6 +387,8 @@ def run_model_report(league: str = "laliga", season: int | None = None) -> dict 
         "model_version": MODEL_VERSION,
         "predictors": metrics,
         "calibration": calibration,
+        "rolling_origin": rolling_origin or None,
+        "rolling_comparisons": rolling_comparisons or None,
         "ensemble": ensemble,
         "residual": residual,
     }
