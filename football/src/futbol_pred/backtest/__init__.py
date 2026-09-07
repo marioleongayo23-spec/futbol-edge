@@ -2,7 +2,7 @@ from .betting import BettingResult, simulate_bets
 from .engine import BacktestResult, compare_predictors, walk_forward
 from .ensemble import ensemble_probabilities, fit_walk_forward_ensemble
 from .metrics import aggregate, brier_score, calibration_table, log_loss, rps
-from .predictors import BaselineRates, DixonColesPredictor, EloPredictor
+from .predictors import BaselineRates, DixonColesPredictor, EloPredictor, HybridDixonColesPredictor
 from .residual import fit_walk_forward_residual, residual_probabilities
 
 __all__ = [
@@ -19,6 +19,7 @@ __all__ = [
     "BaselineRates",
     "EloPredictor",
     "DixonColesPredictor",
+    "HybridDixonColesPredictor",
     "BettingResult",
     "simulate_bets",
     "fit_walk_forward_residual",
