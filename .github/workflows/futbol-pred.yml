@@ -119,6 +119,16 @@ jobs:
           python -m futbol_pred.feature_truth
           python -m futbol_pred.matchday_diagnose
 
+          # 3) P3.1: archiva verdad postpartido fuera del JSON de serving.
+          # El archivo raíz data-history/** no activa los crons football/** cuando
+          # se publica junto al dashboard. API-Football y co.uk se conservan por
+          # separado; una discrepancia queda unusable hasta reconciliarse.
+          python - <<'PY'
+          from futbol_pred.final_stats_truth import refresh_truth_store
+          report = refresh_truth_store(output_path="../data-history/final_stats_truth.json")
+          print("[final-stats-truth]", report)
+          PY
+
           python - <<'PY'
           import json
           d = json.load(open("data/dashboard.json", encoding="utf-8"))
@@ -137,13 +147,17 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: bash ../scripts/publish_live_feed.sh data/dashboard.json
 
-      - name: Publicar feed actualizado en la rama
+      - name: Publicar feed y truth store actualizados en la rama
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           generated="${RUNNER_TEMP}/dashboard.generated.json"
+          truth_generated="${RUNNER_TEMP}/final_stats_truth.generated.json"
           publish_root="${RUNNER_TEMP}/feed-publish"
           cp data/dashboard.json "$generated"
+          if [ -f ../data-history/final_stats_truth.json ]; then
+            cp ../data-history/final_stats_truth.json "$truth_generated"
+          fi
           git fetch origin "${GITHUB_REF_NAME}"
           git worktree add --detach "$publish_root" "origin/${GITHUB_REF_NAME}"
           pushed=0
@@ -151,23 +165,43 @@ jobs:
             git -C "$publish_root" fetch origin "${GITHUB_REF_NAME}"
             git -C "$publish_root" checkout --detach "origin/${GITHUB_REF_NAME}"
             current="$publish_root/football/data/dashboard.json"
+            truth_current="$publish_root/data-history/final_stats_truth.json"
+
+            feed_same=0
             if [ -f "$current" ]; then
               current_hash="$(python -m futbol_pred.feed_semantic "$current")"
               generated_hash="$(python -m futbol_pred.feed_semantic "$generated")"
-              if [ "$current_hash" = "$generated_hash" ]; then
-                echo "El feed solo cambia en timestamps volátiles; no se publica"
-                pushed=1
-                break
+              [ "$current_hash" = "$generated_hash" ] && feed_same=1
+            fi
+
+            truth_same=1
+            if [ -f "$truth_generated" ]; then
+              if [ ! -f "$truth_current" ] || ! cmp -s "$truth_generated" "$truth_current"; then
+                truth_same=0
               fi
             fi
-            cp "$generated" "$current"
-            git -C "$publish_root" add football/data/dashboard.json
-            if git -C "$publish_root" diff --cached --quiet; then
-              echo "El feed no ha cambiado"
+
+            if [ "$feed_same" = 1 ] && [ "$truth_same" = 1 ]; then
+              echo "Feed y truth store sin cambios semánticos; no se publica"
               pushed=1
               break
             fi
-            git -C "$publish_root" commit -m "Actualizar feed automático de Fútbol Edge"
+
+            cp "$generated" "$current"
+            if [ -f "$truth_generated" ]; then
+              mkdir -p "$(dirname "$truth_current")"
+              cp "$truth_generated" "$truth_current"
+            fi
+            git -C "$publish_root" add football/data/dashboard.json
+            if [ -f "$truth_current" ]; then
+              git -C "$publish_root" add data-history/final_stats_truth.json
+            fi
+            if git -C "$publish_root" diff --cached --quiet; then
+              echo "Feed y truth store no han cambiado"
+              pushed=1
+              break
+            fi
+            git -C "$publish_root" commit -m "Actualizar feed y verdad estadística de Fútbol Edge"
             if git -C "$publish_root" push origin "HEAD:${GITHUB_REF_NAME}"; then
               pushed=1
               break
@@ -175,14 +209,16 @@ jobs:
             echo "push concurrente, regenerará de nuevo en el próximo ciclo matchday (intento $i)…"
             sleep $((i * 3))
           done
-          [ "$pushed" = 1 ] || { echo "No se pudo publicar el feed tras cinco intentos limpios"; exit 1; }
+          [ "$pushed" = 1 ] || { echo "No se pudo publicar feed/truth tras cinco intentos limpios"; exit 1; }
 
       - name: Subir informes como artefacto
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: predicciones
-          path: football/data/*.json
+          path: |
+            football/data/*.json
+            data-history/final_stats_truth.json
           if-no-files-found: ignore
 
       - name: Verificar producción y feed publicado

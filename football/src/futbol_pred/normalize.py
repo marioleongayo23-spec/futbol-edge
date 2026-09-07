@@ -33,7 +33,7 @@ _LALIGA: list[TeamEntry] = [
     TeamEntry("Valencia", ("Valencia CF",)),
     TeamEntry("Celta", ("RC Celta de Vigo", "Celta Vigo", "Celta de Vigo")),
     TeamEntry("Ath Bilbao", ("Athletic Club", "Athletic Bilbao", "Athletic")),
-    TeamEntry("Espanol", ("RCD Espanyol de Barcelona", "Espanyol")),
+    TeamEntry("Espanol", ("RCD Espanyol de Barcelona", "RCD Espanyol", "Espanyol")),
     TeamEntry("Elche", ("Elche CF",)),
     TeamEntry("Real Madrid", ("Real Madrid CF",)),
     TeamEntry("Betis", ("Real Betis Balompié", "Real Betis")),
