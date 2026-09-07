@@ -1,0 +1,151 @@
+name: Truth evaluation P3.3
+
+on:
+  pull_request:
+    paths:
+      - "football/src/futbol_pred/truth_evaluation.py"
+      - "football/tests/test_truth_evaluation.py"
+      - "football/src/futbol_pred/final_stats_truth.py"
+      - "football/src/futbol_pred/prediction_snapshots.py"
+      - ".github/workflows/truth-evaluation.yml"
+  push:
+    branches: [main]
+    paths:
+      - "football/src/futbol_pred/truth_evaluation.py"
+      - "football/tests/test_truth_evaluation.py"
+      - ".github/workflows/truth-evaluation.yml"
+  workflow_run:
+    workflows: ["futbol-pred (cron)"]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: football
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: football/requirements.txt
+
+      - name: Instalar backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -e .
+
+      - name: Tests P3.3 y contratos de verdad
+        run: |
+          pytest -q \
+            tests/test_truth_evaluation.py \
+            tests/test_final_stats_truth.py \
+            tests/test_finished_stats.py
+
+      - name: Verificar aislamiento de producción
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          evaluator = Path("src/futbol_pred/truth_evaluation.py").read_text(encoding="utf-8")
+          dashboard = Path("src/futbol_pred/dashboard.py").read_text(encoding="utf-8")
+          hot = Path("src/futbol_pred/hot_refresh.py").read_text(encoding="utf-8")
+          pipeline = Path("src/futbol_pred/pipeline.py").read_text(encoding="utf-8")
+
+          assert 'SCHEMA = "truth-evaluation-v1"' in evaluator
+          assert '"affects_1x2": False' in evaluator
+          assert "automatic_production_promotion\": False" in evaluator
+          assert "truth_evaluation" not in dashboard
+          assert "truth_evaluation" not in hot
+          assert "truth_evaluation" not in pipeline
+          print("P3.3 evaluation-only: sin wiring en dashboard/hot-refresh/pipeline")
+          PY
+
+  evaluate:
+    needs: validate
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: football/requirements.txt
+
+      - name: Instalar backend
+        working-directory: football
+        run: |
+          pip install -r requirements.txt
+          pip install -e .
+
+      - name: Evaluar snapshots contra truth store
+        run: |
+          python -m futbol_pred.truth_evaluation \
+            --dashboard football/data/dashboard.json \
+            --truth data-history/final_stats_truth.json \
+            --output data-history/truth_evaluation.json
+
+      - name: Publicar evaluación solo si cambia semánticamente
+        run: |
+          if [ ! -f data-history/truth_evaluation.json ]; then
+            echo "Todavía no existe muestra evaluable; no se crea un artefacto ficticio"
+            exit 0
+          fi
+
+          generated="${RUNNER_TEMP}/truth_evaluation.generated.json"
+          publish_root="${RUNNER_TEMP}/truth-evaluation-publish"
+          cp data-history/truth_evaluation.json "$generated"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          git worktree add --detach "$publish_root" origin/main
+
+          pushed=0
+          for i in 1 2 3 4 5; do
+            git -C "$publish_root" fetch origin main
+            git -C "$publish_root" checkout --detach origin/main
+            target="$publish_root/data-history/truth_evaluation.json"
+            if [ -f "$target" ] && cmp -s "$generated" "$target"; then
+              echo "Evaluación sin cambios; no se publica"
+              pushed=1
+              break
+            fi
+            mkdir -p "$(dirname "$target")"
+            cp "$generated" "$target"
+            git -C "$publish_root" add data-history/truth_evaluation.json
+            if git -C "$publish_root" diff --cached --quiet; then
+              pushed=1
+              break
+            fi
+            git -C "$publish_root" commit -m "Actualizar evaluación estadística de Fútbol Edge"
+            if git -C "$publish_root" push origin HEAD:main; then
+              pushed=1
+              break
+            fi
+            echo "push concurrente; reintentando sobre main vivo (intento $i)…"
+            sleep $((i * 3))
+          done
+          [ "$pushed" = 1 ] || { echo "No se pudo publicar evaluación tras cinco intentos"; exit 1; }
+
+      - name: Subir evaluación como artefacto
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: truth-evaluation
+          path: data-history/truth_evaluation.json
+          if-no-files-found: ignore
