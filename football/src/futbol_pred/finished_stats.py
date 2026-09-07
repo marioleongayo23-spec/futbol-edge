@@ -5,11 +5,16 @@ puede quedar confirmado una hora antes del partido; eso no debe impedir volver a
 consultar API-Football tras el pitido final. Este módulo actualiza ``statsReal``
 solo cuando el proveedor confirma FT/AET/PEN y mantiene football-data.co.uk como
 fallback cuando API-Football no devuelve cobertura.
+
+P3.2 captura ``Expected Goals`` de forma estrictamente pasiva cuando ya viene en
+el mismo payload final de API-Football. No dispara ninguna petición adicional y
+la ausencia de xG nunca invalida las estadísticas básicas del partido.
 """
 
 from __future__ import annotations
 
 from datetime import datetime, timedelta
+import math
 from zoneinfo import ZoneInfo
 
 from .ingest.api_football import ApiFootballClient
@@ -17,7 +22,7 @@ from .normalize import same_team
 
 MADRID = ZoneInfo("Europe/Madrid")
 FINAL_STATUSES = {"FT", "AET", "PEN"}
-REAL_STAT_KEYS = ("goals", "shots", "sot", "corners", "fouls", "yellows", "reds")
+REAL_STAT_KEYS = ("goals", "xg", "shots", "sot", "corners", "fouls", "yellows", "reds")
 
 
 def _aware(value: datetime) -> datetime:
@@ -50,6 +55,42 @@ def _pick_team_stats(rows: dict, wanted: str) -> dict | None:
     return candidates[0] if len(candidates) == 1 else None
 
 
+def _provider_expected_goals(detail: dict) -> dict[str, float]:
+    """Extrae xG si el payload YA contiene ``Expected Goals``.
+
+    La etiqueta es intencionadamente exacta. No inferimos variantes ni calculamos
+    xG a partir de tiros: si el proveedor no expone esta capability, devolvemos
+    vacío y el pipeline continúa con sus fallbacks existentes.
+    """
+    out: dict[str, float] = {}
+    for team in detail.get("statistics") or []:
+        name = str((team.get("team") or {}).get("name") or "").strip()
+        if not name:
+            continue
+        values = []
+        for row in team.get("statistics") or []:
+            if str(row.get("type") or "").strip().casefold() != "expected goals":
+                continue
+            raw = row.get("value")
+            if raw is None:
+                continue
+            parsed = ApiFootballClient._stat_value(raw)
+            try:
+                value = float(parsed)
+            except (TypeError, ValueError):
+                continue
+            if math.isfinite(value) and 0 <= value <= 15:
+                values.append(value)
+        if len(values) == 1:
+            out[name] = values[0]
+    return out
+
+
+def _pick_team_value(rows: dict[str, float], wanted: str) -> float | None:
+    candidates = [value for name, value in rows.items() if same_team(name, wanted)]
+    return candidates[0] if len(candidates) == 1 else None
+
+
 def _real_stats_from_detail(detail: dict, home: str, away: str, result=None) -> dict | None:
     fixture = detail.get("fixture") or {}
     status = ((fixture.get("status") or {}).get("short") or "").upper()
@@ -62,12 +103,16 @@ def _real_stats_from_detail(detail: dict, home: str, away: str, result=None) -> 
     if not home_stats or not away_stats:
         return None
 
+    provider_xg = _provider_expected_goals(detail)
     out = {}
     for key in REAL_STAT_KEYS:
         if key == "goals":
             if not isinstance(result, (list, tuple)) or len(result) != 2:
                 continue
             hv, av = result[0], result[1]
+        elif key == "xg":
+            hv = _pick_team_value(provider_xg, home)
+            av = _pick_team_value(provider_xg, away)
         else:
             hv, av = home_stats.get(key), away_stats.get(key)
         if hv is None or av is None:
@@ -86,6 +131,30 @@ def _real_stats_from_detail(detail: dict, home: str, away: str, result=None) -> 
             "total": home_value + away_value,
         }
     return out or None
+
+
+def _context_with_optional_xg(detail: dict, context: dict) -> dict:
+    """Añade xG al contexto postpartido sin modificar el parser global/pre-match."""
+    provider_xg = _provider_expected_goals(detail)
+    if not provider_xg:
+        return context
+    merged = dict(context)
+    stats = {
+        name: dict(values)
+        for name, values in (merged.get("live_or_post_stats") or {}).items()
+        if isinstance(values, dict)
+    }
+    for name, value in provider_xg.items():
+        row = dict(stats.get(name) or {})
+        row["xg"] = value
+        stats[name] = row
+    if stats:
+        merged["live_or_post_stats"] = stats
+    merged["optional_capabilities"] = {
+        **(merged.get("optional_capabilities") or {}),
+        "xg": "API-Football · provider field",
+    }
+    return merged
 
 
 def _inherit_previous_stats(match: dict, previous: dict | None) -> None:
@@ -120,7 +189,9 @@ def attach_finished_stats(
 
     Primero hereda cualquier captura final del feed anterior para no consumir API
     cada 15 minutos. Después solo consulta partidos terminados recientes que sigan
-    sin las métricas principales. Los detalles se recuperan en batch.
+    sin las métricas principales. Los detalles se recuperan en batch. ``xg`` no
+    pertenece al conjunto ``required``: solo se captura si acompaña a una consulta
+    final que ya era necesaria, garantizando cero requests adicionales por P3.2.
     """
 
     client = client or ApiFootballClient()
@@ -180,7 +251,7 @@ def attach_finished_stats(
         match["statsReal"] = merged
         match["statsRealSource"] = "API-Football · final"
         match["statsRealUpdatedAt"] = now_local.isoformat()
-        context = ApiFootballClient.fixture_context(detail)
+        context = _context_with_optional_xg(detail, ApiFootballClient.fixture_context(detail))
         if context:
             context["source_updated_at"] = now_local.isoformat()
             match["official_context"] = {**(match.get("official_context") or {}), **context}
