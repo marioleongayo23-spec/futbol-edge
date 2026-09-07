@@ -1,3 +1,7 @@
+from .advanced_residual import (
+    advanced_residual_probabilities,
+    fit_walk_forward_advanced_residual,
+)
 from .betting import BettingResult, simulate_bets
 from .engine import BacktestResult, compare_predictors, walk_forward
 from .ensemble import ensemble_probabilities, fit_walk_forward_ensemble
@@ -25,6 +29,8 @@ __all__ = [
     "simulate_bets",
     "fit_walk_forward_residual",
     "residual_probabilities",
+    "fit_walk_forward_advanced_residual",
+    "advanced_residual_probabilities",
     "rolling_origin_report",
     "paired_rolling_comparison",
 ]
