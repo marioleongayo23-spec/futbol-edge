@@ -64,7 +64,11 @@ def _closing_index(rows: list[dict]) -> tuple[dict[tuple[str, str], dict], set[t
         if key[0] and key[1] and fair:
             buckets.setdefault(key, []).append(fair)
     ambiguous = {key for key, values in buckets.items() if len(values) != 1}
-    return {key: values[0] for key, values in buckets.items() if len(values) == 1}, ambiguous
+    return {
+        key: values[0]
+        for key, values in buckets.items()
+        if len(values) == 1
+    }, ambiguous
 
 
 def market_baseline_records(base_records: list[dict], closing_rows: list[dict]) -> tuple[list[dict], dict]:
@@ -78,7 +82,11 @@ def market_baseline_records(base_records: list[dict], closing_rows: list[dict]) 
         if not fair:
             missing += 1
             continue
-        out.append({**record, "probs": fair, "baseline_source": "football-data.co.uk closing no-vig"})
+        out.append({
+            **record,
+            "probs": fair,
+            "baseline_source": "football-data.co.uk closing no-vig",
+        })
     return out, {
         "n": len(out),
         "required": len(base_records),
@@ -102,6 +110,18 @@ def _blocked(status: str, *, league: str, season: int, detail: str | None = None
     }
 
 
+def _relevant_archive(archive: dict, league: str, season: int) -> dict:
+    """Reduce el archivo a la liga/temporada antes de gastar llamadas externas."""
+    snapshots = [
+        row
+        for row in (archive.get("snapshots") or [])
+        if isinstance(row, dict)
+        and row.get("league") == league
+        and int(row.get("season") or -1) == int(season)
+    ]
+    return {"schema": archive.get("schema"), "snapshots": snapshots}
+
+
 def build_league_report(
     league: str,
     season: int,
@@ -109,6 +129,21 @@ def build_league_report(
     archive_path: str | Path = DEFAULT_PATH,
 ) -> dict:
     """Construye un informe reproducible para una liga y temporada."""
+    archive = _relevant_archive(load_archive(archive_path), league, season)
+    archive_n = len(archive.get("snapshots") or [])
+    if archive_n == 0:
+        return {
+            **_blocked(
+                "blocked_insufficient_advanced_snapshots",
+                league=league,
+                season=season,
+                detail="no_versioned_snapshots_for_league_season",
+            ),
+            "archive_path": str(archive_path),
+            "archive_snapshots": 0,
+            "external_calls_skipped": True,
+        }
+
     try:
         tpr = LEAGUE_META.get(league, {}).get("teams_per_round")
         fixtures = get_fixtures(league, season=season)
@@ -118,16 +153,30 @@ def build_league_report(
         except Exception:
             client = FootballDataUKClient()
             stats_rows = []
-        matches = fixtures_to_matches(fixtures, teams_per_round=tpr, stats_rows=stats_rows)
-    except Exception as exc:
-        return _blocked(
-            "blocked_source_error",
-            league=league,
-            season=season,
-            detail=type(exc).__name__,
+        matches = fixtures_to_matches(
+            fixtures,
+            teams_per_round=tpr,
+            stats_rows=stats_rows,
         )
+    except Exception as exc:
+        return {
+            **_blocked(
+                "blocked_source_error",
+                league=league,
+                season=season,
+                detail=type(exc).__name__,
+            ),
+            "archive_path": str(archive_path),
+            "archive_snapshots": archive_n,
+            "external_calls_skipped": False,
+        }
     if not matches:
-        return _blocked("blocked_no_finished_matches", league=league, season=season)
+        return {
+            **_blocked("blocked_no_finished_matches", league=league, season=season),
+            "archive_path": str(archive_path),
+            "archive_snapshots": archive_n,
+            "external_calls_skipped": False,
+        }
 
     results = {}
     for name, predictor in {
@@ -146,13 +195,17 @@ def build_league_report(
     dc = results.get("dixon_coles")
     base = results.get("hybrid_dixon_coles") or dc
     if elo is None or base is None:
-        return _blocked(
-            "blocked_insufficient_base_predictions",
-            league=league,
-            season=season,
-        )
+        return {
+            **_blocked(
+                "blocked_insufficient_base_predictions",
+                league=league,
+                season=season,
+            ),
+            "archive_path": str(archive_path),
+            "archive_snapshots": archive_n,
+            "external_calls_skipped": False,
+        }
 
-    archive = load_archive(archive_path)
     extras: dict[str, list[dict]] = {}
     if dc is not None and base is not dc:
         extras["dixon_coles"] = dc.records
@@ -164,7 +217,10 @@ def build_league_report(
         closing_rows = client.get_historical_closing_odds(league, season)
     except Exception:
         closing_rows = []
-    market_records, market_coverage = market_baseline_records(base.records, closing_rows)
+    market_records, market_coverage = market_baseline_records(
+        base.records,
+        closing_rows,
+    )
     extras["market_no_vig"] = market_records
 
     challenger = fit_walk_forward_advanced_residual(
@@ -181,7 +237,7 @@ def build_league_report(
         "season": season,
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "archive_path": str(archive_path),
-        "archive_snapshots": len(archive.get("snapshots") or []),
+        "archive_snapshots": archive_n,
         "finished_matches": len(matches),
         "base_prediction_records": len(base.records),
         "market_comparator": market_coverage,
@@ -190,6 +246,7 @@ def build_league_report(
         "status": challenger.get("status"),
         "affects_1x2": False,
         "promotion_status": "manual_future_pr_required",
+        "external_calls_skipped": False,
         "governance": {
             "features": "base residual + xG/npxG attack/defence + shrunk goalkeeper PSxG+/-",
             "snapshot_rule": "available_at < kickoff",
@@ -208,7 +265,11 @@ def build_report(
 ) -> dict:
     actual_season = int(season or settings.season)
     reports = {
-        league: build_league_report(league, actual_season, archive_path=archive_path)
+        league: build_league_report(
+            league,
+            actual_season,
+            archive_path=archive_path,
+        )
         for league in leagues
     }
     return {
@@ -231,7 +292,9 @@ def write_report(payload: dict, path: str | Path = OUTPUT) -> Path:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="P2.3 advanced outcome challenger report")
+    parser = argparse.ArgumentParser(
+        description="P2.3 advanced outcome challenger report"
+    )
     parser.add_argument("--league", choices=[*LEAGUES, "all"], default="all")
     parser.add_argument("--season", type=int, default=None)
     parser.add_argument("--archive", type=Path, default=DEFAULT_PATH)
@@ -239,10 +302,21 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     leagues = LEAGUES if args.league == "all" else (args.league,)
-    report = build_report(leagues=leagues, season=args.season, archive_path=args.archive)
+    report = build_report(
+        leagues=leagues,
+        season=args.season,
+        archive_path=args.archive,
+    )
     path = write_report(report, args.output)
-    statuses = {key: value.get("status") for key, value in report["reports"].items()}
-    print(json.dumps({"written": str(path), "statuses": statuses, "affects_1x2": False}, ensure_ascii=False, sort_keys=True))
+    statuses = {
+        key: value.get("status")
+        for key, value in report["reports"].items()
+    }
+    print(json.dumps({
+        "written": str(path),
+        "statuses": statuses,
+        "affects_1x2": False,
+    }, ensure_ascii=False, sort_keys=True))
     return 0
 
 
