@@ -12,6 +12,7 @@ const WINDOW_LABELS = {
   official_lineup: "XI oficial · legado",
   "00:15": "00:15",
   "10:15": "10:15",
+  live_current: "ACTUAL",
 };
 
 function validProbs(value) {
@@ -21,6 +22,39 @@ function validProbs(value) {
 function parseTime(value) {
   const time = new Date(value || "").getTime();
   return Number.isFinite(time) ? time : null;
+}
+
+function liveRefreshTime(match) {
+  return parseTime(
+    match?.prediction_live_refresh?.checked_at
+      || match?.prediction_live_refresh?.refreshed_at
+      || match?.updatedAt
+  );
+}
+
+function liveCurrentSnapshot(match, kickoff, latestHistoricalAt) {
+  const refreshed = liveRefreshTime(match);
+  if (
+    match?.finished
+    || !validProbs(match?.probs)
+    || refreshed == null
+    || (kickoff != null && refreshed >= kickoff)
+    || (latestHistoricalAt != null && refreshed <= latestHistoricalAt)
+  ) return null;
+
+  return {
+    generated_at: new Date(refreshed).toISOString(),
+    window: "live_current",
+    probs: match.probs,
+    model_probs: match.model_probs,
+    xg: match.xg,
+    market_calibration: match.market_calibration,
+    lineup_impact: match.lineup_impact,
+    weather_adjustment: match.weather_adjustment,
+    model_meta: match.model_meta,
+    alineacion: match.alineacion,
+    current_state: true,
+  };
 }
 
 export function windowLabel(window) {
@@ -44,14 +78,20 @@ export function leadTimeLabel(generatedAt, kickoff) {
 
 export function predictionTimelinePoints(match) {
   const kickoff = parseTime(match?.kickoff);
-  const source = [
+  const historical = [
     ...(Array.isArray(match?.prediction_history) ? match.prediction_history : []),
     ...(match?.prediction_snapshot ? [match.prediction_snapshot] : []),
-  ];
+  ].filter((item) => item && validProbs(item.probs) && parseTime(item.generated_at) != null)
+    .filter((item) => kickoff == null || parseTime(item.generated_at) < kickoff);
+
+  const latestHistoricalAt = historical.reduce((latest, item) => {
+    const value = parseTime(item.generated_at);
+    return value != null && (latest == null || value > latest) ? value : latest;
+  }, null);
+  const current = liveCurrentSnapshot(match, kickoff, latestHistoricalAt);
+  const source = current ? [...historical, current] : historical;
   const seen = new Set();
   return source
-    .filter((item) => item && validProbs(item.probs) && parseTime(item.generated_at) != null)
-    .filter((item) => kickoff == null || parseTime(item.generated_at) < kickoff)
     .sort((a, b) => parseTime(a.generated_at) - parseTime(b.generated_at))
     .filter((item) => {
       const key = `${item.generated_at}|${item.window || ""}`;
@@ -73,12 +113,22 @@ export function predictionTimelinePoints(match) {
       mediaSources: Array.isArray(item.alineacion?.media_sources) ? item.alineacion.media_sources : [],
       officialPollWindow: item.alineacion?.official_poll_window || null,
       modelVersion: item.model_version || item.model_meta?.version || null,
+      currentState: item.current_state === true,
       snapshot: item,
     }));
 }
 
 function currentSnapshot(match) {
-  return match?.prediction_snapshot || predictionTimelinePoints(match).at(-1)?.snapshot || match || {};
+  const kickoff = parseTime(match?.kickoff);
+  const refreshed = liveRefreshTime(match);
+  const currentPrematch = (
+    !match?.finished
+    && validProbs(match?.probs)
+    && refreshed != null
+    && (kickoff == null || refreshed < kickoff)
+  );
+  if (currentPrematch) return match;
+  return match?.prediction_snapshot || predictionTimelinePoints(match).filter((point) => !point.currentState).at(-1)?.snapshot || match || {};
 }
 
 function favoriteIndex(probs) {
