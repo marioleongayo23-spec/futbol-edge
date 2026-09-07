@@ -35,6 +35,7 @@ DASHBOARD = Path(DATA_DIR) / "dashboard.json"
 SOURCE_API = "api_football"
 SOURCE_FDUK = "football_data_uk"
 STAT_KEYS = ("goals", "xg", "shots", "sot", "corners", "fouls", "yellows", "reds", "offsides")
+LEGACY_FDUK_STAT_KEYS = frozenset(("goals", "shots", "sot", "corners", "fouls", "yellows", "reds"))
 LEAGUE_LABELS = {
     "LaLiga": "laliga",
     "LaLiga Hypermotion": "segunda",
@@ -106,11 +107,47 @@ def _api_stats(match: dict) -> dict:
 
 
 def _cached_fduk_stats(match: dict) -> dict:
-    """Lee solo stats del dashboard atribuidas explícitamente a co.uk."""
-    source = str(match.get("statsRealSource") or "").casefold()
-    if "football-data.co.uk" not in source:
+    """Recupera co.uk explícito o el contrato legacy inequívoco del dashboard.
+
+    El generador histórico ``dashboard._real_stats_map`` obtiene ``statsReal``
+    exclusivamente de football-data.co.uk. Las capturas antiguas se publicaron
+    antes de existir ``statsRealSource`` y tienen exactamente siete métricas.
+    Esa firma exacta se puede migrar de forma determinista; cualquier etiqueta
+    no vacía desconocida, bloque incompleto o capability extra queda rechazada.
+    """
+    source_raw = str(match.get("statsRealSource") or "").strip()
+    source = source_raw.casefold()
+    raw = match.get("statsReal")
+    if "football-data.co.uk" in source:
+        return _normalise_stats(raw)
+    if source_raw:
         return {}
-    return _normalise_stats(match.get("statsReal"))
+    if not isinstance(raw, dict) or set(raw) != LEGACY_FDUK_STAT_KEYS:
+        return {}
+    normalised = _normalise_stats(raw)
+    if set(normalised) != LEGACY_FDUK_STAT_KEYS:
+        return {}
+    return normalised
+
+
+def _cached_fduk_meta(match: dict) -> dict:
+    source_label = match.get("statsRealSource")
+    if source_label:
+        return {
+            "source_label": source_label,
+            "capture": "dashboard_cache",
+            "provenance": match.get("statsRealProvenance") or {},
+        }
+    return {
+        "source_label": None,
+        "capture": "dashboard_cache_legacy_inferred",
+        "provenance": {
+            "kind": "legacy_schema_migration",
+            "inferred": True,
+            "source": "football-data.co.uk",
+            "basis": "dashboard._real_stats_map + exact_legacy_7_stat_contract",
+        },
+    }
 
 
 def _fduk_stats(row: MatchStats) -> dict:
@@ -172,6 +209,7 @@ def build_observations(
     api_matches = 0
     fduk_matches = 0
     cached_fduk_matches = 0
+    legacy_inferred_fduk_matches = 0
 
     for match in matches:
         if not match.get("finished"):
@@ -203,6 +241,7 @@ def build_observations(
         key = (_canon(home), _canon(away), date)
         candidates = index.get(key) or []
         cached_fduk = _cached_fduk_stats(match)
+        cached_inferred = bool(cached_fduk and not str(match.get("statsRealSource") or "").strip())
         if len(candidates) == 1:
             stats = _fduk_stats(candidates[0])
             if stats:
@@ -231,14 +270,12 @@ def build_observations(
                 away=away,
                 stats=cached_fduk,
                 captured_at=captured_at,
-                meta={
-                    "source_label": match.get("statsRealSource"),
-                    "capture": "dashboard_cache",
-                    "provenance": match.get("statsRealProvenance") or {},
-                },
+                meta=_cached_fduk_meta(match),
             ))
             fduk_matches += 1
             cached_fduk_matches += 1
+            if cached_inferred:
+                legacy_inferred_fduk_matches += 1
 
     return observations, {
         "league": league,
@@ -246,6 +283,7 @@ def build_observations(
         "api_matches": api_matches,
         "football_data_uk_matches": fduk_matches,
         "cached_football_data_uk_matches": cached_fduk_matches,
+        "legacy_inferred_football_data_uk_matches": legacy_inferred_fduk_matches,
         "ambiguous_football_data_uk_matches": ambiguous,
         "observations": len(observations),
     }

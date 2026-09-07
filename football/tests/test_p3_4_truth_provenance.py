@@ -86,10 +86,11 @@ def test_cache_fduk_etiquetado_alimenta_truth_si_csv_cae():
     assert rows[0]["source"] == SOURCE_FDUK
     assert rows[0]["meta"]["capture"] == "dashboard_cache"
     assert audit["cached_football_data_uk_matches"] == 1
+    assert audit["legacy_inferred_football_data_uk_matches"] == 0
     assert audit["football_data_uk_matches"] == 1
 
 
-def test_truth_no_adivina_una_fuente_desconocida():
+def test_truth_recupera_cache_legacy_sin_etiqueta_por_contrato_exactamente_conocido():
     rows, audit = build_observations(
         [_match()],
         league="laliga",
@@ -97,13 +98,60 @@ def test_truth_no_adivina_una_fuente_desconocida():
         fduk_rows=[],
         captured_at="2026-08-21T08:00:00Z",
     )
+    assert len(rows) == 1
+    row = rows[0]
+    assert row["source"] == SOURCE_FDUK
+    assert row["meta"]["capture"] == "dashboard_cache_legacy_inferred"
+    assert row["meta"]["provenance"]["inferred"] is True
+    assert row["meta"]["provenance"]["source"] == "football-data.co.uk"
+    assert "dashboard._real_stats_map" in row["meta"]["provenance"]["basis"]
+    assert audit["cached_football_data_uk_matches"] == 1
+    assert audit["legacy_inferred_football_data_uk_matches"] == 1
+    assert audit["football_data_uk_matches"] == 1
+
+
+def test_truth_no_adivina_una_fuente_desconocida_no_vacia():
+    rows, audit = build_observations(
+        [_match("mystery-provider")],
+        league="laliga",
+        season=2026,
+        fduk_rows=[],
+        captured_at="2026-08-21T08:00:00Z",
+    )
     assert rows == []
     assert audit["cached_football_data_uk_matches"] == 0
+    assert audit["legacy_inferred_football_data_uk_matches"] == 0
+
+
+def test_truth_no_infiere_legacy_incompleto_ni_con_capability_extra():
+    incomplete = _match()
+    incomplete["statsReal"].pop("reds")
+    rows, audit = build_observations(
+        [incomplete],
+        league="laliga",
+        season=2026,
+        fduk_rows=[],
+        captured_at="2026-08-21T08:00:00Z",
+    )
+    assert rows == []
+    assert audit["legacy_inferred_football_data_uk_matches"] == 0
+
+    with_xg = _match()
+    with_xg["statsReal"]["xg"] = {"home": 1.9, "away": 0.8, "total": 2.7}
+    rows2, audit2 = build_observations(
+        [with_xg],
+        league="laliga",
+        season=2026,
+        fduk_rows=[],
+        captured_at="2026-08-21T08:00:00Z",
+    )
+    assert rows2 == []
+    assert audit2["legacy_inferred_football_data_uk_matches"] == 0
 
 
 def test_csv_vivo_exacto_tiene_prioridad_y_no_duplica_cache():
     rows, audit = build_observations(
-        [_match("football-data.co.uk · legacy cached")],
+        [_match()],
         league="laliga",
         season=2026,
         fduk_rows=[_fduk()],
@@ -113,11 +161,12 @@ def test_csv_vivo_exacto_tiene_prioridad_y_no_duplica_cache():
     assert rows[0]["source"] == SOURCE_FDUK
     assert rows[0]["meta"]["capture"] == "live_csv"
     assert audit["cached_football_data_uk_matches"] == 0
+    assert audit["legacy_inferred_football_data_uk_matches"] == 0
 
 
-def test_csv_ambiguo_bloquea_cache_en_vez_de_ocultar_conflicto_identidad():
+def test_csv_ambiguo_bloquea_cache_legacy_en_vez_de_ocultar_conflicto_identidad():
     rows, audit = build_observations(
-        [_match("football-data.co.uk · legacy cached")],
+        [_match()],
         league="laliga",
         season=2026,
         fduk_rows=[_fduk(), _fduk()],
@@ -126,3 +175,4 @@ def test_csv_ambiguo_bloquea_cache_en_vez_de_ocultar_conflicto_identidad():
     assert rows == []
     assert audit["ambiguous_football_data_uk_matches"] == 1
     assert audit["cached_football_data_uk_matches"] == 0
+    assert audit["legacy_inferred_football_data_uk_matches"] == 0
