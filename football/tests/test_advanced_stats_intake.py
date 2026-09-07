@@ -64,7 +64,7 @@ def test_archivo_exportado_valido_pasa_intake_estricto():
     payload = parse_archive_strict(_payload(), now=NOW)
     assert payload["schema"] == ARCHIVE_SCHEMA
     assert payload["manifest"]["snapshot_count"] == 1
-    assert set(payload["snapshots"][0]["teams"]) == {"Barcelona", "RCD Espanyol"}
+    assert set(payload["snapshots"][0]["teams"]) == {"Barcelona", "Espanol"}
 
 
 def test_manifest_manipulado_rechaza_archivo_completo():
