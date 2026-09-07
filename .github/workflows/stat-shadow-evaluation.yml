@@ -6,8 +6,12 @@ on:
       - "football/src/futbol_pred/stat_shadow.py"
       - "football/src/futbol_pred/stat_shadow_evaluation.py"
       - "football/src/futbol_pred/prediction_snapshots.py"
+      - "football/src/futbol_pred/matchday_snapshot_capture.py"
       - "football/tests/test_stat_shadow.py"
       - "football/tests/test_stat_shadow_evaluation.py"
+      - "football/tests/test_matchday_snapshot_capture.py"
+      - "football/tests/test_stat_shadow_policy.py"
+      - ".github/workflows/futbol-hot-refresh.yml"
       - ".github/workflows/stat-shadow-evaluation.yml"
   push:
     branches: [main]
@@ -15,6 +19,8 @@ on:
       - "football/src/futbol_pred/stat_shadow.py"
       - "football/src/futbol_pred/stat_shadow_evaluation.py"
       - "football/src/futbol_pred/prediction_snapshots.py"
+      - "football/src/futbol_pred/matchday_snapshot_capture.py"
+      - ".github/workflows/futbol-hot-refresh.yml"
       - ".github/workflows/stat-shadow-evaluation.yml"
   workflow_run:
     workflows: ["futbol-pred (cron)"]
@@ -50,6 +56,8 @@ jobs:
           pytest -q \
             tests/test_stat_shadow.py \
             tests/test_stat_shadow_evaluation.py \
+            tests/test_matchday_snapshot_capture.py \
+            tests/test_stat_shadow_policy.py \
             tests/test_prediction_snapshots.py
 
       - name: Verificar aislamiento de producción
@@ -60,6 +68,8 @@ jobs:
           shadow = Path("src/futbol_pred/stat_shadow.py").read_text(encoding="utf-8")
           evaluator = Path("src/futbol_pred/stat_shadow_evaluation.py").read_text(encoding="utf-8")
           snapshots = Path("src/futbol_pred/prediction_snapshots.py").read_text(encoding="utf-8")
+          capture = Path("src/futbol_pred/matchday_snapshot_capture.py").read_text(encoding="utf-8")
+          hot_workflow = Path("../.github/workflows/futbol-hot-refresh.yml").read_text(encoding="utf-8")
           dashboard = Path("src/futbol_pred/dashboard.py").read_text(encoding="utf-8")
           hot = Path("src/futbol_pred/hot_refresh.py").read_text(encoding="utf-8")
           pipeline = Path("src/futbol_pred/pipeline.py").read_text(encoding="utf-8")
@@ -71,10 +81,12 @@ jobs:
           assert '"affects_1x2": False' in shadow
           assert '"affects_1x2": False' in evaluator
           assert 'out["stat_challengers"] = shadow' in snapshots
+          assert '_SNAPSHOT_META_FIELDS = ("prediction_history", "prediction_snapshot")' in capture
+          assert 'python -m futbol_pred.matchday_snapshot_capture' in hot_workflow
           assert "stat_shadow" not in dashboard
           assert "stat_shadow" not in hot
           assert "stat_shadow" not in pipeline
-          print("P3.5 shadow-only: sin wiring de producción")
+          print("P3.5 shadow-only: captura auditable sin wiring en el modelo de producción")
           PY
 
   evaluate:
