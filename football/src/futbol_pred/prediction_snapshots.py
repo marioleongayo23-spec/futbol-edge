@@ -30,6 +30,8 @@ _SNAPSHOT_FIELDS = (
     "value",
     "calibrated",
     "market_calibration",
+    "market_movement",
+    "market_movement_adjustment",
     "model_meta",
     "venue_meta",
     "weather",
@@ -177,6 +179,17 @@ def _restore(match: dict, snapshot: dict, *, finished: bool) -> None:
         )
 
 
+def _preserve_market_history(match: dict, old: dict, max_history: int = 32) -> None:
+    """Mantiene únicamente capturas reales ya publicadas al reconstruir el feed."""
+    merged: dict[str, dict] = {}
+    for item in (old.get("market_history") or []) + (match.get("market_history") or []):
+        if not isinstance(item, dict) or not item.get("captured_at"):
+            continue
+        merged[str(item["captured_at"])] = deepcopy(item)
+    if merged:
+        match["market_history"] = [merged[key] for key in sorted(merged)][-max_history:]
+
+
 def apply_prediction_snapshots(
     matches: list[dict],
     previous_matches: list[dict] | None,
@@ -204,6 +217,7 @@ def apply_prediction_snapshots(
     }
     for match in matches:
         old = old_by_id.get(match.get("id")) or old_by_key.get(_identity(match)) or {}
+        _preserve_market_history(match, old)
         history = deepcopy(old.get("prediction_history") or [])
         old_current = old.get("prediction_snapshot")
         if isinstance(old_current, dict) and not any(
