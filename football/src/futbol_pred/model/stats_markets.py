@@ -23,6 +23,7 @@ from scipy.stats import nbinom, poisson
 
 from ..ingest.football_data_uk import MatchStats
 from ..normalize import canonical_team
+from .stat_champion_plus import fit_plus_artifact, predict_plus, rolling_plus_predictions
 
 STAT_NAMES = ("shots", "sot", "corners", "fouls", "yellows", "reds", "offsides", "goals")
 MIN_TEMPORAL_MATCHES = 80
@@ -191,6 +192,7 @@ class StatsPredictor:
     # únicamente de una cola temporal no usada para ajustar los coeficientes.
     regression_validation: dict | None = None
     regression_artifacts: dict[str, dict] = field(default_factory=dict)
+    regression_plus_artifacts: dict[str, dict] = field(default_factory=dict)
     regression_methods_by_team: dict[str, dict[str, str]] = field(default_factory=dict)
 
     def fit(
@@ -247,13 +249,24 @@ class StatsPredictor:
                 team: dict(methods)
                 for team, methods in (self.regression_validation.get("methods_by_team") or {}).items()
             }
-            accepted_stats = {
+            regression_stats = {
                 stat
                 for methods in self.regression_methods_by_team.values()
                 for stat, method in methods.items()
                 if method == "regresion"
             }
-            self.regression_artifacts = self._fit_regression_artifacts(matches, accepted_stats)
+            plus_stats = {
+                stat
+                for methods in self.regression_methods_by_team.values()
+                for stat, method in methods.items()
+                if method == "regresion_plus"
+            }
+            self.regression_artifacts = self._fit_regression_artifacts(matches, regression_stats)
+            self.regression_plus_artifacts = {
+                stat: artifact
+                for stat in plus_stats
+                if (artifact := fit_plus_artifact(matches, stat)) is not None
+            }
 
         if auxiliary_matches:
             self.add_auxiliary_team_history(
@@ -396,9 +409,17 @@ class StatsPredictor:
         method = (self.regression_methods_by_team.get(team) or {}).get(stat)
         if method == "regresion" and stat in self.regression_artifacts:
             return method
+        if method == "regresion_plus" and stat in self.regression_plus_artifacts:
+            return method
         return "ataque_defensa"
 
-    def predict_fixture(self, home: str, away: str) -> dict[str, dict]:
+    def predict_fixture(
+        self,
+        home: str,
+        away: str,
+        *,
+        kickoff: datetime | None = None,
+    ) -> dict[str, dict]:
         home = canonical_team(home)
         away = canonical_team(away)
         out: dict[str, dict] = {}
@@ -415,8 +436,26 @@ class StatsPredictor:
                     eh = candidate
                 else:
                     home_method = "ataque_defensa"
+            elif home_method == "regresion_plus":
+                candidate = predict_plus(
+                    self.regression_plus_artifacts.get(stat), home, away,
+                    home_side=True, kickoff=kickoff,
+                )
+                if candidate is not None:
+                    eh = candidate
+                else:
+                    home_method = "ataque_defensa"
             if away_method == "regresion":
                 candidate = self._regression_expected(home, away, stat, home_side=False)
+                if candidate is not None:
+                    ea = candidate
+                else:
+                    away_method = "ataque_defensa"
+            elif away_method == "regresion_plus":
+                candidate = predict_plus(
+                    self.regression_plus_artifacts.get(stat), home, away,
+                    home_side=False, kickoff=kickoff,
+                )
                 if candidate is not None:
                     ea = candidate
                 else:
@@ -492,14 +531,13 @@ def validate_regression_champions(
     stats: tuple[str, ...] = CHAMPION_STATS,
     train_fraction: float = 0.8,
 ) -> dict:
-    """Valida ``regresion`` frente a ``ataque_defensa`` en una cola cronológica.
+    """Elige champion por equipo+stat con validación temporal y control de sesgo.
 
-    El gate es por equipo+estadística. Un equipo cambia solo si tiene al menos
-    ``REGRESSION_TEAM_MIN`` observaciones propias en el tramo oculto y reduce MAE
-    al menos ``REGRESSION_ADOPT_MARGIN``. Los coeficientes usados para validar se
-    ajustan exclusivamente con el tramo de entrenamiento.
+    ``regresion_plus`` se entrena con features as-of generadas exclusivamente a
+    partir de partidos anteriores. En la cola de validación el estado avanza
+    partido a partido, como ocurriría en producción. Solo disciplina participa
+    en este gate, por lo que pseudo-xG/1X2 permanecen aislados.
     """
-
     dated = _dated_rows(matches)
     if len(dated) < MIN_REGRESSION_MATCHES:
         return {
@@ -534,8 +572,26 @@ def validate_regression_champions(
         fit_pseudo_xg=False,
     )
     artifacts = predictor._fit_regression_artifacts(train, set(stats))
+    plus_artifacts: dict[str, dict] = {}
+    plus_predictions: dict[str, dict[tuple[str, str, str], tuple[float, float]]] = {}
+    for stat in stats:
+        artifact, rows = rolling_plus_predictions(train, validation, stat)
+        if artifact:
+            plus_artifacts[stat] = artifact
+        mapped: dict[tuple[str, str, str], tuple[float, float]] = {}
+        for match, home_value, away_value in rows:
+            key = (
+                match.kickoff.isoformat(),
+                canonical_team(match.home_team),
+                canonical_team(match.away_team),
+            )
+            mapped[key] = (float(home_value), float(away_value))
+        plus_predictions[stat] = mapped
 
     team_errors: dict[str, dict[str, dict[str, list[float]]]] = defaultdict(
+        lambda: defaultdict(lambda: defaultdict(list))
+    )
+    team_signed: dict[str, dict[str, dict[str, list[float]]]] = defaultdict(
         lambda: defaultdict(lambda: defaultdict(list))
     )
     stat_errors: dict[str, dict[str, list[float]]] = defaultdict(lambda: defaultdict(list))
@@ -543,67 +599,106 @@ def validate_regression_champions(
     for match in validation:
         home = canonical_team(match.home_team)
         away = canonical_team(match.away_team)
+        match_key = (match.kickoff.isoformat(), home, away)
         for stat in stats:
             actual = match.stats.get(stat)
-            artifact = artifacts.get(stat)
             default = predictor._expected(home, away, stat)
-            if not actual or not artifact or default is None:
-                continue
-            rh = predictor._regression_expected(home, away, stat, home_side=True, artifact=artifact)
-            ra = predictor._regression_expected(home, away, stat, home_side=False, artifact=artifact)
-            if rh is None or ra is None:
+            if not actual or default is None:
                 continue
             default_h, default_a = default
-            pairs = (
-                (home, float(actual[0]), float(default_h), float(rh)),
-                (away, float(actual[1]), float(default_a), float(ra)),
-            )
-            for team, real, base, reg in pairs:
-                base_err = abs(base - real)
-                reg_err = abs(reg - real)
-                team_errors[team][stat]["ataque_defensa"].append(base_err)
-                team_errors[team][stat]["regresion"].append(reg_err)
-                stat_errors[stat]["ataque_defensa"].append(base_err)
-                stat_errors[stat]["regresion"].append(reg_err)
+            candidates: dict[str, tuple[float, float]] = {
+                "ataque_defensa": (float(default_h), float(default_a))
+            }
+            artifact = artifacts.get(stat)
+            if artifact:
+                rh = predictor._regression_expected(home, away, stat, home_side=True, artifact=artifact)
+                ra = predictor._regression_expected(home, away, stat, home_side=False, artifact=artifact)
+                if rh is not None and ra is not None:
+                    candidates["regresion"] = (float(rh), float(ra))
+            plus_pair = (plus_predictions.get(stat) or {}).get(match_key)
+            if plus_pair:
+                candidates["regresion_plus"] = plus_pair
+
+            sides = ((home, float(actual[0]), 0), (away, float(actual[1]), 1))
+            for team, real, idx in sides:
+                for method, pair in candidates.items():
+                    pred = float(pair[idx])
+                    err = pred - real
+                    team_errors[team][stat][method].append(abs(err))
+                    team_signed[team][stat][method].append(err)
+                    stat_errors[stat][method].append(abs(err))
 
     methods_by_team: dict[str, dict[str, str]] = {}
     team_report: dict[str, dict] = {}
     for team, stat_map in team_errors.items():
         for stat, methods in stat_map.items():
             base = methods.get("ataque_defensa") or []
-            reg = methods.get("regresion") or []
-            if len(base) != len(reg) or len(base) < REGRESSION_TEAM_MIN:
+            if len(base) < REGRESSION_TEAM_MIN:
                 continue
             base_mae = float(np.mean(base))
-            reg_mae = float(np.mean(reg))
-            gain = (1.0 - reg_mae / base_mae) if base_mae > 0 else 0.0
-            accepted = base_mae > 0 and reg_mae <= base_mae * (1.0 - REGRESSION_ADOPT_MARGIN)
-            if accepted:
-                methods_by_team.setdefault(team, {})[stat] = "regresion"
+            base_bias = float(np.mean(team_signed[team][stat]["ataque_defensa"]))
+            candidates_report: dict[str, dict] = {}
+            winner = "ataque_defensa"
+            winner_mae = base_mae
+            for method in ("regresion", "regresion_plus"):
+                values = methods.get(method) or []
+                signed = team_signed[team][stat].get(method) or []
+                if len(values) != len(base) or not values:
+                    continue
+                mae = float(np.mean(values))
+                bias = float(np.mean(signed))
+                gain = (1.0 - mae / base_mae) if base_mae > 0 else 0.0
+                bias_ok = abs(bias) <= abs(base_bias) + 0.25
+                passed = (
+                    base_mae > 0
+                    and mae <= base_mae * (1.0 - REGRESSION_ADOPT_MARGIN)
+                    and bias_ok
+                )
+                candidates_report[method] = {
+                    "mae": round(mae, 4),
+                    "bias": round(bias, 4),
+                    "gain_pct": round(gain * 100.0, 1),
+                    "bias_gate": bias_ok,
+                    "passed": passed,
+                }
+                if passed and mae < winner_mae:
+                    winner = method
+                    winner_mae = mae
+            if winner != "ataque_defensa":
+                methods_by_team.setdefault(team, {})[stat] = winner
             team_report.setdefault(team, {})[stat] = {
                 "n": len(base),
                 "default_mae": round(base_mae, 4),
-                "regression_mae": round(reg_mae, 4),
-                "gain_pct": round(gain * 100.0, 1),
-                "accepted": accepted,
-                "method": "regresion" if accepted else "ataque_defensa",
+                "default_bias": round(base_bias, 4),
+                "candidates": candidates_report,
+                "accepted": winner != "ataque_defensa",
+                "method": winner,
             }
 
     by_stat: dict[str, dict] = {}
     for stat, methods in stat_errors.items():
         base = methods.get("ataque_defensa") or []
-        reg = methods.get("regresion") or []
-        if not base or len(base) != len(reg):
+        if not base:
             continue
-        base_mae = float(np.mean(base))
-        reg_mae = float(np.mean(reg))
-        by_stat[stat] = {
-            "n": len(base),
-            "default_mae": round(base_mae, 4),
-            "regression_mae": round(reg_mae, 4),
-            "gain_pct": round((1.0 - reg_mae / base_mae) * 100.0, 1) if base_mae > 0 else None,
+        row = {
+            "n": len(base) // 2,
+            "default_mae": round(float(np.mean(base)), 4),
             "artifact": artifacts.get(stat),
+            "plus_artifact": plus_artifacts.get(stat),
         }
+        for method in ("regresion", "regresion_plus"):
+            values = methods.get(method) or []
+            if values:
+                mae = float(np.mean(values))
+                row[f"{method}_mae"] = round(mae, 4)
+                row[f"{method}_gain_pct"] = round(
+                    (1.0 - mae / float(np.mean(base))) * 100.0, 1
+                ) if float(np.mean(base)) > 0 else None
+        # Compatibilidad con consumidores/tests v1.
+        if "regresion_mae" in row:
+            row["regression_mae"] = row["regresion_mae"]
+            row["gain_pct"] = row.get("regresion_gain_pct")
+        by_stat[stat] = row
 
     accepted = bool(methods_by_team)
     return {
@@ -612,10 +707,15 @@ def validate_regression_champions(
         "accepted": accepted,
         "gate": {
             "default": "ataque_defensa",
-            "challenger": "regresion",
+            "challengers": ["regresion", "regresion_plus"],
             "min_team_validation_n": REGRESSION_TEAM_MIN,
             "min_relative_mae_gain": REGRESSION_ADOPT_MARGIN,
+            "bias_tolerance": 0.25,
             "chronological": True,
+            "regresion_plus_causal_asof": True,
+            "scope": list(CHAMPION_STATS),
+            "affects_pseudo_xg": False,
+            "affects_1x2": False,
         },
         "n_train": len(train),
         "n_validation": len(validation),
