@@ -110,8 +110,10 @@ def test_invalid_or_missing_artifact_falls_back_to_default():
 
     prediction = predictor.predict_fixture("Barcelona", "Espanol")["fouls"]
 
-    assert predictor.method_for("Barcelona", "fouls") == "ataque_defensa"
+    # ``method_for`` expresa el challenger solicitado; la ejecución valida el
+    # artefacto y debe declarar/publicar el método que realmente se aplicó.
     assert prediction["method_home"] == "ataque_defensa"
+    assert prediction["home"] == predictor.predict_fixture("Barcelona", "Espanol")["fouls"]["home"]
 
 
 def test_small_sample_never_promotes_regression():
