@@ -1,12 +1,9 @@
 name: futbol-edge hot refresh
 
 # Canal autoritativo de día de partido.
-# La continuidad NO depende del cron: cada bloque activo se auto-despacha al terminar.
-# El schedule es solo un watchdog para recuperar el heartbeat si GitHub o una
-# incidencia externa interrumpen la cadena. No se dispara por workflow_run tras
-# futbol-pred: el pipeline pesado ya ejecuta toda la tanda matchday_* de refresco
-# al final, así que relanzarlo sería redundante y solo generaba runs pendientes
-# cancelados al solaparse con la cadena de auto-dispatch.
+# El schedule sostiene el heartbeat en bloques de ~30 minutos y cada bloque
+# ejecuta ciclos de 5 minutos. Un run nuevo sustituye al anterior si se solapan,
+# evitando colas acumulativas y ticks obsoletos.
 on:
   push:
     branches: [main]
@@ -16,7 +13,7 @@ on:
       - ".github/workflows/futbol-hot-refresh.yml"
       - "scripts/publish_live_feed.sh"
   schedule:
-    # Watchdog cada 30 min, desplazado del inicio de hora.
+    # Heartbeat cada 30 min, desplazado del inicio de hora.
     - cron: "7,37 8-23 * * *"
       timezone: "Europe/Madrid"
     - cron: "7,37 0-1 * * *"
@@ -25,18 +22,15 @@ on:
 
 permissions:
   contents: write
-  actions: write
 
-# Grupo v2: deja arrancar ya la versión con plantillas 2026/27 aunque quede
-# terminando un heartbeat antiguo del grupo anterior.
 concurrency:
   group: futbol-edge-hot-refresh-current-squads-v2
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   refresh:
     runs-on: ubuntu-latest
-    timeout-minutes: 75
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
         with:
@@ -71,11 +65,11 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          # Push de código: un tick inmediato. El resto de disparadores sostienen
-          # aproximadamente una hora completa de ciclos de 5 minutos.
+          # Push de código: un tick inmediato. Schedule/manual: seis ciclos de
+          # cinco minutos para cubrir el intervalo hasta el siguiente heartbeat.
           cycles=1
-          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ] || [ "$GITHUB_EVENT_NAME" = "workflow_run" ] || [ "$GITHUB_EVENT_NAME" = "schedule" ]; then
-            cycles=12
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ] || [ "$GITHUB_EVENT_NAME" = "schedule" ]; then
+            cycles=6
           fi
           echo "Evento ${GITHUB_EVENT_NAME}: ${cycles} ciclo(s) de matchday"
 
@@ -170,24 +164,3 @@ jobs:
               sleep 300
             fi
           done
-
-      - name: Mantener vivo el heartbeat de matchday
-        if: always()
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          hour=$(TZ=Europe/Madrid date +%H)
-          hour=$((10#$hour))
-
-          if [ "$hour" -ge 8 ] || [ "$hour" -le 1 ]; then
-            echo "Autoencadenando siguiente bloque de refresco…"
-            curl --fail-with-body --retry 3 --retry-all-errors \
-              -L -X POST \
-              -H "Accept: application/vnd.github+json" \
-              -H "Authorization: Bearer ${GH_TOKEN}" \
-              -H "X-GitHub-Api-Version: 2022-11-28" \
-              "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/workflows/futbol-hot-refresh.yml/dispatches" \
-              -d '{"ref":"main"}'
-          else
-            echo "Fuera de ventana matchday; no se autoencadena."
-          fi
