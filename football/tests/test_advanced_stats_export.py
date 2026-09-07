@@ -104,9 +104,9 @@ def test_snapshots_son_acumulativos_sin_mirar_el_partido_futuro():
 
 def test_barcelona_y_espanyol_permanecen_separados_en_el_export():
     first = _archive()["snapshots"][0]
-    assert set(first["teams"]) == {"Barcelona", "RCD Espanyol"}
+    assert set(first["teams"]) == {"Barcelona", "Espanol"}
     assert first["teams"]["Barcelona"]["xg_for90"] == 2.0
-    assert first["teams"]["RCD Espanyol"]["xg_for90"] == 0.7
+    assert first["teams"]["Espanol"]["xg_for90"] == 0.7
 
     context = match_context(first, "FC Barcelona", "RCD Espanyol")
     assert context["home"]["xg_for90"] == 2.0
@@ -257,7 +257,7 @@ def test_fbref_dataframe_adapter_extrae_schedule_npxg_y_psxg():
     assert by_team["Barcelona"]["npxg_against"] == 0.6
     assert by_team["Barcelona"]["keeper_psxg90"] == 0.8
     assert by_team["Barcelona"]["keeper_psxg_plus_minus90"] == 0.2
-    assert by_team["RCD Espanyol"]["keeper_psxg_plus_minus90"] == -0.3
+    assert by_team["Espanol"]["keeper_psxg_plus_minus90"] == -0.3
 
 
 def test_dataframe_adapter_tolera_multiindex_de_columnas():
