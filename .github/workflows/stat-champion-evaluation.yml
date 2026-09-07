@@ -1,0 +1,93 @@
+name: Stat champion evaluation P3.6a
+
+on:
+  workflow_run:
+    workflows: ["futbol-pred"]
+    types: [completed]
+  workflow_dispatch:
+  schedule:
+    - cron: "20 5 * * *"
+      timezone: "Europe/Madrid"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: stat-champion-evaluation-p3-6a
+  cancel-in-progress: true
+
+jobs:
+  evaluate:
+    if: >-
+      github.event_name != 'workflow_run' ||
+      github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 2
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Instalar motor estadístico
+        run: pip install -e ./football
+
+      - name: Evaluar champions estadísticos fuera del dashboard
+        run: |
+          PYTHONPATH=football/src python -m futbol_pred.stat_champion_evaluation \
+            --season 2026 \
+            --history-seasons 3 \
+            --output data-history/stat_champion_evaluation.json
+
+      - name: Verificar aislamiento de producción
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          path = Path("data-history/stat_champion_evaluation.json")
+          assert path.exists(), "No se generó stat_champion_evaluation.json"
+          data = json.loads(path.read_text(encoding="utf-8"))
+          assert data.get("schema") == "stat-champion-evaluation-v1"
+          assert data.get("quality_gate_independent") is True
+          assert data.get("automatic_production_promotion") is False
+          assert data.get("affects_pseudo_xg") is False
+          assert data.get("affects_1x2") is False
+          assert data.get("affects_production") is False
+          print("[P3.6a]", data.get("summary"))
+          PY
+
+      - name: Publicar informe solo si cambió la evidencia
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet -- data-history/stat_champion_evaluation.json; then
+            echo "Sin cambios semánticos en la evaluación"
+            exit 0
+          fi
+          git add data-history/stat_champion_evaluation.json
+          git commit -m "Actualizar evaluación independiente de champions estadísticos"
+          for attempt in 1 2 3 4; do
+            if git pull --rebase origin main && git push origin HEAD:main; then
+              exit 0
+            fi
+            echo "Publicación concurrente; reintentando (${attempt}/4)…"
+            git rebase --abort >/dev/null 2>&1 || true
+            git fetch origin main
+            git rebase origin/main
+            sleep $((attempt * 2))
+          done
+          echo "No se pudo publicar stat_champion_evaluation.json" >&2
+          exit 1
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stat-champion-evaluation-p3-6a
+          path: data-history/stat_champion_evaluation.json
+          if-no-files-found: warn
+          retention-days: 30
