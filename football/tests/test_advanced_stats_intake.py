@@ -85,14 +85,12 @@ def test_snapshot_invalido_no_se_descarta_silenciosamente():
         parse_archive_strict(payload, now=NOW)
 
 
-def test_colision_de_alias_canonico_barcelona_se_rechaza():
+def test_colision_de_alias_canonico_barcelona_se_rechaza_antes_del_manifest():
     payload = _payload()
     snapshot = payload["snapshots"][0]
     snapshot["teams"]["FC Barcelona"] = dict(snapshot["teams"]["Barcelona"])
-    payload["manifest"] = archive_manifest({
-        "schema": ARCHIVE_SCHEMA,
-        "snapshots": [snapshot],
-    })
+    # No se recalcula el manifest: archive_manifest también normaliza y podría
+    # detectar la colisión antes de ejercitar la puerta de entrada que probamos.
     with pytest.raises(IntakeError, match="team_duplicate:Barcelona"):
         parse_archive_strict(payload, now=NOW)
 
@@ -145,6 +143,14 @@ def test_timestamp_futuro_se_rechaza():
         "snapshots": payload["snapshots"],
     })
     with pytest.raises(IntakeError, match="available_at_in_future"):
+        parse_archive_strict(payload, now=NOW)
+
+
+def test_generated_at_futuro_se_rechaza():
+    payload = _payload()
+    payload["snapshots"][0]["generated_at"] = (NOW + timedelta(hours=2)).isoformat()
+    # generated_at es metadato de ejecución y no cambia el digest semántico.
+    with pytest.raises(IntakeError, match="generated_at_in_future"):
         parse_archive_strict(payload, now=NOW)
 
 
