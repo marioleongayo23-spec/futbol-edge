@@ -13,8 +13,9 @@ Ejemplos:
         --archive data/advanced_stats_snapshots.json
 
 El backfill NO finge timestamps históricos de publicación: cada partido se hace
-disponible al día siguiente a las 12:00 UTC. Un challenger futuro podrá por ello
-reproducir exactamente qué señales eran elegibles en cada corte.
+disponible al día siguiente a las 12:00 UTC. Antes de escribir, el resultado
+pasa por el intake P2.4: manifiesto/hash, dominio, identidad y conflictos de
+clave. Un conflicto semántico falla entero; nunca se sobrescribe silenciosamente.
 """
 
 from __future__ import annotations
@@ -28,13 +29,19 @@ SRC = Path(__file__).resolve().parents[1] / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-from futbol_pred.advanced_stats import DEFAULT_PATH, load_archive  # noqa: E402
+from futbol_pred.advanced_stats import DEFAULT_PATH  # noqa: E402
 from futbol_pred.advanced_stats_export import (  # noqa: E402
     archive_manifest,
     build_historical_archive,
     fbref_frames_to_records,
-    merge_archives,
     write_archive,
+)
+from futbol_pred.advanced_stats_intake import (  # noqa: E402
+    IntakeError,
+    empty_archive,
+    load_archive_strict,
+    parse_archive_strict,
+    plan_intake,
 )
 from futbol_pred.ingest.fbref import FBrefClient, soccerdata_available  # noqa: E402
 
@@ -154,7 +161,7 @@ def main() -> None:
 
     source_version = _soccerdata_version()
     generated_at = datetime.now(timezone.utc)
-    incoming = build_historical_archive(
+    incoming_raw = build_historical_archive(
         records,
         league=args.league,
         season=args.season,
@@ -163,17 +170,45 @@ def main() -> None:
         generated_at=generated_at,
         min_team_matches=max(1, args.min_team_matches),
     )
-    existing = load_archive(args.archive)
-    merged = merge_archives(existing, incoming)
-    payload = write_archive(args.archive, merged)
-    manifest = payload["manifest"]
+    incoming_payload = {
+        **incoming_raw,
+        "manifest": archive_manifest(incoming_raw),
+    }
 
-    print(
-        "Archivo avanzado actualizado: "
-        f"{args.archive} | snapshots={manifest['snapshot_count']} | "
-        f"equipos={manifest['teams']} | sha256={manifest['sha256'][:16]}…"
-    )
-    print("Manifest:", archive_manifest(payload))
+    try:
+        incoming = parse_archive_strict(
+            incoming_payload,
+            now=generated_at,
+            require_manifest=True,
+        )
+        existing = (
+            load_archive_strict(args.archive, now=generated_at, require_manifest=True)
+            if args.archive.exists()
+            else empty_archive()
+        )
+        plan = plan_intake(existing, incoming)
+    except IntakeError as exc:
+        print(f"❌ Intake P2.4 rechazado: {exc}")
+        sys.exit(4)
+
+    if plan["status"] == "ready":
+        payload = write_archive(args.archive, plan["archive"])
+        manifest = payload["manifest"]
+        print(
+            "Archivo avanzado actualizado tras intake P2.4: "
+            f"{args.archive} | añadidos={plan['added']} | "
+            f"snapshots={manifest['snapshot_count']} | equipos={manifest['teams']} | "
+            f"sha256={manifest['sha256'][:16]}…"
+        )
+    else:
+        manifest = existing["manifest"]
+        print(
+            "Archivo avanzado sin cambios: "
+            f"{args.archive} | repetidos idénticos={plan['unchanged']} | "
+            f"snapshots={manifest['snapshot_count']} | sha256={manifest['sha256'][:16]}…"
+        )
+
+    print("Intake:", {key: value for key, value in plan.items() if key != "archive"})
 
 
 if __name__ == "__main__":
