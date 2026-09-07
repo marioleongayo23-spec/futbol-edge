@@ -467,8 +467,10 @@ def write_feed_safely(path: Path, payload: dict, previous: dict | None = None) -
     contract_enriched = enrich_feed_contract(payload)
     if previous:
         enrich_feed_contract(previous)
-    deduped_uid = dedupe_feed_by_match_uid(payload)
+    # Preserve the legacy duplicate-id contract first. Cross-provider duplicates
+    # normally have different ids and are handled by canonical match_uid second.
     deduped = _dedupe_matches_by_id(payload)
+    deduped_uid = dedupe_feed_by_match_uid(payload)
     preserve_last_known_good(payload, previous)
     dropped = _sanitize_incomplete_lineups(payload, previous)
     report = evaluate_feed(payload, previous)
