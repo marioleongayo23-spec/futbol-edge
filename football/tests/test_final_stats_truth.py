@@ -187,4 +187,5 @@ def test_refresh_store_persiste_feed_y_fduk_sin_red_real(tmp_path, monkeypatch):
     assert saved["affects_1x2"] is False
     entry = next(iter(saved["matches"].values()))
     assert entry["home"] == "Barcelona"
-    assert entry["away"] == "RCD Espanyol"
+    assert entry["away"] == "Espanol"
+    assert entry["sources"][SOURCE_API]["latest"]["away_source_name"] == "RCD Espanyol"
