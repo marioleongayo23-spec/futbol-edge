@@ -13,7 +13,18 @@ from futbol_pred.final_stats_truth import (
 from futbol_pred.ingest.football_data_uk import MatchStats
 
 
-def _match(source="API-Football · final", shots=(16, 9)):
+def _match(source="API-Football · final", shots=(16, 9), xg=(2.05, 0.74)):
+    stats = {
+        "goals": {"home": 2, "away": 1, "total": 3},
+        "shots": {"home": shots[0], "away": shots[1], "total": sum(shots)},
+        "sot": {"home": 7, "away": 3, "total": 10},
+        "corners": {"home": 8, "away": 4, "total": 12},
+        "fouls": {"home": 11, "away": 15, "total": 26},
+        "yellows": {"home": 2, "away": 4, "total": 6},
+        "reds": {"home": 0, "away": 1, "total": 1},
+    }
+    if xg is not None:
+        stats["xg"] = {"home": xg[0], "away": xg[1], "total": sum(xg)}
     return {
         "id": "m1",
         "league": "LaLiga",
@@ -24,15 +35,7 @@ def _match(source="API-Football · final", shots=(16, 9)):
         "result": [2, 1],
         "statsRealSource": source,
         "statsRealUpdatedAt": "2026-08-20T23:05:00+02:00",
-        "statsReal": {
-            "goals": {"home": 2, "away": 1, "total": 3},
-            "shots": {"home": shots[0], "away": shots[1], "total": sum(shots)},
-            "sot": {"home": 7, "away": 3, "total": 10},
-            "corners": {"home": 8, "away": 4, "total": 12},
-            "fouls": {"home": 11, "away": 15, "total": 26},
-            "yellows": {"home": 2, "away": 4, "total": 6},
-            "reds": {"home": 0, "away": 1, "total": 1},
-        },
+        "statsReal": stats,
         "alineacion": {"official_fixture_id": 77},
     }
 
@@ -77,6 +80,10 @@ def test_build_observations_emite_ambas_fuentes_con_match_id_comun():
     assert len({row["match_id"] for row in rows}) == 1
     assert audit["api_matches"] == 1
     assert audit["football_data_uk_matches"] == 1
+    api = next(row for row in rows if row["source"] == SOURCE_API)
+    fduk = next(row for row in rows if row["source"] == SOURCE_FDUK)
+    assert api["stats"]["xg"] == {"home": 2.05, "away": 0.74, "total": 2.79}
+    assert "xg" not in fduk["stats"]
 
 
 def test_fduk_ambiguo_no_se_elige_silenciosamente():
@@ -91,7 +98,7 @@ def test_fduk_ambiguo_no_se_elige_silenciosamente():
     assert audit["ambiguous_football_data_uk_matches"] == 1
 
 
-def test_doble_fuente_igual_queda_verificada_y_offsides_single_source():
+def test_doble_fuente_igual_queda_verificada_y_xg_single_source():
     observations, _ = build_observations(
         [_match()],
         league="laliga",
@@ -106,10 +113,28 @@ def test_doble_fuente_igual_queda_verificada_y_offsides_single_source():
     assert entry["status"] == "verified_multi_source"
     assert entry["consensus"]["shots"]["status"] == "agreed"
     assert entry["consensus"]["shots"]["usable"] is True
+    assert entry["consensus"]["xg"]["status"] == "single_source"
+    assert entry["consensus"]["xg"]["sources"] == [SOURCE_API]
+    assert entry["consensus"]["xg"]["confidence"] == 0.6
     assert entry["consensus"]["offsides"]["status"] == "single_source"
     assert entry["consensus"]["offsides"]["sources"] == [SOURCE_FDUK]
+    assert summary["usable_by_stat"]["xg"] == 1
     assert summary["added_revisions"] == 2
     assert summary["affects_1x2"] is False
+
+
+def test_xg_ausente_simplemente_no_aparece_en_truth_store():
+    observations, _ = build_observations(
+        [_match(xg=None)],
+        league="laliga",
+        season=2026,
+        fduk_rows=[_fduk()],
+        captured_at="2026-08-21T08:00:00Z",
+    )
+    archive, _ = update_archive(empty_archive(), observations, updated_at="2026-08-21T08:00:00Z")
+    entry = next(iter(archive["matches"].values()))
+    assert "xg" not in entry["consensus"]
+    assert "xg" not in (archive.get("quality") or {}).get("usable_by_stat", {})
 
 
 def test_conflicto_no_elige_un_proveedor_y_marca_unusable():
@@ -182,10 +207,12 @@ def test_refresh_store_persiste_feed_y_fduk_sin_red_real(tmp_path, monkeypatch):
     )
     assert report["status"] == "updated"
     assert report["added_revisions"] == 2
+    assert report["usable_by_stat"]["xg"] == 1
     saved = json.loads(output.read_text(encoding="utf-8"))
     assert saved["schema"] == "final-stats-truth-v1"
     assert saved["affects_1x2"] is False
     entry = next(iter(saved["matches"].values()))
     assert entry["home"] == "Barcelona"
     assert entry["away"] == "Espanol"
+    assert entry["consensus"]["xg"]["sources"] == [SOURCE_API]
     assert entry["sources"][SOURCE_API]["latest"]["away_source_name"] == "RCD Espanyol"
