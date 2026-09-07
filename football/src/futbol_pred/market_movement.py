@@ -230,7 +230,13 @@ def _sample(match: dict) -> dict | None:
         cutoff=generated_at,
         kickoff=match.get("kickoff"),
     )
-    base = _normalise(snapshot.get("probs"))
+    prior_adjustment = snapshot.get("market_movement_adjustment")
+    base_source = (
+        prior_adjustment.get("before")
+        if isinstance(prior_adjustment, dict) and isinstance(prior_adjustment.get("before"), list)
+        else snapshot.get("probs")
+    )
+    base = _normalise(base_source)
     kickoff = _parse(match.get("kickoff"))
     if movement is None or base is None or kickoff is None:
         return None
