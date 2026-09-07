@@ -137,9 +137,14 @@ def _apply_record(state: dict, row: dict) -> None:
     player = row.get("keeper_player") or "Team goalkeeper unit"
     keeper = state["keepers"].setdefault(
         player,
-        {"player": None if player == "Team goalkeeper unit" else player,
-         "minutes": 0.0, "psxg_weighted": 0.0, "psxg_minutes": 0.0,
-         "plusminus_weighted": 0.0, "plusminus_minutes": 0.0},
+        {
+            "player": None if player == "Team goalkeeper unit" else player,
+            "minutes": 0.0,
+            "psxg_weighted": 0.0,
+            "psxg_minutes": 0.0,
+            "plusminus_weighted": 0.0,
+            "plusminus_minutes": 0.0,
+        },
     )
     keeper["minutes"] += minutes
     psxg = row.get("keeper_psxg90")
@@ -178,7 +183,9 @@ def _team_snapshot(state: dict) -> dict:
             "minutes": round(float(keeper["minutes"]), 1),
         }
         if keeper["psxg_minutes"] > 0:
-            item["psxg90"] = round(keeper["psxg_weighted"] / keeper["psxg_minutes"], 5)
+            item["psxg90"] = round(
+                keeper["psxg_weighted"] / keeper["psxg_minutes"], 5
+            )
         if keeper["plusminus_minutes"] > 0:
             item["psxg_plus_minus90"] = round(
                 keeper["plusminus_weighted"] / keeper["plusminus_minutes"], 5
@@ -219,8 +226,13 @@ def build_historical_archive(
     representada como un único estado consistente.
     """
     generated = _dt(generated_at) or datetime.now(timezone.utc)
-    clean = [row for raw in records if (row := normalise_match_record(raw)) is not None]
-    clean.sort(key=lambda row: (row["match_at"], row["team"], row.get("opponent") or ""))
+    clean = [
+        row for raw in records
+        if (row := normalise_match_record(raw)) is not None
+    ]
+    clean.sort(
+        key=lambda row: (row["match_at"], row["team"], row.get("opponent") or "")
+    )
 
     grouped: dict[datetime, list[dict]] = {}
     for row in clean:
@@ -232,7 +244,9 @@ def build_historical_archive(
     snapshots: list[dict] = []
     for available in sorted(grouped):
         for row in grouped[available]:
-            state = states.setdefault(row["team"], _new_team_state(row["team_source_name"]))
+            state = states.setdefault(
+                row["team"], _new_team_state(row["team_source_name"])
+            )
             _apply_record(state, row)
         teams = {
             team: _team_snapshot(state)
@@ -282,7 +296,9 @@ def build_live_snapshot(
         "teams": deepcopy(teams),
     }
     normal = normalise_snapshot(snapshot)
-    normal["league_keeper_psxg_plus_minus90"] = _league_keeper_rate(normal["teams"])
+    normal["league_keeper_psxg_plus_minus90"] = _league_keeper_rate(
+        normal["teams"]
+    )
     return normal
 
 
@@ -320,19 +336,48 @@ def merge_archives(*archives: dict | list | None) -> dict:
     return {"schema": ARCHIVE_SCHEMA, "snapshots": snapshots}
 
 
+def _semantic_snapshot(snapshot: dict) -> dict:
+    """Quita solo metadatos de ejecución que no cambian la evidencia estadística."""
+    semantic = deepcopy(snapshot)
+    semantic.pop("generated_at", None)
+    return semantic
+
+
 def archive_digest(archive: dict | list) -> str:
-    """SHA256 semántico estable; no depende del orden de entrada."""
+    """SHA256 semántico estable frente a orden y hora de re-exportación.
+
+    ``available_at`` sí forma parte del hash porque define causalidad. También
+    cuentan fuente, versión, política de disponibilidad, equipos y métricas. Solo
+    se excluye ``generated_at`` porque indica cuándo se re-ejecutó el exportador,
+    no qué información era elegible en cada corte.
+    """
     canonical = merge_archives(archive)
-    raw = json.dumps(canonical["snapshots"], sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    semantic = [_semantic_snapshot(row) for row in canonical["snapshots"]]
+    raw = json.dumps(
+        semantic,
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+    )
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 
 def archive_manifest(archive: dict | list) -> dict:
     canonical = merge_archives(archive)
     snapshots = canonical["snapshots"]
-    leagues = sorted({str(row.get("league")) for row in snapshots if row.get("league")})
-    seasons = sorted({int(row.get("season")) for row in snapshots if row.get("season") is not None})
-    teams = sorted({team for row in snapshots for team in (row.get("teams") or {})})
+    leagues = sorted(
+        {str(row.get("league")) for row in snapshots if row.get("league")}
+    )
+    seasons = sorted(
+        {
+            int(row.get("season"))
+            for row in snapshots
+            if row.get("season") is not None
+        }
+    )
+    teams = sorted(
+        {team for row in snapshots for team in (row.get("teams") or {})}
+    )
     return {
         "schema": EXPORT_SCHEMA,
         "snapshot_count": len(snapshots),
@@ -350,14 +395,25 @@ def write_archive(path: str | Path, archive: dict | list) -> dict:
     target.parent.mkdir(parents=True, exist_ok=True)
     canonical = merge_archives(archive)
     payload = {**canonical, "manifest": archive_manifest(canonical)}
-    target.write_text(json.dumps(payload, indent=2, ensure_ascii=False, sort_keys=True) + "\n", encoding="utf-8")
+    target.write_text(
+        json.dumps(payload, indent=2, ensure_ascii=False, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
     return payload
 
 
 # ------------------------------ DataFrame adapter ------------------------------
 
 def _column_token(value) -> str:
-    text = " ".join(str(part) for part in value if str(part) not in {"", "nan", "None"}) if isinstance(value, tuple) else str(value)
+    text = (
+        " ".join(
+            str(part)
+            for part in value
+            if str(part) not in {"", "nan", "None"}
+        )
+        if isinstance(value, tuple)
+        else str(value)
+    )
     text = text.replace("+/-", " plusminus ").replace("±", " plusminus ")
     return re.sub(r"[^a-z0-9]+", "", text.casefold())
 
@@ -375,22 +431,37 @@ def _flatten_frame(frame):
     return df
 
 
-def _find_column(columns, candidates: tuple[str, ...], *, exclude: tuple[str, ...] = ()) -> str | None:
+def _find_column(
+    columns,
+    candidates: tuple[str, ...],
+    *,
+    exclude: tuple[str, ...] = (),
+) -> str | None:
     cols = [str(col) for col in columns]
     for candidate in candidates:
         token = _column_token(candidate)
         for col in cols:
-            if col == token and not any(_column_token(bad) in col for bad in exclude):
+            if col == token and not any(
+                _column_token(bad) in col for bad in exclude
+            ):
                 return col
     for candidate in candidates:
         token = _column_token(candidate)
         for col in cols:
-            if token and token in col and not any(_column_token(bad) in col for bad in exclude):
+            if token and token in col and not any(
+                _column_token(bad) in col for bad in exclude
+            ):
                 return col
     return None
 
 
-def _frame_index(frame, *, value_candidates: tuple[str, ...], label: str) -> dict[tuple[str, str], float]:
+def _frame_index(
+    frame,
+    *,
+    value_candidates: tuple[str, ...],
+    label: str,
+) -> dict[tuple[str, str], float]:
+    del label  # solo documenta la intención de la llamada
     df = _flatten_frame(frame)
     if df is None or getattr(df, "empty", True):
         return {}
@@ -427,17 +498,35 @@ def fbref_frames_to_records(
     team_col = _find_column(schedule.columns, ("team", "squad"))
     date_col = _find_column(schedule.columns, ("date", "matchdate", "game"))
     opponent_col = _find_column(schedule.columns, ("opponent", "opp"))
-    xg_col = _find_column(schedule.columns, ("xg",), exclude=("xga", "opponent"))
+    xg_col = _find_column(
+        schedule.columns, ("xg",), exclude=("xga", "opponent")
+    )
     xga_col = _find_column(schedule.columns, ("xga", "opponentxg"))
     if not team_col or not date_col:
         return []
 
-    npxg_for = _frame_index(shooting_frame, value_candidates=("npxg",), label="npxg_for")
-    npxg_against = _frame_index(opponent_shooting_frame, value_candidates=("npxg",), label="npxg_against")
-    psxg = _frame_index(keeper_frame, value_candidates=("psxg",), label="keeper_psxg90")
+    npxg_for = _frame_index(
+        shooting_frame,
+        value_candidates=("npxg",),
+        label="npxg_for",
+    )
+    npxg_against = _frame_index(
+        opponent_shooting_frame,
+        value_candidates=("npxg",),
+        label="npxg_against",
+    )
+    psxg = _frame_index(
+        keeper_frame,
+        value_candidates=("psxg",),
+        label="keeper_psxg90",
+    )
     psxg_pm = _frame_index(
         keeper_frame,
-        value_candidates=("psxg plusminus 90", "psxg plusminus", "psxg+/-"),
+        value_candidates=(
+            "psxg plusminus 90",
+            "psxg plusminus",
+            "psxg+/-",
+        ),
         label="keeper_psxg_plus_minus90",
     )
 
