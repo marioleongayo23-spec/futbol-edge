@@ -1,16 +1,8 @@
 """Cliente FBref (capa avanzada de xG y stats) vía la librería `soccerdata`.
 
-Por qué `soccerdata` y no un scraper propio (tu prompt #26): habla con FBref de
-forma EDUCADA — cachea a disco, respeta rate limits y normaliza tablas. Picar
-HTML a mano es frágil y se rompe cada vez que FBref cambia el maquetado, además
-de arriesgar baneos.
-
-⚠️ IMPORTANTE — ejecución: FBref bloquea IPs de datacenter/cloud (los runners de
-GitHub Actions suelen recibir 403). Por eso este cliente está pensado para
-correr en TU máquina o Colab (IP residencial) y volcar los datos a Parquet, que
-luego el modelo consume como capa `xg`. No lo llames desde el cron.
-
-Instalación (opcional): pip install "futbol-pred[xg]"   (o: pip install soccerdata)
+La ingesta avanzada NO forma parte del cron de producción: FBref puede bloquear
+IPs cloud/datacenter o pedir CAPTCHA. Este adaptador se usa en local/Colab para
+generar snapshots versionados que luego consume :mod:`futbol_pred.advanced_stats`.
 """
 
 from __future__ import annotations
@@ -22,21 +14,21 @@ import pandas as pd
 from ..config import DATA_DIR
 from ..normalize import canonical_team
 
-# Mapa de nuestras ligas a los identificadores de soccerdata/FBref.
 FBREF_LEAGUES = {
     "laliga": "ESP-La Liga",
     "segunda": "ESP-La Liga 2",
     "champions": "INT-Champions League",
 }
 
-# Columnas de interés por tipo de tabla (subconjunto útil de tus #14-#22).
+# Tipos/columnas útiles según la API actual de soccerdata. El tipo de portero es
+# ``keeper``; ``keeper_adv`` era una suposición antigua no documentada.
 USEFUL_COLUMNS = {
     "standard": ["Gls", "Ast", "xG", "npxG", "xAG", "PrgP", "PrgC"],
     "shooting": ["Sh", "SoT", "SoT%", "G/Sh", "npxG/Sh", "Dist"],
     "passing": ["Cmp%", "PrgP", "KP", "1/3", "PPA", "xA"],
     "gca": ["SCA", "SCA90", "GCA", "GCA90"],
     "defense": ["Tkl", "TklW", "Int", "Blocks", "Clr"],
-    "keeper_adv": ["PSxG", "PSxG+/-", "/90"],
+    "keeper": ["PSxG", "PSxG+/-", "/90"],
     "possession": ["Touches", "Att Pen", "Carries", "PrgC", "CPA"],
 }
 
@@ -51,14 +43,14 @@ def soccerdata_available() -> bool:
 
 
 class FBrefClient:
-    """Descarga stats de FBref a nivel equipo/jugador vía soccerdata."""
+    """Descarga stats FBref para producir artefactos offline, nunca para cron."""
 
     def __init__(self, cache_dir: str | Path | None = None):
         if not soccerdata_available():
             raise RuntimeError(
                 "FBref requiere 'soccerdata'. Instálalo con: pip install soccerdata. "
-                "Recuerda ejecutar la ingesta FBref en local/Colab, no en el cron "
-                "(FBref bloquea IPs de datacenter)."
+                "Ejecuta esta ingesta en local/Colab y publica después el snapshot; "
+                "producción no depende del scraping en vivo."
             )
         self.cache_dir = Path(cache_dir) if cache_dir else DATA_DIR / "fbref_cache"
         self.cache_dir.mkdir(parents=True, exist_ok=True)
@@ -66,6 +58,8 @@ class FBrefClient:
     def _reader(self, league: str, season: int):
         import soccerdata as sd
 
+        if league not in FBREF_LEAGUES:
+            raise ValueError(f"Liga FBref no soportada: {league}")
         return sd.FBref(
             leagues=FBREF_LEAGUES[league],
             seasons=season,
@@ -73,17 +67,45 @@ class FBrefClient:
         )
 
     def team_season_stats(
-        self, league: str, season: int, stat_type: str = "standard"
+        self,
+        league: str,
+        season: int,
+        stat_type: str = "standard",
+        *,
+        opponent_stats: bool = False,
     ) -> pd.DataFrame:
-        """Stats de equipo por temporada, con nombres canónicos de equipo."""
+        """Stats agregadas; ``opponent_stats`` permite xG concedido real."""
         reader = self._reader(league, season)
-        df = reader.read_team_season_stats(stat_type=stat_type)
+        df = reader.read_team_season_stats(
+            stat_type=stat_type,
+            opponent_stats=opponent_stats,
+        )
+        return normalize_fbref_teams(df)
+
+    def team_match_stats(
+        self,
+        league: str,
+        season: int,
+        stat_type: str = "schedule",
+        *,
+        opponent_stats: bool = False,
+        team: str | None = None,
+        force_cache: bool = False,
+    ) -> pd.DataFrame:
+        """Stats por partido para construir un histórico fechado/as-of."""
+        reader = self._reader(league, season)
+        df = reader.read_team_match_stats(
+            stat_type=stat_type,
+            opponent_stats=opponent_stats,
+            team=team,
+            force_cache=force_cache,
+        )
         return normalize_fbref_teams(df)
 
     def player_season_stats(
         self, league: str, season: int, stat_type: str = "standard"
     ) -> pd.DataFrame:
-        """Stats por jugador (para futuras features de alineación, tu #23-#24)."""
+        """Stats por jugador; usa ``stat_type='keeper'`` para porteros."""
         reader = self._reader(league, season)
         return reader.read_player_season_stats(stat_type=stat_type)
 
@@ -92,17 +114,13 @@ class FBrefClient:
         try:
             df.to_parquet(out)
         except Exception:
-            out = out.with_suffix(".csv")  # fallback CSV (tu #7)
+            out = out.with_suffix(".csv")
             df.to_csv(out)
         return out
 
 
 def normalize_fbref_teams(df: pd.DataFrame) -> pd.DataFrame:
-    """Añade una columna 'team_canonical' resolviendo el nombre FBref.
-
-    Trabaja sobre el índice ('team') o una columna 'team' si existe, sin
-    inventar cruces (canonical_team avisa si no reconoce un equipo).
-    """
+    """Añade ``team_canonical`` cuando la tabla contiene una identidad de equipo."""
     out = df.copy()
     if "team" in out.columns:
         names = out["team"]
@@ -111,6 +129,6 @@ def normalize_fbref_teams(df: pd.DataFrame) -> pd.DataFrame:
     elif isinstance(out.index, pd.MultiIndex) and "team" in out.index.names:
         names = out.index.get_level_values("team").to_series(index=out.index)
     else:
-        return out  # sin equipo identificable, se devuelve tal cual
-    out["team_canonical"] = [canonical_team(str(n)) for n in names]
+        return out
+    out["team_canonical"] = [canonical_team(str(name)) for name in names]
     return out
