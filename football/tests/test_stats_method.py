@@ -1,7 +1,9 @@
-"""Aplicación en producción del método por-equipo (banco 80/20) con guardia.
+"""P3.4: una sola autoridad de producción para el método estadístico.
 
-Solo se cambia el método de un equipo+estadística (de disciplina) cuando "equipo"
-supera de forma robusta al actual (ataque×defensa) en su propio 20% oculto.
+El banco 80/20 legacy sigue comparando algoritmos y mostrando qué método habría
+funcionado mejor, pero ya no puede mutar producción. La promoción real vive en
+``StatsPredictor.validate_regression_champions``. El override manual de
+``fixture_payload`` se conserva únicamente por compatibilidad.
 """
 
 from __future__ import annotations
@@ -20,17 +22,12 @@ warnings.simplefilter("ignore")
 
 
 def _matches():
-    """Alpha comete SIEMPRE ~10 faltas (su media lo clava); los rivales varían
-    mucho su 'against' → ataque×defensa falla y 'equipo' gana con holgura."""
+    """Alpha comete SIEMPRE ~10 faltas; su media propia gana analíticamente."""
     teams = ["Alpha", "Beta", "Gamma", "Delta", "Epsilon", "Zeta"]
     goals = {t: 0.6 + 0.5 * i for i, t in enumerate(teams)}
     start = datetime(2024, 8, 1, tzinfo=timezone.utc)
     out = []
     d = 0
-    # Liga completa (todos contra todos, ida y vuelta) repetida varias temporadas.
-    # Alpha comete SIEMPRE 10 faltas; el resto 20. Con el rival promedio (~18) el
-    # ajuste ataque×defensa manda la predicción de Alpha a ~14, lejos del 10 real,
-    # mientras su propia media lo clava → "equipo" gana con holgura.
     for _season in range(8):
         for h in teams:
             for a in teams:
@@ -48,27 +45,34 @@ def _matches():
     return out
 
 
-def test_guardia_adopta_equipo_cuando_gana_claro():
+def test_holdout_detecta_equipo_pero_no_lo_promociona_a_produccion():
     rep = holdout_report(_matches())
     alpha = rep["by_team"][_canon("Alpha")]["stats"]["fouls"]
-    # Para Alpha, su propia media predice las faltas mucho mejor → se adopta.
-    assert alpha["adopt"] == "equipo"
-    assert alpha["adopt_gain"] and alpha["adopt_gain"] >= 10
-    # El mapa de producción recoge ese cambio (solo disciplina).
+
+    # El banco sigue diciendo la verdad analítica.
+    assert alpha["best"] == "equipo"
+    assert alpha["analytic_gain"] is not None and alpha["analytic_gain"] >= 10
+
+    # P3.4: el banco legacy ya no tiene autoridad de producción.
+    assert alpha["adopt"] == "ataque_defensa"
+    assert alpha["adopt_gain"] is None
+    assert alpha["production_selector"] == "StatsPredictor.validate_regression_champions"
+
+    # Por tanto el antiguo mapa de overrides queda vacío.
     smap = _build_stats_method({"LaLiga": {**rep, "label": "LaLiga"}})
-    assert smap["LaLiga"][_canon("Alpha")]["fouls"] == "equipo"
+    assert smap == {}
 
 
-def test_equipo_estable_no_cambia_por_defecto():
-    # Un equipo cuyo mejor método es el de por defecto no aparece en el mapa.
+def test_holdout_no_puede_crear_overrides_para_ninguna_estadistica():
     rep = holdout_report(_matches())
     smap = _build_stats_method({"LaLiga": {**rep, "label": "LaLiga"}})
-    # Ningún override fuera de las estadísticas de disciplina.
-    for team, ov in smap.get("LaLiga", {}).items():
-        assert set(ov) <= {"fouls", "yellows", "reds"}
+    assert smap == {}
+    for info in rep["by_team"].values():
+        for stat in (info.get("stats") or {}).values():
+            assert stat["adopt"] == "ataque_defensa"
 
 
-def test_fixture_payload_aplica_el_metodo_por_equipo():
+def test_fixture_payload_mantiene_override_manual_solo_por_compatibilidad():
     ms = _matches()
     stats = StatsPredictor().fit(ms, fit_pseudo_xg=False)
     fixtures = [Fixture(api_id=i, league="laliga", season=2026,
@@ -84,8 +88,9 @@ def test_fixture_payload_aplica_el_metodo_por_equipo():
     base = fixture_payload(upcoming, model, "2026-09-05T00:00:00+02:00", stats=stats)
     over = fixture_payload(upcoming, model, "2026-09-05T00:00:00+02:00", stats=stats,
                            stats_method={_canon("Alpha"): {"fouls": "equipo"}})
-    # Con override, las faltas del local usan la media propia de Alpha (~10).
-    assert over["stats"]["fouls"]["home"] == round(stats.home.get(_canon("Alpha")).get("fouls").for_avg, 2)
+
+    assert over["stats"]["fouls"]["home"] == round(
+        stats.home.get(_canon("Alpha")).get("fouls").for_avg, 2
+    )
     assert over["stats_method"]["fouls"]["home"] == "equipo"
-    # Sin override, es el método por defecto (distinto salvo casualidad).
     assert "stats_method" not in base
