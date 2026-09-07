@@ -18,6 +18,7 @@ from datetime import datetime, timezone
 import json
 
 from . import dashboard
+from .advanced_stats import attach_advanced_context, load_archive
 from .feed_quality import load_feed, write_feed_safely
 from .matchday_lineup_baseline import refresh_payload as refresh_lineup_baseline
 
@@ -33,6 +34,24 @@ def build_candidate(now: datetime | None = None) -> tuple[dict, dict]:
     now = now or datetime.now(timezone.utc)
     previous = load_feed(dashboard.OUTPUT)
     payload = dashboard.build_dashboard(now=now)
+
+    # La capa avanzada se consume desde snapshots versionados ya generados fuera
+    # del cron. Sin archivo o sin snapshot as-of válido, no cambia ningún partido.
+    archive = load_archive()
+    attached = attach_advanced_context(
+        payload.get("matches") or [],
+        archive,
+        season=int(payload.get("season") or dashboard.current_season(now)),
+        now=now,
+    )
+    payload["advanced_stats_meta"] = {
+        "schema": archive.get("schema"),
+        "snapshots": len(archive.get("snapshots") or []),
+        "matches_attached": attached,
+        "status": "candidate_context_only" if attached else "awaiting_versioned_snapshot",
+        "affects_1x2": False,
+        "gate": "historical_as_of_snapshots + rolling_walk_forward_vs_champion_pending",
+    }
 
     # ``source_health`` es operativo y no forma parte del LKG top-level. Se
     # conserva aquí para que el backfill de XI respete la cuota diaria conocida.
@@ -58,6 +77,7 @@ def main() -> int:
 
     payload, baseline_stats = build_candidate()
     print("[lineup-baseline] " + json.dumps(baseline_stats, ensure_ascii=False, sort_keys=True))
+    print("[advanced-stats] " + json.dumps(payload.get("advanced_stats_meta") or {}, ensure_ascii=False, sort_keys=True))
 
     if not payload.get("matches"):
         if previous_usable:
