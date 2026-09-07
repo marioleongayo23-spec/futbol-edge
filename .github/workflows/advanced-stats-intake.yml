@@ -1,0 +1,79 @@
+name: Advanced stats intake P2.4
+
+on:
+  pull_request:
+    paths:
+      - "football/data/advanced_stats_snapshots.json"
+      - "football/src/futbol_pred/advanced_stats.py"
+      - "football/src/futbol_pred/advanced_stats_export.py"
+      - "football/src/futbol_pred/advanced_stats_intake.py"
+      - "football/scripts/fetch_fbref.py"
+      - "football/tests/test_advanced_stats_intake.py"
+      - ".github/workflows/advanced-stats-intake.yml"
+  push:
+    branches: [main]
+    paths:
+      - "football/data/advanced_stats_snapshots.json"
+      - "football/src/futbol_pred/advanced_stats.py"
+      - "football/src/futbol_pred/advanced_stats_export.py"
+      - "football/src/futbol_pred/advanced_stats_intake.py"
+      - "football/scripts/fetch_fbref.py"
+      - "football/tests/test_advanced_stats_intake.py"
+      - ".github/workflows/advanced-stats-intake.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: football
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: football/requirements.txt
+
+      - name: Instalar backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -e .
+
+      - name: Tests del intake y export avanzado
+        run: |
+          pytest -q \
+            tests/test_advanced_stats.py \
+            tests/test_advanced_stats_export.py \
+            tests/test_advanced_stats_intake.py \
+            tests/test_advanced_residual.py \
+            tests/test_advanced_outcome_report.py
+
+      - name: Validar archivo versionado si existe
+        run: |
+          if [ -f data/advanced_stats_snapshots.json ]; then
+            python -m futbol_pred.advanced_stats_intake \
+              --validate-repository \
+              --existing data/advanced_stats_snapshots.json
+          else
+            echo "Sin archivo avanzado versionado todavía: estado válido hasta la primera captura residencial"
+          fi
+
+      - name: Confirmar que P2.4 no cablea producción
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          dashboard = Path("src/futbol_pred/dashboard.py").read_text(encoding="utf-8")
+          hot = Path("src/futbol_pred/hot_refresh.py").read_text(encoding="utf-8")
+          forbidden = "advanced_residual_probabilities"
+          assert forbidden not in dashboard
+          assert forbidden not in hot
+          print("P2.4 intake only: no production 1X2 wiring")
+          PY
