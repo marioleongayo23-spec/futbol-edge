@@ -3,16 +3,12 @@
 Para cada estadística estimamos, por equipo y en total, el valor esperado y la
 probabilidad de superar cualquier línea. El baseline combina la producción del
 equipo con la concesión del rival, separando local/visitante. Cuando existe
-muestra fechada suficiente, un challenger con decaimiento temporal se valida en
-una cola cronológica y solo se activa, estadística a estadística, si reduce el
-MAE fuera de muestra. Los conteos usan Poisson o Negative Binomial según la
-sobredispersión observada.
+muestra fechada suficiente, challengers temporales se validan cronológicamente
+antes de entrar en producción.
 
 El histórico de otra división puede entrar como ``auxiliary_matches``. Ese
 histórico SOLO alimenta los acumuladores de cada equipo: nunca las medias de la
-liga objetivo, la dispersión, el pseudo-xG ni el gate de recencia. Así un recién
-ascendido conserva su identidad estadística sin contaminar el baseline de la
-categoría a la que llega.
+liga objetivo, la dispersión, el pseudo-xG ni los gates de selección.
 """
 
 from __future__ import annotations
@@ -32,6 +28,16 @@ STAT_NAMES = ("shots", "sot", "corners", "fouls", "yellows", "reds", "offsides",
 MIN_TEMPORAL_MATCHES = 80
 MIN_TEMPORAL_VALIDATION = 20
 DEFAULT_HALF_LIFE_DAYS = 365.25
+
+# P1 statistical champion: solo disciplina se promociona automáticamente en esta
+# fase. Remates/SOT/córners alimentan pseudo-xG y, por tanto, el 1X2; no se cambia
+# ese camino sin un gate específico del modelo de resultado.
+CHAMPION_STATS = ("fouls", "yellows")
+REGRESSION_SCHEMA = "stat-regression-v1"
+MIN_REGRESSION_MATCHES = 80
+MIN_REGRESSION_VALIDATION = 20
+REGRESSION_TEAM_MIN = 12
+REGRESSION_ADOPT_MARGIN = 0.10
 
 
 @dataclass
@@ -97,12 +103,7 @@ def validate_temporal_decay(
     half_life_days: float = DEFAULT_HALF_LIFE_DAYS,
     validation_fraction: float = 0.25,
 ) -> dict:
-    """Valida recencia en una cola temporal y decide por estadística.
-
-    La cola nunca participa en el ajuste del baseline ni del challenger. Tras la
-    selección, el predictor de producción puede reajustarse con todo el histórico,
-    pero solo aplica recencia a las estadísticas cuyo MAE validado fue menor.
-    """
+    """Valida recencia en una cola temporal y decide por estadística."""
 
     dated = _dated_rows(matches)
     if len(dated) < MIN_TEMPORAL_MATCHES:
@@ -127,6 +128,7 @@ def validate_temporal_decay(
         temporal_stats=set(),
         half_life_days=half_life_days,
         auto_temporal=False,
+        auto_regression=False,
         fit_pseudo_xg=False,
     )
     challenger = StatsPredictor().fit(
@@ -134,6 +136,7 @@ def validate_temporal_decay(
         temporal_stats=set(STAT_NAMES),
         half_life_days=half_life_days,
         auto_temporal=False,
+        auto_regression=False,
         fit_pseudo_xg=False,
     )
 
@@ -184,6 +187,12 @@ class StatsPredictor:
     auxiliary_rows: int = 0
     auxiliary_teams: set[str] = field(default_factory=set)
 
+    # P1: artefactos que sí pueden reproducirse en producción. El mapa se obtiene
+    # únicamente de una cola temporal no usada para ajustar los coeficientes.
+    regression_validation: dict | None = None
+    regression_artifacts: dict[str, dict] = field(default_factory=dict)
+    regression_methods_by_team: dict[str, dict[str, str]] = field(default_factory=dict)
+
     def fit(
         self,
         matches: list[MatchStats],
@@ -192,13 +201,13 @@ class StatsPredictor:
         auto_temporal: bool = True,
         fit_pseudo_xg: bool = True,
         auxiliary_matches: list[MatchStats] | None = None,
+        auto_regression: bool = True,
     ) -> "StatsPredictor":
         """Ajusta el predictor con una liga primaria y, opcionalmente, memoria auxiliar.
 
         ``matches`` es la única muestra que define el entorno de la liga objetivo.
         ``auxiliary_matches`` únicamente añade historia a los equipos que aparecen
-        allí; jamás entra en medias de liga, dispersión, pseudo-xG ni validación
-        temporal.
+        allí; jamás entra en medias de liga, dispersión, pseudo-xG ni validación.
         """
         if temporal_stats is None and auto_temporal:
             self.temporal_validation = validate_temporal_decay(matches, half_life_days)
@@ -228,6 +237,23 @@ class StatsPredictor:
                     (float(shots[0]), float(sot[0]), float(goals[0])),
                     (float(shots[1]), float(sot[1]), float(goals[1])),
                 ])
+
+        # El gate se calcula solo con la liga primaria y antes de añadir memoria
+        # auxiliar. Los coeficientes de producción se reajustan con TODA la muestra
+        # primaria una vez que el challenger ha demostrado mejora fuera de muestra.
+        if auto_regression:
+            self.regression_validation = validate_regression_champions(matches)
+            self.regression_methods_by_team = {
+                team: dict(methods)
+                for team, methods in (self.regression_validation.get("methods_by_team") or {}).items()
+            }
+            accepted_stats = {
+                stat
+                for methods in self.regression_methods_by_team.values()
+                for stat, method in methods.items()
+                if method == "regresion"
+            }
+            self.regression_artifacts = self._fit_regression_artifacts(matches, accepted_stats)
 
         if auxiliary_matches:
             self.add_auxiliary_team_history(
@@ -297,6 +323,81 @@ class StatsPredictor:
         exp_away = (a_for + h_against) / 2.0
         return exp_home, exp_away
 
+    def _regression_features(self, home: str, away: str, stat: str, *, home_side: bool) -> list[float] | None:
+        lh = self.league_home[stat].for_avg
+        la = self.league_away[stat].for_avg
+        if lh is None or la is None:
+            return None
+        if home_side:
+            own = self.home[home][stat].for_avg if self.home[home][stat].n else lh
+            opp = self.away[away][stat].against_avg if self.away[away][stat].n else lh
+            league = lh
+        else:
+            own = self.away[away][stat].for_avg if self.away[away][stat].n else la
+            opp = self.home[home][stat].against_avg if self.home[home][stat].n else la
+            league = la
+        return [float(own), float(opp), float(league), 1.0]
+
+    def _fit_regression_artifact(self, matches: list[MatchStats], stat: str) -> dict | None:
+        rows: list[list[float]] = []
+        targets: list[float] = []
+        for match in matches:
+            actual = match.stats.get(stat)
+            if not actual:
+                continue
+            home = canonical_team(match.home_team)
+            away = canonical_team(match.away_team)
+            hf = self._regression_features(home, away, stat, home_side=True)
+            af = self._regression_features(home, away, stat, home_side=False)
+            if hf is None or af is None:
+                continue
+            rows.extend((hf, af))
+            targets.extend((float(actual[0]), float(actual[1])))
+        if len(rows) < 30:
+            return None
+        coef, *_ = np.linalg.lstsq(np.asarray(rows, dtype=float), np.asarray(targets, dtype=float), rcond=None)
+        return {
+            "schema": REGRESSION_SCHEMA,
+            "stat": stat,
+            "features": ["ataque_propio", "defensa_rival", "media_liga_lado", "intercept"],
+            "coefficients": [float(value) for value in coef],
+            "n": len(rows) // 2,
+        }
+
+    def _fit_regression_artifacts(self, matches: list[MatchStats], stats: set[str]) -> dict[str, dict]:
+        out: dict[str, dict] = {}
+        for stat in sorted(stats):
+            artifact = self._fit_regression_artifact(matches, stat)
+            if artifact:
+                out[stat] = artifact
+        return out
+
+    def _regression_expected(
+        self,
+        home: str,
+        away: str,
+        stat: str,
+        *,
+        home_side: bool,
+        artifact: dict | None = None,
+    ) -> float | None:
+        artifact = artifact or self.regression_artifacts.get(stat)
+        if not artifact or artifact.get("schema") != REGRESSION_SCHEMA:
+            return None
+        features = self._regression_features(home, away, stat, home_side=home_side)
+        coefficients = artifact.get("coefficients")
+        if features is None or not isinstance(coefficients, list) or len(coefficients) != len(features):
+            return None
+        value = float(np.dot(np.asarray(coefficients, dtype=float), np.asarray(features, dtype=float)))
+        return max(0.0, value)
+
+    def method_for(self, team: str, stat: str) -> str:
+        team = canonical_team(team)
+        method = (self.regression_methods_by_team.get(team) or {}).get(stat)
+        if method == "regresion" and stat in self.regression_artifacts:
+            return method
+        return "ataque_defensa"
+
     def predict_fixture(self, home: str, away: str) -> dict[str, dict]:
         home = canonical_team(home)
         away = canonical_team(away)
@@ -306,13 +407,29 @@ class StatsPredictor:
             if exp is None:
                 continue
             eh, ea = exp
+            home_method = self.method_for(home, stat)
+            away_method = self.method_for(away, stat)
+            if home_method == "regresion":
+                candidate = self._regression_expected(home, away, stat, home_side=True)
+                if candidate is not None:
+                    eh = candidate
+                else:
+                    home_method = "ataque_defensa"
+            if away_method == "regresion":
+                candidate = self._regression_expected(home, away, stat, home_side=False)
+                if candidate is not None:
+                    ea = candidate
+                else:
+                    away_method = "ataque_defensa"
             out[stat] = {
                 "home": round(eh, 2),
                 "away": round(ea, 2),
                 "total": round(eh + ea, 2),
-                "home_std": round(eh ** 0.5, 2),
-                "away_std": round(ea ** 0.5, 2),
-                "total_std": round((eh + ea) ** 0.5, 2),
+                "home_std": round(max(0.0, eh) ** 0.5, 2),
+                "away_std": round(max(0.0, ea) ** 0.5, 2),
+                "total_std": round(max(0.0, eh + ea) ** 0.5, 2),
+                "method_home": home_method,
+                "method_away": away_method,
             }
         return out
 
@@ -367,3 +484,144 @@ class StatsPredictor:
             "prob_over": round(over, 3),
             "prob_under": round(1.0 - over, 3),
         }
+
+
+def validate_regression_champions(
+    matches: list[MatchStats],
+    *,
+    stats: tuple[str, ...] = CHAMPION_STATS,
+    train_fraction: float = 0.8,
+) -> dict:
+    """Valida ``regresion`` frente a ``ataque_defensa`` en una cola cronológica.
+
+    El gate es por equipo+estadística. Un equipo cambia solo si tiene al menos
+    ``REGRESSION_TEAM_MIN`` observaciones propias en el tramo oculto y reduce MAE
+    al menos ``REGRESSION_ADOPT_MARGIN``. Los coeficientes usados para validar se
+    ajustan exclusivamente con el tramo de entrenamiento.
+    """
+
+    dated = _dated_rows(matches)
+    if len(dated) < MIN_REGRESSION_MATCHES:
+        return {
+            "schema": REGRESSION_SCHEMA,
+            "status": "blocked_insufficient_dated_sample",
+            "accepted": False,
+            "minimum_required": MIN_REGRESSION_MATCHES,
+            "n": len(dated),
+            "methods_by_team": {},
+            "by_stat": {},
+        }
+
+    split = min(
+        len(dated) - MIN_REGRESSION_VALIDATION,
+        max(1, round(len(dated) * train_fraction)),
+    )
+    train, validation = dated[:split], dated[split:]
+    if len(validation) < MIN_REGRESSION_VALIDATION:
+        return {
+            "schema": REGRESSION_SCHEMA,
+            "status": "blocked_insufficient_validation",
+            "accepted": False,
+            "n_train": len(train),
+            "n_validation": len(validation),
+            "methods_by_team": {},
+            "by_stat": {},
+        }
+
+    predictor = StatsPredictor().fit(
+        train,
+        auto_regression=False,
+        fit_pseudo_xg=False,
+    )
+    artifacts = predictor._fit_regression_artifacts(train, set(stats))
+
+    team_errors: dict[str, dict[str, dict[str, list[float]]]] = defaultdict(
+        lambda: defaultdict(lambda: defaultdict(list))
+    )
+    stat_errors: dict[str, dict[str, list[float]]] = defaultdict(lambda: defaultdict(list))
+
+    for match in validation:
+        home = canonical_team(match.home_team)
+        away = canonical_team(match.away_team)
+        for stat in stats:
+            actual = match.stats.get(stat)
+            artifact = artifacts.get(stat)
+            default = predictor._expected(home, away, stat)
+            if not actual or not artifact or default is None:
+                continue
+            rh = predictor._regression_expected(home, away, stat, home_side=True, artifact=artifact)
+            ra = predictor._regression_expected(home, away, stat, home_side=False, artifact=artifact)
+            if rh is None or ra is None:
+                continue
+            default_h, default_a = default
+            pairs = (
+                (home, float(actual[0]), float(default_h), float(rh)),
+                (away, float(actual[1]), float(default_a), float(ra)),
+            )
+            for team, real, base, reg in pairs:
+                base_err = abs(base - real)
+                reg_err = abs(reg - real)
+                team_errors[team][stat]["ataque_defensa"].append(base_err)
+                team_errors[team][stat]["regresion"].append(reg_err)
+                stat_errors[stat]["ataque_defensa"].append(base_err)
+                stat_errors[stat]["regresion"].append(reg_err)
+
+    methods_by_team: dict[str, dict[str, str]] = {}
+    team_report: dict[str, dict] = {}
+    for team, stat_map in team_errors.items():
+        for stat, methods in stat_map.items():
+            base = methods.get("ataque_defensa") or []
+            reg = methods.get("regresion") or []
+            if len(base) != len(reg) or len(base) < REGRESSION_TEAM_MIN:
+                continue
+            base_mae = float(np.mean(base))
+            reg_mae = float(np.mean(reg))
+            gain = (1.0 - reg_mae / base_mae) if base_mae > 0 else 0.0
+            accepted = base_mae > 0 and reg_mae <= base_mae * (1.0 - REGRESSION_ADOPT_MARGIN)
+            if accepted:
+                methods_by_team.setdefault(team, {})[stat] = "regresion"
+            team_report.setdefault(team, {})[stat] = {
+                "n": len(base),
+                "default_mae": round(base_mae, 4),
+                "regression_mae": round(reg_mae, 4),
+                "gain_pct": round(gain * 100.0, 1),
+                "accepted": accepted,
+                "method": "regresion" if accepted else "ataque_defensa",
+            }
+
+    by_stat: dict[str, dict] = {}
+    for stat, methods in stat_errors.items():
+        base = methods.get("ataque_defensa") or []
+        reg = methods.get("regresion") or []
+        if not base or len(base) != len(reg):
+            continue
+        base_mae = float(np.mean(base))
+        reg_mae = float(np.mean(reg))
+        by_stat[stat] = {
+            "n": len(base),
+            "default_mae": round(base_mae, 4),
+            "regression_mae": round(reg_mae, 4),
+            "gain_pct": round((1.0 - reg_mae / base_mae) * 100.0, 1) if base_mae > 0 else None,
+            "artifact": artifacts.get(stat),
+        }
+
+    accepted = bool(methods_by_team)
+    return {
+        "schema": REGRESSION_SCHEMA,
+        "status": "accepted_partial" if accepted else "blocked_by_gate",
+        "accepted": accepted,
+        "gate": {
+            "default": "ataque_defensa",
+            "challenger": "regresion",
+            "min_team_validation_n": REGRESSION_TEAM_MIN,
+            "min_relative_mae_gain": REGRESSION_ADOPT_MARGIN,
+            "chronological": True,
+        },
+        "n_train": len(train),
+        "n_validation": len(validation),
+        "train_end": train[-1].kickoff.isoformat() if train and train[-1].kickoff else None,
+        "validation_start": validation[0].kickoff.isoformat() if validation and validation[0].kickoff else None,
+        "methods_by_team": methods_by_team,
+        "by_team": team_report,
+        "by_stat": by_stat,
+    }
