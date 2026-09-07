@@ -109,16 +109,20 @@ def test_refresco_actualiza_consenso_value_y_recalibracion_sin_tocar_model_probs
     match = payload["matches"][0]
     assert changed is True
     assert stats["refreshed"] == 1
+    assert stats["market_snapshots"] == 1
     assert client.calls == ["LaLiga"]
     assert match["model_probs"] == before_model
     assert match["odds"]["1x2"]["odds"] == {"1": 1.81, "X": 3.78, "2": 4.45}
     assert match["odds"]["meta"]["latest_1x2"] == {"1": 1.81, "X": 3.78, "2": 4.45}
     assert match["odds"]["meta"]["movement_source"] == "the_odds_api_live"
     assert match["market_live_recalibration"]["after"] == match["probs"]
+    assert len(match["market_history"]) == 1
+    assert match["market_history"][0]["schema"] == "market-snapshot-v1"
     assert any(row["market"] == "1x2" for row in match["value"])
     assert any(row["market"] == "ou25" for row in match["value"])
     assert any(row["market"] == "player_shots" for row in match["value"])
     assert payload["source_health"]["the_odds_api"]["remaining"] == 20000
+    assert payload["market_movement_calibration"]["LaLiga"]["accepted"] is False
 
 
 def test_no_reconsulta_si_el_ttl_aun_no_ha_vencido():
@@ -134,9 +138,11 @@ def test_no_reconsulta_si_el_ttl_aun_no_ha_vencido():
         client=client,
     )
 
-    assert changed is False
+    # Puede escribir únicamente la política observacional nueva, pero no consulta API.
+    assert changed is True
     assert stats["leagues_queried"] == 0
     assert client.calls == []
+    assert payload["market_movement_calibration"]["LaLiga"]["status"] == "blocked_insufficient_live_snapshots"
 
 
 def test_una_llamada_por_liga_refresca_varios_partidos():
