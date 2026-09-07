@@ -26,6 +26,13 @@ import requests
 
 from .feed_quality import load_feed, write_feed_safely
 from .hot_refresh import MADRID, OUTPUT, _aware, _parse
+from .market_movement import (
+    append_market_snapshot,
+    apply_movement_policy,
+    build_market_snapshot,
+    learn_market_movement_challenger,
+    movement_summary,
+)
 
 BASE_URL = "https://api.the-odds-api.com/v4"
 SPORT_KEYS = {
@@ -233,7 +240,13 @@ def _recalibrate_one_x_two(match: dict, latest: dict, fair: dict, stamp: str) ->
     }
 
 
-def _apply_market(match: dict, market: dict, now_local: datetime, ttl: int) -> bool:
+def _apply_market(
+    match: dict,
+    market: dict,
+    now_local: datetime,
+    ttl: int,
+    movement_policy: dict | None = None,
+) -> bool:
     one = market.get("1x2")
     if not one:
         return False
@@ -276,7 +289,46 @@ def _apply_market(match: dict, market: dict, now_local: datetime, ttl: int) -> b
     new_core = json.dumps(block, sort_keys=True, default=str)
     match["odds"] = block
 
+    snapshot = build_market_snapshot(
+        kickoff=match.get("kickoff"),
+        captured_at=stamp,
+        odds_1x2=one,
+        fair_1x2=fair,
+        provider="The Odds API",
+        source_updated_at=market.get("source_updated_at") or stamp,
+    )
+    append_market_snapshot(match, snapshot)
+    movement = movement_summary(
+        match.get("market_history"),
+        cutoff=stamp,
+        kickoff=match.get("kickoff"),
+    )
+    if movement:
+        match["market_movement"] = movement
+
     _recalibrate_one_x_two(match, one, fair, stamp)
+
+    before_movement = list(match.get("probs") or [])
+    adjusted = apply_movement_policy(before_movement, movement, movement_policy)
+    if (
+        isinstance(movement_policy, dict)
+        and movement_policy.get("accepted")
+        and adjusted is not None
+        and len(before_movement) == 3
+    ):
+        after_movement = [round(adjusted["1"] * 100, 2), round(adjusted["X"] * 100, 2), round(adjusted["2"] * 100, 2)]
+        match["probs"] = after_movement
+        match["market_movement_adjustment"] = {
+            "at": stamp,
+            "policy_schema": movement_policy.get("schema"),
+            "beta": (movement_policy.get("production") or {}).get("beta"),
+            "before": before_movement,
+            "after": after_movement,
+            "movement": movement,
+            "gate": movement_policy.get("gate"),
+        }
+    else:
+        match.pop("market_movement_adjustment", None)
 
     preserved = [
         dict(row) for row in (match.get("value") or [])
@@ -357,11 +409,34 @@ class OddsHotClient:
         return data if isinstance(data, list) else []
 
 
+def _movement_policies(payload: dict) -> dict[str, dict]:
+    matches = [match for match in (payload.get("matches") or []) if isinstance(match, dict)]
+    return {
+        league: learn_market_movement_challenger([
+            match for match in matches if match.get("league") == league
+        ])
+        for league in SPORT_KEYS
+    }
+
+
 def refresh_payload(payload: dict, now: datetime | None = None, client: OddsHotClient | None = None) -> tuple[bool, dict]:
     now_local = _aware(now or datetime.now(timezone.utc)).astimezone(MADRID)
     client = client or OddsHotClient()
+
+    movement_policies = _movement_policies(payload)
+    old_policies = payload.get("market_movement_calibration")
+    policy_changed = old_policies != movement_policies
+    payload["market_movement_calibration"] = movement_policies
+
     if not client.available:
-        return False, {"available": False, "refreshed": 0, "leagues_queried": 0}
+        if policy_changed:
+            payload["generated_at"] = now_local.isoformat()
+        return policy_changed, {
+            "available": False,
+            "refreshed": 0,
+            "leagues_queried": 0,
+            "movement_policies": movement_policies,
+        }
 
     previous_health = ((payload.get("source_health") or {}).get("the_odds_api") or {})
     try:
@@ -369,7 +444,15 @@ def refresh_payload(payload: dict, now: datetime | None = None, client: OddsHotC
     except (TypeError, ValueError):
         previous_remaining = None
     if previous_remaining is not None and previous_remaining <= 5:
-        return False, {"available": True, "refreshed": 0, "leagues_queried": 0, "quota_guard": "exhausted"}
+        if policy_changed:
+            payload["generated_at"] = now_local.isoformat()
+        return policy_changed, {
+            "available": True,
+            "refreshed": 0,
+            "leagues_queried": 0,
+            "quota_guard": "exhausted",
+            "movement_policies": movement_policies,
+        }
 
     due_by_league: dict[str, list[tuple[dict, int]]] = {}
     for match in payload.get("matches") or []:
@@ -388,8 +471,8 @@ def refresh_payload(payload: dict, now: datetime | None = None, client: OddsHotC
         if age is None or age >= ttl:
             due_by_league.setdefault(match["league"], []).append((match, ttl))
 
-    changed = False
-    refreshed = queried = 0
+    changed = policy_changed
+    refreshed = queried = market_snapshots = 0
     errors = []
     for league, rows in sorted(due_by_league.items()):
         if client.quota.get("remaining") is not None and client.quota["remaining"] <= 5:
@@ -405,9 +488,17 @@ def refresh_payload(payload: dict, now: datetime | None = None, client: OddsHotC
             if not event:
                 continue
             market = _event_market(event)
-            if _apply_market(match, market, now_local, ttl):
+            before_history = len(match.get("market_history") or [])
+            if _apply_market(
+                match,
+                market,
+                now_local,
+                ttl,
+                movement_policy=movement_policies.get(league),
+            ):
                 changed = True
                 refreshed += 1
+                market_snapshots += int(len(match.get("market_history") or []) > before_history)
 
     if queried:
         health = dict(payload.get("source_health") or {})
@@ -423,9 +514,11 @@ def refresh_payload(payload: dict, now: datetime | None = None, client: OddsHotC
     return changed, {
         "available": True,
         "refreshed": refreshed,
+        "market_snapshots": market_snapshots,
         "leagues_queried": queried,
         "quota": dict(client.quota),
         "errors": errors,
+        "movement_policies": movement_policies,
     }
 
 
