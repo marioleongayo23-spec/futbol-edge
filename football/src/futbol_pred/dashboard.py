@@ -350,7 +350,7 @@ def fixture_payload(
     # domina). Total conservado.
     if stats is not None:
         try:
-            sp = stats.predict_fixture(fixture.home_team, fixture.away_team)
+            sp = stats.predict_fixture(fixture.home_team, fixture.away_team, kickoff=fixture.kickoff)
             if sp:
                 tot_g = eh + ea
                 hshare = (eh / tot_g) if tot_g > 0 else 0.5
