@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, timezone
 
+from futbol_pred.advanced_stats import latest_snapshot_as_of
 from futbol_pred.backtest.advanced_residual import (
     MIN_RECORDS,
     advanced_residual_probabilities,
@@ -98,16 +99,31 @@ def test_sin_snapshots_el_challenger_queda_bloqueado_y_no_afecta_1x2():
     assert result["affects_1x2"] is False
 
 
-def test_snapshot_posterior_al_kickoff_no_entra():
+def test_snapshot_posterior_al_kickoff_no_entra_pero_historico_previo_si():
     base, elo, archive = _dataset(MIN_RECORDS)
+    original_available = []
     for snapshot, record in zip(archive["snapshots"], base):
         kickoff = datetime.fromtimestamp(record["kickoff"], tz=timezone.utc)
         snapshot["available_at"] = (kickoff + timedelta(seconds=1)).isoformat()
+        original_available.append(snapshot["available_at"])
+
+    first_kickoff = datetime.fromtimestamp(base[0]["kickoff"], tz=timezone.utc)
+    assert latest_snapshot_as_of(archive, "laliga", 2026, first_kickoff) is None
+
+    second_kickoff = datetime.fromtimestamp(base[1]["kickoff"], tz=timezone.utc)
+    selected = latest_snapshot_as_of(archive, "laliga", 2026, second_kickoff)
+    assert selected is not None
+    assert selected["available_at"] == original_available[0]
+    assert selected["available_at"] != original_available[1]
+
     result = fit_walk_forward_advanced_residual(
         base, elo, archive, league="laliga", season=2026
     )
-    assert result["n"] == 0
-    assert result["coverage"]["snapshot_available"] == 0
+    # El snapshot del propio partido nunca entra; desde el segundo partido sí
+    # existe un snapshot histórico anterior y causalmente válido.
+    assert result["n"] == MIN_RECORDS - 1
+    assert result["coverage"]["snapshot_available"] == MIN_RECORDS - 1
+    assert result["status"] == "blocked_insufficient_advanced_snapshots"
 
 
 def test_senal_avanzada_fuerte_puede_superar_residual_estandar_en_misma_muestra():
