@@ -4,6 +4,9 @@ La regla central es temporal: este módulo solo usa snapshots capturados antes d
 kickoff. Las cuotas históricas de cierre de football-data.co.uk NO se convierten
 en snapshots T-24/T-6 ficticios. Pueden servir para investigación separada, pero
 nunca para entrenar este challenger de producción.
+
+Este módulo forma parte del hot-refresh ligero. Por eso sus métricas probabilísticas
+se implementan con stdlib y NO importan el paquete de backtest/Dixon-Coles/NumPy.
 """
 
 from __future__ import annotations
@@ -11,7 +14,6 @@ from __future__ import annotations
 from datetime import datetime, timezone
 import math
 
-from .backtest.metrics import aggregate
 from .prediction_snapshots import latest_pre_match_snapshot
 
 SIGNS = ("1", "X", "2")
@@ -56,6 +58,34 @@ def _normalise(values) -> dict[str, float] | None:
     nums = [max(1e-9, value / total) for value in nums]
     total = sum(nums)
     return {sign: nums[index] / total for index, sign in enumerate(SIGNS)}
+
+
+def _aggregate(predictions: list[tuple[dict[str, float], str]]) -> dict[str, float]:
+    """Mismas métricas 1X2 del backtest, pero sin dependencias pesadas."""
+    if not predictions:
+        return {"n": 0}
+    n = len(predictions)
+    log_total = brier_total = rps_total = accuracy_total = 0.0
+    for probs, actual in predictions:
+        log_total += -math.log(min(1.0 - 1e-12, max(1e-12, probs[actual])))
+        brier_total += sum(
+            (probs[sign] - (1.0 if sign == actual else 0.0)) ** 2
+            for sign in SIGNS
+        )
+        cum_p = cum_o = score = 0.0
+        for sign in SIGNS[:-1]:
+            cum_p += probs[sign]
+            cum_o += 1.0 if sign == actual else 0.0
+            score += (cum_p - cum_o) ** 2
+        rps_total += score / (len(SIGNS) - 1)
+        accuracy_total += 1.0 if max(SIGNS, key=lambda sign: probs[sign]) == actual else 0.0
+    return {
+        "n": n,
+        "log_loss": log_total / n,
+        "brier": brier_total / n,
+        "rps": rps_total / n,
+        "accuracy": accuracy_total / n,
+    }
 
 
 def _horizon_bucket(minutes_to_kickoff: float) -> str:
@@ -257,7 +287,7 @@ def _fit_beta(samples: list[dict]) -> float:
     best_beta = 0.0
     best_score = float("inf")
     for beta in BETA_GRID:
-        metrics = aggregate([(_candidate(sample, beta), sample["actual"]) for sample in samples])
+        metrics = _aggregate([(_candidate(sample, beta), sample["actual"]) for sample in samples])
         score = float(metrics.get("log_loss", 99.0)) + float(metrics.get("rps", 99.0))
         if score < best_score - 1e-12:
             best_score, best_beta = score, beta
@@ -299,8 +329,8 @@ def learn_market_movement_challenger(matches: list[dict], *, min_sample: int = M
         }
 
     beta = _fit_beta(train)
-    baseline_metrics = aggregate([(sample["base"], sample["actual"]) for sample in validation])
-    candidate_metrics = aggregate([(_candidate(sample, beta), sample["actual"]) for sample in validation])
+    baseline_metrics = _aggregate([(sample["base"], sample["actual"]) for sample in validation])
+    candidate_metrics = _aggregate([(_candidate(sample, beta), sample["actual"]) for sample in validation])
     accepted = (
         beta != 0.0
         and candidate_metrics.get("log_loss", 99) < baseline_metrics.get("log_loss", 99)
