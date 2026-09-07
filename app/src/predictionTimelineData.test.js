@@ -83,3 +83,54 @@ test("timeline distingue pre-final y final oficial", () => {
   assert.equal(points[1].label, "FINAL · XI T−30");
   assert.equal(points[1].officialPollWindow, "T-30");
 });
+
+test("timeline añade ACTUAL cuando el refresco live es posterior al snapshot histórico", () => {
+  const initial = snapshot("initial", "2026-08-24T10:00:00+02:00", [48, 31, 21]);
+  const match = {
+    kickoff,
+    probs: [52, 29, 19],
+    model_probs: [50, 30, 20],
+    prediction_history: [initial],
+    prediction_snapshot: initial,
+    prediction_live_refresh: { checked_at: "2026-08-24T18:30:00+02:00" },
+  };
+  const points = predictionTimelinePoints(match);
+  assert.deepEqual(points.map((row) => row.label), ["Primera captura", "ACTUAL"]);
+  assert.equal(points.at(-1).currentState, true);
+  assert.deepEqual(points.at(-1).probs, [52, 29, 19]);
+
+  const result = auditablePrediction(match);
+  assert.equal(result.latestLabel, "ACTUAL");
+  assert.equal(result.previousLabel, "Primera captura");
+  assert.equal(result.favoriteSign, "1");
+  assert.equal(result.previousDelta, 4);
+});
+
+test("ACTUAL no se inventa si el refresco no es posterior al histórico", () => {
+  const current = snapshot("T-6h", "2026-08-24T15:00:00+02:00", [50, 30, 20]);
+  const points = predictionTimelinePoints({
+    kickoff,
+    probs: [51, 29, 20],
+    prediction_history: [current],
+    prediction_snapshot: current,
+    prediction_live_refresh: { checked_at: "2026-08-24T14:59:00+02:00" },
+  });
+  assert.deepEqual(points.map((row) => row.label), ["T−6h"]);
+});
+
+test("ACTUAL nunca se añade después del kickoff ni a partidos terminados", () => {
+  const initial = snapshot("initial", "2026-08-24T10:00:00+02:00", [48, 31, 21]);
+  for (const extra of [
+    { prediction_live_refresh: { checked_at: "2026-08-24T21:05:00+02:00" } },
+    { prediction_live_refresh: { checked_at: "2026-08-24T18:30:00+02:00" }, finished: true },
+  ]) {
+    const points = predictionTimelinePoints({
+      kickoff,
+      probs: [52, 29, 19],
+      prediction_history: [initial],
+      prediction_snapshot: initial,
+      ...extra,
+    });
+    assert.deepEqual(points.map((row) => row.label), ["Primera captura"]);
+  }
+});
