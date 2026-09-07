@@ -103,9 +103,9 @@ def fit_walk_forward_residual(
     """Entrena en el pasado y deja una cola temporal totalmente fuera de muestra.
 
     ``dc_records`` representa el motor base sobre el que se aprende la corrección.
-    En P1.2 puede ser el híbrido DC+pseudo-xG. ``extra_baseline_records`` permite
-    exigir además que el residual bata a otros campeones (por ejemplo DC puro),
-    siempre sobre exactamente los mismos partidos de la cola de validación.
+    En P1.2 puede ser el híbrido DC+pseudo-xG. ``extra_baseline_records`` contiene
+    baselines OBLIGATORIOS: si alguno no cubre exactamente la misma cola temporal,
+    la promoción queda bloqueada en lugar de facilitarse silenciosamente.
     """
     paired = _paired_records(dc_records, elo_records)
     rows = [(base["probs"], elo["probs"], base["actual"]) for base, elo in paired]
@@ -132,6 +132,7 @@ def fit_walk_forward_residual(
         "elo": aggregate([(elo, actual) for _dc, elo, actual in validation]),
     }
     baseline_coverage: dict[str, dict] = {}
+    complete_required_baselines = True
     for name, records in (extra_baseline_records or {}).items():
         by_key = {_record_key(record): record for record in records}
         samples = []
@@ -139,24 +140,38 @@ def fit_walk_forward_residual(
             other = by_key.get(_record_key(base_record))
             if other and other.get("probs"):
                 samples.append((other["probs"], base_record["actual"]))
-        baseline_coverage[name] = {"n": len(samples), "required": len(validation_pairs)}
-        # Un baseline adicional solo participa si cubre TODA la misma cola. Así
-        # nunca facilitamos la promoción comparando subsets distintos.
-        if len(samples) == len(validation_pairs) and samples:
+        complete = len(samples) == len(validation_pairs) and bool(samples)
+        baseline_coverage[name] = {
+            "n": len(samples),
+            "required": len(validation_pairs),
+            "complete": complete,
+        }
+        if complete:
             baselines[name] = aggregate(samples)
+        else:
+            complete_required_baselines = False
 
-    accepted = fitted["converged"] and candidate_beats_all_baselines(metrics, baselines)
+    accepted = (
+        fitted["converged"]
+        and complete_required_baselines
+        and candidate_beats_all_baselines(metrics, baselines)
+    )
+    if not complete_required_baselines:
+        status = "blocked_incomplete_baseline_coverage"
+    else:
+        status = "accepted" if accepted else "blocked_by_gate"
     return {
         "method": "residual-logit-temporal-v2",
         "accepted": bool(accepted),
-        "status": "accepted" if accepted else "blocked_by_gate",
+        "status": status,
         "n_train": len(train), "n_validation": len(validation),
         "validation": metrics, "validation_baselines": baselines,
         "baseline_coverage": baseline_coverage or None,
         "acceptance_gate": {
-            "rule": "strictly_better_than_every_baseline_same_validation_set",
+            "rule": "strictly_better_than_every_required_baseline_same_validation_set",
             "metrics": list(GATE_METRICS),
             "baselines": list(baselines),
+            "require_complete_extra_baselines": True,
         },
         "production": _fit(rows),
     }
