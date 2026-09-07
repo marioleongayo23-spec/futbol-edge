@@ -1,9 +1,13 @@
-"""P3.1: histórico auditable de estadísticas finales por partido.
+"""P3.1/P3.2: histórico auditable de estadísticas finales por partido.
 
 Conserva observaciones postpartido de API-Football y football-data.co.uk como
 fuentes independientes, mantiene revisiones si un proveedor corrige un partido
 y calcula un consenso por métrica. Una discrepancia nunca se resuelve de forma
 silenciosa: queda marcada como ``conflict`` y ``usable=False``.
+
+P3.2 permite además conservar ``xg`` cuando API-Football lo entrega de forma
+pasiva. football-data.co.uk no aporta ese campo, por lo que xG queda identificado
+como ``single_source`` y nunca se presenta falsamente como consenso multi-fuente.
 
 Este archivo es evidencia histórica para evaluación/modelado futuro. No modifica
 probabilidades, lambdas ni el dashboard.
@@ -30,7 +34,7 @@ OUTPUT = Path(DATA_DIR) / "final_stats_truth.json"
 DASHBOARD = Path(DATA_DIR) / "dashboard.json"
 SOURCE_API = "api_football"
 SOURCE_FDUK = "football_data_uk"
-STAT_KEYS = ("goals", "shots", "sot", "corners", "fouls", "yellows", "reds", "offsides")
+STAT_KEYS = ("goals", "xg", "shots", "sot", "corners", "fouls", "yellows", "reds", "offsides")
 LEAGUE_LABELS = {
     "LaLiga": "laliga",
     "LaLiga Hypermotion": "segunda",

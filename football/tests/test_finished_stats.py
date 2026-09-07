@@ -27,6 +27,7 @@ class FinishedClient:
                     {
                         "team": {"name": "Atletico Madrid"},
                         "statistics": [
+                            {"type": "Expected Goals", "value": "1.73"},
                             {"type": "Total Shots", "value": 16},
                             {"type": "Shots on Goal", "value": 7},
                             {"type": "Corner Kicks", "value": 8},
@@ -38,6 +39,7 @@ class FinishedClient:
                     {
                         "team": {"name": "Valencia CF"},
                         "statistics": [
+                            {"type": "Expected Goals", "value": 0.84},
                             {"type": "Total Shots", "value": 9},
                             {"type": "Shots on Goal", "value": 3},
                             {"type": "Corner Kicks", "value": 4},
@@ -73,8 +75,9 @@ def test_refresca_stats_finales_aunque_el_once_ya_este_confirmado():
     assert attach_finished_stats([match], now, client=client) == 1
 
     assert client.find_calls == []  # reutiliza el fixture id del once oficial
-    assert client.detail_calls == [[77]]
+    assert client.detail_calls == [[77]]  # xG viaja en el mismo detalle: cero llamadas extra
     assert match["statsReal"]["goals"] == {"home": 2, "away": 1, "total": 3}
+    assert match["statsReal"]["xg"] == {"home": 1.73, "away": 0.84, "total": 2.57}
     assert match["statsReal"]["shots"] == {"home": 16, "away": 9, "total": 25}
     assert match["statsReal"]["sot"] == {"home": 7, "away": 3, "total": 10}
     assert match["statsReal"]["corners"] == {"home": 8, "away": 4, "total": 12}
@@ -83,6 +86,48 @@ def test_refresca_stats_finales_aunque_el_once_ya_este_confirmado():
     assert match["statsReal"]["reds"] == {"home": 0, "away": 1, "total": 1}
     assert match["statsRealSource"] == "API-Football · final"
     assert match["official_context"]["referee"] == "Árbitro X"
+    assert match["official_context"]["optional_capabilities"]["xg"] == "API-Football · provider field"
+    assert match["official_context"]["live_or_post_stats"]["Atletico Madrid"]["xg"] == 1.73
+
+
+def test_xg_ausente_no_se_inventa_y_no_bloquea_stats_finales():
+    now = datetime.fromisoformat("2026-08-25T06:00:00+02:00")
+    client = FinishedClient()
+    original = client.get_fixture_details
+
+    def without_xg(ids):
+        data = original(ids)
+        for team in data[77]["statistics"]:
+            team["statistics"] = [row for row in team["statistics"] if row.get("type") != "Expected Goals"]
+        return data
+
+    client.get_fixture_details = without_xg
+    match = _match(now)
+
+    assert attach_finished_stats([match], now, client=client) == 1
+    assert client.detail_calls == [[77]]
+    assert "xg" not in match["statsReal"]
+    assert "optional_capabilities" not in match["official_context"]
+    assert match["statsReal"]["shots"]["total"] == 25
+
+
+def test_xg_nulo_o_absurdo_se_omite_sin_fabricar_valor():
+    now = datetime.fromisoformat("2026-08-25T06:00:00+02:00")
+    client = FinishedClient()
+    original = client.get_fixture_details
+
+    def invalid_xg(ids):
+        data = original(ids)
+        data[77]["statistics"][0]["statistics"][0]["value"] = None
+        data[77]["statistics"][1]["statistics"][0]["value"] = 99
+        return data
+
+    client.get_fixture_details = invalid_xg
+    match = _match(now)
+
+    assert attach_finished_stats([match], now, client=client) == 1
+    assert "xg" not in match["statsReal"]
+    assert client.detail_calls == [[77]]
 
 
 def test_no_acepta_estadisticas_live_como_finales():
@@ -102,7 +147,7 @@ def test_no_acepta_estadisticas_live_como_finales():
     assert "statsReal" not in match
 
 
-def test_stats_ya_completas_no_consumen_api():
+def test_stats_ya_completas_no_consumen_api_ni_reconsulta_solo_por_xg():
     now = datetime.fromisoformat("2026-08-25T06:00:00+02:00")
     client = FinishedClient()
     match = _match(now)
@@ -112,6 +157,7 @@ def test_stats_ya_completas_no_consumen_api():
     }
 
     assert attach_finished_stats([match], now, client=client) == 0
+    assert "xg" not in match["statsReal"]
     assert client.detail_calls == []
     assert client.find_calls == []
 
@@ -122,6 +168,7 @@ def test_stats_finales_del_feed_anterior_se_heredan_sin_reconsultar():
     current = _match(now)
     previous = _match(now)
     previous["statsReal"] = {
+        "xg": {"home": 1.73, "away": 0.84, "total": 2.57},
         "shots": {"home": 16, "away": 9, "total": 25},
         "sot": {"home": 7, "away": 3, "total": 10},
         "corners": {"home": 8, "away": 4, "total": 12},
@@ -134,6 +181,7 @@ def test_stats_finales_del_feed_anterior_se_heredan_sin_reconsultar():
     assert attach_finished_stats(
         [current], now, client=client, previous_matches=[previous]
     ) == 0
+    assert current["statsReal"]["xg"]["home"] == 1.73
     assert current["statsReal"]["shots"]["total"] == 25
     assert current["statsRealSource"] == "API-Football · final"
     assert client.detail_calls == []
