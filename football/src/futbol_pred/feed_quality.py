@@ -10,6 +10,8 @@ import os
 from pathlib import Path
 import tempfile
 
+from .data_contract import dedupe_feed_by_match_uid, enrich_feed_contract
+
 _TOP_LEVEL_LKG = (
     "quiniela", "players", "model", "market_calibration", "historical_seed",
 )
@@ -65,6 +67,8 @@ def _missing(value) -> bool:
 def match_identity(match: dict) -> str:
     """Identidad estable aunque una API cambie el id o la hora unos minutos."""
 
+    if match.get("match_uid"):
+        return f"uid:{match['match_uid']}"
     date = str(match.get("date") or match.get("kickoff") or "")[:10]
     parts = (
         match.get("league"),
@@ -205,6 +209,7 @@ def evaluate_feed(candidate: dict, previous: dict | None = None) -> dict:
         issues.append(f"muy_pocos_partidos:{len(matches)}")
 
     ids = set()
+    match_uids = set()
     blank_matches = 0
     prediction_count = preview_count = lineup_count = required_ai_count = 0
     leagues = set()
@@ -224,6 +229,11 @@ def evaluate_feed(candidate: dict, previous: dict | None = None) -> dict:
         if match_id in ids:
             issues.append(f"id_duplicado:{match_id}")
         ids.add(match_id)
+        match_uid = match.get("match_uid")
+        if match_uid:
+            if match_uid in match_uids:
+                issues.append(f"match_uid_duplicado:{match_uid}")
+            match_uids.add(match_uid)
         leagues.add(match.get("league"))
         try:
             datetime.fromisoformat(str(match.get("kickoff")))
@@ -454,10 +464,18 @@ def write_feed_safely(path: Path, payload: dict, previous: dict | None = None) -
     """Valida, escribe atómicamente y nunca pisa un feed bueno con uno peor."""
 
     previous = previous if previous is not None else load_feed(path)
+    contract_enriched = enrich_feed_contract(payload)
+    if previous:
+        enrich_feed_contract(previous)
+    deduped_uid = dedupe_feed_by_match_uid(payload)
     deduped = _dedupe_matches_by_id(payload)
     preserve_last_known_good(payload, previous)
     dropped = _sanitize_incomplete_lineups(payload, previous)
     report = evaluate_feed(payload, previous)
+    if contract_enriched:
+        report.setdefault("metrics", {})["contract_enriched_matches"] = contract_enriched
+    if deduped_uid:
+        report.setdefault("metrics", {})["deduped_match_uids"] = deduped_uid
     if deduped:
         report.setdefault("metrics", {})["deduped_duplicate_ids"] = deduped
     if dropped:
