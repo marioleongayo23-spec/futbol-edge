@@ -12,6 +12,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 import re
 import unicodedata
+import warnings
 from zoneinfo import ZoneInfo
 
 from .normalize import canonical_team
@@ -32,6 +33,19 @@ def _slug(value: object) -> str:
     text = "".join(char for char in text if not unicodedata.combining(char))
     text = re.sub(r"[^a-z0-9]+", "-", text.casefold()).strip("-")
     return text or "unknown"
+
+
+def _canonical_team_silent(name: str) -> str:
+    """Canonicalize known aliases while keeping unknown test/new clubs verbatim.
+
+    ``canonical_team`` intentionally warns for unknown clubs. At this contract
+    boundary that fallback is expected (newly promoted/synthetic test teams), so
+    the warning would only add noise; strict identity checks still live in the
+    explicit registry and tests.
+    """
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        return canonical_team(name)
 
 
 def _aware(value: datetime) -> datetime:
@@ -77,8 +91,8 @@ def canonical_match_uid(
     if not home_team or not away_team:
         raise ValueError("home_team and away_team are required")
 
-    home = canonical_team(home_team)
-    away = canonical_team(away_team)
+    home = _canonical_team_silent(home_team)
+    away = _canonical_team_silent(away_team)
     if home == away:
         raise ValueError("home_team and away_team resolve to the same canonical team")
 
