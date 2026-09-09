@@ -1,0 +1,13 @@
+# Puerta de aplicación — umbrales. Cambiarlos NO relaja la evidencia: si un
+# umbral se afloja para "aprobar", eso debe justificarse y versionarse aquí.
+target_daily: 0.004          # objetivo mínimo: media diaria geométrica mensual
+aspiration_daily: 0.006      # aspiración
+median_monthly_min: 0.0      # la mediana mensual no puede ser negativa
+max_drawdown_limit: 0.15     # límite de drawdown máximo (15%)
+min_markets: 3               # debe aparecer en >=3 mercados
+max_single_month_share: 0.5  # ningún mes puede aportar >50% del log-retorno
+min_future_sessions: 60      # sesiones futuras de paper trading en sombra
+dsr_min: 0.95                # Sharpe Desinflado mínimo (corrige pruebas múltiples)
+pbo_max: 0.5                 # Probabilidad de Sobreajuste máxima
+bootstrap_geo_daily_lb_min: 0.0  # límite inferior IC95 de la media diaria > 0
+cost_stress_factors: [1.5, 2.0]  # multiplicadores de coste/latencia a probar

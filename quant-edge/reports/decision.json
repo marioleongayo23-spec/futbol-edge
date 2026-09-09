@@ -1,0 +1,125 @@
+{
+  "decision": "NO DEMOSTRADO",
+  "conditions": [
+    {
+      "name": "media_diaria_geometrica_mensual>=objetivo",
+      "passed": false,
+      "value": -0.0009733378419727817,
+      "threshold": 0.004,
+      "detail": "Media OOS -0.0973% vs objetivo 0.40%"
+    },
+    {
+      "name": "supera_benchmark",
+      "passed": false,
+      "value": 7.30650708323308e-05,
+      "threshold": 0.0002038712779845558,
+      "detail": "OOS 0.0073%/día vs benchmark 0.0204%/día"
+    },
+    {
+      "name": "mediana_mensual_no_negativa",
+      "passed": false,
+      "value": -6.611735592673237e-05,
+      "threshold": 0.0,
+      "detail": "Mediana mensual -0.0066%"
+    },
+    {
+      "name": "drawdown_bajo_limite",
+      "passed": false,
+      "value": 0.15258086208487165,
+      "threshold": 0.15,
+      "detail": "Drawdown máx 15.26% vs límite 15.00%"
+    },
+    {
+      "name": "escenarios_costes_latencia_positivos",
+      "passed": true,
+      "value": {
+        "1.0": 7.30650708323308e-05,
+        "1.5": 3.7386521691942335e-05,
+        "2.0": 2.166635043161432e-06
+      },
+      "threshold": "todos > 0",
+      "detail": "Media diaria geométrica > 0 en todos los escenarios de estrés de costes/latencia"
+    },
+    {
+      "name": "aparece_en_varios_mercados",
+      "passed": false,
+      "value": 0,
+      "threshold": 3,
+      "detail": "0/6 mercados cumplen objetivo"
+    },
+    {
+      "name": "no_depende_de_mes_extremo",
+      "passed": false,
+      "value": {
+        "max_month_share": 1.8563708487338266,
+        "geo_sin_mejor_mes": -6.48715623792215e-05
+      },
+      "threshold": {
+        "max_share<=": 0.5,
+        "geo_sin_mejor_mes>=": 0.0
+      },
+      "detail": "Robusto a quitar el mejor mes y ningún mes concentra el resultado"
+    },
+    {
+      "name": "supera_60_sesiones_futuras",
+      "passed": true,
+      "value": 250,
+      "threshold": 60,
+      "detail": "250 sesiones simuladas"
+    },
+    {
+      "name": "todas_SHADOW_ONLY",
+      "passed": true,
+      "value": true,
+      "threshold": true,
+      "detail": "Todas las operaciones registradas en modo SHADOW_ONLY"
+    },
+    {
+      "name": "sharpe_desinflado_significativo",
+      "passed": false,
+      "value": 3.797113320457443e-05,
+      "threshold": 0.95,
+      "detail": "DSR 0.000 (corrige nº de pruebas)"
+    },
+    {
+      "name": "pbo_bajo",
+      "passed": true,
+      "value": 0.30158730158730157,
+      "threshold": 0.5,
+      "detail": "Probabilidad de sobreajuste 30.16%"
+    },
+    {
+      "name": "ic_bootstrap_media_diaria_positivo",
+      "passed": false,
+      "value": -0.00036044337069338035,
+      "threshold": 0.0,
+      "detail": "Límite inferior IC95 media diaria -0.0360%"
+    },
+    {
+      "name": "datos_reales_dos_fuentes",
+      "passed": false,
+      "value": false,
+      "threshold": true,
+      "detail": "Datos intradía reales de >=2 fuentes independientes, point-in-time"
+    },
+    {
+      "name": "sesiones_futuras_en_vivo",
+      "passed": false,
+      "value": false,
+      "threshold": true,
+      "detail": "Las 60+ sesiones son paper trading hacia delante en vivo, no backtest histórico"
+    }
+  ],
+  "missing_evidence": [
+    "media_diaria_geometrica_mensual>=objetivo: Media OOS -0.0973% vs objetivo 0.40%",
+    "supera_benchmark: OOS 0.0073%/día vs benchmark 0.0204%/día",
+    "mediana_mensual_no_negativa: Mediana mensual -0.0066%",
+    "drawdown_bajo_limite: Drawdown máx 15.26% vs límite 15.00%",
+    "aparece_en_varios_mercados: 0/6 mercados cumplen objetivo",
+    "no_depende_de_mes_extremo: Robusto a quitar el mejor mes y ningún mes concentra el resultado",
+    "sharpe_desinflado_significativo: DSR 0.000 (corrige nº de pruebas)",
+    "ic_bootstrap_media_diaria_positivo: Límite inferior IC95 media diaria -0.0360%",
+    "datos_reales_dos_fuentes: Datos intradía reales de >=2 fuentes independientes, point-in-time",
+    "sesiones_futuras_en_vivo: Las 60+ sesiones son paper trading hacia delante en vivo, no backtest histórico"
+  ]
+}

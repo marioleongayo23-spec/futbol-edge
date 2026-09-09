@@ -1,0 +1,18 @@
+# Modelo de fricción por clase de activo (valores por defecto, conservadores).
+# Se reemplazan por medidas reales por instrumento cuando haya datos de vendor.
+default:
+  commission_bps: 1.0       # 0,01% del nocional
+  half_spread_bps: 2.0      # medio diferencial por lado
+  slippage_coef: 0.05       # fracción de la volatilidad del bar
+  impact_coef: 0.5          # ley raíz cuadrada: coste ~ coef*sigma*sqrt(Q/ADV)
+  adv_value: 5.0e8          # volumen medio diario (moneda)
+  tax_rate: 0.19            # impuesto sobre ganancia neta positiva
+  latency_bars: 1           # retardo de ejecución (barras)
+  max_participation: 0.05   # fracción máxima del volumen del bar por barra
+
+overrides:
+  fx:        {half_spread_bps: 0.5, adv_value: 5.0e10}
+  crypto:    {half_spread_bps: 6.0, adv_value: 2.0e9, tax_rate: 0.23}
+  commodity: {half_spread_bps: 3.0, adv_value: 1.0e10}
+  etf:       {half_spread_bps: 1.0, adv_value: 2.0e9}
+  equity:    {half_spread_bps: 2.0, adv_value: 6.0e8}
