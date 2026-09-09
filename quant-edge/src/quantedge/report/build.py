@@ -21,6 +21,8 @@ from ..costs.model import InstrumentCosts
 from ..data.dual_source import make_vendor_copy, reconcile
 from ..data.synthetic import SYNTHETIC_WARNING, default_universe
 from ..gate.evaluate import GateInput, evaluate_gate
+from ..model.frozen import freeze_from_selection
+from ..paper.forward import ForwardLedger, combined_gate, replay_forward
 from ..paper.shadow import run_shadow
 from ..strategies.library import BuyAndHold, all_candidates
 from ..utils.hashing import hash_dataframe, hash_obj
@@ -48,6 +50,23 @@ DEFAULT_THRESHOLDS = {
     "bootstrap_geo_daily_lb_min": 0.0,
     "cost_stress_factors": [1.5, 2.0],
 }
+
+
+def load_configs(config_dir: str | Path = "quant-edge/config") -> tuple[dict, InstrumentCosts]:
+    """Carga umbrales (gate.yaml) y costes por defecto (costs.yaml) si existen."""
+    from ..utils.config import load_config
+
+    cd = Path(config_dir)
+    thr: dict = {}
+    costs = InstrumentCosts()
+    if (cd / "gate.yaml").exists():
+        thr = load_config(cd / "gate.yaml").data or {}
+    if (cd / "costs.yaml").exists():
+        default = (load_config(cd / "costs.yaml").data or {}).get("default", {})
+        fields = InstrumentCosts.__dataclass_fields__
+        costs = InstrumentCosts(**{k: float(v) if k != "latency_bars" else int(v)
+                                   for k, v in default.items() if k in fields})
+    return thr, costs
 
 
 def _aggregate_portfolio(series_by_instrument: dict[str, pd.Series]) -> pd.Series:
@@ -205,6 +224,32 @@ def run_study(
     )
     gate = evaluate_gate(gate_input, thr)
 
+    # 10) Congelar el modelo desplegable (última selección por instrumento) y
+    #     ejecutar un ENSAYO forward en seco sobre el holdout (is_live=False).
+    selected_final = {name: wf_by_instr[name].selected_objs[-1] for name in clean}
+    frozen = freeze_from_selection(selected_final, costs, thr, data_hashes, hash_obj(params))
+    frozen.save(out / "frozen_model.json")
+
+    dev_robustness = {
+        "deflated_sharpe": dsr,
+        "pbo": pbo["pbo"],
+        "bootstrap_geo_daily_lb": ci.lo,
+        "n_markets_total": len(per_market),
+        "n_markets_meeting_target": n_markets_meeting,
+        "cost_stress": cost_stress,
+        "data_is_real_dual_source": False,
+    }
+    (out / "dev_robustness.json").write_text(
+        json.dumps(dev_robustness, indent=2, ensure_ascii=False), encoding="utf-8")
+    ledger_path = out / "forward_ledger.jsonl"
+    if ledger_path.exists():
+        ledger_path.unlink()
+    fwd_ledger = ForwardLedger(ledger_path)
+    replay_forward(frozen, clean, holdout_dates, fwd_ledger)
+    fwd_gate = combined_gate(fwd_ledger, dev_robustness, thr, bench_geo)
+    (out / "forward_decision.json").write_text(
+        json.dumps(fwd_gate.to_dict(), indent=2, ensure_ascii=False), encoding="utf-8")
+
     # --- Artefactos ---
     metrics = {
         "generated_utc": datetime.now(timezone.utc).isoformat(),
@@ -232,6 +277,12 @@ def run_study(
             "summary": shadow_summary.to_dict(),
         },
         "gate": gate.to_dict(),
+        "forward_replay": {
+            "decision": fwd_gate.decision,
+            "n_sessions": int(fwd_ledger.portfolio_returns().shape[0]),
+            "is_live": fwd_ledger.is_live(),
+            "note": "Ensayo en seco sobre holdout (is_live=False): NO cuenta como sesiones en vivo.",
+        },
         "environment": {"python": platform.python_version(), "numpy": np.__version__, "pandas": pd.__version__},
     }
     (out / "metrics.json").write_text(json.dumps(metrics, indent=2, ensure_ascii=False), encoding="utf-8")

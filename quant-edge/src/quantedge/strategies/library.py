@@ -128,3 +128,13 @@ def all_candidates() -> list[Strategy]:
         for params in cls.param_grid():
             out.append(cls(**params))
     return out
+
+
+STRATEGY_BY_NAME = {cls.name: cls for cls in (*STRATEGY_CLASSES, BuyAndHold)}
+
+
+def make_strategy(name: str, params: dict | None = None) -> Strategy:
+    """Reconstruye una estrategia desde su nombre y parámetros (para cargar modelos)."""
+    if name not in STRATEGY_BY_NAME:
+        raise KeyError(f"Estrategia desconocida: {name}")
+    return STRATEGY_BY_NAME[name](**(params or {}))

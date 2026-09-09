@@ -1,0 +1,80 @@
+{
+  "created_utc": "2026-09-09T20:03:39.436863+00:00",
+  "instruments": {
+    "EQ_A": {
+      "strategy": "ma_trend",
+      "params": {
+        "fast": 10,
+        "slow": 100
+      }
+    },
+    "EQ_B": {
+      "strategy": "breakout",
+      "params": {
+        "lookback": 20
+      }
+    },
+    "ETF_W": {
+      "strategy": "breakout",
+      "params": {
+        "lookback": 55
+      }
+    },
+    "FX_EURUSD": {
+      "strategy": "momentum",
+      "params": {
+        "lookback": 21
+      }
+    },
+    "CO_GOLD": {
+      "strategy": "momentum",
+      "params": {
+        "lookback": 21
+      }
+    },
+    "CR_BTC": {
+      "strategy": "ma_trend",
+      "params": {
+        "fast": 10,
+        "slow": 200
+      }
+    }
+  },
+  "costs": {
+    "commission_bps": 1.0,
+    "half_spread_bps": 2.0,
+    "slippage_coef": 0.05,
+    "impact_coef": 0.5,
+    "adv_value": 500000000.0,
+    "tax_rate": 0.19,
+    "latency_bars": 1,
+    "max_participation": 0.05
+  },
+  "thresholds": {
+    "target_daily": 0.004,
+    "aspiration_daily": 0.006,
+    "median_monthly_min": 0.0,
+    "max_drawdown_limit": 0.15,
+    "min_markets": 3,
+    "max_single_month_share": 0.5,
+    "min_future_sessions": 60,
+    "dsr_min": 0.95,
+    "pbo_max": 0.5,
+    "bootstrap_geo_daily_lb_min": 0.0,
+    "cost_stress_factors": [
+      1.5,
+      2.0
+    ]
+  },
+  "dev_data_sha256": {
+    "EQ_A": "e00d9ac6daa7e6c206315822f92ebf7abdb0b18b91a812ebed59e20c2e509919",
+    "EQ_B": "a8691cf5fb2a6d61c2c74e96903aaaa5234c89fdbb7cb50412e35a51badf6598",
+    "ETF_W": "7e2943754d9428a9329d287529cf942171f4569f3bdbb0045ccf3d09db2cd903",
+    "FX_EURUSD": "bac2345f643946f363a17974d11f93ad0810de03f61cd80a7b9c65465399d028",
+    "CO_GOLD": "acbcfc0514957398e76e9c523197a656f5b4ddc3368bfdf2c5a5a37df2d062d8",
+    "CR_BTC": "74036f38cd84ca6588c012929e84709a43b9c030403bf89cb78915efc765766f"
+  },
+  "params_sha256": "c193811b95e0b5f2ab4cad99511d0cb28e460fe4657fa5cd73a58b45a6def4a8",
+  "note": "SHADOW_ONLY. Congelado antes de las sesiones forward.",
+  "version": "0.1.0"
+}

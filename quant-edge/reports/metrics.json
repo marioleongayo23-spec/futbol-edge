@@ -1,5 +1,5 @@
 {
-  "generated_utc": "2026-09-09T19:14:43.927583+00:00",
+  "generated_utc": "2026-09-09T20:03:39.537052+00:00",
   "synthetic_warning": "DATOS SINTÉTICOS — no son mercado real, no son evidencia de ventaja.",
   "params": {
     "n_days": 1000,
@@ -586,6 +586,12 @@
       "datos_reales_dos_fuentes: Datos intradía reales de >=2 fuentes independientes, point-in-time",
       "sesiones_futuras_en_vivo: Las 60+ sesiones son paper trading hacia delante en vivo, no backtest histórico"
     ]
+  },
+  "forward_replay": {
+    "decision": "NO DEMOSTRADO",
+    "n_sessions": 250,
+    "is_live": false,
+    "note": "Ensayo en seco sobre holdout (is_live=False): NO cuenta como sesiones en vivo."
   },
   "environment": {
     "python": "3.11.15",

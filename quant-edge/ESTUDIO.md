@@ -85,18 +85,32 @@ fuentes gratuitas diarias **no traen bid/ask**. Por tanto **no es posible
 producir aquí la evidencia empírica real** (datos intradía reales de dos fuentes
 + sesiones futuras en vivo).
 
-Lo que sí se ha construido:
+Lo que sí se ha construido (**todo el andamiaje, listo para datos reales**):
 
 - **Contrato de datos** y validaciones (`data/loader.py`): columnas mínimas
   `mid, bid, ask, volume_value, sigma_bar, spread_bps`, índice temporal
-  ascendente y sin duplicados, `ask ≥ bid`. Un `RealVendorAdapter` documenta el
-  punto de enchufe de proveedores reales (Polygon, Databento, IQFeed,
-  Dukascopy, LOBSTER, exchanges cripto…), **point-in-time**.
-- **Reconciliación de dos fuentes** (`data/dual_source.py`): detección de
-  discrepancias, árbitro por consenso (mediana móvil), informe de calidad.
+  ascendente y sin duplicados, `ask ≥ bid`.
+- **Adaptadores de proveedores reales** (`data/providers/`), con red real,
+  **caché en disco** (reproducible y offline tras la primera descarga) y
+  `check_connectivity()` honesto ante bloqueos:
+  - `binance.py` y `coinbase.py`: cripto **sin clave** → par **dual-source**
+    real e independiente.
+  - `polygon.py`: acciones, ETF, FX y cripto (requiere `POLYGON_API_KEY`);
+    aggregates con VWAP para `volume_value`.
+  - `csv_provider.py`: datos offline o aportados por el usuario (respeta bid/ask
+    reales si el CSV los trae).
+  - En este entorno los cuatro hosts responden **403** (verificable con
+    `python -m quantedge.cli providers-check`).
+- **Reconciliación de dos fuentes** (`data/dual_source.py` + `loader.load_dual_source`):
+  detección de discrepancias, árbitro por consenso (mediana móvil), informe de
+  calidad. Emparejamiento por defecto por clase de activo en `DUAL_SOURCE_MAP`.
 - **Generador sintético etiquetado** (`data/synthetic.py`) con volatilidad
   agrupada (GARCH(1,1)) y regímenes, **solo** para probar la maquinaria. Va
   marcado en cada artefacto: *"DATOS SINTÉTICOS — no son evidencia de ventaja"*.
+- **Soporte intradía** (`validation/resample.py`): las barras pueden ser
+  intradía; se componen a retorno diario para medir el objetivo (que es diario).
+  bid/ask reales requieren datos L1/quotes del proveedor; con OHLCV se estiman y
+  queda marcado (`bidask_estimated`).
 
 ---
 
@@ -223,21 +237,39 @@ ventaja en mercados reales"; demuestra dos cosas útiles:
 
 ---
 
-## 9. Evidencia que falta para poder emitir `SUPERADO`
+## 9. Flujo forward y congelado del modelo (ya implementado)
 
-Ninguna de estas se puede fabricar en este entorno; requieren datos y tiempo
-reales. Son el trabajo conjunto con Astra **antes** de codificar la herramienta:
+El andamiaje para la evaluación real está **construido y probado**:
 
-1. **Datos intradía reales, point-in-time, de ≥2 fuentes independientes** con
-   bid/ask/volumen y calendario, incluyendo **instrumentos deslistados** (contra
-   supervivencia). Reconciliarlos con `dual_source.reconcile`.
-2. **Costes reales por instrumento** medidos (no supuestos): diferencial
-   efectivo, impacto observado, comisiones y fiscalidad de la jurisdicción.
-3. **Paper trading hacia delante EN VIVO**, no histórico: **≥60 sesiones**
-   futuras `SHADOW_ONLY`, decididas en el momento con datos que el modelo no vio.
-4. Repetir el pase completo de la puerta sobre (1)–(3). Solo si **las 14**
-   condiciones pasan simultáneamente → `SUPERADO`. Si falla una, se documenta
-   cuál y por qué, **sin** re-elegir parámetros sobre el test.
+1. **Congelado del modelo** (`model/frozen.py`): tras el estudio se serializa
+   `frozen_model.json` con la estrategia+parámetros elegidos por instrumento, los
+   costes, los umbrales y los **hashes de los datos de desarrollo**. Esto ancla
+   que el forward no reutiliza nada del futuro.
+2. **Libro forward `SHADOW_ONLY`** (`paper/forward.py`): `ForwardLedger`
+   (JSONL append-only) acumula sesiones; `ForwardRunner.step()` es el gancho de
+   uso **en vivo** (decide con datos hasta t-1, registra el retorno realizado);
+   `replay_forward()` hace un **ensayo en seco** sobre el holdout (marcado
+   `is_live=False`, por lo que jamás cuenta como sesión en vivo).
+3. **Puerta combinada** (`combined_gate`): junta la robustez de desarrollo
+   (DSR/PBO/multi-mercado, de `dev_robustness.json`) con el rendimiento forward
+   acumulado y decide.
+
+## 9-bis. Evidencia que falta para poder emitir `SUPERADO`
+
+Ya no falta *código*; falta **acceso a datos y tiempo real**:
+
+1. **Acceso a los feeds** (levantar el bloqueo 403 o ejecutar fuera del sandbox)
+   y, para acciones/ETF/FX, una **`POLYGON_API_KEY`** (u otro vendor). Cripto ya
+   tiene dos fuentes sin clave (Binance + Coinbase).
+2. **Datos intradía reales, point-in-time**, incluyendo **instrumentos
+   deslistados** (contra supervivencia), reconciliados con `load_dual_source`.
+3. **Costes reales por instrumento** medidos (diferencial efectivo, impacto,
+   comisiones, fiscalidad de la jurisdicción) en `config/costs.yaml`.
+4. **≥60 sesiones de paper trading EN VIVO** (`ForwardRunner.step`, `is_live=True`),
+   decididas en el momento con datos que el modelo congelado no vio.
+5. Repetir la puerta combinada. Solo si **las 14** condiciones pasan a la vez →
+   `SUPERADO`. Si falla una, se documenta cuál y por qué, **sin** re-elegir
+   parámetros sobre el test.
 
 ---
 
@@ -262,10 +294,30 @@ es la lista de §9, ejecutada sobre datos reales, con Astra revisando cada pieza
 ```bash
 cd quant-edge
 python -m pip install -r requirements.txt
-PYTHONPATH=src python -m pytest tests -q          # 22 pruebas del arnés
-PYTHONPATH=src python -m quantedge.cli demo       # estudio completo (sintético)
-# Artefactos: reports/{metrics.json,decision.json,manifest.json,RESUMEN.md,
-#             oos_portfolio.csv, shadow_ledger.csv}
+PYTHONPATH=src python -m pytest tests -q             # 31 pruebas del arnés
+PYTHONPATH=src python -m quantedge.cli demo --use-config   # estudio + congelado + ensayo forward
+PYTHONPATH=src python -m quantedge.cli providers-check     # acceso a datos reales (aquí: 403)
+PYTHONPATH=src python -m quantedge.cli forward-replay      # replay del holdout como forward (seco)
+PYTHONPATH=src python -m quantedge.cli gate \
+    --ledger reports/forward_ledger.jsonl \
+    --robustness reports/dev_robustness.json --benchmark 0.0002
+# Artefactos: reports/{metrics.json, decision.json, forward_decision.json,
+#   manifest.json, RESUMEN.md, frozen_model.json, dev_robustness.json,
+#   oos_portfolio.csv, shadow_ledger.csv, forward_ledger.jsonl}
+```
+
+### Ejecutar con datos reales (fuera de este sandbox)
+```bash
+export POLYGON_API_KEY=...            # solo para acciones/ETF/FX; cripto no necesita clave
+# 1) comprobar acceso
+PYTHONPATH=src python -m quantedge.cli providers-check
+# 2) cargar y reconciliar dos fuentes (ejemplo cripto en código):
+#    from quantedge.data.loader import build_default_providers, load_dual_source
+#    prov = build_default_providers()
+#    df, rep = load_dual_source(prov, "crypto",
+#              {"binance": "BTCUSDT", "coinbase": "BTC-USD"}, interval="1d")
+# 3) alimentar el estudio con esos df en lugar del universo sintético,
+#    congelar el modelo y arrancar ForwardRunner.step() en vivo (is_live=True).
 ```
 
 Los hashes de `manifest.json` (params y datos) son deterministas: dos ejecuciones
