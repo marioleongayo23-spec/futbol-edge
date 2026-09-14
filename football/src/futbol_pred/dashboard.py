@@ -514,6 +514,7 @@ def fixture_payload(
             detail.append(count_market(
                 stat, row["total"], stats.dispersion(stat) if stats is not None else 1.0,
                 mean_home=row["home"], mean_away=row["away"], trend=trend_for.get(stat),
+                calibration=(getattr(stats, "calibration", {}) or {}).get(stat) if stats is not None else None,
             ))
         applied_ref = set((payload.get("official_context") or {}).get("referee_adjustment_applied") or [])
         for mk in detail:
@@ -1471,6 +1472,11 @@ def build_dashboard(
         "player_rankings_meta": _player_rankings_meta.get("player_rankings_meta"),
         "model": model_report,
         "stats_backtest": stats_backtest,
+        "stats_calibration": {
+            label: report
+            for label, model in stats_models_by_league.items()
+            if (report := getattr(model, "calibration_report", None))
+        } or None,
         "market_calibration": market_calibration or None,
         "historical_seed": historical_seeds or None,
         "value_ranking": market_value.get("ranking") or [],
@@ -2109,6 +2115,17 @@ def _fit_stats(league: str, season: int):
             rows, auxiliary_matches=auxiliary,
             recency_all_stats=True, half_life_days=STATS_HALFLIFE_DAYS,
         )
+        # Calibración de probabilidad over/under fuera de muestra: mide si los %
+        # aciertan y aprende una corrección Platt por stat, con gate por log-loss.
+        try:
+            from .model.stats_markets import calibrate_stat_markets
+
+            report = calibrate_stat_markets(rows, half_life_days=STATS_HALFLIFE_DAYS)
+            predictor.calibration = report.get("calibration") or {}
+            predictor.calibration_report = report
+        except Exception:
+            predictor.calibration = {}
+            predictor.calibration_report = None
         try:
             from .model.referee_adjustment import RefereeAdjustmentModel
 

@@ -213,6 +213,10 @@ class StatsPredictor:
     temporal_stats: set[str] = field(default_factory=set)
     temporal_validation: dict | None = None
     _recency_all_stats: bool = False
+    # Calibración de probabilidad por stat (Platt a,b) aprendida fuera de muestra
+    # y su informe de fiabilidad. Vacío = sin corrección (identidad).
+    calibration: dict[str, tuple[float, float]] = field(default_factory=dict)
+    calibration_report: dict | None = None
     auxiliary_rows: int = 0
     auxiliary_teams: set[str] = field(default_factory=set)
 
@@ -579,6 +583,166 @@ class StatsPredictor:
             "prob_over": round(over, 3),
             "prob_under": round(1.0 - over, 3),
         }
+
+
+CALIBRATION_SCHEMA = "stat-calibration-v1"
+CALIBRATION_STATS = ("corners", "yellows", "shots", "sot", "fouls")
+MIN_CALIBRATION_MATCHES = 120
+MIN_CALIBRATION_VALIDATION = 40
+CALIBRATION_ADOPT_MARGIN = 0.002   # el log-loss debe bajar al menos esto
+CALIBRATION_MAX_SHIFT = 0.15       # una corrección no mueve una prob más de esto
+
+
+def _logit(p: float) -> float:
+    p = min(1.0 - 1e-6, max(1e-6, float(p)))
+    return float(np.log(p / (1.0 - p)))
+
+
+def _sigmoid(z: float) -> float:
+    return float(1.0 / (1.0 + np.exp(-max(-30.0, min(30.0, z)))))
+
+
+def apply_stat_calibration(prob: float, cal: tuple[float, float] | None) -> float:
+    """Aplica Platt (a,b) a una probabilidad, con desplazamiento acotado."""
+    if not cal:
+        return float(prob)
+    a, b = cal
+    q = _sigmoid(a * _logit(prob) + b)
+    return float(min(prob + CALIBRATION_MAX_SHIFT, max(prob - CALIBRATION_MAX_SHIFT, q)))
+
+
+def _log_loss(pairs: list[tuple[float, int]]) -> float | None:
+    if not pairs:
+        return None
+    total = 0.0
+    for prob, outcome in pairs:
+        p = min(1.0 - 1e-6, max(1e-6, prob))
+        total += -(outcome * np.log(p) + (1 - outcome) * np.log(1.0 - p))
+    return float(total / len(pairs))
+
+
+def _brier(pairs: list[tuple[float, int]]) -> float | None:
+    if not pairs:
+        return None
+    return float(np.mean([(prob - outcome) ** 2 for prob, outcome in pairs]))
+
+
+def _reliability(pairs: list[tuple[float, int]], bins: int = 5) -> list[dict]:
+    edges = np.linspace(0.0, 1.0, bins + 1)
+    out: list[dict] = []
+    for i in range(bins):
+        lo, hi = float(edges[i]), float(edges[i + 1])
+        grp = [(p, o) for p, o in pairs if p >= lo and (p < hi or (i == bins - 1 and p <= hi))]
+        if not grp:
+            continue
+        out.append({
+            "bin": [round(lo, 2), round(hi, 2)],
+            "n": len(grp),
+            "pred": round(float(np.mean([p for p, _ in grp])), 3),
+            "obs": round(float(np.mean([o for _, o in grp])), 3),
+        })
+    return out
+
+
+def _fit_platt(pairs: list[tuple[float, int]]) -> tuple[float, float] | None:
+    if len(pairs) < 30:
+        return None
+    from scipy.optimize import minimize
+
+    x = np.asarray([_logit(p) for p, _ in pairs], dtype=float)
+    y = np.asarray([o for _, o in pairs], dtype=float)
+
+    def nll(params: np.ndarray) -> float:
+        a, b = params
+        z = a * x + b
+        return float(np.mean(y * np.logaddexp(0.0, -z) + (1.0 - y) * np.logaddexp(0.0, z)))
+
+    res = minimize(nll, np.array([1.0, 0.0]), method="L-BFGS-B",
+                   bounds=[(0.2, 3.0), (-2.0, 2.0)])
+    if not res.success or not np.isfinite(res.fun):
+        return None
+    return float(res.x[0]), float(res.x[1])
+
+
+def calibrate_stat_markets(
+    matches: list[MatchStats],
+    *,
+    half_life_days: float = DEFAULT_HALF_LIFE_DAYS,
+    train_fraction: float = 0.75,
+) -> dict:
+    """Calibra la probabilidad over/under de cada stat fuera de muestra.
+
+    Ajusta el predictor con la cabecera temporal, predice la línea principal de
+    cada partido de la cola de validación (sin haberlo visto) y compara con el
+    resultado real. Aprende una corrección Platt por stat y solo la adopta si
+    reduce el log-loss. Nunca hay leakage: la validación no entra en el ajuste.
+    """
+    dated = _dated_rows(matches)
+    if len(dated) < MIN_CALIBRATION_MATCHES:
+        return {"schema": CALIBRATION_SCHEMA, "status": "blocked_insufficient_sample",
+                "accepted": False, "n": len(dated), "by_stat": {}, "calibration": {}}
+    split = min(len(dated) - MIN_CALIBRATION_VALIDATION, max(1, round(len(dated) * train_fraction)))
+    train, validation = dated[:split], dated[split:]
+    if len(validation) < MIN_CALIBRATION_VALIDATION:
+        return {"schema": CALIBRATION_SCHEMA, "status": "blocked_insufficient_validation",
+                "accepted": False, "n_train": len(train), "n_validation": len(validation),
+                "by_stat": {}, "calibration": {}}
+
+    predictor = StatsPredictor().fit(
+        train, recency_all_stats=True, half_life_days=half_life_days,
+        auto_regression=False, fit_pseudo_xg=False,
+    )
+    by_stat: dict[str, dict] = {}
+    accepted: dict[str, tuple[float, float]] = {}
+    for stat in CALIBRATION_STATS:
+        pairs: list[tuple[float, int]] = []
+        for match in validation:
+            actual = match.stats.get(stat)
+            if not actual:
+                continue
+            pred = predictor.predict_fixture(match.home_team, match.away_team).get(stat)
+            if not pred:
+                continue
+            mean_total = pred["total"]
+            disp = predictor.dispersion(stat)
+            line = float(np.floor(mean_total)) + 0.5   # línea .5 => sin push
+            prob = StatsPredictor.prob_over(mean_total, line, disp)
+            total = float(actual[0]) + float(actual[1])
+            pairs.append((prob, 1 if total > line else 0))
+        if len(pairs) < MIN_CALIBRATION_VALIDATION:
+            continue
+        base_ll = _log_loss(pairs)
+        row = {
+            "n": len(pairs),
+            "base_log_loss": round(base_ll, 4) if base_ll is not None else None,
+            "base_brier": round(_brier(pairs), 4),
+            "reliability": _reliability(pairs),
+            "accepted": False,
+        }
+        cal = _fit_platt(pairs)
+        if cal and base_ll is not None:
+            cal_pairs = [(apply_stat_calibration(p, cal), o) for p, o in pairs]
+            cal_ll = _log_loss(cal_pairs)
+            row["platt"] = {"a": round(cal[0], 4), "b": round(cal[1], 4)}
+            row["calibrated_log_loss"] = round(cal_ll, 4) if cal_ll is not None else None
+            row["calibrated_brier"] = round(_brier(cal_pairs), 4)
+            if cal_ll is not None and cal_ll <= base_ll - CALIBRATION_ADOPT_MARGIN:
+                row["accepted"] = True
+                accepted[stat] = cal
+        by_stat[stat] = row
+
+    return {
+        "schema": CALIBRATION_SCHEMA,
+        "status": "accepted_partial" if accepted else "blocked_by_gate",
+        "accepted": bool(accepted),
+        "gate": {"metric": "log_loss", "min_gain": CALIBRATION_ADOPT_MARGIN,
+                 "max_shift": CALIBRATION_MAX_SHIFT, "chronological": True,
+                 "scope": list(CALIBRATION_STATS)},
+        "n_train": len(train),
+        "n_validation": len(validation),
+        "by_stat": by_stat,
+        "calibration": accepted,
+    }
 
 
 def validate_regression_champions(

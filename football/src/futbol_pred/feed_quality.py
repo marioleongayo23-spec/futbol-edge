@@ -14,6 +14,7 @@ from .data_contract import dedupe_feed_by_match_uid, enrich_feed_contract
 
 _TOP_LEVEL_LKG = (
     "quiniela", "players", "model", "market_calibration", "historical_seed",
+    "stats_calibration",
 )
 _MATCH_LKG = (
     "probs",

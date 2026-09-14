@@ -9,7 +9,13 @@ from futbol_pred.ingest.football_data_uk import (
     MatchStats,
     season_code,
 )
-from futbol_pred.model.stats_markets import StatsPredictor, validate_temporal_decay
+from futbol_pred.model.stats_markets import (
+    StatsPredictor,
+    apply_stat_calibration,
+    calibrate_stat_markets,
+    validate_temporal_decay,
+)
+from futbol_pred.model.market_lines import count_market
 
 
 def test_season_code():
@@ -191,6 +197,41 @@ def test_recency_all_stats_pondera_lo_reciente_en_todas_las_stats():
     recent_home = recent.predict_fixture("A", "B")["corners"]["home"]
     assert recent_home > flat_home        # la forma reciente pesa más
     assert recent_home > 7.0              # claramente tirado hacia el 11 reciente
+
+
+def test_apply_stat_calibration_identidad_y_acotada():
+    assert apply_stat_calibration(0.6, None) == pytest.approx(0.6)   # sin cal -> identidad
+    # Empuje fuerte hacia arriba, pero acotado a +0.15.
+    assert apply_stat_calibration(0.6, (3.0, 2.0)) == pytest.approx(0.75)
+    # Empuje fuerte hacia abajo, acotado a -0.15.
+    assert apply_stat_calibration(0.6, (3.0, -2.0)) == pytest.approx(0.45)
+
+
+def test_count_market_aplica_calibracion():
+    base = count_market("corners", 9.0, 1.0)
+    bajado = count_market("corners", 9.0, 1.0, calibration=(3.0, -2.0))
+    # La calibración a la baja reduce la P(over) de la línea principal.
+    b_over = next(l for l in base["lines"] if l["main"])["over"]
+    c_over = next(l for l in bajado["lines"] if l["main"])["over"]
+    assert c_over < b_over
+
+
+def test_calibracion_detecta_y_corrige_sesgo_fuera_de_muestra():
+    # Datos con córners casi constantes (~9): el modelo Poisson/NB predice ~30%
+    # de over en la línea 9.5, pero el over real es ~0. La calibración debe
+    # detectarlo, aprender una corrección y reducir el log-loss.
+    base = datetime(2024, 1, 1, tzinfo=timezone.utc)
+    rows = [
+        MatchStats("A", "B", {"corners": (5, 4)}, kickoff=base + timedelta(days=4 * i))
+        for i in range(180)
+    ]
+    report = calibrate_stat_markets(rows)
+    corners = report["by_stat"]["corners"]
+    assert corners["n"] >= 40
+    assert "platt" in corners
+    assert corners["calibrated_log_loss"] < corners["base_log_loss"]
+    assert corners["accepted"] is True
+    assert "corners" in report["calibration"]
 
 
 def test_negative_binomial_se_activa_con_sobredispersion():

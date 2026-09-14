@@ -125,6 +125,7 @@ def count_market(
     mean_away: float | None = None,
     trend: dict | None = None,
     lines: list[float] | None = None,
+    calibration: tuple[float, float] | None = None,
 ) -> dict:
     """Reexpresa un recuento esperado como mercado over/under/exacto.
 
@@ -132,7 +133,15 @@ def count_market(
     sobredispersión que el predictor observa por lado —la razón varianza/media se
     conserva al sumar los dos lados, así que es la sobredispersión correcta para
     la línea del total—.
+
+    ``calibration`` (Platt a,b aprendido fuera de muestra) recalibra la P(over)
+    para que los porcentajes publicados se ajusten a la frecuencia real.
     """
+    from .stats_markets import apply_stat_calibration
+
+    def _cal(prob: float) -> float:
+        return apply_stat_calibration(prob, calibration)
+
     mean_total = max(0.0, float(mean_total))
     pmf, k_star = _distribution(mean_total, dispersion)
     if lines is None:
@@ -144,8 +153,8 @@ def count_market(
 
     rows = []
     for line in lines:
-        over = prob_over(mean_total, line, dispersion)
         push = _push(mean_total, line, dispersion)
+        over = min(1.0 - push, _cal(prob_over(mean_total, line, dispersion)))
         under = max(0.0, 1.0 - over - push)
         side = "over" if over >= under else "under"
         rows.append({
@@ -158,8 +167,8 @@ def count_market(
             "main": abs(line - main) < 1e-9,
         })
 
-    over_main = prob_over(mean_total, main, dispersion)
     push_main = _push(mean_total, main, dispersion)
+    over_main = min(1.0 - push_main, _cal(prob_over(mean_total, main, dispersion)))
     under_main = max(0.0, 1.0 - over_main - push_main)
     side = "over" if over_main >= under_main else "under"
     pick_prob = max(over_main, under_main)
