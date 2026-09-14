@@ -68,11 +68,18 @@ class DixonColesModel:
         home_goals: list[int],
         away_goals: list[int],
         days_ago: list[float] | None = None,
+        sample_weight: list[float] | None = None,
     ) -> "DixonColesModel":
         """Ajusta el modelo por máxima verosimilitud ponderada.
 
         ``days_ago`` = días transcurridos desde cada partido hasta "hoy".
         Si es None, todos los partidos pesan igual.
+
+        ``sample_weight`` = multiplicador por partido que se acumula SOBRE el
+        decaimiento temporal. Sirve para la transición temporada anterior ->
+        actual: los partidos de sembrado (temporadas previas) entran con un
+        peso < 1 que disminuye según la liga en curso acumula jornadas, de modo
+        que las fuerzas ajustadas migran del histórico a la forma reciente.
         """
         teams = sorted(set(home_teams) | set(away_teams))
         idx = {t: i for i, t in enumerate(teams)}
@@ -82,6 +89,11 @@ class DixonColesModel:
         hi = np.asarray([idx[t] for t in home_teams])
         ai = np.asarray([idx[t] for t in away_teams])
         w = self._weights(days_ago) if days_ago is not None else np.ones(len(hg))
+        if sample_weight is not None:
+            sw = np.asarray(sample_weight, dtype=float)
+            if sw.shape != w.shape:
+                raise ValueError("sample_weight debe traer un peso por partido")
+            w = w * np.clip(sw, 0.0, None)
 
         # Parámetros: [attack(n), defence(n), home_adv, rho]
         # Restricción de identificabilidad: media de ataques = 0.

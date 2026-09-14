@@ -63,6 +63,10 @@ SEED_PLAN = {
     "segunda": [("segunda", 1), ("segunda", 2), ("laliga", 1)],
     "champions": [("champions", 1)],
 }
+# Fracción de regresión a la media del Elo en cada cambio de temporada: el
+# rating del año anterior no se hereda al 100%, revierte un 25% hacia la base
+# para que los resultados de la temporada en curso pesen antes.
+ELO_SEASON_REGRESSION = 0.25
 LEAGUES = {
     "laliga": "LaLiga",
     "segunda": "LaLiga Hypermotion",
@@ -89,14 +93,25 @@ def ensure_aware(value: datetime) -> datetime:
 
 
 def _fit_elo_from_fixtures(fixtures: list[Fixture]) -> EloRatings:
-    """Elo actual usando solo resultados anteriores, en orden cronológico."""
+    """Elo actual usando solo resultados anteriores, en orden cronológico.
+
+    Al cruzar cada cambio de temporada se regresa el rating hacia la media
+    (``ELO_SEASON_REGRESSION``): así el histórico ancla el arranque pero cede
+    ante la forma de la temporada en curso, en vez de arrastrarse al 100%.
+    """
 
     elo = EloRatings()
     played = sorted(
         (fixture for fixture in fixtures if fixture.home_goals is not None and fixture.away_goals is not None),
         key=lambda fixture: ensure_aware(fixture.kickoff),
     )
+    last_season = None
     for fixture in played:
+        season = fixture.season
+        if last_season is not None and season is not None and season > last_season:
+            elo.regress_to_mean(ELO_SEASON_REGRESSION)
+        if season is not None:
+            last_season = season
         elo.update(
             _canon(fixture.home_team),
             _canon(fixture.away_team),
@@ -104,6 +119,34 @@ def _fit_elo_from_fixtures(fixtures: list[Fixture]) -> EloRatings:
             int(fixture.away_goals),
         )
     return elo
+
+
+def _model_market_weight(mpt: float, learned_market: dict | None) -> tuple[float, float]:
+    """Peso modelo↔mercado y temperatura en la transición de temporada.
+
+    Con pocas jornadas el modelo va sobreconfiado, así que pesa más el mercado;
+    según avanza la liga el modelo gana peso (rampa por ``mpt`` = media de
+    partidos por equipo, tope 0.9). Clave de la transición:
+
+    * Una calibración de la temporada EN CURSO (``scope == "current_season"``)
+      se usa tal cual: se la ha ganado con datos de esta temporada.
+    * La heredada del sembrado (temporada anterior) solo ancla el arranque y
+      cede a la rampa según se acumulan jornadas. Si no, su ``model_weight``
+      (p. ej. 0.05) congelaría la predicción en "95% mercado" toda la temporada.
+    """
+    progress = min(1.0, mpt / 12) if mpt > 0 else 0.0
+    ramp_w = max(0.2, min(0.9, mpt / 12))
+    model_w = ramp_w
+    market_temperature = 1.0
+    if learned_market and learned_market.get("accepted"):
+        production = learned_market["production"]
+        seed_w = float(production["model_weight"])
+        market_temperature = float(production["temperature"])
+        if learned_market.get("scope") == "current_season":
+            model_w = seed_w
+        else:
+            model_w = (1.0 - progress) * seed_w + progress * ramp_w
+    return model_w, market_temperature
 
 
 def _previous_ensemble_params(previous: dict | None, league: str) -> dict:
@@ -1259,7 +1302,7 @@ def build_dashboard(
             train = _seed_fixtures(league, season) + fixtures
             try:
                 model = fit_model_from_fixtures(
-                    train, as_of=now, name_fn=_canon
+                    train, as_of=now, name_fn=_canon, current_season=season
                 )
             except (ValueError, KeyError):
                 model = None
@@ -1279,19 +1322,13 @@ def build_dashboard(
             trends = _fit_trends(league, season, train)
             odds_map = _odds_map(league)
             closing_odds_map = _closing_odds_map(league, season)
-            # Peso del modelo vs mercado para calibrar: con pocas jornadas jugadas
-            # el modelo va sobreconfiado, así que pesa más el mercado; según avanza
-            # la liga, el modelo gana peso. mpt = media de partidos por equipo.
+            # Peso del modelo vs mercado, según jornadas jugadas por equipo (mpt).
             played_n = sum(1 for f in fixtures if f.home_goals is not None)
             teams_n = len({f.home_team for f in fixtures} | {f.away_team for f in fixtures})
             mpt = (2 * played_n / teams_n) if teams_n else 0
-            model_w = max(0.2, min(0.9, mpt / 12))
-            market_temperature = 1.0
-            learned_market = market_calibration.get(league)
-            if learned_market and learned_market.get("accepted"):
-                production = learned_market["production"]
-                model_w = float(production["model_weight"])
-                market_temperature = float(production["temperature"])
+            model_w, market_temperature = _model_market_weight(
+                mpt, market_calibration.get(league)
+            )
             h2h = _h2h_map(train)  # incluye temporadas previas (sembrado)
             if model is not None:
                 league_bundles[league] = {

@@ -37,6 +37,22 @@ class EloRatings:
     def get(self, team: str) -> float:
         return self.ratings.get(team, self.base)
 
+    def regress_to_mean(self, fraction: float) -> None:
+        """Revierte cada rating una fracción hacia ``base`` (nueva temporada).
+
+        La fuerza de un equipo cambia entre temporadas (fichajes, banquillo,
+        pretemporada), así que arrastrar el Elo del año anterior al 100% frena
+        la lectura de la forma actual. Regresar hacia la media al cruzar el
+        cambio de temporada es la práctica estándar (clubelo/538) y acelera que
+        los resultados nuevos muevan el rating. ``fraction`` 0 = sin cambios,
+        1 = reinicio total a ``base``.
+        """
+        if fraction <= 0:
+            return
+        frac = min(1.0, fraction)
+        for team, rating in self.ratings.items():
+            self.ratings[team] = rating + (self.base - rating) * frac
+
     def expected_home(self, home: str, away: str, neutral: bool = False) -> float:
         """Probabilidad Elo de que gane el local (empate repartido apart)."""
         adv = 0.0 if neutral else self.home_adv
