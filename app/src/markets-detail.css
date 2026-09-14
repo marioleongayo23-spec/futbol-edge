@@ -189,3 +189,20 @@
 @media (max-width: 520px) {
   .pm-grid { grid-template-columns: 1fr; }
 }
+
+/* ---------- Apuestas recomendadas (masticadas) ---------- */
+.card.reco{border-color:var(--line)}
+.reco-list{display:flex;flex-direction:column;gap:8px;margin-top:4px}
+.reco-item{border:1px solid var(--line);border-left-width:4px;border-radius:12px;padding:9px 11px;background:var(--card2)}
+.reco-item.conf-alta{border-left-color:var(--green)}
+.reco-item.conf-media{border-left-color:var(--amber)}
+.reco-item.conf-baja{border-left-color:var(--dim)}
+.reco-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.reco-mk{font-size:.66rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);flex:0 0 auto}
+.reco-bet{font-size:.95rem;color:var(--tx);flex:1 1 auto}
+.reco-prob{font-weight:700;color:var(--tx);font-variant-numeric:tabular-nums}
+.reco-why{margin:6px 0 0;font-size:.8rem;line-height:1.5;color:var(--muted)}
+/* Chips de recomendación por mercado, coloreados por confianza */
+.mk2-lean.conf-alta{border-color:var(--green);color:var(--tx)}
+.mk2-lean.conf-media{border-color:var(--amber)}
+.mk2-lean.conf-baja{opacity:.85}
