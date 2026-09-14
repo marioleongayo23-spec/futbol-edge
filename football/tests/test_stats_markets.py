@@ -162,6 +162,16 @@ def test_encogido_converge_a_la_tasa_real_con_muestra():
     assert pred["corners"]["home"] > 6.8
 
 
+def test_combine_multiplicativo_compone_y_acota():
+    # liga=5, ataque 1.5x y defensa 1.5x -> 5*1.5*1.5=11.25 (compone),
+    # más que la media aritmética (7.5) que se quedaba a medio camino.
+    assert StatsPredictor._combine(7.5, 7.5, 5.0) == pytest.approx(11.25)
+    # Multiplicador extremo (5x) se corta al tope de la banda (2x).
+    assert StatsPredictor._combine(25.0, 5.0, 5.0) == pytest.approx(5.0 * 2.0 * 1.0)
+    # Sin media de liga válida cae a la media aritmética clásica.
+    assert StatsPredictor._combine(6.0, 4.0, 0.0) == pytest.approx(5.0)
+
+
 def test_recency_all_stats_pondera_lo_reciente_en_todas_las_stats():
     # Un equipo que pasó de 3 córners de local (histórico) a 11 (reciente).
     # 'flat' promedia todo; con recency_all_stats lo reciente manda, aunque el

@@ -34,6 +34,10 @@ STAT_NAMES = ("shots", "sot", "corners", "fouls", "yellows", "reds", "offsides",
 # partido de ese lado (local o visitante). Es la misma transición progresiva
 # histórico->actual, aplicada a los mercados de stats.
 STAT_SHRINKAGE_K = 5.0
+# Banda de los multiplicadores ataque/defensa en el modelo log-lineal: un equipo
+# rara vez produce >2x o <0.5x la media de liga en un stat estable; acotarlo
+# evita que una tasa extrema (o de poca muestra) dispare la línea.
+STAT_RATIO_CLAMP = (0.5, 2.0)
 MIN_TEMPORAL_MATCHES = 80
 MIN_TEMPORAL_VALIDATION = 20
 DEFAULT_HALF_LIFE_DAYS = 365.25
@@ -368,9 +372,25 @@ class StatsPredictor:
         a_against = self.away[away][stat].against_avg_toward(lh, k)
         a_for = self.away[away][stat].for_avg_toward(la, k)
         h_against = self.home[home][stat].against_avg_toward(la, k)
-        exp_home = (h_for + a_against) / 2.0
-        exp_away = (a_for + h_against) / 2.0
+        exp_home = self._combine(h_for, a_against, lh)
+        exp_away = self._combine(a_for, h_against, la)
         return exp_home, exp_away
+
+    @staticmethod
+    def _combine(own: float, opp_against: float, league: float | None) -> float:
+        """Esperado log-lineal: liga * ratio_ataque * ratio_defensa.
+
+        Capta la interacción (equipo muy productor contra defensa que lo permite)
+        mejor que la media aritmética, que se queda a medio camino. Los
+        multiplicadores se acotan (STAT_RATIO_CLAMP) para no disparar la línea.
+        Si la media de liga no es válida, cae a la media aritmética clásica.
+        """
+        if league is None or league <= 0:
+            return max(0.0, (own + opp_against) / 2.0)
+        lo, hi = STAT_RATIO_CLAMP
+        attack = min(hi, max(lo, own / league))
+        defense = min(hi, max(lo, opp_against / league))
+        return league * attack * defense
 
     def _regression_features(self, home: str, away: str, stat: str, *, home_side: bool) -> list[float] | None:
         lh = self.league_home[stat].for_avg
