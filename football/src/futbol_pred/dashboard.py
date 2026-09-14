@@ -67,6 +67,14 @@ SEED_PLAN = {
 # rating del año anterior no se hereda al 100%, revierte un 25% hacia la base
 # para que los resultados de la temporada en curso pesen antes.
 ELO_SEASON_REGRESSION = 0.25
+
+# Transición modelo↔mercado ("modelo manda pronto"). El mercado de apuestas solo
+# ancla el arranque, cuando el modelo tiene muy poca muestra, y se apaga según la
+# liga acumula jornadas. model_w = MODEL_W_BASE + (1-MODEL_W_BASE)*(mpt/MPT_FULL),
+# con tope 1.0 -> el mercado desaparece cuando hay muestra propia suficiente.
+#   J1-2 -> ~40% modelo ; J5-6 -> ~65% ; J8 -> ~80% ; J12+ -> 100% modelo.
+MODEL_W_BASE = 0.40
+MODEL_W_FULL_MPT = 12.0
 LEAGUES = {
     "laliga": "LaLiga",
     "segunda": "LaLiga Hypermotion",
@@ -122,31 +130,30 @@ def _fit_elo_from_fixtures(fixtures: list[Fixture]) -> EloRatings:
 
 
 def _model_market_weight(mpt: float, learned_market: dict | None) -> tuple[float, float]:
-    """Peso modelo↔mercado y temperatura en la transición de temporada.
+    """Peso de TU modelo frente al mercado (y temperatura) según ``mpt``.
 
-    Con pocas jornadas el modelo va sobreconfiado, así que pesa más el mercado;
-    según avanza la liga el modelo gana peso (rampa por ``mpt`` = media de
-    partidos por equipo, tope 0.9). Clave de la transición:
+    Filosofía "modelo manda pronto": el mercado de apuestas solo tiene sentido
+    como ancla al principio, cuando el modelo tiene muy poca muestra y va
+    sobreconfiado. Según la liga acumula jornadas, el modelo toma el mando y el
+    mercado se apaga (tope 1.0 = 100% modelo con muestra propia suficiente):
 
-    * Una calibración de la temporada EN CURSO (``scope == "current_season"``)
-      se usa tal cual: se la ha ganado con datos de esta temporada.
-    * La heredada del sembrado (temporada anterior) solo ancla el arranque y
-      cede a la rampa según se acumulan jornadas. Si no, su ``model_weight``
-      (p. ej. 0.05) congelaría la predicción en "95% mercado" toda la temporada.
+        model_w = MODEL_W_BASE + (1 - MODEL_W_BASE) * (mpt / MODEL_W_FULL_MPT)
+
+    La calibración heredada del sembrado (temporada anterior) ya NO baja este
+    peso: su ``model_weight`` bajo (p. ej. 0.05) era justo lo que congelaba la
+    predicción en "casi todo mercado". Una calibración ganada con datos de ESTA
+    temporada solo puede AFINAR: subir el peso del modelo si demostró ser aún
+    mejor y aportar su temperatura, nunca devolver el mando al mercado.
     """
-    progress = min(1.0, mpt / 12) if mpt > 0 else 0.0
-    ramp_w = max(0.2, min(0.9, mpt / 12))
-    model_w = ramp_w
+    progress = min(1.0, mpt / MODEL_W_FULL_MPT) if mpt > 0 else 0.0
+    model_w = MODEL_W_BASE + (1.0 - MODEL_W_BASE) * progress
     market_temperature = 1.0
-    if learned_market and learned_market.get("accepted"):
+    if (learned_market and learned_market.get("accepted")
+            and learned_market.get("scope") == "current_season"):
         production = learned_market["production"]
-        seed_w = float(production["model_weight"])
+        model_w = max(model_w, float(production["model_weight"]))
         market_temperature = float(production["temperature"])
-        if learned_market.get("scope") == "current_season":
-            model_w = seed_w
-        else:
-            model_w = (1.0 - progress) * seed_w + progress * ramp_w
-    return model_w, market_temperature
+    return min(1.0, model_w), market_temperature
 
 
 def _previous_ensemble_params(previous: dict | None, league: str) -> dict:

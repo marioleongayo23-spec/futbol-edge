@@ -173,38 +173,46 @@ def test_una_sola_temporada_no_aplica_rebaja():
         assert model.attack[t] == pytest.approx(ref.attack[t], abs=1e-6)
 
 
-# --- Peso modelo↔mercado ----------------------------------------------------
+# --- Peso modelo↔mercado ("modelo manda pronto") ----------------------------
 
-def test_seed_de_mercado_no_congela_la_mezcla():
+def test_rampa_modelo_manda_pronto():
+    # La curva elegida: el modelo arranca en 40% y llega al 100% en mpt=12.
+    assert dashboard._model_market_weight(0.0, None)[0] == pytest.approx(0.40)
+    assert dashboard._model_market_weight(5.0, None)[0] == pytest.approx(0.65)
+    assert dashboard._model_market_weight(8.0, None)[0] == pytest.approx(0.80)
+    assert dashboard._model_market_weight(12.0, None)[0] == pytest.approx(1.00)
+    assert dashboard._model_market_weight(20.0, None)[0] == pytest.approx(1.00)  # tope
+    assert dashboard._model_market_weight(0.0, None)[1] == pytest.approx(1.0)    # temp
+
+
+def test_seed_de_mercado_ya_no_baja_el_peso():
+    # El seed de temporada anterior (model_weight=0.05) NO debe arrastrar el peso:
+    # la predicción ya no queda congelada en "casi todo mercado".
     seed_cal = {
         "accepted": True,
         "scope": "historical_seed",
-        "production": {"model_weight": 0.05, "temperature": 0.9},
+        "production": {"model_weight": 0.05, "temperature": 0.8},
     }
-    w0, _ = dashboard._model_market_weight(0.0, seed_cal)
+    w0, temp0 = dashboard._model_market_weight(0.0, seed_cal)
     w5, _ = dashboard._model_market_weight(5.0, seed_cal)
-    w12, _ = dashboard._model_market_weight(12.0, seed_cal)
-    # Jornada 0: ancla en el seed. Luego sube con las jornadas.
-    assert w0 == pytest.approx(0.05, abs=1e-6)
-    assert w5 > w0
-    assert w12 > w5
-    assert w12 == pytest.approx(0.9, abs=1e-6)   # temporada madura -> rampa plena
+    assert w0 == pytest.approx(0.40)   # ignora el 0.05 del seed
+    assert w5 == pytest.approx(0.65)   # sigue la rampa, no el seed
+    assert temp0 == pytest.approx(1.0)  # tampoco arrastra la temperatura del seed
 
 
-def test_calibracion_de_temporada_actual_se_respeta():
-    cur_cal = {
-        "accepted": True,
-        "scope": "current_season",
-        "production": {"model_weight": 0.7, "temperature": 1.1},
+def test_calibracion_de_temporada_actual_solo_puede_subir_el_modelo():
+    # Ganada con datos de esta temporada: puede AFINAR hacia arriba...
+    alta = {
+        "accepted": True, "scope": "current_season",
+        "production": {"model_weight": 0.85, "temperature": 1.1},
     }
-    w, temp = dashboard._model_market_weight(5.0, cur_cal)
-    assert w == pytest.approx(0.7)    # ganada con datos propios: se usa tal cual
+    w, temp = dashboard._model_market_weight(5.0, alta)   # rampa=0.65
+    assert w == pytest.approx(0.85)   # sube por encima de la rampa
     assert temp == pytest.approx(1.1)
-
-
-def test_sin_calibracion_usa_la_rampa():
-    w0, temp0 = dashboard._model_market_weight(0.0, None)
-    w6, _ = dashboard._model_market_weight(6.0, None)
-    assert w0 == pytest.approx(0.2)   # suelo de la rampa
-    assert temp0 == pytest.approx(1.0)
-    assert w6 == pytest.approx(0.5)
+    # ...pero nunca por debajo de la rampa (el mercado no recupera el mando).
+    baja = {
+        "accepted": True, "scope": "current_season",
+        "production": {"model_weight": 0.30, "temperature": 1.0},
+    }
+    w2, _ = dashboard._model_market_weight(5.0, baja)
+    assert w2 == pytest.approx(0.65)  # se queda en la rampa, no baja a 0.30
