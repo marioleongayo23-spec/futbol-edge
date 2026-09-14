@@ -213,6 +213,40 @@ def _rfef_directory() -> RefereeDirectory:
     return _RFEF_DIRECTORY
 
 
+_CONF_RANK = {"alta": 3, "media": 2, "baja": 1}
+
+
+def _recommended_bets(payload: dict, detail: list[dict], probs: dict) -> list[dict]:
+    """Lista MASTICADA de apuestas del partido, ordenada por confianza.
+
+    Reúne 1X2, goles y cada mercado de stats con su lado/línea, probabilidad,
+    confianza y explicación, para no tener que revisar tarjeta a tarjeta.
+    """
+    bets: list[dict] = []
+    fav = max(("1", "X", "2"), key=lambda s: float(probs.get(s, 0.0)))
+    fav_prob = float(probs.get(fav, 0.0))
+    fav_name = {"1": payload.get("home"), "2": payload.get("away"), "X": "Empate"}[fav]
+    conf_1x2 = "alta" if fav_prob >= 0.62 else "media" if fav_prob >= 0.46 else "baja"
+    resultado = "victoria local" if fav == "1" else "victoria visitante" if fav == "2" else "empate"
+    bets.append({
+        "mercado": "1X2",
+        "apuesta": fav_name if fav != "X" else "Empate",
+        "seleccion": fav,
+        "probabilidad": round(fav_prob, 3),
+        "confianza": conf_1x2,
+        "explicacion": f"El modelo da un {round(fav_prob * 100)}% a {resultado} ({fav_name}).",
+    })
+    for mk in detail:
+        rec = mk.get("recomendacion")
+        if rec:
+            bets.append({"mercado": mk.get("label"), **rec})
+    bets.sort(
+        key=lambda b: (_CONF_RANK.get(b.get("confianza"), 0), float(b.get("probabilidad") or 0.0)),
+        reverse=True,
+    )
+    return bets
+
+
 def fixture_payload(
     fixture: Fixture,
     model,
@@ -524,6 +558,7 @@ def fixture_payload(
         if not finished_with_result:
             payload["committed"] = committed_scoreline(
                 matrix, probs, fixture.home_team, fixture.away_team)
+            payload["apuestas_recomendadas"] = _recommended_bets(payload, detail, probs)
     except Exception:  # noqa: BLE001 - los mercados nunca tumban el feed
         pass
 

@@ -66,6 +66,29 @@ def _top5(rows: list[dict], metric: str) -> list[dict]:
     return out
 
 
+def _player_reco(label: str, row: dict) -> dict:
+    """Apuesta MASTICADA de un jugador: qué línea over jugar y por qué."""
+    jugador = row.get("jugador") or "El jugador"
+    pos = row.get("pos")
+    value = float(row.get("value") or 0.0)
+    line = row.get("line")
+    over = float(row.get("over") or 0.0)
+    quien = f"{jugador} ({pos})" if pos else jugador
+    prob = round(over * 100)
+    conf = "alta" if over >= 0.66 else "media" if over >= 0.57 else "baja"
+    return {
+        "apuesta": f"{jugador}: Más de {line:g} {label.lower()}" if line is not None else None,
+        "confianza": conf,
+        "probabilidad": round(over, 3),
+        "explicacion": (
+            f"Esperamos ~{value:g} {label.lower()} de {quien}. "
+            f"La línea Más de {line:g} sale al {prob}%."
+            if line is not None else
+            f"Esperamos ~{value:g} {label.lower()} de {quien}."
+        ),
+    }
+
+
 def build_player_markets(home_rows: list[dict], away_rows: list[dict]) -> dict | None:
     """Estructura top-5 por métrica y equipo, con la mejor apuesta destacada."""
     metrics = []
@@ -81,12 +104,17 @@ def build_player_markets(home_rows: list[dict], away_rows: list[dict]) -> dict |
         pool = [("home", p) for p in home if p["line"] is not None] + \
                [("away", p) for p in away if p["line"] is not None]
         best = max(pool, key=lambda item: item[1]["value"], default=None)
+        best_block = None
+        if best:
+            side, row = best
+            best_block = {"side": side, **row}
+            best_block["recomendacion"] = _player_reco(METRIC_LABEL[metric], row)
         metrics.append({
             "metric": metric,
             "label": METRIC_LABEL[metric],
             "home": home,
             "away": away,
-            "best": {"side": best[0], **best[1]} if best else None,
+            "best": best_block,
         })
     if not metrics:
         return None

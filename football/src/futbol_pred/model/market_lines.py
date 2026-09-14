@@ -90,6 +90,84 @@ def _lean(prob: float) -> str:
     return "ligero"
 
 
+def _confianza(prob: float, trend_agrees, calibrated: bool) -> str:
+    """Confianza honesta de la recomendación: probabilidad ajustada por tendencia."""
+    score = float(prob)
+    if trend_agrees is True:
+        score += 0.03
+    elif trend_agrees is False:
+        score -= 0.05
+    if calibrated:
+        score += 0.01
+    if score >= 0.66:
+        return "alta"
+    if score >= 0.57:
+        return "media"
+    return "baja"
+
+
+def _recomendacion(out: dict, *, calibrated: bool = False) -> dict:
+    """Convierte un mercado en una apuesta MASTICADA: qué jugar y por qué.
+
+    Reexpresa lo que ya calculó el modelo (media esperada, probabilidad de la
+    línea, rango, tendencia) en una recomendación clara con su explicación.
+    """
+    pick = out.get("pick") or {}
+    label = str(out.get("label") or out.get("stat") or "").lower()
+    exp = out.get("expected") or {}
+    total, home, away = exp.get("total"), exp.get("home"), exp.get("away")
+    trend = out.get("trend") or {}
+
+    # La apuesta masticada NO es la línea principal (~50/50) sino la línea con la
+    # inclinación más clara entre las ofrecidas: la que de verdad se acierta.
+    lines = out.get("lines") or []
+    best = max(lines, key=lambda row: float(row.get("pick_prob") or 0.0), default=None)
+    if best is not None:
+        side = best.get("pick")
+        line = best.get("line")
+        prob = float(best.get("pick_prob") or 0.0)
+    else:
+        side = pick.get("side")
+        line = pick.get("line")
+        prob = float(pick.get("prob") or 0.0)
+
+    # La coincidencia con la tendencia se recalcula para el lado recomendado.
+    if trend.get("dir") == "up":
+        trend_agrees = side == "over"
+    elif trend.get("dir") == "down":
+        trend_agrees = side == "under"
+    else:
+        trend_agrees = None
+
+    lado_txt = "Más" if side == "over" else "Menos"
+    conf = _confianza(prob, trend_agrees, calibrated)
+
+    frases: list[str] = []
+    if total is not None:
+        detalle = f" ({home:g} local + {away:g} visitante)" if home is not None and away is not None else ""
+        frases.append(f"Esperamos ~{float(total):g} {label}{detalle}.")
+    fuente = " (calibrado con resultados reales)" if calibrated else ""
+    frases.append(f"El modelo{fuente} da un {round(prob * 100)}% a «{lado_txt.lower()} de {line:g}».")
+    r80 = out.get("range_80")
+    if isinstance(r80, (list, tuple)) and len(r80) == 2:
+        frases.append(f"Rango probable: {r80[0]}–{r80[1]}.")
+    if trend.get("dir") in ("up", "down"):
+        rumbo = "al alza" if trend["dir"] == "up" else "a la baja"
+        if trend_agrees is True:
+            frases.append(f"La forma reciente va {rumbo} y refuerza la apuesta.")
+        elif trend_agrees is False:
+            frases.append(f"Ojo: la forma reciente va {rumbo}, en contra de la apuesta.")
+
+    return {
+        "apuesta": f"{lado_txt} de {line:g} {label}",
+        "lado": "mas" if side == "over" else "menos",
+        "linea": line,
+        "probabilidad": round(prob, 3),
+        "confianza": conf,
+        "explicacion": " ".join(frases),
+    }
+
+
 def _distribution(mean: float, dispersion: float) -> tuple[list[float], int]:
     """PMF del recuento hasta una cola razonable; devuelve (pmf, k_mas_probable)."""
     cap = max(6, int(math.ceil(mean * 2.2)) + 8)
@@ -203,6 +281,7 @@ def count_market(
             out["pick"]["trend_agrees"] = True
         elif trend.get("dir") in ("up", "down"):
             out["pick"]["trend_agrees"] = False
+    out["recomendacion"] = _recomendacion(out, calibrated=bool(calibration))
     return out
 
 
@@ -254,6 +333,7 @@ def goals_market(matrix, mean_home: float, mean_away: float, trend: dict | None 
             out["pick"]["trend_agrees"] = True
         elif trend.get("dir") in ("up", "down"):
             out["pick"]["trend_agrees"] = False
+    out["recomendacion"] = _recomendacion(out, calibrated=False)
     return out
 
 
