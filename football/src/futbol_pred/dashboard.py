@@ -64,9 +64,10 @@ SEED_PLAN = {
     "champions": [("champions", 1)],
 }
 # Fracción de regresión a la media del Elo en cada cambio de temporada: el
-# rating del año anterior no se hereda al 100%, revierte un 25% hacia la base
-# para que los resultados de la temporada en curso pesen antes.
-ELO_SEASON_REGRESSION = 0.25
+# rating del año anterior no se hereda al 100%, revierte un 33% hacia la base
+# (línea clubelo/538) para que los resultados de la temporada en curso pesen
+# antes. Cuanto mayor, más rápido manda la forma actual sobre el histórico.
+ELO_SEASON_REGRESSION = 0.33
 
 # Transición modelo↔mercado ("modelo manda pronto"). El mercado de apuestas solo
 # ancla el arranque, cuando el modelo tiene muy poca muestra, y se apaga según la

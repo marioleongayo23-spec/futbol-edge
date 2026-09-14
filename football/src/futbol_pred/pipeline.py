@@ -24,10 +24,14 @@ MADRID = ZoneInfo("Europe/Madrid")
 # ``SEASON_TRANSITION_MPT`` = partidos por equipo ya jugados a partir de los
 # cuales la temporada actual asume el control del ajuste (~1/3 de liga). El
 # sembrado (temporadas previas) arranca con peso 1.0 y decae linealmente hasta
-# ``SEED_WEIGHT_FLOOR``, que NUNCA baja de ahí para conservar el ancla de los
-# recién ascendidos y la escala de fuerza entre divisiones.
+# ``SEED_WEIGHT_FLOOR``, que NUNCA baja de ahí para conservar un ancla mínima
+# de los recién ascendidos y de la escala de fuerza entre divisiones.
+# Con suelo 0.2 la forma de la temporada en curso pasa a mandar hacia la
+# jornada ~11 (con 0.4 no lo hacía hasta la ~16): la nueva temporada pesa más
+# y de forma más progresiva, pero el histórico sigue anclando a quien aún tiene
+# poca muestra (ascendidos, cruces entre divisiones).
 SEASON_TRANSITION_MPT = 12.0
-SEED_WEIGHT_FLOOR = 0.4
+SEED_WEIGHT_FLOOR = 0.2
 
 
 def _season_progress(matches_per_team: float) -> float:

@@ -153,6 +153,45 @@ def test_forma_actual_desplaza_al_sembrado():
     assert model_mucha.attack["A"] < model_poca.attack["A"]
 
 
+def test_suelo_mas_bajo_pesa_mas_la_forma_actual(monkeypatch):
+    import futbol_pred.pipeline as pipeline
+
+    teams = ["A", "B", "C", "D", "E"]
+
+    def prev_scorer(home, away):     # temporada anterior: A arrasa
+        if home == "A":
+            return 4, 0
+        if away == "A":
+            return 0, 3
+        return 1, 1
+    seed = []
+    for r in range(4):
+        seed += _liga_ronda(teams, prev_scorer, 1000 + r * 100,
+                            datetime(2025, 9, 1) + timedelta(days=r * 7), 2025)
+
+    def curr_scorer(home, away):     # temporada actual: A se hunde
+        if home == "A":
+            return 0, 3
+        if away == "A":
+            return 3, 0
+        return 1, 1
+    current = []
+    for r in range(3):               # muestra propia amplia (progreso alto)
+        current += _liga_ronda(teams, curr_scorer, 5000 + r * 100,
+                               datetime(2026, 9, 1) + timedelta(days=r * 7), 2026)
+
+    as_of = datetime(2026, 10, 15)
+
+    monkeypatch.setattr(pipeline, "SEED_WEIGHT_FLOOR", 0.5)
+    alto = fit_model_from_fixtures(seed + current, as_of=as_of, current_season=2026)
+    monkeypatch.setattr(pipeline, "SEED_WEIGHT_FLOOR", 0.15)
+    bajo = fit_model_from_fixtures(seed + current, as_of=as_of, current_season=2026)
+
+    # Con el suelo más bajo el histórico (A fuerte) pesa menos, así que el
+    # ataque estimado de A queda más cerca de su forma actual (hundida).
+    assert bajo.attack["A"] < alto.attack["A"]
+
+
 def test_una_sola_temporada_no_aplica_rebaja():
     # Sin sembrado (todo la misma temporada) el ajuste es idéntico con y sin la
     # ruta de sample_weight: no debe cambiar nada del comportamiento histórico.
