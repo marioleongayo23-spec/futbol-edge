@@ -121,6 +121,47 @@ def test_pseudo_xg_aprende_de_remates_y_tiros_a_puerta():
     assert 0 < proxy["weight"] <= 0.25
 
 
+def test_encogido_evita_que_una_racha_dispare_la_prediccion():
+    # Liga estable a ~5 córners de local. Un equipo con UN solo partido de 15
+    # córners no debe proyectarse como equipo de 15: el prior de liga tira hacia
+    # abajo hasta que haya muestra. Sin encogido saldría ~ (15 + rival)/2 >= 9.
+    base = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    rows = [
+        MatchStats(f"H{i % 8}", f"A{i % 8}", {"corners": (5, 4)},
+                   kickoff=base + timedelta(days=i))
+        for i in range(48)
+    ]
+    rows.append(MatchStats("Racha", "A0", {"corners": (15, 3)},
+                           kickoff=base + timedelta(days=200)))
+    pred = StatsPredictor().fit(
+        rows, auto_temporal=False, auto_regression=False
+    ).predict_fixture("Racha", "A1")
+    home = pred["corners"]["home"]
+    assert home < 8.0        # no dominado por la racha
+    assert home > 5.0        # pero sí por encima de la media pura (el 15 pesa algo)
+
+
+def test_encogido_converge_a_la_tasa_real_con_muestra():
+    # Con muchos partidos del mismo signo, el encogido cede: la predicción se
+    # acerca a la tasa real del equipo (9 de local) y no se queda en la liga (5).
+    base = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    rows = [
+        MatchStats(f"H{i % 8}", f"A{i % 8}", {"corners": (5, 4)},
+                   kickoff=base + timedelta(days=i))
+        for i in range(48)
+    ]
+    rows += [
+        MatchStats("Fuerte", f"A{i % 8}", {"corners": (9, 3)},
+                   kickoff=base + timedelta(days=300 + 3 * i))
+        for i in range(25)
+    ]
+    pred = StatsPredictor().fit(
+        rows, auto_temporal=False, auto_regression=False
+    ).predict_fixture("Fuerte", "A1")
+    # 25 partidos de local a 9: el propio término tira claramente por encima de 5.
+    assert pred["corners"]["home"] > 6.8
+
+
 def test_negative_binomial_se_activa_con_sobredispersion():
     rows = [MatchStats("A", "B", {"corners": (value, 1)}) for value in ([0, 1, 2, 18, 20] * 5)]
     predictor = StatsPredictor().fit(rows)

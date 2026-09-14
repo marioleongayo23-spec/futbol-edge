@@ -26,6 +26,14 @@ from ..normalize import canonical_team
 from .stat_champion_plus import fit_plus_artifact, predict_plus, rolling_plus_predictions
 
 STAT_NAMES = ("shots", "sot", "corners", "fouls", "yellows", "reds", "offsides", "goals")
+# Encogido empírico-Bayes de las tasas por equipo hacia la media de liga. Con
+# pocos partidos (arranque de temporada) una racha puntual —un 15 de córners
+# suelto— no dispara la predicción: el prior de liga manda hasta que el equipo
+# acumula muestra propia. ``STAT_SHRINKAGE_K`` es el peso del prior en "partidos
+# equivalentes": ~5 => el equipo empieza a mandar sobre su tasa hacia el 5º
+# partido de ese lado (local o visitante). Es la misma transición progresiva
+# histórico->actual, aplicada a los mercados de stats.
+STAT_SHRINKAGE_K = 5.0
 MIN_TEMPORAL_MATCHES = 80
 MIN_TEMPORAL_VALIDATION = 20
 DEFAULT_HALF_LIFE_DAYS = 365.25
@@ -62,6 +70,21 @@ class _Accum:
     @property
     def against_avg(self) -> float | None:
         return self.against_sum / self.weight_sum if self.weight_sum > 0 else None
+
+    def for_avg_toward(self, prior: float, k: float) -> float:
+        """Media 'a favor' encogida hacia un prior de liga (empirical Bayes).
+
+        Sin muestra devuelve el prior; con muestra creciente el equipo manda.
+        """
+        if self.weight_sum <= 0:
+            return prior
+        return (self.for_sum + k * prior) / (self.weight_sum + k)
+
+    def against_avg_toward(self, prior: float, k: float) -> float:
+        """Media 'en contra' encogida hacia un prior de liga (empirical Bayes)."""
+        if self.weight_sum <= 0:
+            return prior
+        return (self.against_sum + k * prior) / (self.weight_sum + k)
 
 
 def _dated_rows(matches: list[MatchStats]) -> list[MatchStats]:
@@ -328,10 +351,14 @@ class StatsPredictor:
         la = self.league_away[stat].for_avg
         if lh is None or la is None:
             return None
-        h_for = self.home[home][stat].for_avg if self.home[home][stat].n else lh
-        a_against = self.away[away][stat].against_avg if self.away[away][stat].n else lh
-        a_for = self.away[away][stat].for_avg if self.away[away][stat].n else la
-        h_against = self.home[home][stat].against_avg if self.home[home][stat].n else la
+        # Cada tasa se encoge hacia su prior de liga: con poca muestra manda la
+        # liga (no una racha suelta), y el equipo toma el mando según acumula
+        # partidos. El prior de cada término es su media de liga del lado.
+        k = STAT_SHRINKAGE_K
+        h_for = self.home[home][stat].for_avg_toward(lh, k)
+        a_against = self.away[away][stat].against_avg_toward(lh, k)
+        a_for = self.away[away][stat].for_avg_toward(la, k)
+        h_against = self.home[home][stat].against_avg_toward(la, k)
         exp_home = (h_for + a_against) / 2.0
         exp_away = (a_for + h_against) / 2.0
         return exp_home, exp_away
