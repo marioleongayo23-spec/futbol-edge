@@ -610,15 +610,54 @@ function MarketsDetail({ detail }) {
         </table>
       </div>
       <div className="chips mk2-picks">
-        {detail.map((mk) => mk.pick && (
-          <span key={mk.stat} className={"chip mk2-lean" + (mk.pick.trend_agrees ? " agree" : "")}
-            title={mk.pick.trend_agrees === false ? "La tendencia empuja al lado contrario: cautela"
-              : mk.pick.trend_agrees ? "Tendencia y probabilidad coinciden" : undefined}>
-            {mk.label}: <b>{mk.pick.side === "over" ? "Over" : "Under"} {mk.pick.line}</b> · {pct(mk.pick.prob)} <span className="dim">{mk.pick.lean}</span>{mk.pick.trend_agrees ? " ✓" : ""}
-          </span>
+        {detail.map((mk) => (mk.recomendacion || mk.pick) && (() => {
+          const r = mk.recomendacion;
+          if (r) {
+            return (
+              <span key={mk.stat} className={"chip mk2-lean conf-" + (r.confianza || "baja")} title={r.explicacion}>
+                {mk.label}: <b>{r.lado === "mas" ? "Más de" : "Menos de"} {r.linea}</b> · {pct(r.probabilidad)} <span className="dim">{r.confianza}</span>
+              </span>
+            );
+          }
+          return (
+            <span key={mk.stat} className={"chip mk2-lean" + (mk.pick.trend_agrees ? " agree" : "")}>
+              {mk.label}: <b>{mk.pick.side === "over" ? "Over" : "Under"} {mk.pick.line}</b> · {pct(mk.pick.prob)} <span className="dim">{mk.pick.lean}</span>
+            </span>
+          );
+        })())}
+      </div>
+      <p className="note source-note">▲/▼ = prob. de superar / no superar la línea principal · Exacto = recuento más probable. Cada chip es la apuesta recomendada del mercado (línea de inclinación más clara); pasa el ratón para ver la explicación.</p>
+    </div>
+  );
+}
+
+/* Apuesta MASTICADA: el modelo elige, por mercado, la línea de inclinación más
+   clara y la explica. Ordenado por confianza para no revisar tarjeta a tarjeta. */
+function ConfPill({ c }) {
+  const cls = c === "alta" ? "y" : c === "baja" ? "dim" : "";
+  return <span className={"pill " + cls}>{c || "—"}</span>;
+}
+
+function RecommendedBets({ bets }) {
+  if (!Array.isArray(bets) || !bets.length) return null;
+  const top = bets.slice(0, 6);
+  return (
+    <div className="card reco">
+      <div className="lbl">✅ Apuestas recomendadas <span className="dim">· elegidas y explicadas por el modelo</span></div>
+      <div className="reco-list">
+        {top.map((b, i) => (
+          <div className={"reco-item conf-" + (b.confianza || "baja")} key={i}>
+            <div className="reco-head">
+              <span className="reco-mk">{b.mercado}</span>
+              <b className="reco-bet">{b.apuesta}</b>
+              <span className="reco-prob">{Math.round((b.probabilidad || 0) * 100)}%</span>
+              <ConfPill c={b.confianza} />
+            </div>
+            {b.explicacion && <p className="reco-why">{b.explicacion}</p>}
+          </div>
         ))}
       </div>
-      <p className="note source-note">▲/▼ = prob. de superar / no superar la línea principal · Exacto = recuento más probable. Misma predicción del modelo puesta como mercado; ✓ = la tendencia coincide con el lado más probable.</p>
+      <p className="note source-note">Reexpresa lo que ya calcula el modelo (media esperada, probabilidad de la línea, forma reciente) como apuesta clara. No es consejo financiero; juega con responsabilidad.</p>
     </div>
   );
 }
@@ -641,10 +680,19 @@ function CommittedPick({ c, home, away }) {
       </div>
       <div className="chips" style={{ justifyContent: "center" }}>
         <span className="chip">Prob. exacto <b>{Math.round(c.probability * 100)}%</b></span>
+        {c.expected_goals && <span className="chip help" title="Goles esperados por el modelo (tendencia central real, no un marcador encogido)">Goles esperados <b>{c.expected_goals[0]}–{c.expected_goals[1]}</b></span>}
+        {c.scoreline_esperado && c.scoreline_esperado !== c.scoreline && <span className="chip" title="Marcador de redondear los goles esperados: menos encogido que el más probable">Según esperado <b>{c.scoreline_esperado}</b></span>}
         {c.favourite_sign && <span className={"chip" + (c.sign_aligned === false ? " value-no" : "")} title="Resultado (1X2) más probable del partido">1X2 favorito <b>{c.favourite_sign}</b> · {Math.round((c.favourite_prob ?? c.sign_probability) * 100)}%</span>}
-        {c.next_scoreline && <span className="chip">2º marcador <b>{c.next_scoreline}</b></span>}
       </div>
-      <p className="note" style={{ marginTop: 6 }}>{c.why}</p>
+      {Array.isArray(c.top_scores) && c.top_scores.length > 0 && (
+        <div className="chips" style={{ justifyContent: "center", marginTop: 4 }}>
+          <span className="dim" style={{ fontSize: ".78rem", alignSelf: "center" }}>Más probables:</span>
+          {c.top_scores.map((s) => (
+            <span className="chip" key={s.scoreline}>{s.scoreline} <b>{Math.round(s.prob * 100)}%</b></span>
+          ))}
+        </div>
+      )}
+      <p className="note" style={{ marginTop: 6 }}>{c.why} {c.nota_precision && <span className="dim">{c.nota_precision}</span>}</p>
     </div>
   );
 }
@@ -712,7 +760,7 @@ function PlayerMarkets({ pm, home, away }) {
           <button type="button" key={k} className={"pm-tab" + (k === sel ? " on" : "")} onClick={() => setSel(k)}>{lab}</button>
         ))}
       </div>
-      {cur.best && <div className="pm-bestbet">★ Mejor apuesta: <b>{cur.best.jugador}</b> · Over {cur.best.line} {label} · {pct(cur.best.over)}</div>}
+      {cur.best && <div className="pm-bestbet" title={cur.best.recomendacion?.explicacion}>★ Mejor apuesta: <b>{cur.best.jugador}</b> · Más de {cur.best.line} {label} · {pct(cur.best.over)}{cur.best.recomendacion?.confianza && <span className="dim"> · {cur.best.recomendacion.confianza}</span>}</div>}
       <div className="pm-grid">{col(home, cur.home, "home")}{col(away, cur.away, "away")}</div>
       <p className="note source-note">{pm.method}. «Over» = prob. de superar esa línea (Poisson sobre el valor esperado); no incluye cuota de casa. ·✓ = jugador con muestra individual real.</p>
     </div>
@@ -843,6 +891,8 @@ export default function MatchDetail({ m, onBack, onTeam, plan = "vip", onUpgrade
           </details>
         </div>
       )}
+
+      {!m.finished && m.apuestas_recomendadas && <RecommendedBets bets={m.apuestas_recomendadas} />}
 
       {hasForecast && !m.finished && <CommittedPick c={m.committed} home={m.home} away={m.away} />}
 

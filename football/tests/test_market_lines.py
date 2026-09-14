@@ -86,3 +86,42 @@ def test_committed_scoreline_honesto_cuando_el_signo_no_es_el_favorito():
     if c["sign"] == "X" and c["favourite_sign"] != "X":
         assert "más apoyo" not in c["why"]
         assert c["sign_aligned"] is False
+
+
+def test_recomendacion_masticada_elige_la_linea_mas_clara():
+    # Con media 10.2 y líneas 8.5/10.5/12.5, la recomendación debe ser la de
+    # inclinación más clara (no la principal ~50/50), con su explicación.
+    m = count_market("corners", 10.2, 1.3, mean_home=5.5, mean_away=4.7,
+                     trend={"dir": "up", "pct": 8})
+    rec = m["recomendacion"]
+    assert rec["lado"] in ("mas", "menos")
+    assert rec["probabilidad"] >= 0.60          # una línea con lean real, no 50/50
+    assert rec["confianza"] in ("alta", "media", "baja")
+    assert "córners" in rec["explicacion"] and "%" in rec["explicacion"]
+    # La línea recomendada es la de mayor pick_prob entre las ofrecidas.
+    best = max(m["lines"], key=lambda r: r["pick_prob"])
+    assert rec["linea"] == best["line"]
+
+
+def test_recomendacion_marca_tendencia_a_favor_o_en_contra():
+    a_favor = count_market("yellows", 4.6, 1.2, mean_home=2.4, mean_away=2.2,
+                           trend={"dir": "down", "pct": 6})["recomendacion"]
+    assert "refuerza" in a_favor["explicacion"]      # under + tendencia baja
+    from scipy.stats import poisson
+    matrix = ScoreMatrix(np.outer(poisson.pmf(range(11), 1.6), poisson.pmf(range(11), 1.2)))
+    goles = goals_market(matrix, 1.6, 1.2)
+    assert "recomendacion" in goles and goles["recomendacion"]["apuesta"].endswith("goles")
+
+
+def test_committed_scoreline_da_lectura_ampliada():
+    from scipy.stats import poisson
+    mat = ScoreMatrix(np.outer(poisson.pmf(range(11), 2.6), poisson.pmf(range(11), 1.2)))
+    c = committed_scoreline(mat, {"1": 0.62, "X": 0.22, "2": 0.16}, "Barcelona", "Levante")
+    # Goles esperados presentes y coherentes con las lambdas.
+    assert c["expected_goals"][0] == round(2.6, 2) or c["expected_goals"][0] > 2.0
+    # Marcador "esperado" (redondeo) menos encogido que el modal en goles altos.
+    assert c["scoreline_esperado"] == "3-1"
+    # Top-3 ordenado por probabilidad.
+    probs = [s["prob"] for s in c["top_scores"]]
+    assert len(c["top_scores"]) == 3 and probs == sorted(probs, reverse=True)
+    assert "goles esperados" in c["nota_precision"]

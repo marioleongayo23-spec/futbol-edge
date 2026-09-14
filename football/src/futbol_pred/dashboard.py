@@ -63,6 +63,25 @@ SEED_PLAN = {
     "segunda": [("segunda", 1), ("segunda", 2), ("laliga", 1)],
     "champions": [("champions", 1)],
 }
+# Fracción de regresión a la media del Elo en cada cambio de temporada: el
+# rating del año anterior no se hereda al 100%, revierte un 33% hacia la base
+# (línea clubelo/538) para que los resultados de la temporada en curso pesen
+# antes. Cuanto mayor, más rápido manda la forma actual sobre el histórico.
+ELO_SEASON_REGRESSION = 0.33
+
+# Transición modelo↔mercado ("modelo manda pronto"). El mercado de apuestas solo
+# ancla el arranque, cuando el modelo tiene muy poca muestra, y se apaga según la
+# liga acumula jornadas. model_w = MODEL_W_BASE + (1-MODEL_W_BASE)*(mpt/MPT_FULL),
+# con tope 1.0 -> el mercado desaparece cuando hay muestra propia suficiente.
+#   J1-2 -> ~40% modelo ; J5-6 -> ~65% ; J8 -> ~80% ; J12+ -> 100% modelo.
+MODEL_W_BASE = 0.40
+MODEL_W_FULL_MPT = 12.0
+
+# Vida media (días) del decaimiento temporal de los mercados de stats en
+# producción. ~230 días: un partido de la temporada pasada pesa ~0.5 respecto a
+# uno reciente, así la forma de la temporada en curso manda de forma progresiva
+# sin descartar el histórico. Con la temporada avanzada, la muestra propia domina.
+STATS_HALFLIFE_DAYS = 230.0
 LEAGUES = {
     "laliga": "LaLiga",
     "segunda": "LaLiga Hypermotion",
@@ -89,14 +108,25 @@ def ensure_aware(value: datetime) -> datetime:
 
 
 def _fit_elo_from_fixtures(fixtures: list[Fixture]) -> EloRatings:
-    """Elo actual usando solo resultados anteriores, en orden cronológico."""
+    """Elo actual usando solo resultados anteriores, en orden cronológico.
+
+    Al cruzar cada cambio de temporada se regresa el rating hacia la media
+    (``ELO_SEASON_REGRESSION``): así el histórico ancla el arranque pero cede
+    ante la forma de la temporada en curso, en vez de arrastrarse al 100%.
+    """
 
     elo = EloRatings()
     played = sorted(
         (fixture for fixture in fixtures if fixture.home_goals is not None and fixture.away_goals is not None),
         key=lambda fixture: ensure_aware(fixture.kickoff),
     )
+    last_season = None
     for fixture in played:
+        season = fixture.season
+        if last_season is not None and season is not None and season > last_season:
+            elo.regress_to_mean(ELO_SEASON_REGRESSION)
+        if season is not None:
+            last_season = season
         elo.update(
             _canon(fixture.home_team),
             _canon(fixture.away_team),
@@ -104,6 +134,33 @@ def _fit_elo_from_fixtures(fixtures: list[Fixture]) -> EloRatings:
             int(fixture.away_goals),
         )
     return elo
+
+
+def _model_market_weight(mpt: float, learned_market: dict | None) -> tuple[float, float]:
+    """Peso de TU modelo frente al mercado (y temperatura) según ``mpt``.
+
+    Filosofía "modelo manda pronto": el mercado de apuestas solo tiene sentido
+    como ancla al principio, cuando el modelo tiene muy poca muestra y va
+    sobreconfiado. Según la liga acumula jornadas, el modelo toma el mando y el
+    mercado se apaga (tope 1.0 = 100% modelo con muestra propia suficiente):
+
+        model_w = MODEL_W_BASE + (1 - MODEL_W_BASE) * (mpt / MODEL_W_FULL_MPT)
+
+    La calibración heredada del sembrado (temporada anterior) ya NO baja este
+    peso: su ``model_weight`` bajo (p. ej. 0.05) era justo lo que congelaba la
+    predicción en "casi todo mercado". Una calibración ganada con datos de ESTA
+    temporada solo puede AFINAR: subir el peso del modelo si demostró ser aún
+    mejor y aportar su temperatura, nunca devolver el mando al mercado.
+    """
+    progress = min(1.0, mpt / MODEL_W_FULL_MPT) if mpt > 0 else 0.0
+    model_w = MODEL_W_BASE + (1.0 - MODEL_W_BASE) * progress
+    market_temperature = 1.0
+    if (learned_market and learned_market.get("accepted")
+            and learned_market.get("scope") == "current_season"):
+        production = learned_market["production"]
+        model_w = max(model_w, float(production["model_weight"]))
+        market_temperature = float(production["temperature"])
+    return min(1.0, model_w), market_temperature
 
 
 def _previous_ensemble_params(previous: dict | None, league: str) -> dict:
@@ -154,6 +211,40 @@ def _rfef_directory() -> RefereeDirectory:
     if _RFEF_DIRECTORY is None:
         _RFEF_DIRECTORY = _load_rfef_designations()
     return _RFEF_DIRECTORY
+
+
+_CONF_RANK = {"alta": 3, "media": 2, "baja": 1}
+
+
+def _recommended_bets(payload: dict, detail: list[dict], probs: dict) -> list[dict]:
+    """Lista MASTICADA de apuestas del partido, ordenada por confianza.
+
+    Reúne 1X2, goles y cada mercado de stats con su lado/línea, probabilidad,
+    confianza y explicación, para no tener que revisar tarjeta a tarjeta.
+    """
+    bets: list[dict] = []
+    fav = max(("1", "X", "2"), key=lambda s: float(probs.get(s, 0.0)))
+    fav_prob = float(probs.get(fav, 0.0))
+    fav_name = {"1": payload.get("home"), "2": payload.get("away"), "X": "Empate"}[fav]
+    conf_1x2 = "alta" if fav_prob >= 0.62 else "media" if fav_prob >= 0.46 else "baja"
+    resultado = "victoria local" if fav == "1" else "victoria visitante" if fav == "2" else "empate"
+    bets.append({
+        "mercado": "1X2",
+        "apuesta": fav_name if fav != "X" else "Empate",
+        "seleccion": fav,
+        "probabilidad": round(fav_prob, 3),
+        "confianza": conf_1x2,
+        "explicacion": f"El modelo da un {round(fav_prob * 100)}% a {resultado} ({fav_name}).",
+    })
+    for mk in detail:
+        rec = mk.get("recomendacion")
+        if rec:
+            bets.append({"mercado": mk.get("label"), **rec})
+    bets.sort(
+        key=lambda b: (_CONF_RANK.get(b.get("confianza"), 0), float(b.get("probabilidad") or 0.0)),
+        reverse=True,
+    )
+    return bets
 
 
 def fixture_payload(
@@ -221,6 +312,11 @@ def fixture_payload(
             sr = real_stats.get((_canon(fixture.home_team), _canon(fixture.away_team)))
             if sr:
                 payload["statsReal"] = sr
+                # Etiquetar la fuente REAL y fresca: sin esto, finished_stats la
+                # marcaba como "legacy cached / inferida", haciendo parecer
+                # obsoletas unas stats de la temporada en curso recién bajadas.
+                payload["statsRealSource"] = "football-data.co.uk"
+                payload["statsRealUpdatedAt"] = generated_at
         if closing_odds_map:
             closing = closing_odds_map.get((_canon(fixture.home_team), _canon(fixture.away_team)))
             if closing:
@@ -457,6 +553,7 @@ def fixture_payload(
             detail.append(count_market(
                 stat, row["total"], stats.dispersion(stat) if stats is not None else 1.0,
                 mean_home=row["home"], mean_away=row["away"], trend=trend_for.get(stat),
+                calibration=(getattr(stats, "calibration", {}) or {}).get(stat) if stats is not None else None,
             ))
         applied_ref = set((payload.get("official_context") or {}).get("referee_adjustment_applied") or [])
         for mk in detail:
@@ -466,6 +563,7 @@ def fixture_payload(
         if not finished_with_result:
             payload["committed"] = committed_scoreline(
                 matrix, probs, fixture.home_team, fixture.away_team)
+            payload["apuestas_recomendadas"] = _recommended_bets(payload, detail, probs)
     except Exception:  # noqa: BLE001 - los mercados nunca tumban el feed
         pass
 
@@ -1259,7 +1357,7 @@ def build_dashboard(
             train = _seed_fixtures(league, season) + fixtures
             try:
                 model = fit_model_from_fixtures(
-                    train, as_of=now, name_fn=_canon
+                    train, as_of=now, name_fn=_canon, current_season=season
                 )
             except (ValueError, KeyError):
                 model = None
@@ -1279,19 +1377,13 @@ def build_dashboard(
             trends = _fit_trends(league, season, train)
             odds_map = _odds_map(league)
             closing_odds_map = _closing_odds_map(league, season)
-            # Peso del modelo vs mercado para calibrar: con pocas jornadas jugadas
-            # el modelo va sobreconfiado, así que pesa más el mercado; según avanza
-            # la liga, el modelo gana peso. mpt = media de partidos por equipo.
+            # Peso del modelo vs mercado, según jornadas jugadas por equipo (mpt).
             played_n = sum(1 for f in fixtures if f.home_goals is not None)
             teams_n = len({f.home_team for f in fixtures} | {f.away_team for f in fixtures})
             mpt = (2 * played_n / teams_n) if teams_n else 0
-            model_w = max(0.2, min(0.9, mpt / 12))
-            market_temperature = 1.0
-            learned_market = market_calibration.get(league)
-            if learned_market and learned_market.get("accepted"):
-                production = learned_market["production"]
-                model_w = float(production["model_weight"])
-                market_temperature = float(production["temperature"])
+            model_w, market_temperature = _model_market_weight(
+                mpt, market_calibration.get(league)
+            )
             h2h = _h2h_map(train)  # incluye temporadas previas (sembrado)
             if model is not None:
                 league_bundles[league] = {
@@ -1420,6 +1512,11 @@ def build_dashboard(
         "player_rankings_meta": _player_rankings_meta.get("player_rankings_meta"),
         "model": model_report,
         "stats_backtest": stats_backtest,
+        "stats_calibration": {
+            label: report
+            for label, model in stats_models_by_league.items()
+            if (report := getattr(model, "calibration_report", None))
+        } or None,
         "market_calibration": market_calibration or None,
         "historical_seed": historical_seeds or None,
         "value_ranking": market_value.get("ranking") or [],
@@ -2050,7 +2147,25 @@ def _fit_stats(league: str, season: int):
                 auxiliary.extend(client.get_stats(other, season - back))
             except Exception:
                 continue
-        predictor = StatsPredictor().fit(rows, auxiliary_matches=auxiliary)
+        # Recencia siempre activa con vida media corta (STATS_HALFLIFE_DAYS): la
+        # temporada en curso pesa más que el histórico de forma progresiva, en
+        # lugar de promediar ~3 temporadas en plano. El gate temporal se sigue
+        # calculando como diagnóstico.
+        predictor = StatsPredictor().fit(
+            rows, auxiliary_matches=auxiliary,
+            recency_all_stats=True, half_life_days=STATS_HALFLIFE_DAYS,
+        )
+        # Calibración de probabilidad over/under fuera de muestra: mide si los %
+        # aciertan y aprende una corrección Platt por stat, con gate por log-loss.
+        try:
+            from .model.stats_markets import calibrate_stat_markets
+
+            report = calibrate_stat_markets(rows, half_life_days=STATS_HALFLIFE_DAYS)
+            predictor.calibration = report.get("calibration") or {}
+            predictor.calibration_report = report
+        except Exception:
+            predictor.calibration = {}
+            predictor.calibration_report = None
         try:
             from .model.referee_adjustment import RefereeAdjustmentModel
 

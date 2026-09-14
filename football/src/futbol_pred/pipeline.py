@@ -20,6 +20,31 @@ from .value import BankrollPolicy, scan_market
 
 MADRID = ZoneInfo("Europe/Madrid")
 
+# Transición temporada anterior -> temporada en curso para Dixon-Coles.
+# ``SEASON_TRANSITION_MPT`` = partidos por equipo ya jugados a partir de los
+# cuales la temporada actual asume el control del ajuste (~1/3 de liga). El
+# sembrado (temporadas previas) arranca con peso 1.0 y decae linealmente hasta
+# ``SEED_WEIGHT_FLOOR``, que NUNCA baja de ahí para conservar un ancla mínima
+# de los recién ascendidos y de la escala de fuerza entre divisiones.
+# Con suelo 0.2 la forma de la temporada en curso pasa a mandar hacia la
+# jornada ~11 (con 0.4 no lo hacía hasta la ~16): la nueva temporada pesa más
+# y de forma más progresiva, pero el histórico sigue anclando a quien aún tiene
+# poca muestra (ascendidos, cruces entre divisiones).
+SEASON_TRANSITION_MPT = 12.0
+SEED_WEIGHT_FLOOR = 0.2
+
+
+def _season_progress(matches_per_team: float) -> float:
+    """0.0 al empezar la temporada -> 1.0 cuando ya hay muestra propia (mpt>=12)."""
+    if matches_per_team <= 0:
+        return 0.0
+    return min(1.0, matches_per_team / SEASON_TRANSITION_MPT)
+
+
+def _seed_weight(progress: float) -> float:
+    """Peso de los partidos de sembrado: 1.0 (jornada 0) -> SEED_WEIGHT_FLOOR."""
+    return 1.0 - (1.0 - SEED_WEIGHT_FLOOR) * max(0.0, min(1.0, progress))
+
 
 def _dbg(msg: str) -> None:
     import os
@@ -90,12 +115,19 @@ def fit_model_from_fixtures(
     fixtures: list[Fixture],
     as_of: datetime | None = None,
     name_fn=None,
+    current_season: int | None = None,
 ) -> DixonColesModel:
     """Ajusta Dixon-Coles usando solo partidos ya jugados (FT).
 
     ``name_fn`` (opcional) mapea el nombre de cada equipo antes de ajustar
     (p. ej. ``canonical_team``), para que un mismo club en distintas fuentes o
     divisiones enlace bajo un único identificador.
+
+    ``current_season`` marca cuál es la temporada en curso; los partidos de
+    temporadas anteriores (sembrado) entran con un peso que cede terreno a la
+    temporada actual según se acumulan jornadas. Si es None se toma la temporada
+    más reciente presente en los datos (con una sola temporada no hay sembrado
+    que rebajar, así que el ajuste queda idéntico al histórico).
     """
     def utc(value):
         return value.replace(tzinfo=timezone.utc) if value.tzinfo is None else value.astimezone(timezone.utc)
@@ -106,7 +138,18 @@ def fit_model_from_fixtures(
         raise ValueError("No hay partidos jugados para ajustar el modelo")
 
     name_fn = name_fn or (lambda n: n)
-    home_teams, away_teams, hg, ag, days = [], [], [], [], []
+
+    # Temporada objetivo y cuánta muestra propia tiene ya (partidos por equipo).
+    seasons = [f.season for f in played if f.season is not None]
+    target_season = current_season if current_season is not None else (max(seasons) if seasons else None)
+    seed_scale = 1.0
+    if target_season is not None:
+        current = [f for f in played if f.season == target_season]
+        teams_cur = {name_fn(f.home_team) for f in current} | {name_fn(f.away_team) for f in current}
+        mpt = (2 * len(current) / len(teams_cur)) if teams_cur else 0.0
+        seed_scale = _seed_weight(_season_progress(mpt))
+
+    home_teams, away_teams, hg, ag, days, weights = [], [], [], [], [], []
     for f in played:
         home_teams.append(name_fn(f.home_team))
         away_teams.append(name_fn(f.away_team))
@@ -114,9 +157,17 @@ def fit_model_from_fixtures(
         ag.append(f.away_goals)
         ko = utc(f.kickoff)
         days.append(max(0.0, (as_of - ko).total_seconds() / 86400))
+        is_seed = target_season is not None and f.season is not None and f.season != target_season
+        weights.append(seed_scale if is_seed else 1.0)
 
     model = DixonColesModel()
-    model.fit(home_teams, away_teams, hg, ag, days_ago=days)
+    # Solo se pasa sample_weight si de verdad hay sembrado que rebajar; así el
+    # camino de una sola temporada (backtest, tests) conserva su comportamiento
+    # y su misma firma de llamada.
+    if any(w != 1.0 for w in weights):
+        model.fit(home_teams, away_teams, hg, ag, days_ago=days, sample_weight=weights)
+    else:
+        model.fit(home_teams, away_teams, hg, ag, days_ago=days)
     return model
 
 

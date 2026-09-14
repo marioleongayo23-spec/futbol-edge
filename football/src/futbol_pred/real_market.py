@@ -19,6 +19,7 @@ from scipy.stats import poisson
 
 from .config import settings
 from .ingest.football_data_uk import DIV_CODE, FootballDataUKClient
+from .model.stats_markets import apply_stat_calibration
 
 BASE_URL = "https://api.the-odds-api.com/v4"
 SPORT_KEYS = {
@@ -357,7 +358,11 @@ def _extra_value_rows(match: dict, quotes: list[Quote], stats_model=None) -> lis
             if expected is not None:
                 if stats_model is not None:
                     try:
-                        over = stats_model.prob_over(expected, q.point, stats_model.dispersion(key))
+                        raw = stats_model.prob_over(expected, q.point, stats_model.dispersion(key))
+                        # Edge honesto: se calibra la P(over) igual que en la
+                        # tarjeta, para no inflar el value con un modelo crudo.
+                        cal = (getattr(stats_model, "calibration", {}) or {}).get(key)
+                        over = apply_stat_calibration(raw, cal)
                     except Exception:
                         over = _poisson_over(expected, q.point)
                 else:

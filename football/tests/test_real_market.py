@@ -106,6 +106,32 @@ def test_value_secundario_usa_probabilidad_modelo_y_cuota_real():
     assert player["modelProb"] > 0
 
 
+def test_value_corners_usa_probabilidad_calibrada():
+    from futbol_pred.model.stats_markets import StatsPredictor, apply_stat_calibration
+
+    class CalStats:
+        calibration = {"corners": (1.0, -1.0)}   # empuja la P(over) hacia abajo
+
+        def dispersion(self, key):
+            return 1.0
+
+        def prob_over(self, mean, line, dispersion=1.0):
+            return StatsPredictor.prob_over(mean, line, dispersion)
+
+    match = {"home": "Real Madrid", "away": "Valencia",
+             "stats": {"corners": {"total": 10.0}}}
+    quotes = [Quote("e1", "Real Madrid", "Valencia",
+                    "alternate_totals_corners", "Book", "Over", 2.0, 9.5)]
+    row = next(r for r in _extra_value_rows(match, quotes, CalStats())
+               if r["market"] == "alternate_totals_corners")
+
+    raw = StatsPredictor.prob_over(10.0, 9.5, 1.0)
+    calibrada = apply_stat_calibration(raw, (1.0, -1.0))
+    assert row["modelProb"] == pytest.approx(round(calibrada, 4))
+    assert row["modelProb"] < raw          # calibración a la baja -> edge honesto
+    assert row["edge"] == pytest.approx(round(calibrada * 2.0 - 1.0, 4), abs=1e-4)
+
+
 def test_asian_handicap_modela_push_sin_forzar_binario():
     result = _asian_ev_prob([1.5, 1.0], "home", 0.0)
     assert result is not None
