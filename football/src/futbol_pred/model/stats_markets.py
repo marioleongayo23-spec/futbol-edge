@@ -208,6 +208,7 @@ class StatsPredictor:
     xg_coefficients: tuple[float, float, float] = (0.12, 0.025, 0.16)
     temporal_stats: set[str] = field(default_factory=set)
     temporal_validation: dict | None = None
+    _recency_all_stats: bool = False
     auxiliary_rows: int = 0
     auxiliary_teams: set[str] = field(default_factory=set)
 
@@ -227,13 +228,21 @@ class StatsPredictor:
         fit_pseudo_xg: bool = True,
         auxiliary_matches: list[MatchStats] | None = None,
         auto_regression: bool = True,
+        recency_all_stats: bool = False,
     ) -> "StatsPredictor":
         """Ajusta el predictor con una liga primaria y, opcionalmente, memoria auxiliar.
 
         ``matches`` es la única muestra que define el entorno de la liga objetivo.
         ``auxiliary_matches`` únicamente añade historia a los equipos que aparecen
         allí; jamás entra en medias de liga, dispersión, pseudo-xG ni validación.
+
+        ``recency_all_stats`` aplica el decaimiento temporal a TODAS las stats
+        (no solo a las que aprueba el gate), de modo que la temporada en curso
+        pese más que el histórico de forma progresiva. La producción lo activa
+        con una vida media corta; el gate temporal sigue calculándose como
+        diagnóstico. Por defecto False -> comportamiento clásico intacto.
         """
+        self._recency_all_stats = bool(recency_all_stats)
         if temporal_stats is None and auto_temporal:
             self.temporal_validation = validate_temporal_decay(matches, half_life_days)
             chosen = set(self.temporal_validation.get("accepted_stats") or [])
@@ -248,7 +257,7 @@ class StatsPredictor:
             a = canonical_team(m.away_team)
             recency_weight = _time_weight(m.kickoff, reference, half_life_days)
             for stat, (hv, av) in m.stats.items():
-                weight = recency_weight if stat in chosen else 1.0
+                weight = recency_weight if (self._recency_all_stats or stat in chosen) else 1.0
                 self.home[h][stat].add(hv, av, weight)
                 self.away[a][stat].add(av, hv, weight)
                 self.league_home[stat].add(hv, av, weight)
@@ -319,7 +328,7 @@ class StatsPredictor:
             recency_weight = _time_weight(m.kickoff, reference, half_life_days)
             used = False
             for stat, (hv, av) in m.stats.items():
-                weight = recency_weight if stat in self.temporal_stats else 1.0
+                weight = recency_weight if (self._recency_all_stats or stat in self.temporal_stats) else 1.0
                 self.home[h][stat].add(hv, av, weight)
                 self.away[a][stat].add(av, hv, weight)
                 used = True

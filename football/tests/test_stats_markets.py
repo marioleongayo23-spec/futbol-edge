@@ -162,6 +162,27 @@ def test_encogido_converge_a_la_tasa_real_con_muestra():
     assert pred["corners"]["home"] > 6.8
 
 
+def test_recency_all_stats_pondera_lo_reciente_en_todas_las_stats():
+    # Un equipo que pasó de 3 córners de local (histórico) a 11 (reciente).
+    # 'flat' promedia todo; con recency_all_stats lo reciente manda, aunque el
+    # gate temporal no promocione el stat.
+    base = datetime(2024, 1, 1, tzinfo=timezone.utc)
+    rows = [
+        MatchStats("A", "B", {"corners": (3 if i < 40 else 11, 2)},
+                   kickoff=base + timedelta(days=7 * i))
+        for i in range(60)
+    ]
+    flat = StatsPredictor().fit(rows, auto_temporal=False, auto_regression=False)
+    recent = StatsPredictor().fit(
+        rows, auto_temporal=False, auto_regression=False,
+        recency_all_stats=True, half_life_days=120,
+    )
+    flat_home = flat.predict_fixture("A", "B")["corners"]["home"]
+    recent_home = recent.predict_fixture("A", "B")["corners"]["home"]
+    assert recent_home > flat_home        # la forma reciente pesa más
+    assert recent_home > 7.0              # claramente tirado hacia el 11 reciente
+
+
 def test_negative_binomial_se_activa_con_sobredispersion():
     rows = [MatchStats("A", "B", {"corners": (value, 1)}) for value in ([0, 1, 2, 18, 20] * 5)]
     predictor = StatsPredictor().fit(rows)

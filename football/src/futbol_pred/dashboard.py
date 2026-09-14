@@ -76,6 +76,12 @@ ELO_SEASON_REGRESSION = 0.33
 #   J1-2 -> ~40% modelo ; J5-6 -> ~65% ; J8 -> ~80% ; J12+ -> 100% modelo.
 MODEL_W_BASE = 0.40
 MODEL_W_FULL_MPT = 12.0
+
+# Vida media (días) del decaimiento temporal de los mercados de stats en
+# producción. ~230 días: un partido de la temporada pasada pesa ~0.5 respecto a
+# uno reciente, así la forma de la temporada en curso manda de forma progresiva
+# sin descartar el histórico. Con la temporada avanzada, la muestra propia domina.
+STATS_HALFLIFE_DAYS = 230.0
 LEAGUES = {
     "laliga": "LaLiga",
     "segunda": "LaLiga Hypermotion",
@@ -2095,7 +2101,14 @@ def _fit_stats(league: str, season: int):
                 auxiliary.extend(client.get_stats(other, season - back))
             except Exception:
                 continue
-        predictor = StatsPredictor().fit(rows, auxiliary_matches=auxiliary)
+        # Recencia siempre activa con vida media corta (STATS_HALFLIFE_DAYS): la
+        # temporada en curso pesa más que el histórico de forma progresiva, en
+        # lugar de promediar ~3 temporadas en plano. El gate temporal se sigue
+        # calculando como diagnóstico.
+        predictor = StatsPredictor().fit(
+            rows, auxiliary_matches=auxiliary,
+            recency_all_stats=True, half_life_days=STATS_HALFLIFE_DAYS,
+        )
         try:
             from .model.referee_adjustment import RefereeAdjustmentModel
 
