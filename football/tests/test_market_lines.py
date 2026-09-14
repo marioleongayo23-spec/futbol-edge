@@ -111,3 +111,17 @@ def test_recomendacion_marca_tendencia_a_favor_o_en_contra():
     matrix = ScoreMatrix(np.outer(poisson.pmf(range(11), 1.6), poisson.pmf(range(11), 1.2)))
     goles = goals_market(matrix, 1.6, 1.2)
     assert "recomendacion" in goles and goles["recomendacion"]["apuesta"].endswith("goles")
+
+
+def test_committed_scoreline_da_lectura_ampliada():
+    from scipy.stats import poisson
+    mat = ScoreMatrix(np.outer(poisson.pmf(range(11), 2.6), poisson.pmf(range(11), 1.2)))
+    c = committed_scoreline(mat, {"1": 0.62, "X": 0.22, "2": 0.16}, "Barcelona", "Levante")
+    # Goles esperados presentes y coherentes con las lambdas.
+    assert c["expected_goals"][0] == round(2.6, 2) or c["expected_goals"][0] > 2.0
+    # Marcador "esperado" (redondeo) menos encogido que el modal en goles altos.
+    assert c["scoreline_esperado"] == "3-1"
+    # Top-3 ordenado por probabilidad.
+    probs = [s["prob"] for s in c["top_scores"]]
+    assert len(c["top_scores"]) == 3 and probs == sorted(probs, reverse=True)
+    assert "goles esperados" in c["nota_precision"]

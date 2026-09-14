@@ -373,6 +373,12 @@ def committed_scoreline(matrix, probs: dict, home: str, away: str) -> dict:
     else:
         why = (f"{winner} {hx}-{ax} es el marcador exacto más probable, pero el 1X2 se "
                f"inclina por {fav_name} ({round(fav_prob * 100)}%): partido abierto.")
+    # Lectura menos "encogida": los goles esperados (tendencia central real del
+    # modelo) y el marcador que sale de redondearlos suelen reflejar mejor un
+    # partido abierto que la casilla modal, que siempre tira a marcadores bajos.
+    eh, ea = matrix.expected_goals()
+    esperado = (int(eh + 0.5), int(ea + 0.5))
+    top3 = matrix.top_correct_scores(3)
     return {
         "scoreline": f"{hx}-{ax}",
         "home_goals": hx,
@@ -387,4 +393,15 @@ def committed_scoreline(matrix, probs: dict, home: str, away: str) -> dict:
         "sign_aligned": aligned,
         "confidence": confidence,
         "why": why,
+        # Lectura ampliada del marcador (más honesta que un único número).
+        "expected_goals": [round(float(eh), 2), round(float(ea), 2)],
+        "scoreline_esperado": f"{esperado[0]}-{esperado[1]}",
+        "top_scores": [
+            {"scoreline": f"{h}-{a}", "prob": round(float(p), 3)} for h, a, p in top3
+        ],
+        "nota_precision": (
+            "El marcador exacto es lo más difícil de acertar: el más probable rara "
+            "vez pasa del 15%. Para la lectura real fíjate en los goles esperados "
+            f"(~{round(float(eh), 1):g}-{round(float(ea), 1):g}) y el top-3, no en un único marcador."
+        ),
     }
