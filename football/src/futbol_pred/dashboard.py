@@ -312,6 +312,11 @@ def fixture_payload(
             sr = real_stats.get((_canon(fixture.home_team), _canon(fixture.away_team)))
             if sr:
                 payload["statsReal"] = sr
+                # Etiquetar la fuente REAL y fresca: sin esto, finished_stats la
+                # marcaba como "legacy cached / inferida", haciendo parecer
+                # obsoletas unas stats de la temporada en curso recién bajadas.
+                payload["statsRealSource"] = "football-data.co.uk"
+                payload["statsRealUpdatedAt"] = generated_at
         if closing_odds_map:
             closing = closing_odds_map.get((_canon(fixture.home_team), _canon(fixture.away_team)))
             if closing:
