@@ -344,6 +344,34 @@ function Availability({ title, rows, legacy }) {
   );
 }
 
+/* Impacto cuantificado de las bajas (goles+asist. reales de los ausentes).
+   Informativo: enriquece la lectura, no altera la probabilidad del modelo. */
+function AbsenceImpact({ imp, home, away }) {
+  if (!imp) return null;
+  const sides = [["local", home], ["visitante", away]];
+  const hasKey = sides.some(([s]) => (imp[s]?.clave || []).length > 0);
+  if (!hasKey) return null;
+  return (
+    <div className="absence-impact">
+      {sides.map(([side, team]) => {
+        const s = imp[side];
+        if (!s || !(s.clave || []).length) return null;
+        const cls = s.nivel === "alto" ? "y" : s.nivel === "medio" ? "" : "dim";
+        return (
+          <div className={"ai-side ai-" + s.nivel} key={side}>
+            <span className="ai-team">{team}</span>
+            <span className={"pill " + cls}>bajas: {s.nivel}</span>
+            {(s.clave || []).map((c) => (
+              <span className="chip" key={c.jugador}>{c.jugador} <b>{c.goles}g{c.asistencias ? `·${c.asistencias}a` : ""}</b></span>
+            ))}
+          </div>
+        );
+      })}
+      <p className="note source-note">{imp.fuente}</p>
+    </div>
+  );
+}
+
 /* Once probable sobre el campo + bajas + jugadores clave con props (IA). */
 function Alineacion({ m, a, canProps = true, onUpgrade }) {
   const provider = a.provider || a.fuente || "IA";
@@ -378,6 +406,7 @@ function Alineacion({ m, a, canProps = true, onUpgrade }) {
           <Availability title={`Disponibilidad ${m.away}`} rows={a.disponibilidad_visitante} legacy={a.bajas_visitante} />
         </div>
       )}
+      <AbsenceImpact imp={a.impacto_bajas} home={m.home} away={m.away} />
       {!canProps ? (
         <button type="button" className="props-locked" onClick={onUpgrade}>
           🔒 Player props (goles, tiros, tarjetas por jugador) · función <b>Pro</b> — pulsa para desbloquear

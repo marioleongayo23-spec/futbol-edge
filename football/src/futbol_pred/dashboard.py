@@ -1515,6 +1515,13 @@ def build_dashboard(
     from .matchday_player_props_fill import attach_player_markets
     player_markets_count = attach_player_markets(matches, now)
     players = _merge_lineup_players(players, matches)
+    # Impacto cuantificado de las bajas (goles+asist. reales de los ausentes),
+    # informativo: enriquece la lectura sin alterar la probabilidad del modelo.
+    try:
+        from .matchday_absence_impact import attach_absence_impact
+        attach_absence_impact(matches, players)
+    except Exception:  # noqa: BLE001 - nunca tumba el feed
+        pass
     annotate_prediction_context(matches)
     market_value = attach_extended_market_value(
         matches, now, previous_matches=(previous or {}).get("matches"),
