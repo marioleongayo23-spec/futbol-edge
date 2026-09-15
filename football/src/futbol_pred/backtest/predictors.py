@@ -158,6 +158,72 @@ class DixonColesPredictor:
         return self.fallback.predict(home, away)
 
 
+XG_BLEND = 0.6   # cuánto se fía del xG frente a los goles al ajustar las tasas
+
+
+def _match_xg(match: dict) -> tuple[float, float] | None:
+    """xG (local, visitante) del partido si la fuente lo trae; None si no."""
+    xg = match.get("xg")
+    if xg is None:
+        xg = (match.get("stats") or {}).get("xg")
+    try:
+        if xg and len(xg) == 2 and xg[0] is not None and xg[1] is not None:
+            return float(xg[0]), float(xg[1])
+    except (TypeError, ValueError):
+        return None
+    return None
+
+
+class XgDixonColesPredictor(DixonColesPredictor):
+    """Dixon-Coles ajustado sobre GOLES MEZCLADOS CON xG.
+
+    El xG predice el rendimiento futuro mejor que los goles (menos ruido: una
+    volea afortunada o un penalti inflan el marcador pero no el xG). Aquí el
+    objetivo de cada equipo se sustituye por ``blend·xG + (1-blend)·goles`` en los
+    partidos con xG disponible; sin xG, se ajusta con goles y el modelo coincide
+    con el Dixon-Coles base. Es un retador: el gate del backtest lo promociona
+    solo si mejora fuera de muestra.
+    """
+
+    def __init__(self, min_matches: int = 30, blend: float = XG_BLEND, fallback: object | None = None):
+        super().__init__(min_matches=min_matches, fallback=fallback)
+        self.blend = max(0.0, min(1.0, float(blend)))
+        self.xg_coverage = 0
+
+    def fit(self, matches: list[dict]) -> "XgDixonColesPredictor":
+        played = _played(matches)
+        self.fallback.fit(matches)
+        if len(played) < self.min_matches:
+            self.model = None
+            return self
+        homes, aways, hg, ag = [], [], [], []
+        covered = 0
+        for m in played:
+            xg = _match_xg(m)
+            if xg is not None:
+                covered += 1
+                # Objetivo = goles regresados hacia el xG, redondeado a entero
+                # (el ajuste DC es robusto con conteos enteros; el continuo puede
+                # no converger). Redondear captura la corrección de sobre/infra-
+                # rendimiento sin perder estabilidad numérica.
+                hgi = round(self.blend * xg[0] + (1.0 - self.blend) * m["home_goals"])
+                agi = round(self.blend * xg[1] + (1.0 - self.blend) * m["away_goals"])
+            else:
+                hgi, agi = int(m["home_goals"]), int(m["away_goals"])
+            homes.append(m["home"])
+            aways.append(m["away"])
+            hg.append(max(0, int(hgi)))
+            ag.append(max(0, int(agi)))
+        self.xg_coverage = covered
+        try:
+            model = DixonColesModel()
+            model.fit(homes, aways, hg, ag)
+            self.model = model
+        except Exception:  # noqa: BLE001 - si no converge, cae al fallback (Elo)
+            self.model = None
+        return self
+
+
 class HybridDixonColesPredictor(DixonColesPredictor):
     """Dixon-Coles + pseudo-xG de tiros/SOT con la misma regla que producción.
 
