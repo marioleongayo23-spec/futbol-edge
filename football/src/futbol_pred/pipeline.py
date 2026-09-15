@@ -325,6 +325,7 @@ def run_model_report(league: str = "laliga", season: int | None = None) -> dict 
         EloPredictor,
         HybridDixonColesPredictor,
         PiRatingsPredictor,
+        XgDixonColesPredictor,
         fit_walk_forward_ensemble,
         fit_walk_forward_residual,
         paired_rolling_comparison,
@@ -348,6 +349,13 @@ def run_model_report(league: str = "laliga", season: int | None = None) -> dict 
     if not matches:
         return None
 
+    # Retador xG: solo se añade si la muestra ya trae xG por partido (fuente
+    # externa: API-Football pasivo o snapshot FBref). Sin xG cae a goles y sería
+    # idéntico a Dixon-Coles, así que no se añade para no duplicar. El gate del
+    # backtest lo promociona solo si mejora fuera de muestra.
+    from .backtest.predictors import _match_xg
+    xg_coverage = sum(1 for match in matches if _match_xg(match) is not None)
+
     stats_coverage_n = sum(1 for match in matches if match.get("stats"))
     predictors = {
         "baseline": BaselineRates(),
@@ -356,6 +364,8 @@ def run_model_report(league: str = "laliga", season: int | None = None) -> dict 
         "dixon_coles": DixonColesPredictor(min_matches=30),
         "hybrid_dixon_coles": HybridDixonColesPredictor(min_matches=30),
     }
+    if xg_coverage:
+        predictors["xg_dixon_coles"] = XgDixonColesPredictor(min_matches=30)
     metrics: dict = {}
     results: dict = {}
     rolling_origin: dict = {}

@@ -17,6 +17,7 @@ from .predictors import (
     EloPredictor,
     HybridDixonColesPredictor,
     PiRatingsPredictor,
+    XgDixonColesPredictor,
 )
 from .residual import fit_walk_forward_residual, residual_probabilities
 from .rolling import paired_rolling_comparison, rolling_origin_report
@@ -39,6 +40,7 @@ __all__ = [
     "PiRatingsPredictor",
     "DixonColesPredictor",
     "HybridDixonColesPredictor",
+    "XgDixonColesPredictor",
     "BettingResult",
     "simulate_bets",
     "fit_walk_forward_residual",
