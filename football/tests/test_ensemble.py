@@ -79,3 +79,49 @@ def test_ajuste_ensemble_reserva_validacion_temporal():
     assert result["validation_baselines"]["dixon_coles"]["n"] == result["n_validation"]
     assert result["acceptance_gate"]["rule"] == "strictly_better_than_every_baseline"
     assert 0.05 <= result["production"]["dc_weight"] <= 0.95
+
+
+from futbol_pred.backtest.ensemble import blend3_probabilities, ensemble3_probabilities
+
+
+def test_ensemble3_suma_uno_y_es_retrocompatible():
+    dc = {"1": 0.5, "X": 0.3, "2": 0.2}
+    elo = {"1": 0.45, "X": 0.30, "2": 0.25}
+    pi = {"1": 0.55, "X": 0.25, "2": 0.20}
+    p3 = ensemble3_probabilities(dc, elo, pi, 0.6, 0.5, 1.0)
+    assert sum(p3.values()) == pytest.approx(1.0, abs=1e-9)
+    # Si pi == elo, la mezcla de 3 vías coincide con la de 2 vías (mismo peso DC).
+    b3 = blend3_probabilities(dc, elo, elo, dc_weight=0.7, rating_weight=0.5)
+    from futbol_pred.backtest.ensemble import blend_probabilities
+    b2 = blend_probabilities(dc, elo, 0.7)
+    for k in ("1", "X", "2"):
+        assert b3[k] == pytest.approx(b2[k], abs=1e-9)
+
+
+def _records(probs_fn):
+    """Genera registros walk-forward emparejables (round/home/away/actual/kickoff)."""
+    recs = []
+    outcomes = ["1", "X", "2"]
+    for i in range(60):
+        actual = outcomes[i % 3]
+        recs.append({
+            "round": (i // 10,), "home": f"H{i}", "away": f"A{i}",
+            "actual": actual, "kickoff": float(i * 86400), "probs": probs_fn(actual),
+        })
+    return recs
+
+
+def test_fit_ensemble_dispara_3way_con_pi_records():
+    # pi "sabe" un poco más (más masa al resultado real) -> el 3-way es viable.
+    dc = _records(lambda a: {"1": 0.4, "X": 0.3, "2": 0.3})
+    elo = _records(lambda a: {"1": 0.34, "X": 0.33, "2": 0.33})
+    pi = _records(lambda a: {**{"1": 0.3, "X": 0.3, "2": 0.3}, a: 0.5,
+                             **{o: 0.25 for o in ("1", "X", "2") if o != a}})
+    out = fit_walk_forward_ensemble(dc, elo, pi_records=pi)
+    assert out is not None
+    assert "3way" in out["method"]
+    assert "pi_ratings" in out["production"]["components"]
+    assert 0.0 <= out["production"]["rating_weight"] <= 1.0
+    # Sin pi_records se mantiene el ensemble clásico de 2 vías.
+    out2 = fit_walk_forward_ensemble(dc, elo)
+    assert out2 is not None and "3way" not in out2["method"]

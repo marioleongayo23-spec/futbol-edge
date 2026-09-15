@@ -4,7 +4,12 @@ from .advanced_residual import (
 )
 from .betting import BettingResult, simulate_bets
 from .engine import BacktestResult, compare_predictors, walk_forward
-from .ensemble import ensemble_probabilities, fit_walk_forward_ensemble
+from .ensemble import (
+    blend3_probabilities,
+    ensemble3_probabilities,
+    ensemble_probabilities,
+    fit_walk_forward_ensemble,
+)
 from .metrics import aggregate, brier_score, calibration_table, log_loss, rps
 from .predictors import (
     BaselineRates,
@@ -21,6 +26,8 @@ __all__ = [
     "walk_forward",
     "compare_predictors",
     "ensemble_probabilities",
+    "ensemble3_probabilities",
+    "blend3_probabilities",
     "fit_walk_forward_ensemble",
     "aggregate",
     "log_loss",

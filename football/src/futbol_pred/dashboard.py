@@ -13,7 +13,7 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from .config import DATA_DIR
-from .backtest import ensemble_probabilities
+from .backtest import ensemble3_probabilities, ensemble_probabilities
 from .backtest.ensemble import temperature_scale
 from .backtest.residual import residual_probabilities
 from .context import WeatherClient, venue_for
@@ -136,6 +136,27 @@ def _fit_elo_from_fixtures(fixtures: list[Fixture]) -> EloRatings:
     return elo
 
 
+def _fit_pi_from_fixtures(fixtures: list[Fixture]):
+    """Pi-ratings sobre resultados anteriores; devuelve (ratings, total_medio_goles).
+
+    None si no hay partidos jugados. El total medio alimenta el mapeo a 1X2 vía
+    Skellam (reparto de la diferencia esperada en dos medias Poisson)."""
+    from .backtest.pi_ratings import PiRatings
+
+    played = sorted(
+        (f for f in fixtures if f.home_goals is not None and f.away_goals is not None),
+        key=lambda f: ensure_aware(f.kickoff),
+    )
+    if not played:
+        return None, None
+    pi = PiRatings()
+    totals = []
+    for f in played:
+        pi.update(_canon(f.home_team), _canon(f.away_team), int(f.home_goals), int(f.away_goals))
+        totals.append(int(f.home_goals) + int(f.away_goals))
+    return pi, (sum(totals) / len(totals) if totals else None)
+
+
 def _model_market_weight(mpt: float, learned_market: dict | None) -> tuple[float, float]:
     """Peso de TU modelo frente al mercado (y temperatura) según ``mpt``.
 
@@ -177,11 +198,15 @@ def _previous_ensemble_params(previous: dict | None, league: str) -> dict:
     except (KeyError, TypeError):
         return {"dc_weight": 1.0, "temperature": 1.0, "accepted": False}
     try:
-        return {
+        params = {
             "dc_weight": max(0.05, min(0.95, float(production["dc_weight"]))),
             "temperature": max(0.65, min(1.8, float(production["temperature"]))),
             "accepted": True,
         }
+        # 3 vías (DC+Elo+pi): se conserva el peso Elo↔pi para reproducir la mezcla.
+        if production.get("rating_weight") is not None:
+            params["rating_weight"] = max(0.05, min(0.95, float(production["rating_weight"])))
+        return params
     except (KeyError, TypeError, ValueError):
         return {"dc_weight": 1.0, "temperature": 1.0, "accepted": False}
 
@@ -264,6 +289,8 @@ def fixture_payload(
     residual_params: dict | None = None,
     market_temperature: float = 1.0,
     stats_method: dict | None = None,
+    pi=None,
+    pi_total: float | None = None,
 ) -> dict:
     kickoff = ensure_aware(fixture.kickoff).astimezone(MADRID)
     team_meta = team_meta or {}
@@ -355,10 +382,27 @@ def fixture_payload(
     temperature = float(params.get("temperature", 1.0))
     elo_probs = elo.match_probabilities(home_id, away_id) if elo is not None else dc_probs
     ensemble_active = bool(params.get("accepted")) and elo is not None
-    ensemble_probs = (
-        ensemble_probabilities(dc_probs, elo_probs, dc_weight, temperature)
-        if ensemble_active else dc_probs
-    )
+    # 3 vías (DC + Elo + pi-ratings) cuando el gate lo aprobó y hay pi disponible;
+    # si no, el ensemble clásico de 2 vías. pi_probs se calcula solo si aplica.
+    rating_weight = params.get("rating_weight")
+    three_way = ensemble_active and rating_weight is not None and pi is not None
+    pi_probs = None
+    if three_way:
+        try:
+            from .backtest.pi_ratings import goal_diff_to_1x2
+            diff = pi.expected_goal_diff(home_id, away_id)
+            pi_probs = (goal_diff_to_1x2(diff, pi_total) if pi_total
+                        else goal_diff_to_1x2(diff))
+        except Exception:
+            three_way = False
+    if three_way and pi_probs is not None:
+        ensemble_probs = ensemble3_probabilities(
+            dc_probs, elo_probs, pi_probs, dc_weight, float(rating_weight), temperature
+        )
+    elif ensemble_active:
+        ensemble_probs = ensemble_probabilities(dc_probs, elo_probs, dc_weight, temperature)
+    else:
+        ensemble_probs = dc_probs
     residual_active = bool((residual_params or {}).get("accepted")) and elo is not None
     probs = (
         residual_probabilities(dc_probs, elo_probs, residual_params or {})
@@ -392,17 +436,22 @@ def fixture_payload(
             "version": MODEL_VERSION,
             "provider": (
                 "Residual validado (Dixon-Coles + Elo)" if residual_active
+                else "Dixon-Coles + Elo + pi-ratings calibrado" if three_way
                 else "Dixon-Coles + Elo calibrado" if ensemble_active else "Dixon-Coles híbrido"
             ),
             "components": {
                 "dixon_coles": {key: round(value, 4) for key, value in dc_probs.items()},
                 "elo": {key: round(value, 4) for key, value in elo_probs.items()},
+                **({"pi_ratings": {key: round(value, 4) for key, value in pi_probs.items()}}
+                   if three_way and pi_probs else {}),
             },
             "ensemble": {
                 "dc_weight": round(dc_weight, 4),
                 "elo_weight": round(1.0 - dc_weight, 4),
                 "temperature": round(temperature, 4),
                 "accepted": ensemble_active,
+                **({"three_way": True, "rating_weight": round(float(rating_weight), 4)}
+                   if three_way else {}),
             },
             "residual": {
                 "accepted": residual_active,
@@ -1362,6 +1411,7 @@ def build_dashboard(
             except (ValueError, KeyError):
                 model = None
             elo = _fit_elo_from_fixtures(train)
+            pi, pi_total = _fit_pi_from_fixtures(train)
             ensemble_params = _previous_ensemble_params(calibration_source, league)
             residual_params = _previous_residual_params(calibration_source, league)
             stats = _fit_stats(league, season)
@@ -1393,6 +1443,7 @@ def build_dashboard(
                     "h2h": h2h, "trends": trends, "ensemble_params": ensemble_params,
                     "residual_params": residual_params,
                     "market_temperature": market_temperature,
+                    "pi": pi, "pi_total": pi_total,
                 }
             # TODOS los partidos de la temporada (resultados + próximos).
             matches.extend(
@@ -1403,7 +1454,8 @@ def build_dashboard(
                                 elo=elo, ensemble_params=ensemble_params,
                                 residual_params=residual_params,
                                 market_temperature=market_temperature,
-                                stats_method=stats_method_by_league.get(LEAGUES.get(league, league)))
+                                stats_method=stats_method_by_league.get(LEAGUES.get(league, league)),
+                                pi=pi, pi_total=pi_total)
                 for fx in sorted(fixtures, key=lambda item: ensure_aware(item.kickoff))
             )
         except Exception as exc:  # una liga no debe tumbar el resto del feed
@@ -2027,6 +2079,7 @@ def _quiniela_predict_one(local, visit, feed_idx, league_bundles, team_league, k
                 ensemble_params=bundle.get("ensemble_params"),
                 residual_params=bundle.get("residual_params"),
                 market_temperature=bundle.get("market_temperature", 1.0),
+                pi=bundle.get("pi"), pi_total=bundle.get("pi_total"),
             )
             resolved = _quiniela_from_payload(payload, LEAGUES.get(league, league))
             if resolved:
