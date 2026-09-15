@@ -20,6 +20,7 @@ from .predictors import (
     XgDixonColesPredictor,
 )
 from .residual import fit_walk_forward_residual, residual_probabilities
+from .stacking import fit_walk_forward_stack
 from .rolling import paired_rolling_comparison, rolling_origin_report
 
 __all__ = [
@@ -45,6 +46,7 @@ __all__ = [
     "simulate_bets",
     "fit_walk_forward_residual",
     "residual_probabilities",
+    "fit_walk_forward_stack",
     "fit_walk_forward_advanced_residual",
     "advanced_residual_probabilities",
     "rolling_origin_report",
