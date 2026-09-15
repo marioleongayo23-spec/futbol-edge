@@ -349,11 +349,16 @@ def run_model_report(league: str = "laliga", season: int | None = None) -> dict 
     if not matches:
         return None
 
-    # Retador xG: solo se añade si la muestra ya trae xG por partido (fuente
-    # externa: API-Football pasivo o snapshot FBref). Sin xG cae a goles y sería
+    # Retador xG: adjunta el xG por partido desde el snapshot (si existe) y solo
+    # se añade el retador cuando hay cobertura. Sin xG cae a goles y sería
     # idéntico a Dixon-Coles, así que no se añade para no duplicar. El gate del
     # backtest lo promociona solo si mejora fuera de muestra.
     from .backtest.predictors import _match_xg
+    from .ingest.xg_snapshot import attach_xg_from_snapshot
+    try:
+        attach_xg_from_snapshot(matches, league, actual_season)
+    except Exception:
+        pass
     xg_coverage = sum(1 for match in matches if _match_xg(match) is not None)
 
     stats_coverage_n = sum(1 for match in matches if match.get("stats"))
