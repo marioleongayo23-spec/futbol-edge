@@ -20,6 +20,7 @@ from ..ingest.football_data_uk import MatchStats
 from ..model import DixonColesModel
 from ..model.stats_markets import StatsPredictor
 from ..scheduling import is_finished
+from .pi_ratings import PiRatings, goal_diff_to_1x2
 
 
 def _played(matches: list[dict]) -> list[dict]:
@@ -99,6 +100,32 @@ class EloPredictor:
 
     def predict(self, home: str, away: str) -> dict[str, float] | None:
         return self.elo.match_probabilities(home, away)
+
+
+class PiRatingsPredictor:
+    """Retador pi-ratings (Constantinou & Fenton): ratings local/visitante y
+    diferencia de goles esperada -> 1X2 vía Skellam."""
+
+    def __init__(self, **kwargs) -> None:
+        self.kwargs = kwargs
+        self.ratings = PiRatings(**kwargs)
+        self.total_goals = None
+
+    def fit(self, matches: list[dict]) -> "PiRatingsPredictor":
+        self.ratings = PiRatings(**self.kwargs)
+        played = sorted(_played(matches), key=lambda x: x.get("kickoff", 0))
+        totals = []
+        for m in played:
+            self.ratings.update(m["home"], m["away"], m["home_goals"], m["away_goals"])
+            totals.append(m["home_goals"] + m["away_goals"])
+        self.total_goals = (sum(totals) / len(totals)) if totals else None
+        return self
+
+    def predict(self, home: str, away: str) -> dict[str, float] | None:
+        diff = self.ratings.expected_goal_diff(home, away)
+        if self.total_goals is None:
+            return goal_diff_to_1x2(diff)
+        return goal_diff_to_1x2(diff, self.total_goals)
 
 
 class DixonColesPredictor:

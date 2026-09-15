@@ -289,6 +289,7 @@ def run_backtest(league: str = "laliga", season: int | None = None) -> dict:
         BaselineRates,
         DixonColesPredictor,
         EloPredictor,
+        PiRatingsPredictor,
         compare_predictors,
     )
     from .config import LEAGUE_META
@@ -299,6 +300,7 @@ def run_backtest(league: str = "laliga", season: int | None = None) -> dict:
     comp = compare_predictors(matches, {
         "baseline": BaselineRates(),
         "elo": EloPredictor(),
+        "pi_ratings": PiRatingsPredictor(),
         "dixon_coles": DixonColesPredictor(min_matches=30),
     }, min_train_rounds=3)
     return {
@@ -322,6 +324,7 @@ def run_model_report(league: str = "laliga", season: int | None = None) -> dict 
         DixonColesPredictor,
         EloPredictor,
         HybridDixonColesPredictor,
+        PiRatingsPredictor,
         fit_walk_forward_ensemble,
         fit_walk_forward_residual,
         paired_rolling_comparison,
@@ -349,6 +352,7 @@ def run_model_report(league: str = "laliga", season: int | None = None) -> dict 
     predictors = {
         "baseline": BaselineRates(),
         "elo": EloPredictor(),
+        "pi_ratings": PiRatingsPredictor(),
         "dixon_coles": DixonColesPredictor(min_matches=30),
         "hybrid_dixon_coles": HybridDixonColesPredictor(min_matches=30),
     }

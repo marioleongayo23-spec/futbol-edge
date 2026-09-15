@@ -6,7 +6,13 @@ from .betting import BettingResult, simulate_bets
 from .engine import BacktestResult, compare_predictors, walk_forward
 from .ensemble import ensemble_probabilities, fit_walk_forward_ensemble
 from .metrics import aggregate, brier_score, calibration_table, log_loss, rps
-from .predictors import BaselineRates, DixonColesPredictor, EloPredictor, HybridDixonColesPredictor
+from .predictors import (
+    BaselineRates,
+    DixonColesPredictor,
+    EloPredictor,
+    HybridDixonColesPredictor,
+    PiRatingsPredictor,
+)
 from .residual import fit_walk_forward_residual, residual_probabilities
 from .rolling import paired_rolling_comparison, rolling_origin_report
 
@@ -23,6 +29,7 @@ __all__ = [
     "calibration_table",
     "BaselineRates",
     "EloPredictor",
+    "PiRatingsPredictor",
     "DixonColesPredictor",
     "HybridDixonColesPredictor",
     "BettingResult",
