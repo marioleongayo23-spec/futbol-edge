@@ -289,6 +289,7 @@ def run_backtest(league: str = "laliga", season: int | None = None) -> dict:
         BaselineRates,
         DixonColesPredictor,
         EloPredictor,
+        PiRatingsPredictor,
         compare_predictors,
     )
     from .config import LEAGUE_META
@@ -299,6 +300,7 @@ def run_backtest(league: str = "laliga", season: int | None = None) -> dict:
     comp = compare_predictors(matches, {
         "baseline": BaselineRates(),
         "elo": EloPredictor(),
+        "pi_ratings": PiRatingsPredictor(),
         "dixon_coles": DixonColesPredictor(min_matches=30),
     }, min_train_rounds=3)
     return {
@@ -322,6 +324,7 @@ def run_model_report(league: str = "laliga", season: int | None = None) -> dict 
         DixonColesPredictor,
         EloPredictor,
         HybridDixonColesPredictor,
+        PiRatingsPredictor,
         fit_walk_forward_ensemble,
         fit_walk_forward_residual,
         paired_rolling_comparison,
@@ -349,6 +352,7 @@ def run_model_report(league: str = "laliga", season: int | None = None) -> dict 
     predictors = {
         "baseline": BaselineRates(),
         "elo": EloPredictor(),
+        "pi_ratings": PiRatingsPredictor(),
         "dixon_coles": DixonColesPredictor(min_matches=30),
         "hybrid_dixon_coles": HybridDixonColesPredictor(min_matches=30),
     }
@@ -371,6 +375,7 @@ def run_model_report(league: str = "laliga", season: int | None = None) -> dict 
     dc_result = results.get("dixon_coles")
     hybrid_result = results.get("hybrid_dixon_coles")
     elo_result = results.get("elo")
+    pi_result = results.get("pi_ratings")
 
     rolling_comparisons: dict = {}
     if hybrid_result is not None and dc_result is not None:
@@ -389,8 +394,12 @@ def run_model_report(league: str = "laliga", season: int | None = None) -> dict 
     ensemble = None
     residual = None
     if dc_result is not None and elo_result is not None:
-        # Conservamos el ensemble histórico sin cambiar su contrato en este PR.
-        ensemble = fit_walk_forward_ensemble(dc_result.records, elo_result.records)
+        # Ensemble: si pi-ratings tiene registros, se intenta el 3-way (DC+Elo+pi)
+        # con su gate; si no gana a los tres, cae al 2-way clásico DC+Elo.
+        pi_records = pi_result.records if pi_result is not None else None
+        ensemble = fit_walk_forward_ensemble(
+            dc_result.records, elo_result.records, pi_records=pi_records
+        )
 
         residual_base = hybrid_result if hybrid_result is not None else dc_result
         base_name = "hybrid_dixon_coles" if hybrid_result is not None else "dixon_coles"
