@@ -328,6 +328,7 @@ def run_model_report(league: str = "laliga", season: int | None = None) -> dict 
         XgDixonColesPredictor,
         fit_walk_forward_ensemble,
         fit_walk_forward_residual,
+        fit_walk_forward_stack,
         paired_rolling_comparison,
         rolling_origin_report,
         walk_forward,
@@ -406,6 +407,21 @@ def run_model_report(league: str = "laliga", season: int | None = None) -> dict 
             trailing_rounds=5,
         )
 
+    # Meta-modelo de stacking log-lineal sobre todos los modelos base (medido).
+    stack = None
+    stack_inputs = {name: res.records for name, res in results.items()
+                    if name in ("dixon_coles", "elo", "pi_ratings", "hybrid_dixon_coles")}
+    if len(stack_inputs) >= 2:
+        try:
+            stack = fit_walk_forward_stack(stack_inputs)
+        except Exception:
+            stack = None
+    if stack and stack.get("validation", {}).get("n"):
+        metrics["stack"] = {
+            key: (round(value, 4) if isinstance(value, float) else value)
+            for key, value in stack["validation"].items()
+        }
+
     ensemble = None
     residual = None
     if dc_result is not None and elo_result is not None:
@@ -466,6 +482,7 @@ def run_model_report(league: str = "laliga", season: int | None = None) -> dict 
         "rolling_comparisons": rolling_comparisons or None,
         "ensemble": ensemble,
         "residual": residual,
+        "stack": stack,
     }
 
 
