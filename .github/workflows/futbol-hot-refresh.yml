@@ -123,16 +123,20 @@ jobs:
               # 14) Reacción predictiva inmediata a clima/XI/bajas/mercado.
               PYTHONPATH=football/src python -m futbol_pred.matchday_prediction_refresh
 
-              # 15) Gate de autoridad/frescura.
+              # 15) Snapshot auditable desde el feed ya refrescado. Trabaja sobre
+              #     copia y devuelve solo history/snapshot: nunca pisa serving.
+              PYTHONPATH=football/src python -m futbol_pred.matchday_snapshot_capture
+
+              # 16) Gate de autoridad/frescura.
               PYTHONPATH=football/src python -m futbol_pred.matchday_freshness_gate
 
-              # 16) Matriz de cobertura/frescura visible.
+              # 17) Matriz de cobertura/frescura visible.
               PYTHONPATH=football/src python -m futbol_pred.coverage
 
-              # 17) Calidad auditable 0–100 derivada únicamente de cobertura real.
+              # 18) Calidad auditable 0–100 derivada únicamente de cobertura real.
               PYTHONPATH=football/src python scripts/enrich_match_quality.py
 
-              # 18) Tabla de verdad operacional y anti-leakage.
+              # 19) Tabla de verdad operacional y anti-leakage.
               PYTHONPATH=football/src python -m futbol_pred.feature_truth
 
               PYTHONPATH=football/src python -m futbol_pred.matchday_diagnose
