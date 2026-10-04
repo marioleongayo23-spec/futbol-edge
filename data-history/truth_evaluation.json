@@ -3,30 +3,30 @@
   "last_run_audit": {
     "affects_1x2": false,
     "ambiguous_dashboard": 0,
-    "dashboard_matches": 601,
+    "dashboard_matches": 613,
     "evaluated_by_stat": {
-      "corners": 103,
-      "fouls": 103,
-      "goals": 103,
-      "reds": 103,
-      "shots": 103,
-      "sot": 103,
-      "yellows": 103
+      "corners": 112,
+      "fouls": 112,
+      "goals": 112,
+      "reds": 112,
+      "shots": 112,
+      "sot": 112,
+      "yellows": 112
     },
     "missing_dashboard": 0,
-    "missing_pre_match_snapshot": 43,
-    "observations": 103,
+    "missing_pre_match_snapshot": 44,
+    "observations": 112,
     "reused_archived_prediction": 0,
     "status": "ok",
-    "truth_matches": 146,
+    "truth_matches": 156,
     "truth_usable_by_stat": {
-      "corners": 103,
-      "fouls": 103,
-      "goals": 103,
-      "reds": 103,
-      "shots": 103,
-      "sot": 103,
-      "yellows": 103
+      "corners": 112,
+      "fouls": 112,
+      "goals": 112,
+      "reds": 112,
+      "shots": 112,
+      "sot": 112,
+      "yellows": 112
     }
   },
   "records": {
@@ -4545,6 +4545,508 @@
           }
         },
         "truth_digest": "f71cd8271cec3656998cf13b53dd23226bc43d160ca6eb44b3059d5ff6e4a697",
+        "truth_match_status": "single_source"
+      }
+    },
+    "147d744160917d7da4290d4a": {
+      "history": [
+        {
+          "affects_1x2": false,
+          "away": "Eibar",
+          "date": "2026-10-03",
+          "evaluation_status": "evaluated",
+          "home": "Albacete",
+          "league": "segunda",
+          "match_id": "147d744160917d7da4290d4a",
+          "model_version": "edge-2.1",
+          "prediction": {
+            "corners": {
+              "away": 5.6,
+              "home": 4.6,
+              "total": 10.2
+            },
+            "fouls": {
+              "away": 11.36,
+              "home": 9.65,
+              "total": 21.009999999999998
+            },
+            "goals": {
+              "away": 1.31,
+              "home": 1.09,
+              "total": 2.4000000000000004
+            },
+            "reds": {
+              "away": 0.13,
+              "home": 0.06,
+              "total": 0.19
+            },
+            "shots": {
+              "away": 14.0,
+              "home": 11.6,
+              "total": 25.6
+            },
+            "sot": {
+              "away": 4.4,
+              "home": 3.6,
+              "total": 8.0
+            },
+            "xg": {
+              "away": 1.31,
+              "home": 1.09,
+              "total": 2.4000000000000004
+            },
+            "yellows": {
+              "away": 2.25,
+              "home": 1.84,
+              "total": 4.09
+            }
+          },
+          "prediction_origin": "dashboard_pre_match_snapshot",
+          "season": 2026,
+          "snapshot_at": "2026-10-03T00:15:21.230405+02:00",
+          "snapshot_window": "00:15",
+          "stats": {
+            "corners": {
+              "absolute_error": {
+                "away": 5.6,
+                "home": 1.4,
+                "total": 4.2
+              },
+              "actual": {
+                "away": 0.0,
+                "home": 6.0,
+                "total": 6.0
+              },
+              "error": {
+                "away": 5.6,
+                "home": -1.4,
+                "total": 4.2
+              },
+              "predicted": {
+                "away": 5.6,
+                "home": 4.6,
+                "total": 10.2
+              },
+              "truth_confidence": 0.6,
+              "truth_sources": [
+                "football_data_uk"
+              ],
+              "truth_status": "single_source"
+            },
+            "fouls": {
+              "absolute_error": {
+                "away": 0.36,
+                "home": 0.35,
+                "total": 0.01
+              },
+              "actual": {
+                "away": 11.0,
+                "home": 10.0,
+                "total": 21.0
+              },
+              "error": {
+                "away": 0.36,
+                "home": -0.35,
+                "total": 0.01
+              },
+              "predicted": {
+                "away": 11.36,
+                "home": 9.65,
+                "total": 21.01
+              },
+              "truth_confidence": 0.6,
+              "truth_sources": [
+                "football_data_uk"
+              ],
+              "truth_status": "single_source"
+            },
+            "goals": {
+              "absolute_error": {
+                "away": 1.69,
+                "home": 0.09,
+                "total": 1.6
+              },
+              "actual": {
+                "away": 3.0,
+                "home": 1.0,
+                "total": 4.0
+              },
+              "error": {
+                "away": -1.69,
+                "home": 0.09,
+                "total": -1.6
+              },
+              "predicted": {
+                "away": 1.31,
+                "home": 1.09,
+                "total": 2.4
+              },
+              "truth_confidence": 0.6,
+              "truth_sources": [
+                "football_data_uk"
+              ],
+              "truth_status": "single_source"
+            },
+            "reds": {
+              "absolute_error": {
+                "away": 0.13,
+                "home": 0.06,
+                "total": 0.19
+              },
+              "actual": {
+                "away": 0.0,
+                "home": 0.0,
+                "total": 0.0
+              },
+              "error": {
+                "away": 0.13,
+                "home": 0.06,
+                "total": 0.19
+              },
+              "predicted": {
+                "away": 0.13,
+                "home": 0.06,
+                "total": 0.19
+              },
+              "truth_confidence": 0.6,
+              "truth_sources": [
+                "football_data_uk"
+              ],
+              "truth_status": "single_source"
+            },
+            "shots": {
+              "absolute_error": {
+                "away": 6.0,
+                "home": 10.4,
+                "total": 4.4
+              },
+              "actual": {
+                "away": 8.0,
+                "home": 22.0,
+                "total": 30.0
+              },
+              "error": {
+                "away": 6.0,
+                "home": -10.4,
+                "total": -4.4
+              },
+              "predicted": {
+                "away": 14.0,
+                "home": 11.6,
+                "total": 25.6
+              },
+              "truth_confidence": 0.6,
+              "truth_sources": [
+                "football_data_uk"
+              ],
+              "truth_status": "single_source"
+            },
+            "sot": {
+              "absolute_error": {
+                "away": 1.6,
+                "home": 2.4,
+                "total": 4.0
+              },
+              "actual": {
+                "away": 6.0,
+                "home": 6.0,
+                "total": 12.0
+              },
+              "error": {
+                "away": -1.6,
+                "home": -2.4,
+                "total": -4.0
+              },
+              "predicted": {
+                "away": 4.4,
+                "home": 3.6,
+                "total": 8.0
+              },
+              "truth_confidence": 0.6,
+              "truth_sources": [
+                "football_data_uk"
+              ],
+              "truth_status": "single_source"
+            },
+            "yellows": {
+              "absolute_error": {
+                "away": 1.25,
+                "home": 0.16,
+                "total": 1.09
+              },
+              "actual": {
+                "away": 1.0,
+                "home": 2.0,
+                "total": 3.0
+              },
+              "error": {
+                "away": 1.25,
+                "home": -0.16,
+                "total": 1.09
+              },
+              "predicted": {
+                "away": 2.25,
+                "home": 1.84,
+                "total": 4.09
+              },
+              "truth_confidence": 0.6,
+              "truth_sources": [
+                "football_data_uk"
+              ],
+              "truth_status": "single_source"
+            }
+          },
+          "truth_digest": "7e0bff0bb1695390ce727605fabf427348533663bf6cea1339333e5a376c6105",
+          "truth_match_status": "single_source"
+        }
+      ],
+      "latest": {
+        "affects_1x2": false,
+        "away": "Eibar",
+        "date": "2026-10-03",
+        "evaluation_status": "evaluated",
+        "home": "Albacete",
+        "league": "segunda",
+        "match_id": "147d744160917d7da4290d4a",
+        "model_version": "edge-2.1",
+        "prediction": {
+          "corners": {
+            "away": 5.6,
+            "home": 4.6,
+            "total": 10.2
+          },
+          "fouls": {
+            "away": 11.36,
+            "home": 9.65,
+            "total": 21.009999999999998
+          },
+          "goals": {
+            "away": 1.31,
+            "home": 1.09,
+            "total": 2.4000000000000004
+          },
+          "reds": {
+            "away": 0.13,
+            "home": 0.06,
+            "total": 0.19
+          },
+          "shots": {
+            "away": 14.0,
+            "home": 11.6,
+            "total": 25.6
+          },
+          "sot": {
+            "away": 4.4,
+            "home": 3.6,
+            "total": 8.0
+          },
+          "xg": {
+            "away": 1.31,
+            "home": 1.09,
+            "total": 2.4000000000000004
+          },
+          "yellows": {
+            "away": 2.25,
+            "home": 1.84,
+            "total": 4.09
+          }
+        },
+        "prediction_origin": "dashboard_pre_match_snapshot",
+        "season": 2026,
+        "snapshot_at": "2026-10-03T00:15:21.230405+02:00",
+        "snapshot_window": "00:15",
+        "stats": {
+          "corners": {
+            "absolute_error": {
+              "away": 5.6,
+              "home": 1.4,
+              "total": 4.2
+            },
+            "actual": {
+              "away": 0.0,
+              "home": 6.0,
+              "total": 6.0
+            },
+            "error": {
+              "away": 5.6,
+              "home": -1.4,
+              "total": 4.2
+            },
+            "predicted": {
+              "away": 5.6,
+              "home": 4.6,
+              "total": 10.2
+            },
+            "truth_confidence": 0.6,
+            "truth_sources": [
+              "football_data_uk"
+            ],
+            "truth_status": "single_source"
+          },
+          "fouls": {
+            "absolute_error": {
+              "away": 0.36,
+              "home": 0.35,
+              "total": 0.01
+            },
+            "actual": {
+              "away": 11.0,
+              "home": 10.0,
+              "total": 21.0
+            },
+            "error": {
+              "away": 0.36,
+              "home": -0.35,
+              "total": 0.01
+            },
+            "predicted": {
+              "away": 11.36,
+              "home": 9.65,
+              "total": 21.01
+            },
+            "truth_confidence": 0.6,
+            "truth_sources": [
+              "football_data_uk"
+            ],
+            "truth_status": "single_source"
+          },
+          "goals": {
+            "absolute_error": {
+              "away": 1.69,
+              "home": 0.09,
+              "total": 1.6
+            },
+            "actual": {
+              "away": 3.0,
+              "home": 1.0,
+              "total": 4.0
+            },
+            "error": {
+              "away": -1.69,
+              "home": 0.09,
+              "total": -1.6
+            },
+            "predicted": {
+              "away": 1.31,
+              "home": 1.09,
+              "total": 2.4
+            },
+            "truth_confidence": 0.6,
+            "truth_sources": [
+              "football_data_uk"
+            ],
+            "truth_status": "single_source"
+          },
+          "reds": {
+            "absolute_error": {
+              "away": 0.13,
+              "home": 0.06,
+              "total": 0.19
+            },
+            "actual": {
+              "away": 0.0,
+              "home": 0.0,
+              "total": 0.0
+            },
+            "error": {
+              "away": 0.13,
+              "home": 0.06,
+              "total": 0.19
+            },
+            "predicted": {
+              "away": 0.13,
+              "home": 0.06,
+              "total": 0.19
+            },
+            "truth_confidence": 0.6,
+            "truth_sources": [
+              "football_data_uk"
+            ],
+            "truth_status": "single_source"
+          },
+          "shots": {
+            "absolute_error": {
+              "away": 6.0,
+              "home": 10.4,
+              "total": 4.4
+            },
+            "actual": {
+              "away": 8.0,
+              "home": 22.0,
+              "total": 30.0
+            },
+            "error": {
+              "away": 6.0,
+              "home": -10.4,
+              "total": -4.4
+            },
+            "predicted": {
+              "away": 14.0,
+              "home": 11.6,
+              "total": 25.6
+            },
+            "truth_confidence": 0.6,
+            "truth_sources": [
+              "football_data_uk"
+            ],
+            "truth_status": "single_source"
+          },
+          "sot": {
+            "absolute_error": {
+              "away": 1.6,
+              "home": 2.4,
+              "total": 4.0
+            },
+            "actual": {
+              "away": 6.0,
+              "home": 6.0,
+              "total": 12.0
+            },
+            "error": {
+              "away": -1.6,
+              "home": -2.4,
+              "total": -4.0
+            },
+            "predicted": {
+              "away": 4.4,
+              "home": 3.6,
+              "total": 8.0
+            },
+            "truth_confidence": 0.6,
+            "truth_sources": [
+              "football_data_uk"
+            ],
+            "truth_status": "single_source"
+          },
+          "yellows": {
+            "absolute_error": {
+              "away": 1.25,
+              "home": 0.16,
+              "total": 1.09
+            },
+            "actual": {
+              "away": 1.0,
+              "home": 2.0,
+              "total": 3.0
+            },
+            "error": {
+              "away": 1.25,
+              "home": -0.16,
+              "total": 1.09
+            },
+            "predicted": {
+              "away": 2.25,
+              "home": 1.84,
+              "total": 4.09
+            },
+            "truth_confidence": 0.6,
+            "truth_sources": [
+              "football_data_uk"
+            ],
+            "truth_status": "single_source"
+          }
+        },
+        "truth_digest": "7e0bff0bb1695390ce727605fabf427348533663bf6cea1339333e5a376c6105",
         "truth_match_status": "single_source"
       }
     },
@@ -13584,6 +14086,508 @@
         "truth_match_status": "single_source"
       }
     },
+    "489db914f50a210435a60049": {
+      "history": [
+        {
+          "affects_1x2": false,
+          "away": "Mallorca",
+          "date": "2026-10-04",
+          "evaluation_status": "evaluated",
+          "home": "Girona",
+          "league": "segunda",
+          "match_id": "489db914f50a210435a60049",
+          "model_version": "edge-2.1",
+          "prediction": {
+            "corners": {
+              "away": 4.0,
+              "home": 5.4,
+              "total": 9.4
+            },
+            "fouls": {
+              "away": 13.73,
+              "home": 10.34,
+              "total": 24.07
+            },
+            "goals": {
+              "away": 1.01,
+              "home": 1.37,
+              "total": 2.38
+            },
+            "reds": {
+              "away": 0.12,
+              "home": 0.31,
+              "total": 0.43
+            },
+            "shots": {
+              "away": 10.4,
+              "home": 14.1,
+              "total": 24.5
+            },
+            "sot": {
+              "away": 3.5,
+              "home": 4.8,
+              "total": 8.3
+            },
+            "xg": {
+              "away": 1.01,
+              "home": 1.37,
+              "total": 2.38
+            },
+            "yellows": {
+              "away": 2.44,
+              "home": 1.81,
+              "total": 4.25
+            }
+          },
+          "prediction_origin": "dashboard_pre_match_snapshot",
+          "season": 2026,
+          "snapshot_at": "2026-10-04T08:04:22.155226+02:00",
+          "snapshot_window": "T-12h",
+          "stats": {
+            "corners": {
+              "absolute_error": {
+                "away": 3.0,
+                "home": 0.4,
+                "total": 2.6
+              },
+              "actual": {
+                "away": 7.0,
+                "home": 5.0,
+                "total": 12.0
+              },
+              "error": {
+                "away": -3.0,
+                "home": 0.4,
+                "total": -2.6
+              },
+              "predicted": {
+                "away": 4.0,
+                "home": 5.4,
+                "total": 9.4
+              },
+              "truth_confidence": 0.6,
+              "truth_sources": [
+                "football_data_uk"
+              ],
+              "truth_status": "single_source"
+            },
+            "fouls": {
+              "absolute_error": {
+                "away": 4.27,
+                "home": 1.34,
+                "total": 2.93
+              },
+              "actual": {
+                "away": 18.0,
+                "home": 9.0,
+                "total": 27.0
+              },
+              "error": {
+                "away": -4.27,
+                "home": 1.34,
+                "total": -2.93
+              },
+              "predicted": {
+                "away": 13.73,
+                "home": 10.34,
+                "total": 24.07
+              },
+              "truth_confidence": 0.6,
+              "truth_sources": [
+                "football_data_uk"
+              ],
+              "truth_status": "single_source"
+            },
+            "goals": {
+              "absolute_error": {
+                "away": 1.01,
+                "home": 1.37,
+                "total": 2.38
+              },
+              "actual": {
+                "away": 0.0,
+                "home": 0.0,
+                "total": 0.0
+              },
+              "error": {
+                "away": 1.01,
+                "home": 1.37,
+                "total": 2.38
+              },
+              "predicted": {
+                "away": 1.01,
+                "home": 1.37,
+                "total": 2.38
+              },
+              "truth_confidence": 0.6,
+              "truth_sources": [
+                "football_data_uk"
+              ],
+              "truth_status": "single_source"
+            },
+            "reds": {
+              "absolute_error": {
+                "away": 0.12,
+                "home": 0.31,
+                "total": 0.43
+              },
+              "actual": {
+                "away": 0.0,
+                "home": 0.0,
+                "total": 0.0
+              },
+              "error": {
+                "away": 0.12,
+                "home": 0.31,
+                "total": 0.43
+              },
+              "predicted": {
+                "away": 0.12,
+                "home": 0.31,
+                "total": 0.43
+              },
+              "truth_confidence": 0.6,
+              "truth_sources": [
+                "football_data_uk"
+              ],
+              "truth_status": "single_source"
+            },
+            "shots": {
+              "absolute_error": {
+                "away": 1.4,
+                "home": 1.9,
+                "total": 0.5
+              },
+              "actual": {
+                "away": 9.0,
+                "home": 16.0,
+                "total": 25.0
+              },
+              "error": {
+                "away": 1.4,
+                "home": -1.9,
+                "total": -0.5
+              },
+              "predicted": {
+                "away": 10.4,
+                "home": 14.1,
+                "total": 24.5
+              },
+              "truth_confidence": 0.6,
+              "truth_sources": [
+                "football_data_uk"
+              ],
+              "truth_status": "single_source"
+            },
+            "sot": {
+              "absolute_error": {
+                "away": 3.5,
+                "home": 0.2,
+                "total": 3.3
+              },
+              "actual": {
+                "away": 0.0,
+                "home": 5.0,
+                "total": 5.0
+              },
+              "error": {
+                "away": 3.5,
+                "home": -0.2,
+                "total": 3.3
+              },
+              "predicted": {
+                "away": 3.5,
+                "home": 4.8,
+                "total": 8.3
+              },
+              "truth_confidence": 0.6,
+              "truth_sources": [
+                "football_data_uk"
+              ],
+              "truth_status": "single_source"
+            },
+            "yellows": {
+              "absolute_error": {
+                "away": 1.56,
+                "home": 0.81,
+                "total": 0.75
+              },
+              "actual": {
+                "away": 4.0,
+                "home": 1.0,
+                "total": 5.0
+              },
+              "error": {
+                "away": -1.56,
+                "home": 0.81,
+                "total": -0.75
+              },
+              "predicted": {
+                "away": 2.44,
+                "home": 1.81,
+                "total": 4.25
+              },
+              "truth_confidence": 0.6,
+              "truth_sources": [
+                "football_data_uk"
+              ],
+              "truth_status": "single_source"
+            }
+          },
+          "truth_digest": "b9ba952f2b2cbcfb2b2a2573c0aeaef8a98b2ed74446f0050fb4d54e678d85df",
+          "truth_match_status": "single_source"
+        }
+      ],
+      "latest": {
+        "affects_1x2": false,
+        "away": "Mallorca",
+        "date": "2026-10-04",
+        "evaluation_status": "evaluated",
+        "home": "Girona",
+        "league": "segunda",
+        "match_id": "489db914f50a210435a60049",
+        "model_version": "edge-2.1",
+        "prediction": {
+          "corners": {
+            "away": 4.0,
+            "home": 5.4,
+            "total": 9.4
+          },
+          "fouls": {
+            "away": 13.73,
+            "home": 10.34,
+            "total": 24.07
+          },
+          "goals": {
+            "away": 1.01,
+            "home": 1.37,
+            "total": 2.38
+          },
+          "reds": {
+            "away": 0.12,
+            "home": 0.31,
+            "total": 0.43
+          },
+          "shots": {
+            "away": 10.4,
+            "home": 14.1,
+            "total": 24.5
+          },
+          "sot": {
+            "away": 3.5,
+            "home": 4.8,
+            "total": 8.3
+          },
+          "xg": {
+            "away": 1.01,
+            "home": 1.37,
+            "total": 2.38
+          },
+          "yellows": {
+            "away": 2.44,
+            "home": 1.81,
+            "total": 4.25
+          }
+        },
+        "prediction_origin": "dashboard_pre_match_snapshot",
+        "season": 2026,
+        "snapshot_at": "2026-10-04T08:04:22.155226+02:00",
+        "snapshot_window": "T-12h",
+        "stats": {
+          "corners": {
+            "absolute_error": {
+              "away": 3.0,
+              "home": 0.4,
+              "total": 2.6
+            },
+            "actual": {
+              "away": 7.0,
+              "home": 5.0,
+              "total": 12.0
+            },
+            "error": {
+              "away": -3.0,
+              "home": 0.4,
+              "total": -2.6
+            },
+            "predicted": {
+              "away": 4.0,
+              "home": 5.4,
+              "total": 9.4
+            },
+            "truth_confidence": 0.6,
+            "truth_sources": [
+              "football_data_uk"
+            ],
+            "truth_status": "single_source"
+          },
+          "fouls": {
+            "absolute_error": {
+              "away": 4.27,
+              "home": 1.34,
+              "total": 2.93
+            },
+            "actual": {
+              "away": 18.0,
+              "home": 9.0,
+              "total": 27.0
+            },
+            "error": {
+              "away": -4.27,
+              "home": 1.34,
+              "total": -2.93
+            },
+            "predicted": {
+              "away": 13.73,
+              "home": 10.34,
+              "total": 24.07
+            },
+            "truth_confidence": 0.6,
+            "truth_sources": [
+              "football_data_uk"
+            ],
+            "truth_status": "single_source"
+          },
+          "goals": {
+            "absolute_error": {
+              "away": 1.01,
+              "home": 1.37,
+              "total": 2.38
+            },
+            "actual": {
+              "away": 0.0,
+              "home": 0.0,
+              "total": 0.0
+            },
+            "error": {
+              "away": 1.01,
+              "home": 1.37,
+              "total": 2.38
+            },
+            "predicted": {
+              "away": 1.01,
+              "home": 1.37,
+              "total": 2.38
+            },
+            "truth_confidence": 0.6,
+            "truth_sources": [
+              "football_data_uk"
+            ],
+            "truth_status": "single_source"
+          },
+          "reds": {
+            "absolute_error": {
+              "away": 0.12,
+              "home": 0.31,
+              "total": 0.43
+            },
+            "actual": {
+              "away": 0.0,
+              "home": 0.0,
+              "total": 0.0
+            },
+            "error": {
+              "away": 0.12,
+              "home": 0.31,
+              "total": 0.43
+            },
+            "predicted": {
+              "away": 0.12,
+              "home": 0.31,
+              "total": 0.43
+            },
+            "truth_confidence": 0.6,
+            "truth_sources": [
+              "football_data_uk"
+            ],
+            "truth_status": "single_source"
+          },
+          "shots": {
+            "absolute_error": {
+              "away": 1.4,
+              "home": 1.9,
+              "total": 0.5
+            },
+            "actual": {
+              "away": 9.0,
+              "home": 16.0,
+              "total": 25.0
+            },
+            "error": {
+              "away": 1.4,
+              "home": -1.9,
+              "total": -0.5
+            },
+            "predicted": {
+              "away": 10.4,
+              "home": 14.1,
+              "total": 24.5
+            },
+            "truth_confidence": 0.6,
+            "truth_sources": [
+              "football_data_uk"
+            ],
+            "truth_status": "single_source"
+          },
+          "sot": {
+            "absolute_error": {
+              "away": 3.5,
+              "home": 0.2,
+              "total": 3.3
+            },
+            "actual": {
+              "away": 0.0,
+              "home": 5.0,
+              "total": 5.0
+            },
+            "error": {
+              "away": 3.5,
+              "home": -0.2,
+              "total": 3.3
+            },
+            "predicted": {
+              "away": 3.5,
+              "home": 4.8,
+              "total": 8.3
+            },
+            "truth_confidence": 0.6,
+            "truth_sources": [
+              "football_data_uk"
+            ],
+            "truth_status": "single_source"
+          },
+          "yellows": {
+            "absolute_error": {
+              "away": 1.56,
+              "home": 0.81,
+              "total": 0.75
+            },
+            "actual": {
+              "away": 4.0,
+              "home": 1.0,
+              "total": 5.0
+            },
+            "error": {
+              "away": -1.56,
+              "home": 0.81,
+              "total": -0.75
+            },
+            "predicted": {
+              "away": 2.44,
+              "home": 1.81,
+              "total": 4.25
+            },
+            "truth_confidence": 0.6,
+            "truth_sources": [
+              "football_data_uk"
+            ],
+            "truth_status": "single_source"
+          }
+        },
+        "truth_digest": "b9ba952f2b2cbcfb2b2a2573c0aeaef8a98b2ed74446f0050fb4d54e678d85df",
+        "truth_match_status": "single_source"
+      }
+    },
     "4beb0e6c060bbea5979bca3d": {
       "history": [
         {
@@ -17597,6 +18601,1010 @@
           }
         },
         "truth_digest": "6114c15a8131e7bd56d2ebbf506a7f44de7586fe2cb4ef001a504f9080b76e39",
+        "truth_match_status": "single_source"
+      }
+    },
+    "56a0cc383558e84ea0a1f2ff": {
+      "history": [
+        {
+          "affects_1x2": false,
+          "away": "Leganes",
+          "date": "2026-10-03",
+          "evaluation_status": "evaluated",
+          "home": "Cadiz",
+          "league": "segunda",
+          "match_id": "56a0cc383558e84ea0a1f2ff",
+          "model_version": "edge-2.1",
+          "prediction": {
+            "corners": {
+              "away": 4.5,
+              "home": 5.1,
+              "total": 9.6
+            },
+            "fouls": {
+              "away": 12.61,
+              "home": 13.99,
+              "total": 26.6
+            },
+            "goals": {
+              "away": 0.83,
+              "home": 0.95,
+              "total": 1.7799999999999998
+            },
+            "reds": {
+              "away": 0.09,
+              "home": 0.06,
+              "total": 0.15
+            },
+            "shots": {
+              "away": 11.14,
+              "home": 12.77,
+              "total": 23.91
+            },
+            "sot": {
+              "away": 3.46,
+              "home": 4.03,
+              "total": 7.49
+            },
+            "xg": {
+              "away": 0.83,
+              "home": 0.95,
+              "total": 1.7799999999999998
+            },
+            "yellows": {
+              "away": 2.13,
+              "home": 3.16,
+              "total": 5.29
+            }
+          },
+          "prediction_origin": "dashboard_pre_match_snapshot",
+          "season": 2026,
+          "snapshot_at": "2026-10-03T00:15:21.230405+02:00",
+          "snapshot_window": "00:15",
+          "stats": {
+            "corners": {
+              "absolute_error": {
+                "away": 0.5,
+                "home": 0.1,
+                "total": 0.6
+              },
+              "actual": {
+                "away": 4.0,
+                "home": 5.0,
+                "total": 9.0
+              },
+              "error": {
+                "away": 0.5,
+                "home": 0.1,
+                "total": 0.6
+              },
+              "predicted": {
+                "away": 4.5,
+                "home": 5.1,
+                "total": 9.6
+              },
+              "truth_confidence": 0.6,
+              "truth_sources": [
+                "football_data_uk"
+              ],
+              "truth_status": "single_source"
+            },
+            "fouls": {
+              "absolute_error": {
+                "away": 4.39,
+                "home": 3.99,
+                "total": 0.4
+              },
+              "actual": {
+                "away": 17.0,
+                "home": 10.0,
+                "total": 27.0
+              },
+              "error": {
+                "away": -4.39,
+                "home": 3.99,
+                "total": -0.4
+              },
+              "predicted": {
+                "away": 12.61,
+                "home": 13.99,
+                "total": 26.6
+              },
+              "truth_confidence": 0.6,
+              "truth_sources": [
+                "football_data_uk"
+              ],
+              "truth_status": "single_source"
+            },
+            "goals": {
+              "absolute_error": {
+                "away": 0.83,
+                "home": 3.05,
+                "total": 2.22
+              },
+              "actual": {
+                "away": 0.0,
+                "home": 4.0,
+                "total": 4.0
+              },
+              "error": {
+                "away": 0.83,
+                "home": -3.05,
+                "total": -2.22
+              },
+              "predicted": {
+                "away": 0.83,
+                "home": 0.95,
+                "total": 1.78
+              },
+              "truth_confidence": 0.6,
+              "truth_sources": [
+                "football_data_uk"
+              ],
+              "truth_status": "single_source"
+            },
+            "reds": {
+              "absolute_error": {
+                "away": 0.09,
+                "home": 0.06,
+                "total": 0.15
+              },
+              "actual": {
+                "away": 0.0,
+                "home": 0.0,
+                "total": 0.0
+              },
+              "error": {
+                "away": 0.09,
+                "home": 0.06,
+                "total": 0.15
+              },
+              "predicted": {
+                "away": 0.09,
+                "home": 0.06,
+                "total": 0.15
+              },
+              "truth_confidence": 0.6,
+              "truth_sources": [
+                "football_data_uk"
+              ],
+              "truth_status": "single_source"
+            },
+            "shots": {
+              "absolute_error": {
+                "away": 0.86,
+                "home": 11.23,
+                "total": 12.09
+              },
+              "actual": {
+                "away": 12.0,
+                "home": 24.0,
+                "total": 36.0
+              },
+              "error": {
+                "away": -0.86,
+                "home": -11.23,
+                "total": -12.09
+              },
+              "predicted": {
+                "away": 11.14,
+                "home": 12.77,
+                "total": 23.91
+              },
+              "truth_confidence": 0.6,
+              "truth_sources": [
+                "football_data_uk"
+              ],
+              "truth_status": "single_source"
+            },
+            "sot": {
+              "absolute_error": {
+                "away": 2.46,
+                "home": 4.97,
+                "total": 2.51
+              },
+              "actual": {
+                "away": 1.0,
+                "home": 9.0,
+                "total": 10.0
+              },
+              "error": {
+                "away": 2.46,
+                "home": -4.97,
+                "total": -2.51
+              },
+              "predicted": {
+                "away": 3.46,
+                "home": 4.03,
+                "total": 7.49
+              },
+              "truth_confidence": 0.6,
+              "truth_sources": [
+                "football_data_uk"
+              ],
+              "truth_status": "single_source"
+            },
+            "yellows": {
+              "absolute_error": {
+                "away": 0.87,
+                "home": 1.16,
+                "total": 0.29
+              },
+              "actual": {
+                "away": 3.0,
+                "home": 2.0,
+                "total": 5.0
+              },
+              "error": {
+                "away": -0.87,
+                "home": 1.16,
+                "total": 0.29
+              },
+              "predicted": {
+                "away": 2.13,
+                "home": 3.16,
+                "total": 5.29
+              },
+              "truth_confidence": 0.6,
+              "truth_sources": [
+                "football_data_uk"
+              ],
+              "truth_status": "single_source"
+            }
+          },
+          "truth_digest": "39f8a831f5d50d813f4f90c91fb3e5f1f3cb10da529e7527552757d72376bac0",
+          "truth_match_status": "single_source"
+        }
+      ],
+      "latest": {
+        "affects_1x2": false,
+        "away": "Leganes",
+        "date": "2026-10-03",
+        "evaluation_status": "evaluated",
+        "home": "Cadiz",
+        "league": "segunda",
+        "match_id": "56a0cc383558e84ea0a1f2ff",
+        "model_version": "edge-2.1",
+        "prediction": {
+          "corners": {
+            "away": 4.5,
+            "home": 5.1,
+            "total": 9.6
+          },
+          "fouls": {
+            "away": 12.61,
+            "home": 13.99,
+            "total": 26.6
+          },
+          "goals": {
+            "away": 0.83,
+            "home": 0.95,
+            "total": 1.7799999999999998
+          },
+          "reds": {
+            "away": 0.09,
+            "home": 0.06,
+            "total": 0.15
+          },
+          "shots": {
+            "away": 11.14,
+            "home": 12.77,
+            "total": 23.91
+          },
+          "sot": {
+            "away": 3.46,
+            "home": 4.03,
+            "total": 7.49
+          },
+          "xg": {
+            "away": 0.83,
+            "home": 0.95,
+            "total": 1.7799999999999998
+          },
+          "yellows": {
+            "away": 2.13,
+            "home": 3.16,
+            "total": 5.29
+          }
+        },
+        "prediction_origin": "dashboard_pre_match_snapshot",
+        "season": 2026,
+        "snapshot_at": "2026-10-03T00:15:21.230405+02:00",
+        "snapshot_window": "00:15",
+        "stats": {
+          "corners": {
+            "absolute_error": {
+              "away": 0.5,
+              "home": 0.1,
+              "total": 0.6
+            },
+            "actual": {
+              "away": 4.0,
+              "home": 5.0,
+              "total": 9.0
+            },
+            "error": {
+              "away": 0.5,
+              "home": 0.1,
+              "total": 0.6
+            },
+            "predicted": {
+              "away": 4.5,
+              "home": 5.1,
+              "total": 9.6
+            },
+            "truth_confidence": 0.6,
+            "truth_sources": [
+              "football_data_uk"
+            ],
+            "truth_status": "single_source"
+          },
+          "fouls": {
+            "absolute_error": {
+              "away": 4.39,
+              "home": 3.99,
+              "total": 0.4
+            },
+            "actual": {
+              "away": 17.0,
+              "home": 10.0,
+              "total": 27.0
+            },
+            "error": {
+              "away": -4.39,
+              "home": 3.99,
+              "total": -0.4
+            },
+            "predicted": {
+              "away": 12.61,
+              "home": 13.99,
+              "total": 26.6
+            },
+            "truth_confidence": 0.6,
+            "truth_sources": [
+              "football_data_uk"
+            ],
+            "truth_status": "single_source"
+          },
+          "goals": {
+            "absolute_error": {
+              "away": 0.83,
+              "home": 3.05,
+              "total": 2.22
+            },
+            "actual": {
+              "away": 0.0,
+              "home": 4.0,
+              "total": 4.0
+            },
+            "error": {
+              "away": 0.83,
+              "home": -3.05,
+              "total": -2.22
+            },
+            "predicted": {
+              "away": 0.83,
+              "home": 0.95,
+              "total": 1.78
+            },
+            "truth_confidence": 0.6,
+            "truth_sources": [
+              "football_data_uk"
+            ],
+            "truth_status": "single_source"
+          },
+          "reds": {
+            "absolute_error": {
+              "away": 0.09,
+              "home": 0.06,
+              "total": 0.15
+            },
+            "actual": {
+              "away": 0.0,
+              "home": 0.0,
+              "total": 0.0
+            },
+            "error": {
+              "away": 0.09,
+              "home": 0.06,
+              "total": 0.15
+            },
+            "predicted": {
+              "away": 0.09,
+              "home": 0.06,
+              "total": 0.15
+            },
+            "truth_confidence": 0.6,
+            "truth_sources": [
+              "football_data_uk"
+            ],
+            "truth_status": "single_source"
+          },
+          "shots": {
+            "absolute_error": {
+              "away": 0.86,
+              "home": 11.23,
+              "total": 12.09
+            },
+            "actual": {
+              "away": 12.0,
+              "home": 24.0,
+              "total": 36.0
+            },
+            "error": {
+              "away": -0.86,
+              "home": -11.23,
+              "total": -12.09
+            },
+            "predicted": {
+              "away": 11.14,
+              "home": 12.77,
+              "total": 23.91
+            },
+            "truth_confidence": 0.6,
+            "truth_sources": [
+              "football_data_uk"
+            ],
+            "truth_status": "single_source"
+          },
+          "sot": {
+            "absolute_error": {
+              "away": 2.46,
+              "home": 4.97,
+              "total": 2.51
+            },
+            "actual": {
+              "away": 1.0,
+              "home": 9.0,
+              "total": 10.0
+            },
+            "error": {
+              "away": 2.46,
+              "home": -4.97,
+              "total": -2.51
+            },
+            "predicted": {
+              "away": 3.46,
+              "home": 4.03,
+              "total": 7.49
+            },
+            "truth_confidence": 0.6,
+            "truth_sources": [
+              "football_data_uk"
+            ],
+            "truth_status": "single_source"
+          },
+          "yellows": {
+            "absolute_error": {
+              "away": 0.87,
+              "home": 1.16,
+              "total": 0.29
+            },
+            "actual": {
+              "away": 3.0,
+              "home": 2.0,
+              "total": 5.0
+            },
+            "error": {
+              "away": -0.87,
+              "home": 1.16,
+              "total": 0.29
+            },
+            "predicted": {
+              "away": 2.13,
+              "home": 3.16,
+              "total": 5.29
+            },
+            "truth_confidence": 0.6,
+            "truth_sources": [
+              "football_data_uk"
+            ],
+            "truth_status": "single_source"
+          }
+        },
+        "truth_digest": "39f8a831f5d50d813f4f90c91fb3e5f1f3cb10da529e7527552757d72376bac0",
+        "truth_match_status": "single_source"
+      }
+    },
+    "58aa13ef0413e4bd0b9ab5c2": {
+      "history": [
+        {
+          "affects_1x2": false,
+          "away": "Valladolid",
+          "date": "2026-10-04",
+          "evaluation_status": "evaluated",
+          "home": "Las Palmas",
+          "league": "segunda",
+          "match_id": "58aa13ef0413e4bd0b9ab5c2",
+          "model_version": "edge-2.1",
+          "prediction": {
+            "corners": {
+              "away": 3.2,
+              "home": 5.2,
+              "total": 8.4
+            },
+            "fouls": {
+              "away": 14.4,
+              "home": 12.89,
+              "total": 27.29
+            },
+            "goals": {
+              "away": 0.83,
+              "home": 1.36,
+              "total": 2.19
+            },
+            "reds": {
+              "away": 0.13,
+              "home": 0.12,
+              "total": 0.25
+            },
+            "shots": {
+              "away": 8.3,
+              "home": 13.6,
+              "total": 21.9
+            },
+            "sot": {
+              "away": 2.9,
+              "home": 4.7,
+              "total": 7.6
+            },
+            "xg": {
+              "away": 0.83,
+              "home": 1.36,
+              "total": 2.19
+            },
+            "yellows": {
+              "away": 2.66,
+              "home": 2.2,
+              "total": 4.86
+            }
+          },
+          "prediction_origin": "dashboard_pre_match_snapshot",
+          "season": 2026,
+          "snapshot_at": "2026-10-04T14:22:56.892190+02:00",
+          "snapshot_window": "pre_final_T-3h",
+          "stats": {
+            "corners": {
+              "absolute_error": {
+                "away": 2.8,
+                "home": 2.2,
+                "total": 0.6
+              },
+              "actual": {
+                "away": 6.0,
+                "home": 3.0,
+                "total": 9.0
+              },
+              "error": {
+                "away": -2.8,
+                "home": 2.2,
+                "total": -0.6
+              },
+              "predicted": {
+                "away": 3.2,
+                "home": 5.2,
+                "total": 8.4
+              },
+              "truth_confidence": 0.6,
+              "truth_sources": [
+                "football_data_uk"
+              ],
+              "truth_status": "single_source"
+            },
+            "fouls": {
+              "absolute_error": {
+                "away": 10.6,
+                "home": 0.89,
+                "total": 9.71
+              },
+              "actual": {
+                "away": 25.0,
+                "home": 12.0,
+                "total": 37.0
+              },
+              "error": {
+                "away": -10.6,
+                "home": 0.89,
+                "total": -9.71
+              },
+              "predicted": {
+                "away": 14.4,
+                "home": 12.89,
+                "total": 27.29
+              },
+              "truth_confidence": 0.6,
+              "truth_sources": [
+                "football_data_uk"
+              ],
+              "truth_status": "single_source"
+            },
+            "goals": {
+              "absolute_error": {
+                "away": 1.17,
+                "home": 0.64,
+                "total": 1.81
+              },
+              "actual": {
+                "away": 2.0,
+                "home": 2.0,
+                "total": 4.0
+              },
+              "error": {
+                "away": -1.17,
+                "home": -0.64,
+                "total": -1.81
+              },
+              "predicted": {
+                "away": 0.83,
+                "home": 1.36,
+                "total": 2.19
+              },
+              "truth_confidence": 0.6,
+              "truth_sources": [
+                "football_data_uk"
+              ],
+              "truth_status": "single_source"
+            },
+            "reds": {
+              "absolute_error": {
+                "away": 0.13,
+                "home": 0.12,
+                "total": 0.25
+              },
+              "actual": {
+                "away": 0.0,
+                "home": 0.0,
+                "total": 0.0
+              },
+              "error": {
+                "away": 0.13,
+                "home": 0.12,
+                "total": 0.25
+              },
+              "predicted": {
+                "away": 0.13,
+                "home": 0.12,
+                "total": 0.25
+              },
+              "truth_confidence": 0.6,
+              "truth_sources": [
+                "football_data_uk"
+              ],
+              "truth_status": "single_source"
+            },
+            "shots": {
+              "absolute_error": {
+                "away": 6.7,
+                "home": 1.6,
+                "total": 5.1
+              },
+              "actual": {
+                "away": 15.0,
+                "home": 12.0,
+                "total": 27.0
+              },
+              "error": {
+                "away": -6.7,
+                "home": 1.6,
+                "total": -5.1
+              },
+              "predicted": {
+                "away": 8.3,
+                "home": 13.6,
+                "total": 21.9
+              },
+              "truth_confidence": 0.6,
+              "truth_sources": [
+                "football_data_uk"
+              ],
+              "truth_status": "single_source"
+            },
+            "sot": {
+              "absolute_error": {
+                "away": 4.1,
+                "home": 0.7,
+                "total": 3.4
+              },
+              "actual": {
+                "away": 7.0,
+                "home": 4.0,
+                "total": 11.0
+              },
+              "error": {
+                "away": -4.1,
+                "home": 0.7,
+                "total": -3.4
+              },
+              "predicted": {
+                "away": 2.9,
+                "home": 4.7,
+                "total": 7.6
+              },
+              "truth_confidence": 0.6,
+              "truth_sources": [
+                "football_data_uk"
+              ],
+              "truth_status": "single_source"
+            },
+            "yellows": {
+              "absolute_error": {
+                "away": 1.34,
+                "home": 0.8,
+                "total": 2.14
+              },
+              "actual": {
+                "away": 4.0,
+                "home": 3.0,
+                "total": 7.0
+              },
+              "error": {
+                "away": -1.34,
+                "home": -0.8,
+                "total": -2.14
+              },
+              "predicted": {
+                "away": 2.66,
+                "home": 2.2,
+                "total": 4.86
+              },
+              "truth_confidence": 0.6,
+              "truth_sources": [
+                "football_data_uk"
+              ],
+              "truth_status": "single_source"
+            }
+          },
+          "truth_digest": "dba6b9bdd95d9a39bb9738f93443519e8e322a3d4b2186f95ee163af1af8d2ee",
+          "truth_match_status": "single_source"
+        }
+      ],
+      "latest": {
+        "affects_1x2": false,
+        "away": "Valladolid",
+        "date": "2026-10-04",
+        "evaluation_status": "evaluated",
+        "home": "Las Palmas",
+        "league": "segunda",
+        "match_id": "58aa13ef0413e4bd0b9ab5c2",
+        "model_version": "edge-2.1",
+        "prediction": {
+          "corners": {
+            "away": 3.2,
+            "home": 5.2,
+            "total": 8.4
+          },
+          "fouls": {
+            "away": 14.4,
+            "home": 12.89,
+            "total": 27.29
+          },
+          "goals": {
+            "away": 0.83,
+            "home": 1.36,
+            "total": 2.19
+          },
+          "reds": {
+            "away": 0.13,
+            "home": 0.12,
+            "total": 0.25
+          },
+          "shots": {
+            "away": 8.3,
+            "home": 13.6,
+            "total": 21.9
+          },
+          "sot": {
+            "away": 2.9,
+            "home": 4.7,
+            "total": 7.6
+          },
+          "xg": {
+            "away": 0.83,
+            "home": 1.36,
+            "total": 2.19
+          },
+          "yellows": {
+            "away": 2.66,
+            "home": 2.2,
+            "total": 4.86
+          }
+        },
+        "prediction_origin": "dashboard_pre_match_snapshot",
+        "season": 2026,
+        "snapshot_at": "2026-10-04T14:22:56.892190+02:00",
+        "snapshot_window": "pre_final_T-3h",
+        "stats": {
+          "corners": {
+            "absolute_error": {
+              "away": 2.8,
+              "home": 2.2,
+              "total": 0.6
+            },
+            "actual": {
+              "away": 6.0,
+              "home": 3.0,
+              "total": 9.0
+            },
+            "error": {
+              "away": -2.8,
+              "home": 2.2,
+              "total": -0.6
+            },
+            "predicted": {
+              "away": 3.2,
+              "home": 5.2,
+              "total": 8.4
+            },
+            "truth_confidence": 0.6,
+            "truth_sources": [
+              "football_data_uk"
+            ],
+            "truth_status": "single_source"
+          },
+          "fouls": {
+            "absolute_error": {
+              "away": 10.6,
+              "home": 0.89,
+              "total": 9.71
+            },
+            "actual": {
+              "away": 25.0,
+              "home": 12.0,
+              "total": 37.0
+            },
+            "error": {
+              "away": -10.6,
+              "home": 0.89,
+              "total": -9.71
+            },
+            "predicted": {
+              "away": 14.4,
+              "home": 12.89,
+              "total": 27.29
+            },
+            "truth_confidence": 0.6,
+            "truth_sources": [
+              "football_data_uk"
+            ],
+            "truth_status": "single_source"
+          },
+          "goals": {
+            "absolute_error": {
+              "away": 1.17,
+              "home": 0.64,
+              "total": 1.81
+            },
+            "actual": {
+              "away": 2.0,
+              "home": 2.0,
+              "total": 4.0
+            },
+            "error": {
+              "away": -1.17,
+              "home": -0.64,
+              "total": -1.81
+            },
+            "predicted": {
+              "away": 0.83,
+              "home": 1.36,
+              "total": 2.19
+            },
+            "truth_confidence": 0.6,
+            "truth_sources": [
+              "football_data_uk"
+            ],
+            "truth_status": "single_source"
+          },
+          "reds": {
+            "absolute_error": {
+              "away": 0.13,
+              "home": 0.12,
+              "total": 0.25
+            },
+            "actual": {
+              "away": 0.0,
+              "home": 0.0,
+              "total": 0.0
+            },
+            "error": {
+              "away": 0.13,
+              "home": 0.12,
+              "total": 0.25
+            },
+            "predicted": {
+              "away": 0.13,
+              "home": 0.12,
+              "total": 0.25
+            },
+            "truth_confidence": 0.6,
+            "truth_sources": [
+              "football_data_uk"
+            ],
+            "truth_status": "single_source"
+          },
+          "shots": {
+            "absolute_error": {
+              "away": 6.7,
+              "home": 1.6,
+              "total": 5.1
+            },
+            "actual": {
+              "away": 15.0,
+              "home": 12.0,
+              "total": 27.0
+            },
+            "error": {
+              "away": -6.7,
+              "home": 1.6,
+              "total": -5.1
+            },
+            "predicted": {
+              "away": 8.3,
+              "home": 13.6,
+              "total": 21.9
+            },
+            "truth_confidence": 0.6,
+            "truth_sources": [
+              "football_data_uk"
+            ],
+            "truth_status": "single_source"
+          },
+          "sot": {
+            "absolute_error": {
+              "away": 4.1,
+              "home": 0.7,
+              "total": 3.4
+            },
+            "actual": {
+              "away": 7.0,
+              "home": 4.0,
+              "total": 11.0
+            },
+            "error": {
+              "away": -4.1,
+              "home": 0.7,
+              "total": -3.4
+            },
+            "predicted": {
+              "away": 2.9,
+              "home": 4.7,
+              "total": 7.6
+            },
+            "truth_confidence": 0.6,
+            "truth_sources": [
+              "football_data_uk"
+            ],
+            "truth_status": "single_source"
+          },
+          "yellows": {
+            "absolute_error": {
+              "away": 1.34,
+              "home": 0.8,
+              "total": 2.14
+            },
+            "actual": {
+              "away": 4.0,
+              "home": 3.0,
+              "total": 7.0
+            },
+            "error": {
+              "away": -1.34,
+              "home": -0.8,
+              "total": -2.14
+            },
+            "predicted": {
+              "away": 2.66,
+              "home": 2.2,
+              "total": 4.86
+            },
+            "truth_confidence": 0.6,
+            "truth_sources": [
+              "football_data_uk"
+            ],
+            "truth_status": "single_source"
+          }
+        },
+        "truth_digest": "dba6b9bdd95d9a39bb9738f93443519e8e322a3d4b2186f95ee163af1af8d2ee",
         "truth_match_status": "single_source"
       }
     },
@@ -30652,6 +32660,508 @@
         "truth_match_status": "single_source"
       }
     },
+    "b08f28f4acad254560e4d843": {
+      "history": [
+        {
+          "affects_1x2": false,
+          "away": "Burgos",
+          "date": "2026-10-03",
+          "evaluation_status": "evaluated",
+          "home": "Almeria",
+          "league": "segunda",
+          "match_id": "b08f28f4acad254560e4d843",
+          "model_version": "edge-2.1",
+          "prediction": {
+            "corners": {
+              "away": 3.2,
+              "home": 6.0,
+              "total": 9.2
+            },
+            "fouls": {
+              "away": 12.69,
+              "home": 14.77,
+              "total": 27.46
+            },
+            "goals": {
+              "away": 0.88,
+              "home": 1.66,
+              "total": 2.54
+            },
+            "reds": {
+              "away": 0.06,
+              "home": 0.13,
+              "total": 0.19
+            },
+            "shots": {
+              "away": 8.5,
+              "home": 16.0,
+              "total": 24.5
+            },
+            "sot": {
+              "away": 2.8,
+              "home": 5.3,
+              "total": 8.1
+            },
+            "xg": {
+              "away": 0.88,
+              "home": 1.66,
+              "total": 2.54
+            },
+            "yellows": {
+              "away": 2.66,
+              "home": 2.31,
+              "total": 4.970000000000001
+            }
+          },
+          "prediction_origin": "dashboard_pre_match_snapshot",
+          "season": 2026,
+          "snapshot_at": "2026-10-03T03:07:50.061356+02:00",
+          "snapshot_window": "T-12h",
+          "stats": {
+            "corners": {
+              "absolute_error": {
+                "away": 0.2,
+                "home": 2.0,
+                "total": 1.8
+              },
+              "actual": {
+                "away": 3.0,
+                "home": 8.0,
+                "total": 11.0
+              },
+              "error": {
+                "away": 0.2,
+                "home": -2.0,
+                "total": -1.8
+              },
+              "predicted": {
+                "away": 3.2,
+                "home": 6.0,
+                "total": 9.2
+              },
+              "truth_confidence": 0.6,
+              "truth_sources": [
+                "football_data_uk"
+              ],
+              "truth_status": "single_source"
+            },
+            "fouls": {
+              "absolute_error": {
+                "away": 0.31,
+                "home": 0.23,
+                "total": 0.54
+              },
+              "actual": {
+                "away": 13.0,
+                "home": 15.0,
+                "total": 28.0
+              },
+              "error": {
+                "away": -0.31,
+                "home": -0.23,
+                "total": -0.54
+              },
+              "predicted": {
+                "away": 12.69,
+                "home": 14.77,
+                "total": 27.46
+              },
+              "truth_confidence": 0.6,
+              "truth_sources": [
+                "football_data_uk"
+              ],
+              "truth_status": "single_source"
+            },
+            "goals": {
+              "absolute_error": {
+                "away": 0.12,
+                "home": 0.34,
+                "total": 0.46
+              },
+              "actual": {
+                "away": 1.0,
+                "home": 2.0,
+                "total": 3.0
+              },
+              "error": {
+                "away": -0.12,
+                "home": -0.34,
+                "total": -0.46
+              },
+              "predicted": {
+                "away": 0.88,
+                "home": 1.66,
+                "total": 2.54
+              },
+              "truth_confidence": 0.6,
+              "truth_sources": [
+                "football_data_uk"
+              ],
+              "truth_status": "single_source"
+            },
+            "reds": {
+              "absolute_error": {
+                "away": 0.06,
+                "home": 0.13,
+                "total": 0.19
+              },
+              "actual": {
+                "away": 0.0,
+                "home": 0.0,
+                "total": 0.0
+              },
+              "error": {
+                "away": 0.06,
+                "home": 0.13,
+                "total": 0.19
+              },
+              "predicted": {
+                "away": 0.06,
+                "home": 0.13,
+                "total": 0.19
+              },
+              "truth_confidence": 0.6,
+              "truth_sources": [
+                "football_data_uk"
+              ],
+              "truth_status": "single_source"
+            },
+            "shots": {
+              "absolute_error": {
+                "away": 0.5,
+                "home": 9.0,
+                "total": 9.5
+              },
+              "actual": {
+                "away": 9.0,
+                "home": 25.0,
+                "total": 34.0
+              },
+              "error": {
+                "away": -0.5,
+                "home": -9.0,
+                "total": -9.5
+              },
+              "predicted": {
+                "away": 8.5,
+                "home": 16.0,
+                "total": 24.5
+              },
+              "truth_confidence": 0.6,
+              "truth_sources": [
+                "football_data_uk"
+              ],
+              "truth_status": "single_source"
+            },
+            "sot": {
+              "absolute_error": {
+                "away": 1.2,
+                "home": 2.7,
+                "total": 3.9
+              },
+              "actual": {
+                "away": 4.0,
+                "home": 8.0,
+                "total": 12.0
+              },
+              "error": {
+                "away": -1.2,
+                "home": -2.7,
+                "total": -3.9
+              },
+              "predicted": {
+                "away": 2.8,
+                "home": 5.3,
+                "total": 8.1
+              },
+              "truth_confidence": 0.6,
+              "truth_sources": [
+                "football_data_uk"
+              ],
+              "truth_status": "single_source"
+            },
+            "yellows": {
+              "absolute_error": {
+                "away": 0.34,
+                "home": 0.31,
+                "total": 0.03
+              },
+              "actual": {
+                "away": 3.0,
+                "home": 2.0,
+                "total": 5.0
+              },
+              "error": {
+                "away": -0.34,
+                "home": 0.31,
+                "total": -0.03
+              },
+              "predicted": {
+                "away": 2.66,
+                "home": 2.31,
+                "total": 4.97
+              },
+              "truth_confidence": 0.6,
+              "truth_sources": [
+                "football_data_uk"
+              ],
+              "truth_status": "single_source"
+            }
+          },
+          "truth_digest": "a224b5b8976cf1805337ca5cf4ac37dce743773c41ba406e836d6c722f1f9e13",
+          "truth_match_status": "single_source"
+        }
+      ],
+      "latest": {
+        "affects_1x2": false,
+        "away": "Burgos",
+        "date": "2026-10-03",
+        "evaluation_status": "evaluated",
+        "home": "Almeria",
+        "league": "segunda",
+        "match_id": "b08f28f4acad254560e4d843",
+        "model_version": "edge-2.1",
+        "prediction": {
+          "corners": {
+            "away": 3.2,
+            "home": 6.0,
+            "total": 9.2
+          },
+          "fouls": {
+            "away": 12.69,
+            "home": 14.77,
+            "total": 27.46
+          },
+          "goals": {
+            "away": 0.88,
+            "home": 1.66,
+            "total": 2.54
+          },
+          "reds": {
+            "away": 0.06,
+            "home": 0.13,
+            "total": 0.19
+          },
+          "shots": {
+            "away": 8.5,
+            "home": 16.0,
+            "total": 24.5
+          },
+          "sot": {
+            "away": 2.8,
+            "home": 5.3,
+            "total": 8.1
+          },
+          "xg": {
+            "away": 0.88,
+            "home": 1.66,
+            "total": 2.54
+          },
+          "yellows": {
+            "away": 2.66,
+            "home": 2.31,
+            "total": 4.970000000000001
+          }
+        },
+        "prediction_origin": "dashboard_pre_match_snapshot",
+        "season": 2026,
+        "snapshot_at": "2026-10-03T03:07:50.061356+02:00",
+        "snapshot_window": "T-12h",
+        "stats": {
+          "corners": {
+            "absolute_error": {
+              "away": 0.2,
+              "home": 2.0,
+              "total": 1.8
+            },
+            "actual": {
+              "away": 3.0,
+              "home": 8.0,
+              "total": 11.0
+            },
+            "error": {
+              "away": 0.2,
+              "home": -2.0,
+              "total": -1.8
+            },
+            "predicted": {
+              "away": 3.2,
+              "home": 6.0,
+              "total": 9.2
+            },
+            "truth_confidence": 0.6,
+            "truth_sources": [
+              "football_data_uk"
+            ],
+            "truth_status": "single_source"
+          },
+          "fouls": {
+            "absolute_error": {
+              "away": 0.31,
+              "home": 0.23,
+              "total": 0.54
+            },
+            "actual": {
+              "away": 13.0,
+              "home": 15.0,
+              "total": 28.0
+            },
+            "error": {
+              "away": -0.31,
+              "home": -0.23,
+              "total": -0.54
+            },
+            "predicted": {
+              "away": 12.69,
+              "home": 14.77,
+              "total": 27.46
+            },
+            "truth_confidence": 0.6,
+            "truth_sources": [
+              "football_data_uk"
+            ],
+            "truth_status": "single_source"
+          },
+          "goals": {
+            "absolute_error": {
+              "away": 0.12,
+              "home": 0.34,
+              "total": 0.46
+            },
+            "actual": {
+              "away": 1.0,
+              "home": 2.0,
+              "total": 3.0
+            },
+            "error": {
+              "away": -0.12,
+              "home": -0.34,
+              "total": -0.46
+            },
+            "predicted": {
+              "away": 0.88,
+              "home": 1.66,
+              "total": 2.54
+            },
+            "truth_confidence": 0.6,
+            "truth_sources": [
+              "football_data_uk"
+            ],
+            "truth_status": "single_source"
+          },
+          "reds": {
+            "absolute_error": {
+              "away": 0.06,
+              "home": 0.13,
+              "total": 0.19
+            },
+            "actual": {
+              "away": 0.0,
+              "home": 0.0,
+              "total": 0.0
+            },
+            "error": {
+              "away": 0.06,
+              "home": 0.13,
+              "total": 0.19
+            },
+            "predicted": {
+              "away": 0.06,
+              "home": 0.13,
+              "total": 0.19
+            },
+            "truth_confidence": 0.6,
+            "truth_sources": [
+              "football_data_uk"
+            ],
+            "truth_status": "single_source"
+          },
+          "shots": {
+            "absolute_error": {
+              "away": 0.5,
+              "home": 9.0,
+              "total": 9.5
+            },
+            "actual": {
+              "away": 9.0,
+              "home": 25.0,
+              "total": 34.0
+            },
+            "error": {
+              "away": -0.5,
+              "home": -9.0,
+              "total": -9.5
+            },
+            "predicted": {
+              "away": 8.5,
+              "home": 16.0,
+              "total": 24.5
+            },
+            "truth_confidence": 0.6,
+            "truth_sources": [
+              "football_data_uk"
+            ],
+            "truth_status": "single_source"
+          },
+          "sot": {
+            "absolute_error": {
+              "away": 1.2,
+              "home": 2.7,
+              "total": 3.9
+            },
+            "actual": {
+              "away": 4.0,
+              "home": 8.0,
+              "total": 12.0
+            },
+            "error": {
+              "away": -1.2,
+              "home": -2.7,
+              "total": -3.9
+            },
+            "predicted": {
+              "away": 2.8,
+              "home": 5.3,
+              "total": 8.1
+            },
+            "truth_confidence": 0.6,
+            "truth_sources": [
+              "football_data_uk"
+            ],
+            "truth_status": "single_source"
+          },
+          "yellows": {
+            "absolute_error": {
+              "away": 0.34,
+              "home": 0.31,
+              "total": 0.03
+            },
+            "actual": {
+              "away": 3.0,
+              "home": 2.0,
+              "total": 5.0
+            },
+            "error": {
+              "away": -0.34,
+              "home": 0.31,
+              "total": -0.03
+            },
+            "predicted": {
+              "away": 2.66,
+              "home": 2.31,
+              "total": 4.97
+            },
+            "truth_confidence": 0.6,
+            "truth_sources": [
+              "football_data_uk"
+            ],
+            "truth_status": "single_source"
+          }
+        },
+        "truth_digest": "a224b5b8976cf1805337ca5cf4ac37dce743773c41ba406e836d6c722f1f9e13",
+        "truth_match_status": "single_source"
+      }
+    },
     "b1302dc35ffa3bd35f2bc0fe": {
       "history": [
         {
@@ -43202,6 +45712,508 @@
         "truth_match_status": "single_source"
       }
     },
+    "d6e83643c23c8b2e21f4635a": {
+      "history": [
+        {
+          "affects_1x2": false,
+          "away": "Oviedo",
+          "date": "2026-10-02",
+          "evaluation_status": "evaluated",
+          "home": "Eldense",
+          "league": "segunda",
+          "match_id": "d6e83643c23c8b2e21f4635a",
+          "model_version": "edge-2.1",
+          "prediction": {
+            "corners": {
+              "away": 5.1,
+              "home": 4.5,
+              "total": 9.6
+            },
+            "fouls": {
+              "away": 12.57,
+              "home": 12.02,
+              "total": 24.59
+            },
+            "goals": {
+              "away": 1.02,
+              "home": 0.9,
+              "total": 1.92
+            },
+            "reds": {
+              "away": 0.1,
+              "home": 0.06,
+              "total": 0.16
+            },
+            "shots": {
+              "away": 13.0,
+              "home": 11.5,
+              "total": 24.5
+            },
+            "sot": {
+              "away": 4.8,
+              "home": 4.3,
+              "total": 9.1
+            },
+            "xg": {
+              "away": 1.02,
+              "home": 0.9,
+              "total": 1.92
+            },
+            "yellows": {
+              "away": 2.32,
+              "home": 1.81,
+              "total": 4.13
+            }
+          },
+          "prediction_origin": "dashboard_pre_match_snapshot",
+          "season": 2026,
+          "snapshot_at": "2026-10-02T14:36:15.044160+02:00",
+          "snapshot_window": "initial",
+          "stats": {
+            "corners": {
+              "absolute_error": {
+                "away": 2.9,
+                "home": 1.5,
+                "total": 4.4
+              },
+              "actual": {
+                "away": 8.0,
+                "home": 6.0,
+                "total": 14.0
+              },
+              "error": {
+                "away": -2.9,
+                "home": -1.5,
+                "total": -4.4
+              },
+              "predicted": {
+                "away": 5.1,
+                "home": 4.5,
+                "total": 9.6
+              },
+              "truth_confidence": 0.6,
+              "truth_sources": [
+                "football_data_uk"
+              ],
+              "truth_status": "single_source"
+            },
+            "fouls": {
+              "absolute_error": {
+                "away": 4.43,
+                "home": 5.98,
+                "total": 10.41
+              },
+              "actual": {
+                "away": 17.0,
+                "home": 18.0,
+                "total": 35.0
+              },
+              "error": {
+                "away": -4.43,
+                "home": -5.98,
+                "total": -10.41
+              },
+              "predicted": {
+                "away": 12.57,
+                "home": 12.02,
+                "total": 24.59
+              },
+              "truth_confidence": 0.6,
+              "truth_sources": [
+                "football_data_uk"
+              ],
+              "truth_status": "single_source"
+            },
+            "goals": {
+              "absolute_error": {
+                "away": 0.02,
+                "home": 3.1,
+                "total": 3.08
+              },
+              "actual": {
+                "away": 1.0,
+                "home": 4.0,
+                "total": 5.0
+              },
+              "error": {
+                "away": 0.02,
+                "home": -3.1,
+                "total": -3.08
+              },
+              "predicted": {
+                "away": 1.02,
+                "home": 0.9,
+                "total": 1.92
+              },
+              "truth_confidence": 0.6,
+              "truth_sources": [
+                "football_data_uk"
+              ],
+              "truth_status": "single_source"
+            },
+            "reds": {
+              "absolute_error": {
+                "away": 0.1,
+                "home": 0.06,
+                "total": 0.16
+              },
+              "actual": {
+                "away": 0.0,
+                "home": 0.0,
+                "total": 0.0
+              },
+              "error": {
+                "away": 0.1,
+                "home": 0.06,
+                "total": 0.16
+              },
+              "predicted": {
+                "away": 0.1,
+                "home": 0.06,
+                "total": 0.16
+              },
+              "truth_confidence": 0.6,
+              "truth_sources": [
+                "football_data_uk"
+              ],
+              "truth_status": "single_source"
+            },
+            "shots": {
+              "absolute_error": {
+                "away": 2.0,
+                "home": 5.5,
+                "total": 7.5
+              },
+              "actual": {
+                "away": 15.0,
+                "home": 17.0,
+                "total": 32.0
+              },
+              "error": {
+                "away": -2.0,
+                "home": -5.5,
+                "total": -7.5
+              },
+              "predicted": {
+                "away": 13.0,
+                "home": 11.5,
+                "total": 24.5
+              },
+              "truth_confidence": 0.6,
+              "truth_sources": [
+                "football_data_uk"
+              ],
+              "truth_status": "single_source"
+            },
+            "sot": {
+              "absolute_error": {
+                "away": 0.8,
+                "home": 4.7,
+                "total": 3.9
+              },
+              "actual": {
+                "away": 4.0,
+                "home": 9.0,
+                "total": 13.0
+              },
+              "error": {
+                "away": 0.8,
+                "home": -4.7,
+                "total": -3.9
+              },
+              "predicted": {
+                "away": 4.8,
+                "home": 4.3,
+                "total": 9.1
+              },
+              "truth_confidence": 0.6,
+              "truth_sources": [
+                "football_data_uk"
+              ],
+              "truth_status": "single_source"
+            },
+            "yellows": {
+              "absolute_error": {
+                "away": 1.68,
+                "home": 0.19,
+                "total": 1.87
+              },
+              "actual": {
+                "away": 4.0,
+                "home": 2.0,
+                "total": 6.0
+              },
+              "error": {
+                "away": -1.68,
+                "home": -0.19,
+                "total": -1.87
+              },
+              "predicted": {
+                "away": 2.32,
+                "home": 1.81,
+                "total": 4.13
+              },
+              "truth_confidence": 0.6,
+              "truth_sources": [
+                "football_data_uk"
+              ],
+              "truth_status": "single_source"
+            }
+          },
+          "truth_digest": "dbfcbb13d3e7aa93d927c9f9c4c81b8cc1ef4879645fc8fd88d08a2f8deef023",
+          "truth_match_status": "single_source"
+        }
+      ],
+      "latest": {
+        "affects_1x2": false,
+        "away": "Oviedo",
+        "date": "2026-10-02",
+        "evaluation_status": "evaluated",
+        "home": "Eldense",
+        "league": "segunda",
+        "match_id": "d6e83643c23c8b2e21f4635a",
+        "model_version": "edge-2.1",
+        "prediction": {
+          "corners": {
+            "away": 5.1,
+            "home": 4.5,
+            "total": 9.6
+          },
+          "fouls": {
+            "away": 12.57,
+            "home": 12.02,
+            "total": 24.59
+          },
+          "goals": {
+            "away": 1.02,
+            "home": 0.9,
+            "total": 1.92
+          },
+          "reds": {
+            "away": 0.1,
+            "home": 0.06,
+            "total": 0.16
+          },
+          "shots": {
+            "away": 13.0,
+            "home": 11.5,
+            "total": 24.5
+          },
+          "sot": {
+            "away": 4.8,
+            "home": 4.3,
+            "total": 9.1
+          },
+          "xg": {
+            "away": 1.02,
+            "home": 0.9,
+            "total": 1.92
+          },
+          "yellows": {
+            "away": 2.32,
+            "home": 1.81,
+            "total": 4.13
+          }
+        },
+        "prediction_origin": "dashboard_pre_match_snapshot",
+        "season": 2026,
+        "snapshot_at": "2026-10-02T14:36:15.044160+02:00",
+        "snapshot_window": "initial",
+        "stats": {
+          "corners": {
+            "absolute_error": {
+              "away": 2.9,
+              "home": 1.5,
+              "total": 4.4
+            },
+            "actual": {
+              "away": 8.0,
+              "home": 6.0,
+              "total": 14.0
+            },
+            "error": {
+              "away": -2.9,
+              "home": -1.5,
+              "total": -4.4
+            },
+            "predicted": {
+              "away": 5.1,
+              "home": 4.5,
+              "total": 9.6
+            },
+            "truth_confidence": 0.6,
+            "truth_sources": [
+              "football_data_uk"
+            ],
+            "truth_status": "single_source"
+          },
+          "fouls": {
+            "absolute_error": {
+              "away": 4.43,
+              "home": 5.98,
+              "total": 10.41
+            },
+            "actual": {
+              "away": 17.0,
+              "home": 18.0,
+              "total": 35.0
+            },
+            "error": {
+              "away": -4.43,
+              "home": -5.98,
+              "total": -10.41
+            },
+            "predicted": {
+              "away": 12.57,
+              "home": 12.02,
+              "total": 24.59
+            },
+            "truth_confidence": 0.6,
+            "truth_sources": [
+              "football_data_uk"
+            ],
+            "truth_status": "single_source"
+          },
+          "goals": {
+            "absolute_error": {
+              "away": 0.02,
+              "home": 3.1,
+              "total": 3.08
+            },
+            "actual": {
+              "away": 1.0,
+              "home": 4.0,
+              "total": 5.0
+            },
+            "error": {
+              "away": 0.02,
+              "home": -3.1,
+              "total": -3.08
+            },
+            "predicted": {
+              "away": 1.02,
+              "home": 0.9,
+              "total": 1.92
+            },
+            "truth_confidence": 0.6,
+            "truth_sources": [
+              "football_data_uk"
+            ],
+            "truth_status": "single_source"
+          },
+          "reds": {
+            "absolute_error": {
+              "away": 0.1,
+              "home": 0.06,
+              "total": 0.16
+            },
+            "actual": {
+              "away": 0.0,
+              "home": 0.0,
+              "total": 0.0
+            },
+            "error": {
+              "away": 0.1,
+              "home": 0.06,
+              "total": 0.16
+            },
+            "predicted": {
+              "away": 0.1,
+              "home": 0.06,
+              "total": 0.16
+            },
+            "truth_confidence": 0.6,
+            "truth_sources": [
+              "football_data_uk"
+            ],
+            "truth_status": "single_source"
+          },
+          "shots": {
+            "absolute_error": {
+              "away": 2.0,
+              "home": 5.5,
+              "total": 7.5
+            },
+            "actual": {
+              "away": 15.0,
+              "home": 17.0,
+              "total": 32.0
+            },
+            "error": {
+              "away": -2.0,
+              "home": -5.5,
+              "total": -7.5
+            },
+            "predicted": {
+              "away": 13.0,
+              "home": 11.5,
+              "total": 24.5
+            },
+            "truth_confidence": 0.6,
+            "truth_sources": [
+              "football_data_uk"
+            ],
+            "truth_status": "single_source"
+          },
+          "sot": {
+            "absolute_error": {
+              "away": 0.8,
+              "home": 4.7,
+              "total": 3.9
+            },
+            "actual": {
+              "away": 4.0,
+              "home": 9.0,
+              "total": 13.0
+            },
+            "error": {
+              "away": 0.8,
+              "home": -4.7,
+              "total": -3.9
+            },
+            "predicted": {
+              "away": 4.8,
+              "home": 4.3,
+              "total": 9.1
+            },
+            "truth_confidence": 0.6,
+            "truth_sources": [
+              "football_data_uk"
+            ],
+            "truth_status": "single_source"
+          },
+          "yellows": {
+            "absolute_error": {
+              "away": 1.68,
+              "home": 0.19,
+              "total": 1.87
+            },
+            "actual": {
+              "away": 4.0,
+              "home": 2.0,
+              "total": 6.0
+            },
+            "error": {
+              "away": -1.68,
+              "home": -0.19,
+              "total": -1.87
+            },
+            "predicted": {
+              "away": 2.32,
+              "home": 1.81,
+              "total": 4.13
+            },
+            "truth_confidence": 0.6,
+            "truth_sources": [
+              "football_data_uk"
+            ],
+            "truth_status": "single_source"
+          }
+        },
+        "truth_digest": "dbfcbb13d3e7aa93d927c9f9c4c81b8cc1ef4879645fc8fd88d08a2f8deef023",
+        "truth_match_status": "single_source"
+      }
+    },
     "d72c96204409e83081340b22": {
       "history": [
         {
@@ -48222,6 +51234,508 @@
         "truth_match_status": "single_source"
       }
     },
+    "e54748121c9f564f2bb92604": {
+      "history": [
+        {
+          "affects_1x2": false,
+          "away": "Granada",
+          "date": "2026-10-04",
+          "evaluation_status": "evaluated",
+          "home": "Sociedad B",
+          "league": "segunda",
+          "match_id": "e54748121c9f564f2bb92604",
+          "model_version": "edge-2.1",
+          "prediction": {
+            "corners": {
+              "away": 4.0,
+              "home": 4.5,
+              "total": 8.5
+            },
+            "fouls": {
+              "away": 13.65,
+              "home": 17.31,
+              "total": 30.96
+            },
+            "goals": {
+              "away": 1.31,
+              "home": 1.47,
+              "total": 2.7800000000000002
+            },
+            "reds": {
+              "away": 0.09,
+              "home": 0.1,
+              "total": 0.19
+            },
+            "shots": {
+              "away": 11.3,
+              "home": 12.7,
+              "total": 24.0
+            },
+            "sot": {
+              "away": 3.7,
+              "home": 4.1,
+              "total": 7.8
+            },
+            "xg": {
+              "away": 1.31,
+              "home": 1.47,
+              "total": 2.7800000000000002
+            },
+            "yellows": {
+              "away": 3.05,
+              "home": 2.68,
+              "total": 5.73
+            }
+          },
+          "prediction_origin": "dashboard_pre_match_snapshot",
+          "season": 2026,
+          "snapshot_at": "2026-10-02T14:36:15.044160+02:00",
+          "snapshot_window": "initial",
+          "stats": {
+            "corners": {
+              "absolute_error": {
+                "away": 3.0,
+                "home": 3.5,
+                "total": 0.5
+              },
+              "actual": {
+                "away": 7.0,
+                "home": 1.0,
+                "total": 8.0
+              },
+              "error": {
+                "away": -3.0,
+                "home": 3.5,
+                "total": 0.5
+              },
+              "predicted": {
+                "away": 4.0,
+                "home": 4.5,
+                "total": 8.5
+              },
+              "truth_confidence": 0.6,
+              "truth_sources": [
+                "football_data_uk"
+              ],
+              "truth_status": "single_source"
+            },
+            "fouls": {
+              "absolute_error": {
+                "away": 4.65,
+                "home": 2.31,
+                "total": 6.96
+              },
+              "actual": {
+                "away": 9.0,
+                "home": 15.0,
+                "total": 24.0
+              },
+              "error": {
+                "away": 4.65,
+                "home": 2.31,
+                "total": 6.96
+              },
+              "predicted": {
+                "away": 13.65,
+                "home": 17.31,
+                "total": 30.96
+              },
+              "truth_confidence": 0.6,
+              "truth_sources": [
+                "football_data_uk"
+              ],
+              "truth_status": "single_source"
+            },
+            "goals": {
+              "absolute_error": {
+                "away": 1.69,
+                "home": 0.53,
+                "total": 2.22
+              },
+              "actual": {
+                "away": 3.0,
+                "home": 2.0,
+                "total": 5.0
+              },
+              "error": {
+                "away": -1.69,
+                "home": -0.53,
+                "total": -2.22
+              },
+              "predicted": {
+                "away": 1.31,
+                "home": 1.47,
+                "total": 2.78
+              },
+              "truth_confidence": 0.6,
+              "truth_sources": [
+                "football_data_uk"
+              ],
+              "truth_status": "single_source"
+            },
+            "reds": {
+              "absolute_error": {
+                "away": 0.09,
+                "home": 0.1,
+                "total": 0.19
+              },
+              "actual": {
+                "away": 0.0,
+                "home": 0.0,
+                "total": 0.0
+              },
+              "error": {
+                "away": 0.09,
+                "home": 0.1,
+                "total": 0.19
+              },
+              "predicted": {
+                "away": 0.09,
+                "home": 0.1,
+                "total": 0.19
+              },
+              "truth_confidence": 0.6,
+              "truth_sources": [
+                "football_data_uk"
+              ],
+              "truth_status": "single_source"
+            },
+            "shots": {
+              "absolute_error": {
+                "away": 11.7,
+                "home": 4.3,
+                "total": 16.0
+              },
+              "actual": {
+                "away": 23.0,
+                "home": 17.0,
+                "total": 40.0
+              },
+              "error": {
+                "away": -11.7,
+                "home": -4.3,
+                "total": -16.0
+              },
+              "predicted": {
+                "away": 11.3,
+                "home": 12.7,
+                "total": 24.0
+              },
+              "truth_confidence": 0.6,
+              "truth_sources": [
+                "football_data_uk"
+              ],
+              "truth_status": "single_source"
+            },
+            "sot": {
+              "absolute_error": {
+                "away": 1.3,
+                "home": 1.9,
+                "total": 3.2
+              },
+              "actual": {
+                "away": 5.0,
+                "home": 6.0,
+                "total": 11.0
+              },
+              "error": {
+                "away": -1.3,
+                "home": -1.9,
+                "total": -3.2
+              },
+              "predicted": {
+                "away": 3.7,
+                "home": 4.1,
+                "total": 7.8
+              },
+              "truth_confidence": 0.6,
+              "truth_sources": [
+                "football_data_uk"
+              ],
+              "truth_status": "single_source"
+            },
+            "yellows": {
+              "absolute_error": {
+                "away": 1.05,
+                "home": 0.32,
+                "total": 0.73
+              },
+              "actual": {
+                "away": 2.0,
+                "home": 3.0,
+                "total": 5.0
+              },
+              "error": {
+                "away": 1.05,
+                "home": -0.32,
+                "total": 0.73
+              },
+              "predicted": {
+                "away": 3.05,
+                "home": 2.68,
+                "total": 5.73
+              },
+              "truth_confidence": 0.6,
+              "truth_sources": [
+                "football_data_uk"
+              ],
+              "truth_status": "single_source"
+            }
+          },
+          "truth_digest": "54dc6955a2267a85463e48e0b0dd9a91cde3992346e93c55af7b90f3251c2174",
+          "truth_match_status": "single_source"
+        }
+      ],
+      "latest": {
+        "affects_1x2": false,
+        "away": "Granada",
+        "date": "2026-10-04",
+        "evaluation_status": "evaluated",
+        "home": "Sociedad B",
+        "league": "segunda",
+        "match_id": "e54748121c9f564f2bb92604",
+        "model_version": "edge-2.1",
+        "prediction": {
+          "corners": {
+            "away": 4.0,
+            "home": 4.5,
+            "total": 8.5
+          },
+          "fouls": {
+            "away": 13.65,
+            "home": 17.31,
+            "total": 30.96
+          },
+          "goals": {
+            "away": 1.31,
+            "home": 1.47,
+            "total": 2.7800000000000002
+          },
+          "reds": {
+            "away": 0.09,
+            "home": 0.1,
+            "total": 0.19
+          },
+          "shots": {
+            "away": 11.3,
+            "home": 12.7,
+            "total": 24.0
+          },
+          "sot": {
+            "away": 3.7,
+            "home": 4.1,
+            "total": 7.8
+          },
+          "xg": {
+            "away": 1.31,
+            "home": 1.47,
+            "total": 2.7800000000000002
+          },
+          "yellows": {
+            "away": 3.05,
+            "home": 2.68,
+            "total": 5.73
+          }
+        },
+        "prediction_origin": "dashboard_pre_match_snapshot",
+        "season": 2026,
+        "snapshot_at": "2026-10-02T14:36:15.044160+02:00",
+        "snapshot_window": "initial",
+        "stats": {
+          "corners": {
+            "absolute_error": {
+              "away": 3.0,
+              "home": 3.5,
+              "total": 0.5
+            },
+            "actual": {
+              "away": 7.0,
+              "home": 1.0,
+              "total": 8.0
+            },
+            "error": {
+              "away": -3.0,
+              "home": 3.5,
+              "total": 0.5
+            },
+            "predicted": {
+              "away": 4.0,
+              "home": 4.5,
+              "total": 8.5
+            },
+            "truth_confidence": 0.6,
+            "truth_sources": [
+              "football_data_uk"
+            ],
+            "truth_status": "single_source"
+          },
+          "fouls": {
+            "absolute_error": {
+              "away": 4.65,
+              "home": 2.31,
+              "total": 6.96
+            },
+            "actual": {
+              "away": 9.0,
+              "home": 15.0,
+              "total": 24.0
+            },
+            "error": {
+              "away": 4.65,
+              "home": 2.31,
+              "total": 6.96
+            },
+            "predicted": {
+              "away": 13.65,
+              "home": 17.31,
+              "total": 30.96
+            },
+            "truth_confidence": 0.6,
+            "truth_sources": [
+              "football_data_uk"
+            ],
+            "truth_status": "single_source"
+          },
+          "goals": {
+            "absolute_error": {
+              "away": 1.69,
+              "home": 0.53,
+              "total": 2.22
+            },
+            "actual": {
+              "away": 3.0,
+              "home": 2.0,
+              "total": 5.0
+            },
+            "error": {
+              "away": -1.69,
+              "home": -0.53,
+              "total": -2.22
+            },
+            "predicted": {
+              "away": 1.31,
+              "home": 1.47,
+              "total": 2.78
+            },
+            "truth_confidence": 0.6,
+            "truth_sources": [
+              "football_data_uk"
+            ],
+            "truth_status": "single_source"
+          },
+          "reds": {
+            "absolute_error": {
+              "away": 0.09,
+              "home": 0.1,
+              "total": 0.19
+            },
+            "actual": {
+              "away": 0.0,
+              "home": 0.0,
+              "total": 0.0
+            },
+            "error": {
+              "away": 0.09,
+              "home": 0.1,
+              "total": 0.19
+            },
+            "predicted": {
+              "away": 0.09,
+              "home": 0.1,
+              "total": 0.19
+            },
+            "truth_confidence": 0.6,
+            "truth_sources": [
+              "football_data_uk"
+            ],
+            "truth_status": "single_source"
+          },
+          "shots": {
+            "absolute_error": {
+              "away": 11.7,
+              "home": 4.3,
+              "total": 16.0
+            },
+            "actual": {
+              "away": 23.0,
+              "home": 17.0,
+              "total": 40.0
+            },
+            "error": {
+              "away": -11.7,
+              "home": -4.3,
+              "total": -16.0
+            },
+            "predicted": {
+              "away": 11.3,
+              "home": 12.7,
+              "total": 24.0
+            },
+            "truth_confidence": 0.6,
+            "truth_sources": [
+              "football_data_uk"
+            ],
+            "truth_status": "single_source"
+          },
+          "sot": {
+            "absolute_error": {
+              "away": 1.3,
+              "home": 1.9,
+              "total": 3.2
+            },
+            "actual": {
+              "away": 5.0,
+              "home": 6.0,
+              "total": 11.0
+            },
+            "error": {
+              "away": -1.3,
+              "home": -1.9,
+              "total": -3.2
+            },
+            "predicted": {
+              "away": 3.7,
+              "home": 4.1,
+              "total": 7.8
+            },
+            "truth_confidence": 0.6,
+            "truth_sources": [
+              "football_data_uk"
+            ],
+            "truth_status": "single_source"
+          },
+          "yellows": {
+            "absolute_error": {
+              "away": 1.05,
+              "home": 0.32,
+              "total": 0.73
+            },
+            "actual": {
+              "away": 2.0,
+              "home": 3.0,
+              "total": 5.0
+            },
+            "error": {
+              "away": 1.05,
+              "home": -0.32,
+              "total": 0.73
+            },
+            "predicted": {
+              "away": 3.05,
+              "home": 2.68,
+              "total": 5.73
+            },
+            "truth_confidence": 0.6,
+            "truth_sources": [
+              "football_data_uk"
+            ],
+            "truth_status": "single_source"
+          }
+        },
+        "truth_digest": "54dc6955a2267a85463e48e0b0dd9a91cde3992346e93c55af7b90f3251c2174",
+        "truth_match_status": "single_source"
+      }
+    },
     "ef7ccfd6c46a59a87a914c19": {
       "history": [
         {
@@ -50732,6 +54246,508 @@
         "truth_match_status": "single_source"
       }
     },
+    "f94a49f247943a1b3ae5dbb3": {
+      "history": [
+        {
+          "affects_1x2": false,
+          "away": "Ceuta",
+          "date": "2026-10-04",
+          "evaluation_status": "evaluated",
+          "home": "Castellon",
+          "league": "segunda",
+          "match_id": "f94a49f247943a1b3ae5dbb3",
+          "model_version": "edge-2.1",
+          "prediction": {
+            "corners": {
+              "away": 1.3,
+              "home": 7.0,
+              "total": 8.3
+            },
+            "fouls": {
+              "away": 12.54,
+              "home": 14.27,
+              "total": 26.81
+            },
+            "goals": {
+              "away": 0.64,
+              "home": 3.48,
+              "total": 4.12
+            },
+            "reds": {
+              "away": 0.09,
+              "home": 0.1,
+              "total": 0.19
+            },
+            "shots": {
+              "away": 3.9,
+              "home": 21.1,
+              "total": 25.0
+            },
+            "sot": {
+              "away": 1.4,
+              "home": 7.7,
+              "total": 9.1
+            },
+            "xg": {
+              "away": 0.64,
+              "home": 3.48,
+              "total": 4.12
+            },
+            "yellows": {
+              "away": 2.6,
+              "home": 2.5,
+              "total": 5.1
+            }
+          },
+          "prediction_origin": "dashboard_pre_match_snapshot",
+          "season": 2026,
+          "snapshot_at": "2026-10-04T14:22:56.892190+02:00",
+          "snapshot_window": "T-3h",
+          "stats": {
+            "corners": {
+              "absolute_error": {
+                "away": 5.7,
+                "home": 4.0,
+                "total": 1.7
+              },
+              "actual": {
+                "away": 7.0,
+                "home": 3.0,
+                "total": 10.0
+              },
+              "error": {
+                "away": -5.7,
+                "home": 4.0,
+                "total": -1.7
+              },
+              "predicted": {
+                "away": 1.3,
+                "home": 7.0,
+                "total": 8.3
+              },
+              "truth_confidence": 0.6,
+              "truth_sources": [
+                "football_data_uk"
+              ],
+              "truth_status": "single_source"
+            },
+            "fouls": {
+              "absolute_error": {
+                "away": 3.46,
+                "home": 0.27,
+                "total": 3.19
+              },
+              "actual": {
+                "away": 16.0,
+                "home": 14.0,
+                "total": 30.0
+              },
+              "error": {
+                "away": -3.46,
+                "home": 0.27,
+                "total": -3.19
+              },
+              "predicted": {
+                "away": 12.54,
+                "home": 14.27,
+                "total": 26.81
+              },
+              "truth_confidence": 0.6,
+              "truth_sources": [
+                "football_data_uk"
+              ],
+              "truth_status": "single_source"
+            },
+            "goals": {
+              "absolute_error": {
+                "away": 0.36,
+                "home": 2.48,
+                "total": 2.12
+              },
+              "actual": {
+                "away": 1.0,
+                "home": 1.0,
+                "total": 2.0
+              },
+              "error": {
+                "away": -0.36,
+                "home": 2.48,
+                "total": 2.12
+              },
+              "predicted": {
+                "away": 0.64,
+                "home": 3.48,
+                "total": 4.12
+              },
+              "truth_confidence": 0.6,
+              "truth_sources": [
+                "football_data_uk"
+              ],
+              "truth_status": "single_source"
+            },
+            "reds": {
+              "absolute_error": {
+                "away": 0.09,
+                "home": 0.1,
+                "total": 0.19
+              },
+              "actual": {
+                "away": 0.0,
+                "home": 0.0,
+                "total": 0.0
+              },
+              "error": {
+                "away": 0.09,
+                "home": 0.1,
+                "total": 0.19
+              },
+              "predicted": {
+                "away": 0.09,
+                "home": 0.1,
+                "total": 0.19
+              },
+              "truth_confidence": 0.6,
+              "truth_sources": [
+                "football_data_uk"
+              ],
+              "truth_status": "single_source"
+            },
+            "shots": {
+              "absolute_error": {
+                "away": 9.1,
+                "home": 11.1,
+                "total": 2.0
+              },
+              "actual": {
+                "away": 13.0,
+                "home": 10.0,
+                "total": 23.0
+              },
+              "error": {
+                "away": -9.1,
+                "home": 11.1,
+                "total": 2.0
+              },
+              "predicted": {
+                "away": 3.9,
+                "home": 21.1,
+                "total": 25.0
+              },
+              "truth_confidence": 0.6,
+              "truth_sources": [
+                "football_data_uk"
+              ],
+              "truth_status": "single_source"
+            },
+            "sot": {
+              "absolute_error": {
+                "away": 2.6,
+                "home": 5.7,
+                "total": 3.1
+              },
+              "actual": {
+                "away": 4.0,
+                "home": 2.0,
+                "total": 6.0
+              },
+              "error": {
+                "away": -2.6,
+                "home": 5.7,
+                "total": 3.1
+              },
+              "predicted": {
+                "away": 1.4,
+                "home": 7.7,
+                "total": 9.1
+              },
+              "truth_confidence": 0.6,
+              "truth_sources": [
+                "football_data_uk"
+              ],
+              "truth_status": "single_source"
+            },
+            "yellows": {
+              "absolute_error": {
+                "away": 0.4,
+                "home": 1.5,
+                "total": 1.1
+              },
+              "actual": {
+                "away": 3.0,
+                "home": 1.0,
+                "total": 4.0
+              },
+              "error": {
+                "away": -0.4,
+                "home": 1.5,
+                "total": 1.1
+              },
+              "predicted": {
+                "away": 2.6,
+                "home": 2.5,
+                "total": 5.1
+              },
+              "truth_confidence": 0.6,
+              "truth_sources": [
+                "football_data_uk"
+              ],
+              "truth_status": "single_source"
+            }
+          },
+          "truth_digest": "3377cbacd83a81cba64b6a3d576bc06d8899e771e9515b3ea3fe4444bf966ea3",
+          "truth_match_status": "single_source"
+        }
+      ],
+      "latest": {
+        "affects_1x2": false,
+        "away": "Ceuta",
+        "date": "2026-10-04",
+        "evaluation_status": "evaluated",
+        "home": "Castellon",
+        "league": "segunda",
+        "match_id": "f94a49f247943a1b3ae5dbb3",
+        "model_version": "edge-2.1",
+        "prediction": {
+          "corners": {
+            "away": 1.3,
+            "home": 7.0,
+            "total": 8.3
+          },
+          "fouls": {
+            "away": 12.54,
+            "home": 14.27,
+            "total": 26.81
+          },
+          "goals": {
+            "away": 0.64,
+            "home": 3.48,
+            "total": 4.12
+          },
+          "reds": {
+            "away": 0.09,
+            "home": 0.1,
+            "total": 0.19
+          },
+          "shots": {
+            "away": 3.9,
+            "home": 21.1,
+            "total": 25.0
+          },
+          "sot": {
+            "away": 1.4,
+            "home": 7.7,
+            "total": 9.1
+          },
+          "xg": {
+            "away": 0.64,
+            "home": 3.48,
+            "total": 4.12
+          },
+          "yellows": {
+            "away": 2.6,
+            "home": 2.5,
+            "total": 5.1
+          }
+        },
+        "prediction_origin": "dashboard_pre_match_snapshot",
+        "season": 2026,
+        "snapshot_at": "2026-10-04T14:22:56.892190+02:00",
+        "snapshot_window": "T-3h",
+        "stats": {
+          "corners": {
+            "absolute_error": {
+              "away": 5.7,
+              "home": 4.0,
+              "total": 1.7
+            },
+            "actual": {
+              "away": 7.0,
+              "home": 3.0,
+              "total": 10.0
+            },
+            "error": {
+              "away": -5.7,
+              "home": 4.0,
+              "total": -1.7
+            },
+            "predicted": {
+              "away": 1.3,
+              "home": 7.0,
+              "total": 8.3
+            },
+            "truth_confidence": 0.6,
+            "truth_sources": [
+              "football_data_uk"
+            ],
+            "truth_status": "single_source"
+          },
+          "fouls": {
+            "absolute_error": {
+              "away": 3.46,
+              "home": 0.27,
+              "total": 3.19
+            },
+            "actual": {
+              "away": 16.0,
+              "home": 14.0,
+              "total": 30.0
+            },
+            "error": {
+              "away": -3.46,
+              "home": 0.27,
+              "total": -3.19
+            },
+            "predicted": {
+              "away": 12.54,
+              "home": 14.27,
+              "total": 26.81
+            },
+            "truth_confidence": 0.6,
+            "truth_sources": [
+              "football_data_uk"
+            ],
+            "truth_status": "single_source"
+          },
+          "goals": {
+            "absolute_error": {
+              "away": 0.36,
+              "home": 2.48,
+              "total": 2.12
+            },
+            "actual": {
+              "away": 1.0,
+              "home": 1.0,
+              "total": 2.0
+            },
+            "error": {
+              "away": -0.36,
+              "home": 2.48,
+              "total": 2.12
+            },
+            "predicted": {
+              "away": 0.64,
+              "home": 3.48,
+              "total": 4.12
+            },
+            "truth_confidence": 0.6,
+            "truth_sources": [
+              "football_data_uk"
+            ],
+            "truth_status": "single_source"
+          },
+          "reds": {
+            "absolute_error": {
+              "away": 0.09,
+              "home": 0.1,
+              "total": 0.19
+            },
+            "actual": {
+              "away": 0.0,
+              "home": 0.0,
+              "total": 0.0
+            },
+            "error": {
+              "away": 0.09,
+              "home": 0.1,
+              "total": 0.19
+            },
+            "predicted": {
+              "away": 0.09,
+              "home": 0.1,
+              "total": 0.19
+            },
+            "truth_confidence": 0.6,
+            "truth_sources": [
+              "football_data_uk"
+            ],
+            "truth_status": "single_source"
+          },
+          "shots": {
+            "absolute_error": {
+              "away": 9.1,
+              "home": 11.1,
+              "total": 2.0
+            },
+            "actual": {
+              "away": 13.0,
+              "home": 10.0,
+              "total": 23.0
+            },
+            "error": {
+              "away": -9.1,
+              "home": 11.1,
+              "total": 2.0
+            },
+            "predicted": {
+              "away": 3.9,
+              "home": 21.1,
+              "total": 25.0
+            },
+            "truth_confidence": 0.6,
+            "truth_sources": [
+              "football_data_uk"
+            ],
+            "truth_status": "single_source"
+          },
+          "sot": {
+            "absolute_error": {
+              "away": 2.6,
+              "home": 5.7,
+              "total": 3.1
+            },
+            "actual": {
+              "away": 4.0,
+              "home": 2.0,
+              "total": 6.0
+            },
+            "error": {
+              "away": -2.6,
+              "home": 5.7,
+              "total": 3.1
+            },
+            "predicted": {
+              "away": 1.4,
+              "home": 7.7,
+              "total": 9.1
+            },
+            "truth_confidence": 0.6,
+            "truth_sources": [
+              "football_data_uk"
+            ],
+            "truth_status": "single_source"
+          },
+          "yellows": {
+            "absolute_error": {
+              "away": 0.4,
+              "home": 1.5,
+              "total": 1.1
+            },
+            "actual": {
+              "away": 3.0,
+              "home": 1.0,
+              "total": 4.0
+            },
+            "error": {
+              "away": -0.4,
+              "home": 1.5,
+              "total": 1.1
+            },
+            "predicted": {
+              "away": 2.6,
+              "home": 2.5,
+              "total": 5.1
+            },
+            "truth_confidence": 0.6,
+            "truth_sources": [
+              "football_data_uk"
+            ],
+            "truth_status": "single_source"
+          }
+        },
+        "truth_digest": "3377cbacd83a81cba64b6a3d576bc06d8899e771e9515b3ea3fe4444bf966ea3",
+        "truth_match_status": "single_source"
+      }
+    },
     "f9b0207e8424539d42b1659a": {
       "history": [
         {
@@ -51231,6 +55247,508 @@
           }
         },
         "truth_digest": "25ad9daaadd22f4c2bcfd5932a587216f9e1cb8e5250c6d3e2694c1cd9b61693",
+        "truth_match_status": "single_source"
+      }
+    },
+    "fae6b2644cb9eac416f5a680": {
+      "history": [
+        {
+          "affects_1x2": false,
+          "away": "Celta B",
+          "date": "2026-10-04",
+          "evaluation_status": "evaluated",
+          "home": "Sp Gijon",
+          "league": "segunda",
+          "match_id": "fae6b2644cb9eac416f5a680",
+          "model_version": "edge-2.1",
+          "prediction": {
+            "corners": {
+              "away": 3.4,
+              "home": 5.9,
+              "total": 9.3
+            },
+            "fouls": {
+              "away": 12.55,
+              "home": 13.46,
+              "total": 26.01
+            },
+            "goals": {
+              "away": 0.9,
+              "home": 1.54,
+              "total": 2.44
+            },
+            "reds": {
+              "away": 0.09,
+              "home": 0.17,
+              "total": 0.26
+            },
+            "shots": {
+              "away": 9.6,
+              "home": 16.5,
+              "total": 26.1
+            },
+            "sot": {
+              "away": 3.1,
+              "home": 5.3,
+              "total": 8.4
+            },
+            "xg": {
+              "away": 0.9,
+              "home": 1.54,
+              "total": 2.44
+            },
+            "yellows": {
+              "away": 2.97,
+              "home": 1.97,
+              "total": 4.94
+            }
+          },
+          "prediction_origin": "dashboard_pre_match_snapshot",
+          "season": 2026,
+          "snapshot_at": "2026-10-02T14:36:15.044160+02:00",
+          "snapshot_window": "initial",
+          "stats": {
+            "corners": {
+              "absolute_error": {
+                "away": 2.6,
+                "home": 0.1,
+                "total": 2.7
+              },
+              "actual": {
+                "away": 6.0,
+                "home": 6.0,
+                "total": 12.0
+              },
+              "error": {
+                "away": -2.6,
+                "home": -0.1,
+                "total": -2.7
+              },
+              "predicted": {
+                "away": 3.4,
+                "home": 5.9,
+                "total": 9.3
+              },
+              "truth_confidence": 0.6,
+              "truth_sources": [
+                "football_data_uk"
+              ],
+              "truth_status": "single_source"
+            },
+            "fouls": {
+              "absolute_error": {
+                "away": 2.55,
+                "home": 0.54,
+                "total": 2.01
+              },
+              "actual": {
+                "away": 10.0,
+                "home": 14.0,
+                "total": 24.0
+              },
+              "error": {
+                "away": 2.55,
+                "home": -0.54,
+                "total": 2.01
+              },
+              "predicted": {
+                "away": 12.55,
+                "home": 13.46,
+                "total": 26.01
+              },
+              "truth_confidence": 0.6,
+              "truth_sources": [
+                "football_data_uk"
+              ],
+              "truth_status": "single_source"
+            },
+            "goals": {
+              "absolute_error": {
+                "away": 1.1,
+                "home": 1.46,
+                "total": 2.56
+              },
+              "actual": {
+                "away": 2.0,
+                "home": 3.0,
+                "total": 5.0
+              },
+              "error": {
+                "away": -1.1,
+                "home": -1.46,
+                "total": -2.56
+              },
+              "predicted": {
+                "away": 0.9,
+                "home": 1.54,
+                "total": 2.44
+              },
+              "truth_confidence": 0.6,
+              "truth_sources": [
+                "football_data_uk"
+              ],
+              "truth_status": "single_source"
+            },
+            "reds": {
+              "absolute_error": {
+                "away": 0.91,
+                "home": 0.17,
+                "total": 0.74
+              },
+              "actual": {
+                "away": 1.0,
+                "home": 0.0,
+                "total": 1.0
+              },
+              "error": {
+                "away": -0.91,
+                "home": 0.17,
+                "total": -0.74
+              },
+              "predicted": {
+                "away": 0.09,
+                "home": 0.17,
+                "total": 0.26
+              },
+              "truth_confidence": 0.6,
+              "truth_sources": [
+                "football_data_uk"
+              ],
+              "truth_status": "single_source"
+            },
+            "shots": {
+              "absolute_error": {
+                "away": 4.4,
+                "home": 3.5,
+                "total": 0.9
+              },
+              "actual": {
+                "away": 14.0,
+                "home": 13.0,
+                "total": 27.0
+              },
+              "error": {
+                "away": -4.4,
+                "home": 3.5,
+                "total": -0.9
+              },
+              "predicted": {
+                "away": 9.6,
+                "home": 16.5,
+                "total": 26.1
+              },
+              "truth_confidence": 0.6,
+              "truth_sources": [
+                "football_data_uk"
+              ],
+              "truth_status": "single_source"
+            },
+            "sot": {
+              "absolute_error": {
+                "away": 4.9,
+                "home": 1.7,
+                "total": 6.6
+              },
+              "actual": {
+                "away": 8.0,
+                "home": 7.0,
+                "total": 15.0
+              },
+              "error": {
+                "away": -4.9,
+                "home": -1.7,
+                "total": -6.6
+              },
+              "predicted": {
+                "away": 3.1,
+                "home": 5.3,
+                "total": 8.4
+              },
+              "truth_confidence": 0.6,
+              "truth_sources": [
+                "football_data_uk"
+              ],
+              "truth_status": "single_source"
+            },
+            "yellows": {
+              "absolute_error": {
+                "away": 0.97,
+                "home": 3.03,
+                "total": 2.06
+              },
+              "actual": {
+                "away": 2.0,
+                "home": 5.0,
+                "total": 7.0
+              },
+              "error": {
+                "away": 0.97,
+                "home": -3.03,
+                "total": -2.06
+              },
+              "predicted": {
+                "away": 2.97,
+                "home": 1.97,
+                "total": 4.94
+              },
+              "truth_confidence": 0.6,
+              "truth_sources": [
+                "football_data_uk"
+              ],
+              "truth_status": "single_source"
+            }
+          },
+          "truth_digest": "cbfbfd2b9d2bdd8a8276eda162126a0fa85d6073c322809d38a9b68a6562e02d",
+          "truth_match_status": "single_source"
+        }
+      ],
+      "latest": {
+        "affects_1x2": false,
+        "away": "Celta B",
+        "date": "2026-10-04",
+        "evaluation_status": "evaluated",
+        "home": "Sp Gijon",
+        "league": "segunda",
+        "match_id": "fae6b2644cb9eac416f5a680",
+        "model_version": "edge-2.1",
+        "prediction": {
+          "corners": {
+            "away": 3.4,
+            "home": 5.9,
+            "total": 9.3
+          },
+          "fouls": {
+            "away": 12.55,
+            "home": 13.46,
+            "total": 26.01
+          },
+          "goals": {
+            "away": 0.9,
+            "home": 1.54,
+            "total": 2.44
+          },
+          "reds": {
+            "away": 0.09,
+            "home": 0.17,
+            "total": 0.26
+          },
+          "shots": {
+            "away": 9.6,
+            "home": 16.5,
+            "total": 26.1
+          },
+          "sot": {
+            "away": 3.1,
+            "home": 5.3,
+            "total": 8.4
+          },
+          "xg": {
+            "away": 0.9,
+            "home": 1.54,
+            "total": 2.44
+          },
+          "yellows": {
+            "away": 2.97,
+            "home": 1.97,
+            "total": 4.94
+          }
+        },
+        "prediction_origin": "dashboard_pre_match_snapshot",
+        "season": 2026,
+        "snapshot_at": "2026-10-02T14:36:15.044160+02:00",
+        "snapshot_window": "initial",
+        "stats": {
+          "corners": {
+            "absolute_error": {
+              "away": 2.6,
+              "home": 0.1,
+              "total": 2.7
+            },
+            "actual": {
+              "away": 6.0,
+              "home": 6.0,
+              "total": 12.0
+            },
+            "error": {
+              "away": -2.6,
+              "home": -0.1,
+              "total": -2.7
+            },
+            "predicted": {
+              "away": 3.4,
+              "home": 5.9,
+              "total": 9.3
+            },
+            "truth_confidence": 0.6,
+            "truth_sources": [
+              "football_data_uk"
+            ],
+            "truth_status": "single_source"
+          },
+          "fouls": {
+            "absolute_error": {
+              "away": 2.55,
+              "home": 0.54,
+              "total": 2.01
+            },
+            "actual": {
+              "away": 10.0,
+              "home": 14.0,
+              "total": 24.0
+            },
+            "error": {
+              "away": 2.55,
+              "home": -0.54,
+              "total": 2.01
+            },
+            "predicted": {
+              "away": 12.55,
+              "home": 13.46,
+              "total": 26.01
+            },
+            "truth_confidence": 0.6,
+            "truth_sources": [
+              "football_data_uk"
+            ],
+            "truth_status": "single_source"
+          },
+          "goals": {
+            "absolute_error": {
+              "away": 1.1,
+              "home": 1.46,
+              "total": 2.56
+            },
+            "actual": {
+              "away": 2.0,
+              "home": 3.0,
+              "total": 5.0
+            },
+            "error": {
+              "away": -1.1,
+              "home": -1.46,
+              "total": -2.56
+            },
+            "predicted": {
+              "away": 0.9,
+              "home": 1.54,
+              "total": 2.44
+            },
+            "truth_confidence": 0.6,
+            "truth_sources": [
+              "football_data_uk"
+            ],
+            "truth_status": "single_source"
+          },
+          "reds": {
+            "absolute_error": {
+              "away": 0.91,
+              "home": 0.17,
+              "total": 0.74
+            },
+            "actual": {
+              "away": 1.0,
+              "home": 0.0,
+              "total": 1.0
+            },
+            "error": {
+              "away": -0.91,
+              "home": 0.17,
+              "total": -0.74
+            },
+            "predicted": {
+              "away": 0.09,
+              "home": 0.17,
+              "total": 0.26
+            },
+            "truth_confidence": 0.6,
+            "truth_sources": [
+              "football_data_uk"
+            ],
+            "truth_status": "single_source"
+          },
+          "shots": {
+            "absolute_error": {
+              "away": 4.4,
+              "home": 3.5,
+              "total": 0.9
+            },
+            "actual": {
+              "away": 14.0,
+              "home": 13.0,
+              "total": 27.0
+            },
+            "error": {
+              "away": -4.4,
+              "home": 3.5,
+              "total": -0.9
+            },
+            "predicted": {
+              "away": 9.6,
+              "home": 16.5,
+              "total": 26.1
+            },
+            "truth_confidence": 0.6,
+            "truth_sources": [
+              "football_data_uk"
+            ],
+            "truth_status": "single_source"
+          },
+          "sot": {
+            "absolute_error": {
+              "away": 4.9,
+              "home": 1.7,
+              "total": 6.6
+            },
+            "actual": {
+              "away": 8.0,
+              "home": 7.0,
+              "total": 15.0
+            },
+            "error": {
+              "away": -4.9,
+              "home": -1.7,
+              "total": -6.6
+            },
+            "predicted": {
+              "away": 3.1,
+              "home": 5.3,
+              "total": 8.4
+            },
+            "truth_confidence": 0.6,
+            "truth_sources": [
+              "football_data_uk"
+            ],
+            "truth_status": "single_source"
+          },
+          "yellows": {
+            "absolute_error": {
+              "away": 0.97,
+              "home": 3.03,
+              "total": 2.06
+            },
+            "actual": {
+              "away": 2.0,
+              "home": 5.0,
+              "total": 7.0
+            },
+            "error": {
+              "away": 0.97,
+              "home": -3.03,
+              "total": -2.06
+            },
+            "predicted": {
+              "away": 2.97,
+              "home": 1.97,
+              "total": 4.94
+            },
+            "truth_confidence": 0.6,
+            "truth_sources": [
+              "football_data_uk"
+            ],
+            "truth_status": "single_source"
+          }
+        },
+        "truth_digest": "cbfbfd2b9d2bdd8a8276eda162126a0fa85d6073c322809d38a9b68a6562e02d",
         "truth_match_status": "single_source"
       }
     },
@@ -51740,7 +56258,7 @@
   "schema": "truth-evaluation-v1",
   "summary": {
     "affects_1x2": false,
-    "archived_matches": 103,
+    "archived_matches": 112,
     "by_league": {
       "laliga": {
         "corners": {
@@ -51901,156 +56419,156 @@
       "segunda": {
         "corners": {
           "bias_predicted_minus_actual": {
-            "away": 0.2375,
-            "home": 0.4771,
-            "total": 0.7146
+            "away": -0.0404,
+            "home": 0.493,
+            "total": 0.4526
           },
           "mae": {
-            "away": 1.9792,
-            "home": 2.6521,
-            "total": 2.7896
+            "away": 2.1281,
+            "home": 2.5,
+            "total": 2.6842
           },
-          "median_absolute_error_total": 2.4,
-          "n": 48,
-          "rmse_total": 3.396,
+          "median_absolute_error_total": 2.3,
+          "n": 57,
+          "rmse_total": 3.276,
           "sample_stage": "monitoring",
           "source_mix": {
-            "football_data_uk": 48
+            "football_data_uk": 57
           },
           "truth_statuses": {
-            "single_source": 48
+            "single_source": 57
           }
         },
         "fouls": {
           "bias_predicted_minus_actual": {
-            "away": -1.3638,
-            "home": 0.6898,
-            "total": -0.674
+            "away": -1.4975,
+            "home": 0.6107,
+            "total": -0.8868
           },
           "mae": {
-            "away": 3.7425,
-            "home": 3.136,
-            "total": 4.4531
+            "away": 3.766,
+            "home": 2.9198,
+            "total": 4.3844
           },
-          "median_absolute_error_total": 4.125,
-          "n": 48,
-          "rmse_total": 5.351,
+          "median_absolute_error_total": 3.73,
+          "n": 57,
+          "rmse_total": 5.3782,
           "sample_stage": "monitoring",
           "source_mix": {
-            "football_data_uk": 48
+            "football_data_uk": 57
           },
           "truth_statuses": {
-            "single_source": 48
+            "single_source": 57
           }
         },
         "goals": {
           "bias_predicted_minus_actual": {
-            "away": -0.2123,
-            "home": -0.0994,
-            "total": -0.3117
+            "away": -0.2537,
+            "home": -0.1746,
+            "total": -0.4282
           },
           "mae": {
-            "away": 0.8994,
-            "home": 1.0656,
-            "total": 1.3029
+            "away": 0.8975,
+            "home": 1.1265,
+            "total": 1.4209
           },
-          "median_absolute_error_total": 1.095,
-          "n": 48,
-          "rmse_total": 1.6168,
+          "median_absolute_error_total": 1.31,
+          "n": 57,
+          "rmse_total": 1.7147,
           "sample_stage": "monitoring",
           "source_mix": {
-            "football_data_uk": 48
+            "football_data_uk": 57
           },
           "truth_statuses": {
-            "single_source": 48
+            "single_source": 57
           }
         },
         "reds": {
           "bias_predicted_minus_actual": {
-            "away": -0.0594,
-            "home": -0.0196,
-            "total": -0.079
+            "away": -0.0518,
+            "home": 0.003,
+            "total": -0.0488
           },
           "mae": {
-            "away": 0.2373,
-            "home": 0.2071,
-            "total": 0.386
+            "away": 0.23,
+            "home": 0.1939,
+            "total": 0.3688
           },
           "median_absolute_error_total": 0.23,
-          "n": 48,
-          "rmse_total": 0.5387,
+          "n": 57,
+          "rmse_total": 0.5116,
           "sample_stage": "monitoring",
           "source_mix": {
-            "football_data_uk": 48
+            "football_data_uk": 57
           },
           "truth_statuses": {
-            "single_source": 48
+            "single_source": 57
           }
         },
         "shots": {
           "bias_predicted_minus_actual": {
-            "away": -1.0229,
-            "home": -0.5633,
-            "total": -1.5862
+            "away": -1.3502,
+            "home": -0.9328,
+            "total": -2.283
           },
           "mae": {
-            "away": 4.5533,
-            "home": 4.8458,
-            "total": 5.5279
+            "away": 4.5828,
+            "home": 5.1075,
+            "total": 5.6725
           },
           "median_absolute_error_total": 4.8,
-          "n": 48,
-          "rmse_total": 6.97,
+          "n": 57,
+          "rmse_total": 7.1708,
           "sample_stage": "monitoring",
           "source_mix": {
-            "football_data_uk": 48
+            "football_data_uk": 57
           },
           "truth_statuses": {
-            "single_source": 48
+            "single_source": 57
           }
         },
         "sot": {
           "bias_predicted_minus_actual": {
-            "away": -0.1498,
-            "home": 0.0112,
-            "total": -0.1385
+            "away": -0.283,
+            "home": -0.204,
+            "total": -0.487
           },
           "mae": {
-            "away": 1.604,
-            "home": 2.195,
-            "total": 2.474
+            "away": 1.7447,
+            "home": 2.2865,
+            "total": 2.6782
           },
-          "median_absolute_error_total": 1.8,
-          "n": 48,
-          "rmse_total": 3.274,
+          "median_absolute_error_total": 2.4,
+          "n": 57,
+          "rmse_total": 3.3849,
           "sample_stage": "monitoring",
           "source_mix": {
-            "football_data_uk": 48
+            "football_data_uk": 57
           },
           "truth_statuses": {
-            "single_source": 48
+            "single_source": 57
           }
         },
         "yellows": {
           "bias_predicted_minus_actual": {
-            "away": -0.6017,
-            "home": 0.1227,
-            "total": -0.479
+            "away": -0.5579,
+            "home": 0.0907,
+            "total": -0.4672
           },
           "mae": {
-            "away": 1.2667,
-            "home": 1.164,
-            "total": 1.6873
+            "away": 1.2326,
+            "home": 1.1254,
+            "total": 1.5974
           },
-          "median_absolute_error_total": 1.165,
-          "n": 48,
-          "rmse_total": 2.2063,
+          "median_absolute_error_total": 1.1,
+          "n": 57,
+          "rmse_total": 2.0924,
           "sample_stage": "monitoring",
           "source_mix": {
-            "football_data_uk": 48
+            "football_data_uk": 57
           },
           "truth_statuses": {
-            "single_source": 48
+            "single_source": 57
           }
         }
       }
@@ -52059,156 +56577,156 @@
       "00:15": {
         "corners": {
           "bias_predicted_minus_actual": {
-            "away": -0.45,
-            "home": -0.54,
-            "total": -0.99
+            "away": 0.1333,
+            "home": -0.5583,
+            "total": -0.425
           },
           "mae": {
-            "away": 2.03,
-            "home": 2.16,
-            "total": 3.67
+            "away": 2.2,
+            "home": 1.925,
+            "total": 3.4583
           },
           "median_absolute_error_total": 2.85,
-          "n": 10,
-          "rmse_total": 4.0806,
+          "n": 12,
+          "rmse_total": 3.9212,
           "sample_stage": "insufficient_sample",
           "source_mix": {
-            "football_data_uk": 10
+            "football_data_uk": 12
           },
           "truth_statuses": {
-            "single_source": 10
+            "single_source": 12
           }
         },
         "fouls": {
           "bias_predicted_minus_actual": {
-            "away": -0.208,
-            "home": 0.961,
-            "total": 0.753
+            "away": -0.5092,
+            "home": 1.1042,
+            "total": 0.595
           },
           "mae": {
-            "away": 4.19,
-            "home": 2.913,
-            "total": 5.315
+            "away": 3.8875,
+            "home": 2.7892,
+            "total": 4.4633
           },
-          "median_absolute_error_total": 4.405,
-          "n": 10,
-          "rmse_total": 6.5465,
+          "median_absolute_error_total": 3.445,
+          "n": 12,
+          "rmse_total": 5.9772,
           "sample_stage": "insufficient_sample",
           "source_mix": {
-            "football_data_uk": 10
+            "football_data_uk": 12
           },
           "truth_statuses": {
-            "single_source": 10
+            "single_source": 12
           }
         },
         "goals": {
           "bias_predicted_minus_actual": {
-            "away": -0.185,
-            "home": -0.242,
-            "total": -0.427
+            "away": -0.2258,
+            "home": -0.4483,
+            "total": -0.6742
           },
           "mae": {
-            "away": 0.801,
-            "home": 0.514,
-            "total": 1.173
+            "away": 0.8775,
+            "home": 0.69,
+            "total": 1.2958
           },
-          "median_absolute_error_total": 1.045,
-          "n": 10,
-          "rmse_total": 1.4213,
+          "median_absolute_error_total": 1.36,
+          "n": 12,
+          "rmse_total": 1.519,
           "sample_stage": "insufficient_sample",
           "source_mix": {
-            "football_data_uk": 10
+            "football_data_uk": 12
           },
           "truth_statuses": {
-            "single_source": 10
+            "single_source": 12
           }
         },
         "reds": {
           "bias_predicted_minus_actual": {
-            "away": -0.102,
-            "home": 0.008,
-            "total": -0.094
+            "away": -0.0667,
+            "home": 0.0167,
+            "total": -0.05
           },
           "mae": {
-            "away": 0.25,
-            "home": 0.198,
-            "total": 0.438
+            "away": 0.2267,
+            "home": 0.175,
+            "total": 0.3933
           },
-          "median_absolute_error_total": 0.235,
-          "n": 10,
-          "rmse_total": 0.6684,
+          "median_absolute_error_total": 0.21,
+          "n": 12,
+          "rmse_total": 0.6142,
           "sample_stage": "insufficient_sample",
           "source_mix": {
-            "football_data_uk": 10
+            "football_data_uk": 12
           },
           "truth_statuses": {
-            "single_source": 10
+            "single_source": 12
           }
         },
         "shots": {
           "bias_predicted_minus_actual": {
-            "away": -0.927,
-            "home": -3.618,
-            "total": -4.545
+            "away": -0.3442,
+            "home": -4.8175,
+            "total": -5.1617
           },
           "mae": {
-            "away": 3.013,
-            "home": 5.238,
-            "total": 5.545
+            "away": 3.0825,
+            "home": 6.1675,
+            "total": 5.995
           },
-          "median_absolute_error_total": 2.4,
-          "n": 10,
-          "rmse_total": 8.459,
+          "median_absolute_error_total": 4.0,
+          "n": 12,
+          "rmse_total": 8.5687,
           "sample_stage": "insufficient_sample",
           "source_mix": {
-            "football_data_uk": 10
+            "football_data_uk": 12
           },
           "truth_statuses": {
-            "single_source": 10
+            "single_source": 12
           }
         },
         "sot": {
           "bias_predicted_minus_actual": {
-            "away": 0.026,
-            "home": -0.69,
-            "total": -0.664
+            "away": 0.0933,
+            "home": -1.1892,
+            "total": -1.0958
           },
           "mae": {
-            "away": 1.454,
-            "home": 1.53,
-            "total": 1.784
+            "away": 1.55,
+            "home": 1.8892,
+            "total": 2.0292
           },
-          "median_absolute_error_total": 1.6,
-          "n": 10,
-          "rmse_total": 2.2279,
+          "median_absolute_error_total": 1.85,
+          "n": 12,
+          "rmse_total": 2.4484,
           "sample_stage": "insufficient_sample",
           "source_mix": {
-            "football_data_uk": 10
+            "football_data_uk": 12
           },
           "truth_statuses": {
-            "single_source": 10
+            "single_source": 12
           }
         },
         "yellows": {
           "bias_predicted_minus_actual": {
-            "away": 1.174,
-            "home": 0.973,
-            "total": 2.147
+            "away": 1.01,
+            "home": 0.8942,
+            "total": 1.9042
           },
           "mae": {
-            "away": 1.328,
-            "home": 1.323,
-            "total": 2.347
+            "away": 1.2833,
+            "home": 1.2125,
+            "total": 2.0708
           },
-          "median_absolute_error_total": 1.94,
-          "n": 10,
-          "rmse_total": 2.9292,
+          "median_absolute_error_total": 1.57,
+          "n": 12,
+          "rmse_total": 2.6937,
           "sample_stage": "insufficient_sample",
           "source_mix": {
-            "football_data_uk": 10
+            "football_data_uk": 12
           },
           "truth_statuses": {
-            "single_source": 10
+            "single_source": 12
           }
         }
       },
@@ -52371,156 +56889,156 @@
       "T-12h": {
         "corners": {
           "bias_predicted_minus_actual": {
-            "away": -0.4,
-            "home": 0.55,
-            "total": 0.15
+            "away": -0.9,
+            "home": -0.125,
+            "total": -1.025
           },
           "mae": {
-            "away": 3.5,
-            "home": 1.05,
-            "total": 4.55
+            "away": 2.55,
+            "home": 1.125,
+            "total": 3.375
           },
-          "median_absolute_error_total": 4.55,
-          "n": 2,
-          "rmse_total": 4.5525,
+          "median_absolute_error_total": 3.5,
+          "n": 4,
+          "rmse_total": 3.5864,
           "sample_stage": "insufficient_sample",
           "source_mix": {
-            "football_data_uk": 2
+            "football_data_uk": 4
           },
           "truth_statuses": {
-            "single_source": 2
+            "single_source": 4
           }
         },
         "fouls": {
           "bias_predicted_minus_actual": {
-            "away": 3.745,
-            "home": -2.085,
-            "total": 1.66
+            "away": 0.7275,
+            "home": -0.765,
+            "total": -0.0375
           },
           "mae": {
-            "away": 3.745,
-            "home": 2.085,
-            "total": 2.13
+            "away": 3.0175,
+            "home": 1.435,
+            "total": 1.9325
           },
-          "median_absolute_error_total": 2.13,
-          "n": 2,
-          "rmse_total": 2.7005,
+          "median_absolute_error_total": 1.735,
+          "n": 4,
+          "rmse_total": 2.4219,
           "sample_stage": "insufficient_sample",
           "source_mix": {
-            "football_data_uk": 2
+            "football_data_uk": 4
           },
           "truth_statuses": {
-            "single_source": 2
+            "single_source": 4
           }
         },
         "goals": {
           "bias_predicted_minus_actual": {
-            "away": 0.27,
-            "home": 0.715,
-            "total": 0.985
+            "away": 0.3575,
+            "home": 0.615,
+            "total": 0.9725
           },
           "mae": {
-            "away": 1.26,
-            "home": 0.715,
-            "total": 0.985
+            "away": 0.9125,
+            "home": 0.785,
+            "total": 1.2025
           },
-          "median_absolute_error_total": 0.985,
-          "n": 2,
-          "rmse_total": 1.3175,
+          "median_absolute_error_total": 1.16,
+          "n": 4,
+          "rmse_total": 1.5287,
           "sample_stage": "insufficient_sample",
           "source_mix": {
-            "football_data_uk": 2
+            "football_data_uk": 4
           },
           "truth_statuses": {
-            "single_source": 2
+            "single_source": 4
           }
         },
         "reds": {
           "bias_predicted_minus_actual": {
-            "away": -0.41,
-            "home": 0.135,
-            "total": -0.275
+            "away": -0.16,
+            "home": 0.1775,
+            "total": 0.0175
           },
           "mae": {
-            "away": 0.51,
-            "home": 0.135,
-            "total": 0.545
+            "away": 0.3,
+            "home": 0.1775,
+            "total": 0.4275
           },
-          "median_absolute_error_total": 0.545,
-          "n": 2,
-          "rmse_total": 0.6105,
+          "median_absolute_error_total": 0.35,
+          "n": 4,
+          "rmse_total": 0.4915,
           "sample_stage": "insufficient_sample",
           "source_mix": {
-            "football_data_uk": 2
+            "football_data_uk": 4
           },
           "truth_statuses": {
-            "single_source": 2
+            "single_source": 4
           }
         },
         "shots": {
           "bias_predicted_minus_actual": {
-            "away": -7.2,
-            "home": 0.0,
-            "total": -7.2
+            "away": -3.375,
+            "home": -2.725,
+            "total": -6.1
           },
           "mae": {
-            "away": 7.2,
-            "home": 2.0,
-            "total": 7.2
+            "away": 4.075,
+            "home": 3.725,
+            "total": 6.1
           },
-          "median_absolute_error_total": 7.2,
-          "n": 2,
-          "rmse_total": 7.7253,
+          "median_absolute_error_total": 6.95,
+          "n": 4,
+          "rmse_total": 7.2433,
           "sample_stage": "insufficient_sample",
           "source_mix": {
-            "football_data_uk": 2
+            "football_data_uk": 4
           },
           "truth_statuses": {
-            "single_source": 2
+            "single_source": 4
           }
         },
         "sot": {
           "bias_predicted_minus_actual": {
-            "away": -1.6,
-            "home": 2.3,
-            "total": 0.7
+            "away": -0.225,
+            "home": 0.425,
+            "total": 0.2
           },
           "mae": {
-            "away": 1.6,
-            "home": 2.3,
-            "total": 0.9
+            "away": 1.975,
+            "home": 1.875,
+            "total": 2.25
           },
-          "median_absolute_error_total": 0.9,
-          "n": 2,
-          "rmse_total": 1.1402,
+          "median_absolute_error_total": 2.45,
+          "n": 4,
+          "rmse_total": 2.6786,
           "sample_stage": "insufficient_sample",
           "source_mix": {
-            "football_data_uk": 2
+            "football_data_uk": 4
           },
           "truth_statuses": {
-            "single_source": 2
+            "single_source": 4
           }
         },
         "yellows": {
           "bias_predicted_minus_actual": {
-            "away": 1.45,
-            "home": -1.965,
-            "total": -0.515
+            "away": 0.25,
+            "home": -0.7025,
+            "total": -0.4525
           },
           "mae": {
-            "away": 1.45,
-            "home": 1.965,
-            "total": 1.655
+            "away": 1.2,
+            "home": 1.2625,
+            "total": 1.0225
           },
-          "median_absolute_error_total": 1.655,
-          "n": 2,
-          "rmse_total": 1.7333,
+          "median_absolute_error_total": 0.945,
+          "n": 4,
+          "rmse_total": 1.2818,
           "sample_stage": "insufficient_sample",
           "source_mix": {
-            "football_data_uk": 2
+            "football_data_uk": 4
           },
           "truth_statuses": {
-            "single_source": 2
+            "single_source": 4
           }
         }
       },
@@ -52683,156 +57201,156 @@
       "T-3h": {
         "corners": {
           "bias_predicted_minus_actual": {
-            "away": -0.12,
-            "home": 0.05,
-            "total": -0.07
+            "away": -0.2561,
+            "home": 0.1463,
+            "total": -0.1098
           },
           "mae": {
-            "away": 2.095,
-            "home": 2.56,
-            "total": 3.005
+            "away": 2.1829,
+            "home": 2.5951,
+            "total": 2.9732
           },
-          "median_absolute_error_total": 2.5,
-          "n": 40,
-          "rmse_total": 3.6213,
+          "median_absolute_error_total": 2.4,
+          "n": 41,
+          "rmse_total": 3.5867,
           "sample_stage": "monitoring",
           "source_mix": {
-            "football_data_uk": 40
+            "football_data_uk": 41
           },
           "truth_statuses": {
-            "single_source": 40
+            "single_source": 41
           }
         },
         "fouls": {
           "bias_predicted_minus_actual": {
-            "away": -0.3603,
-            "home": 0.6798,
-            "total": 0.3195
+            "away": -0.4359,
+            "home": 0.6698,
+            "total": 0.2339
           },
           "mae": {
-            "away": 2.9383,
-            "home": 3.1027,
-            "total": 4.4945
+            "away": 2.951,
+            "home": 3.0337,
+            "total": 4.4627
           },
-          "median_absolute_error_total": 4.365,
-          "n": 40,
-          "rmse_total": 5.3935,
+          "median_absolute_error_total": 4.36,
+          "n": 41,
+          "rmse_total": 5.3505,
           "sample_stage": "monitoring",
           "source_mix": {
-            "football_data_uk": 40
+            "football_data_uk": 41
           },
           "truth_statuses": {
-            "single_source": 40
+            "single_source": 41
           }
         },
         "goals": {
           "bias_predicted_minus_actual": {
-            "away": -0.2575,
-            "home": 0.0397,
-            "total": -0.2178
+            "away": -0.26,
+            "home": 0.0993,
+            "total": -0.1607
           },
           "mae": {
-            "away": 0.9505,
-            "home": 1.0837,
-            "total": 1.3017
+            "away": 0.9361,
+            "home": 1.1178,
+            "total": 1.3217
           },
-          "median_absolute_error_total": 1.275,
-          "n": 40,
-          "rmse_total": 1.6004,
+          "median_absolute_error_total": 1.28,
+          "n": 41,
+          "rmse_total": 1.6151,
           "sample_stage": "monitoring",
           "source_mix": {
-            "football_data_uk": 40
+            "football_data_uk": 41
           },
           "truth_statuses": {
-            "single_source": 40
+            "single_source": 41
           }
         },
         "reds": {
           "bias_predicted_minus_actual": {
-            "away": 0.0065,
-            "home": -0.0262,
-            "total": -0.0198
+            "away": 0.0085,
+            "home": -0.0232,
+            "total": -0.0146
           },
           "mae": {
-            "away": 0.1845,
-            "home": 0.2023,
-            "total": 0.3493
+            "away": 0.1822,
+            "home": 0.1998,
+            "total": 0.3454
           },
           "median_absolute_error_total": 0.23,
-          "n": 40,
-          "rmse_total": 0.4362,
+          "n": 41,
+          "rmse_total": 0.4319,
           "sample_stage": "monitoring",
           "source_mix": {
-            "football_data_uk": 40
+            "football_data_uk": 41
           },
           "truth_statuses": {
-            "single_source": 40
+            "single_source": 41
           }
         },
         "shots": {
           "bias_predicted_minus_actual": {
-            "away": -1.5145,
-            "home": -0.9705,
-            "total": -2.485
+            "away": -1.6995,
+            "home": -0.6761,
+            "total": -2.3756
           },
           "mae": {
-            "away": 5.1095,
-            "home": 5.1545,
-            "total": 5.735
+            "away": 5.2068,
+            "home": 5.2995,
+            "total": 5.6439
           },
-          "median_absolute_error_total": 4.6,
-          "n": 40,
-          "rmse_total": 7.1891,
+          "median_absolute_error_total": 4.5,
+          "n": 41,
+          "rmse_total": 7.1077,
           "sample_stage": "monitoring",
           "source_mix": {
-            "football_data_uk": 40
+            "football_data_uk": 41
           },
           "truth_statuses": {
-            "single_source": 40
+            "single_source": 41
           }
         },
         "sot": {
           "bias_predicted_minus_actual": {
-            "away": -0.87,
-            "home": -0.2262,
-            "total": -1.0962
+            "away": -0.9122,
+            "home": -0.0817,
+            "total": -0.9939
           },
           "mae": {
-            "away": 2.05,
-            "home": 2.1437,
-            "total": 2.8688
+            "away": 2.0634,
+            "home": 2.2305,
+            "total": 2.8744
           },
-          "median_absolute_error_total": 2.1,
-          "n": 40,
-          "rmse_total": 3.8862,
+          "median_absolute_error_total": 2.3,
+          "n": 41,
+          "rmse_total": 3.8689,
           "sample_stage": "monitoring",
           "source_mix": {
-            "football_data_uk": 40
+            "football_data_uk": 41
           },
           "truth_statuses": {
-            "single_source": 40
+            "single_source": 41
           }
         },
         "yellows": {
           "bias_predicted_minus_actual": {
-            "away": -0.0377,
-            "home": 0.33,
-            "total": 0.2923
+            "away": -0.0466,
+            "home": 0.3585,
+            "total": 0.312
           },
           "mae": {
-            "away": 1.3473,
-            "home": 1.0075,
-            "total": 1.7388
+            "away": 1.3241,
+            "home": 1.0195,
+            "total": 1.7232
           },
-          "median_absolute_error_total": 1.62,
-          "n": 40,
-          "rmse_total": 2.157,
+          "median_absolute_error_total": 1.59,
+          "n": 41,
+          "rmse_total": 2.1374,
           "sample_stage": "monitoring",
           "source_mix": {
-            "football_data_uk": 40
+            "football_data_uk": 41
           },
           "truth_statuses": {
-            "single_source": 40
+            "single_source": 41
           }
         }
       },
@@ -53151,312 +57669,312 @@
       "initial": {
         "corners": {
           "bias_predicted_minus_actual": {
-            "away": -0.008,
-            "home": 0.48,
-            "total": 0.472
+            "away": -0.3107,
+            "home": 0.4964,
+            "total": 0.1857
           },
           "mae": {
-            "away": 1.824,
-            "home": 1.904,
-            "total": 2.368
+            "away": 1.9321,
+            "home": 1.8821,
+            "total": 2.3857
           },
-          "median_absolute_error_total": 1.9,
-          "n": 25,
-          "rmse_total": 2.9006,
+          "median_absolute_error_total": 2.0,
+          "n": 28,
+          "rmse_total": 2.9108,
           "sample_stage": "insufficient_sample",
           "source_mix": {
-            "football_data_uk": 25
+            "football_data_uk": 28
           },
           "truth_statuses": {
-            "single_source": 25
+            "single_source": 28
           }
         },
         "fouls": {
           "bias_predicted_minus_actual": {
-            "away": 0.764,
-            "home": 0.1264,
-            "total": 0.8904
+            "away": 0.7811,
+            "home": -0.0375,
+            "total": 0.7436
           },
           "mae": {
-            "away": 2.7016,
-            "home": 3.7384,
-            "total": 5.248
+            "away": 2.8275,
+            "home": 3.6532,
+            "total": 5.3779
           },
-          "median_absolute_error_total": 4.19,
-          "n": 25,
-          "rmse_total": 6.323,
+          "median_absolute_error_total": 4.355,
+          "n": 28,
+          "rmse_total": 6.4375,
           "sample_stage": "insufficient_sample",
           "source_mix": {
-            "football_data_uk": 25
+            "football_data_uk": 28
           },
           "truth_statuses": {
-            "single_source": 25
+            "single_source": 28
           }
         },
         "goals": {
           "bias_predicted_minus_actual": {
-            "away": -0.1432,
-            "home": -0.574,
-            "total": -0.7172
+            "away": -0.2268,
+            "home": -0.6943,
+            "total": -0.9211
           },
           "mae": {
-            "away": 0.7016,
-            "home": 1.2508,
-            "total": 1.7164
+            "away": 0.7268,
+            "home": 1.2986,
+            "total": 1.8132
           },
-          "median_absolute_error_total": 1.61,
-          "n": 25,
-          "rmse_total": 2.1664,
+          "median_absolute_error_total": 1.63,
+          "n": 28,
+          "rmse_total": 2.2225,
           "sample_stage": "insufficient_sample",
           "source_mix": {
-            "football_data_uk": 25
+            "football_data_uk": 28
           },
           "truth_statuses": {
-            "single_source": 25
+            "single_source": 28
           }
         },
         "reds": {
           "bias_predicted_minus_actual": {
-            "away": -0.054,
-            "home": 0.0344,
-            "total": -0.0196
+            "away": -0.0739,
+            "home": 0.0425,
+            "total": -0.0314
           },
           "mae": {
-            "away": 0.2308,
-            "home": 0.1768,
-            "total": 0.3476
+            "away": 0.2454,
+            "home": 0.1696,
+            "total": 0.3493
           },
-          "median_absolute_error_total": 0.24,
-          "n": 25,
-          "rmse_total": 0.4251,
+          "median_absolute_error_total": 0.235,
+          "n": 28,
+          "rmse_total": 0.4279,
           "sample_stage": "insufficient_sample",
           "source_mix": {
-            "football_data_uk": 25
+            "football_data_uk": 28
           },
           "truth_statuses": {
-            "single_source": 25
+            "single_source": 28
           }
         },
         "shots": {
           "bias_predicted_minus_actual": {
-            "away": -1.832,
-            "home": -0.108,
-            "total": -1.94
+            "away": -2.2821,
+            "home": -0.3214,
+            "total": -2.6036
           },
           "mae": {
-            "away": 4.12,
-            "home": 2.852,
-            "total": 5.596
+            "away": 4.325,
+            "home": 3.0214,
+            "total": 5.8679
           },
-          "median_absolute_error_total": 5.1,
-          "n": 25,
-          "rmse_total": 6.5456,
+          "median_absolute_error_total": 5.2,
+          "n": 28,
+          "rmse_total": 7.031,
           "sample_stage": "insufficient_sample",
           "source_mix": {
-            "football_data_uk": 25
+            "football_data_uk": 28
           },
           "truth_statuses": {
-            "single_source": 25
+            "single_source": 28
           }
         },
         "sot": {
           "bias_predicted_minus_actual": {
-            "away": -0.04,
-            "home": -0.632,
-            "total": -0.672
+            "away": -0.2286,
+            "home": -0.8607,
+            "total": -1.0893
           },
           "mae": {
-            "away": 1.288,
-            "home": 2.256,
-            "total": 2.648
+            "away": 1.4,
+            "home": 2.3107,
+            "total": 2.8536
           },
           "median_absolute_error_total": 2.4,
-          "n": 25,
-          "rmse_total": 3.3438,
+          "n": 28,
+          "rmse_total": 3.5281,
           "sample_stage": "insufficient_sample",
           "source_mix": {
-            "football_data_uk": 25
+            "football_data_uk": 28
           },
           "truth_statuses": {
-            "single_source": 25
+            "single_source": 28
           }
         },
         "yellows": {
           "bias_predicted_minus_actual": {
-            "away": -0.1784,
-            "home": 0.184,
-            "total": 0.0056
+            "away": -0.1471,
+            "home": 0.0379,
+            "total": -0.1093
           },
           "mae": {
-            "away": 0.9632,
-            "home": 1.1752,
-            "total": 1.3208
+            "away": 0.9921,
+            "home": 1.1757,
+            "total": 1.3457
           },
-          "median_absolute_error_total": 1.08,
-          "n": 25,
-          "rmse_total": 1.5557,
+          "median_absolute_error_total": 1.105,
+          "n": 28,
+          "rmse_total": 1.5673,
           "sample_stage": "insufficient_sample",
           "source_mix": {
-            "football_data_uk": 25
+            "football_data_uk": 28
           },
           "truth_statuses": {
-            "single_source": 25
+            "single_source": 28
           }
         }
       },
       "pre_final_T-3h": {
         "corners": {
           "bias_predicted_minus_actual": {
-            "away": 0.1222,
-            "home": -0.0333,
-            "total": 0.0889
+            "away": -0.17,
+            "home": 0.19,
+            "total": 0.02
           },
           "mae": {
-            "away": 1.6111,
-            "home": 3.1444,
-            "total": 3.1556
+            "away": 1.73,
+            "home": 3.05,
+            "total": 2.9
           },
           "median_absolute_error_total": 2.1,
-          "n": 9,
-          "rmse_total": 3.758,
+          "n": 10,
+          "rmse_total": 3.5702,
           "sample_stage": "insufficient_sample",
           "source_mix": {
-            "football_data_uk": 9
+            "football_data_uk": 10
           },
           "truth_statuses": {
-            "single_source": 9
+            "single_source": 10
           }
         },
         "fouls": {
           "bias_predicted_minus_actual": {
-            "away": -0.7844,
-            "home": -0.17,
-            "total": -0.9544
+            "away": -1.766,
+            "home": -0.064,
+            "total": -1.83
           },
           "mae": {
-            "away": 2.7978,
-            "home": 3.2433,
-            "total": 4.0167
+            "away": 3.578,
+            "home": 3.008,
+            "total": 4.586
           },
-          "median_absolute_error_total": 3.74,
-          "n": 9,
-          "rmse_total": 4.5329,
+          "median_absolute_error_total": 3.95,
+          "n": 10,
+          "rmse_total": 5.2841,
           "sample_stage": "insufficient_sample",
           "source_mix": {
-            "football_data_uk": 9
+            "football_data_uk": 10
           },
           "truth_statuses": {
-            "single_source": 9
+            "single_source": 10
           }
         },
         "goals": {
           "bias_predicted_minus_actual": {
-            "away": -0.6744,
-            "home": -0.3267,
-            "total": -1.0011
+            "away": -0.724,
+            "home": -0.358,
+            "total": -1.082
           },
           "mae": {
-            "away": 0.8678,
-            "home": 1.14,
-            "total": 1.79
+            "away": 0.898,
+            "home": 1.09,
+            "total": 1.792
           },
-          "median_absolute_error_total": 1.43,
-          "n": 9,
-          "rmse_total": 2.3228,
+          "median_absolute_error_total": 1.62,
+          "n": 10,
+          "rmse_total": 2.2767,
           "sample_stage": "insufficient_sample",
           "source_mix": {
-            "football_data_uk": 9
+            "football_data_uk": 10
           },
           "truth_statuses": {
-            "single_source": 9
+            "single_source": 10
           }
         },
         "reds": {
           "bias_predicted_minus_actual": {
-            "away": 0.1278,
-            "home": -0.1211,
-            "total": 0.0067
+            "away": 0.128,
+            "home": -0.097,
+            "total": 0.031
           },
           "mae": {
-            "away": 0.1278,
-            "home": 0.2922,
-            "total": 0.3978
+            "away": 0.128,
+            "home": 0.275,
+            "total": 0.383
           },
-          "median_absolute_error_total": 0.23,
-          "n": 9,
-          "rmse_total": 0.6271,
+          "median_absolute_error_total": 0.24,
+          "n": 10,
+          "rmse_total": 0.6002,
           "sample_stage": "insufficient_sample",
           "source_mix": {
-            "football_data_uk": 9
+            "football_data_uk": 10
           },
           "truth_statuses": {
-            "single_source": 9
+            "single_source": 10
           }
         },
         "shots": {
           "bias_predicted_minus_actual": {
-            "away": 0.46,
-            "home": -1.3444,
-            "total": -0.8844
+            "away": -0.256,
+            "home": -1.05,
+            "total": -1.306
           },
           "mae": {
-            "away": 2.1044,
-            "home": 3.2778,
-            "total": 3.6844
+            "away": 2.564,
+            "home": 3.11,
+            "total": 3.826
           },
-          "median_absolute_error_total": 2.6,
-          "n": 9,
-          "rmse_total": 4.957,
+          "median_absolute_error_total": 2.8,
+          "n": 10,
+          "rmse_total": 4.9715,
           "sample_stage": "insufficient_sample",
           "source_mix": {
-            "football_data_uk": 9
+            "football_data_uk": 10
           },
           "truth_statuses": {
-            "single_source": 9
+            "single_source": 10
           }
         },
         "sot": {
           "bias_predicted_minus_actual": {
-            "away": 0.5489,
-            "home": 0.3533,
-            "total": 0.9022
+            "away": 0.084,
+            "home": 0.388,
+            "total": 0.472
           },
           "mae": {
-            "away": 1.0067,
-            "home": 1.8022,
-            "total": 2.72
+            "away": 1.316,
+            "home": 1.692,
+            "total": 2.788
           },
-          "median_absolute_error_total": 2.2,
-          "n": 9,
-          "rmse_total": 3.1693,
+          "median_absolute_error_total": 2.69,
+          "n": 10,
+          "rmse_total": 3.1932,
           "sample_stage": "insufficient_sample",
           "source_mix": {
-            "football_data_uk": 9
+            "football_data_uk": 10
           },
           "truth_statuses": {
-            "single_source": 9
+            "single_source": 10
           }
         },
         "yellows": {
           "bias_predicted_minus_actual": {
-            "away": -0.1878,
-            "home": -0.7822,
-            "total": -0.97
+            "away": -0.303,
+            "home": -0.784,
+            "total": -1.087
           },
           "mae": {
-            "away": 0.7167,
-            "home": 1.06,
-            "total": 1.2167
+            "away": 0.779,
+            "home": 1.034,
+            "total": 1.309
           },
-          "median_absolute_error_total": 0.82,
-          "n": 9,
-          "rmse_total": 1.6018,
+          "median_absolute_error_total": 0.92,
+          "n": 10,
+          "rmse_total": 1.6635,
           "sample_stage": "insufficient_sample",
           "source_mix": {
-            "football_data_uk": 9
+            "football_data_uk": 10
           },
           "truth_statuses": {
-            "single_source": 9
+            "single_source": 10
           }
         }
       }
@@ -53464,163 +57982,163 @@
     "by_stat": {
       "corners": {
         "bias_predicted_minus_actual": {
-          "away": -0.0485,
-          "home": 0.1718,
-          "total": 0.1233
+          "away": -0.167,
+          "home": 0.2045,
+          "total": 0.0375
         },
         "mae": {
-          "away": 1.9864,
-          "home": 2.3893,
-          "total": 2.9272
+          "away": 2.0616,
+          "home": 2.333,
+          "total": 2.8625
         },
-        "median_absolute_error_total": 2.5,
-        "n": 103,
-        "rmse_total": 3.533,
+        "median_absolute_error_total": 2.45,
+        "n": 112,
+        "rmse_total": 3.4639,
         "sample_stage": "evaluation_ready",
         "source_mix": {
-          "football_data_uk": 103
+          "football_data_uk": 112
         },
         "truth_statuses": {
-          "single_source": 103
+          "single_source": 112
         }
       },
       "fouls": {
         "bias_predicted_minus_actual": {
-          "away": -0.2269,
-          "home": 0.7044,
-          "total": 0.4775
+          "away": -0.3863,
+          "home": 0.6629,
+          "total": 0.2766
         },
         "mae": {
-          "away": 3.2382,
-          "home": 3.2209,
-          "total": 4.645
+          "away": 3.2906,
+          "home": 3.104,
+          "total": 4.5946
         },
-        "median_absolute_error_total": 4.16,
-        "n": 103,
-        "rmse_total": 5.6268,
+        "median_absolute_error_total": 4.045,
+        "n": 112,
+        "rmse_total": 5.6184,
         "sample_stage": "evaluation_ready",
         "source_mix": {
-          "football_data_uk": 103
+          "football_data_uk": 112
         },
         "truth_statuses": {
-          "single_source": 103
+          "single_source": 112
         }
       },
       "goals": {
         "bias_predicted_minus_actual": {
-          "away": -0.217,
-          "home": -0.1994,
-          "total": -0.4164
+          "away": -0.2377,
+          "home": -0.2296,
+          "total": -0.4673
         },
         "mae": {
-          "away": 0.8677,
-          "home": 1.0724,
-          "total": 1.4125
+          "away": 0.8693,
+          "home": 1.1029,
+          "total": 1.4638
         },
-        "median_absolute_error_total": 1.28,
-        "n": 103,
-        "rmse_total": 1.7759,
+        "median_absolute_error_total": 1.33,
+        "n": 112,
+        "rmse_total": 1.81,
         "sample_stage": "evaluation_ready",
         "source_mix": {
-          "football_data_uk": 103
+          "football_data_uk": 112
         },
         "truth_statuses": {
-          "single_source": 103
+          "single_source": 112
         }
       },
       "reds": {
         "bias_predicted_minus_actual": {
-          "away": -0.0248,
-          "home": -0.0217,
-          "total": -0.0464
+          "away": -0.0237,
+          "home": -0.01,
+          "total": -0.0337
         },
         "mae": {
-          "away": 0.2176,
-          "home": 0.2088,
-          "total": 0.3798
+          "away": 0.2154,
+          "home": 0.202,
+          "total": 0.3715
         },
-        "median_absolute_error_total": 0.24,
-        "n": 103,
-        "rmse_total": 0.5109,
+        "median_absolute_error_total": 0.235,
+        "n": 112,
+        "rmse_total": 0.4989,
         "sample_stage": "evaluation_ready",
         "source_mix": {
-          "football_data_uk": 103
+          "football_data_uk": 112
         },
         "truth_statuses": {
-          "single_source": 103
+          "single_source": 112
         }
       },
       "shots": {
         "bias_predicted_minus_actual": {
-          "away": -1.4375,
-          "home": -1.0606,
-          "total": -2.4981
+          "away": -1.5707,
+          "home": -1.2087,
+          "total": -2.7794
         },
         "mae": {
-          "away": 4.3864,
-          "home": 4.3903,
-          "total": 5.5155
+          "away": 4.4148,
+          "home": 4.5601,
+          "total": 5.5901
         },
-        "median_absolute_error_total": 4.7,
-        "n": 103,
-        "rmse_total": 6.9226,
+        "median_absolute_error_total": 4.75,
+        "n": 112,
+        "rmse_total": 7.0299,
         "sample_stage": "evaluation_ready",
         "source_mix": {
-          "football_data_uk": 103
+          "football_data_uk": 112
         },
         "truth_statuses": {
-          "single_source": 103
+          "single_source": 112
         }
       },
       "sot": {
         "bias_predicted_minus_actual": {
-          "away": -0.3354,
-          "home": -0.3658,
-          "total": -0.7013
+          "away": -0.3883,
+          "home": -0.4451,
+          "total": -0.8334
         },
         "mae": {
-          "away": 1.683,
-          "home": 2.1377,
-          "total": 2.6789
+          "away": 1.7483,
+          "home": 2.1888,
+          "total": 2.7664
         },
-        "median_absolute_error_total": 2.3,
-        "n": 103,
-        "rmse_total": 3.4495,
+        "median_absolute_error_total": 2.4,
+        "n": 112,
+        "rmse_total": 3.49,
         "sample_stage": "evaluation_ready",
         "source_mix": {
-          "football_data_uk": 103
+          "football_data_uk": 112
         },
         "truth_statuses": {
-          "single_source": 103
+          "single_source": 112
         }
       },
       "yellows": {
         "bias_predicted_minus_actual": {
-          "away": -0.0204,
-          "home": 0.1807,
-          "total": 0.1603
+          "away": -0.0448,
+          "home": 0.1597,
+          "total": 0.1149
         },
         "mae": {
-          "away": 1.2066,
-          "home": 1.1075,
-          "total": 1.7067
+          "away": 1.1941,
+          "home": 1.0924,
+          "total": 1.6594
         },
-        "median_absolute_error_total": 1.37,
-        "n": 103,
-        "rmse_total": 2.1597,
+        "median_absolute_error_total": 1.265,
+        "n": 112,
+        "rmse_total": 2.1051,
         "sample_stage": "evaluation_ready",
         "source_mix": {
-          "football_data_uk": 103
+          "football_data_uk": 112
         },
         "truth_statuses": {
-          "single_source": 103
+          "single_source": 112
         }
       }
     },
-    "evaluated_matches": 103,
+    "evaluated_matches": 112,
     "model_versions": {
       "edge-2.0": 70,
-      "edge-2.1": 33
+      "edge-2.1": 42
     },
     "promotion_policy": {
       "automatic_production_promotion": false,
@@ -53628,10 +58146,10 @@
       "minimum_monitoring_sample": 30,
       "status": "evaluation_only"
     },
-    "stat_observations": 721,
+    "stat_observations": 784,
     "truth_match_statuses": {
-      "single_source": 103
+      "single_source": 112
     }
   },
-  "updated_at": "2026-09-29T13:03:51.849401+00:00"
+  "updated_at": "2026-10-04T23:23:00.463296+00:00"
 }
