@@ -1,8 +1,14 @@
 name: Stat champion evaluation P3.6a
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - "football/src/futbol_pred/stat_champion_evaluation.py"
+      - "football/tests/test_stat_champion_evaluation.py"
+      - ".github/workflows/stat-champion-evaluation.yml"
   workflow_run:
-    workflows: ["futbol-pred"]
+    workflows: ["futbol-pred (cron)"]
     types: [completed]
   workflow_dispatch:
   schedule:
