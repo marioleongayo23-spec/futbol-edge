@@ -6,6 +6,8 @@ from copy import deepcopy
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
+from .stat_shadow import build_stat_shadow
+
 MADRID = ZoneInfo("Europe/Madrid")
 MODEL_VERSION = "edge-2.1"
 
@@ -84,6 +86,13 @@ def _snapshot(match: dict, now: datetime, window: str) -> dict | None:
     for field in _SNAPSHOT_FIELDS:
         if field in match:
             out[field] = deepcopy(match[field])
+
+    # P3.5: el challenger se materializa AHORA, antes del kickoff, usando solo
+    # evaluaciones de partidos ya cerrados. Se guarda dentro del snapshot y no se
+    # restaura al payload de serving, por lo que no puede alterar producción.
+    shadow = build_stat_shadow(match)
+    if shadow:
+        out["stat_challengers"] = shadow
     return out
 
 
