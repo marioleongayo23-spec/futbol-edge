@@ -1,6 +1,6 @@
 {
   "schema_version": 7,
-  "generated_at": "2026-10-19T21:36:03.734237+02:00",
+  "generated_at": "2026-10-19T21:46:25.938051+02:00",
   "season": 2026,
   "quiniela": {
     "jornada": "15",
@@ -830244,7 +830244,7 @@
         "football_data_uk": "1811923338"
       },
       "operational_checks": {
-        "fixture_checked_at": "2026-10-19T21:35:16.554020+02:00",
+        "fixture_checked_at": "2026-10-19T21:46:25.938051+02:00",
         "fixture_check_result": "not_found"
       },
       "current_squads": {
@@ -830259,7 +830259,7 @@
           "fixture": {
             "state": "ok",
             "required": true,
-            "checked_at": "2026-10-19T21:35:16.554020+02:00",
+            "checked_at": "2026-10-19T21:46:25.938051+02:00",
             "source": "football_data_uk",
             "detail": "not_found"
           },
@@ -1372976,7 +1372976,7 @@
       "daily_remaining": 99,
       "minute_limit": 10,
       "minute_remaining": 9,
-      "checked_at": "2026-10-19T19:35:19.814211+00:00",
+      "checked_at": "2026-10-19T19:46:29.311375+00:00",
       "policy": "polling prepartido prioritario + backoff por cuota restante"
     },
     "the_odds_api": {
@@ -1373052,14 +1373052,14 @@
     }
   },
   "feature_truth_table": {
-    "generated_at": "2026-10-19T21:36:03.734237+02:00",
+    "generated_at": "2026-10-19T21:46:25.938051+02:00",
     "principle": "candidate -> leakage-safe snapshot -> walk-forward -> compare vs accepted engine + no-vig market -> promote only on improvement",
     "eligible_matches": 398,
     "features": [
       {
         "feature": "dixon_coles_score_model",
         "source": "Resultados históricos reales · Football-Data/API-Football + score model Dixon-Coles",
-        "available_at": "2026-10-19T21:36:03.734237+02:00",
+        "available_at": "2026-10-19T21:46:25.938051+02:00",
         "coverage": {
           "covered": 398,
           "eligible": 398,
@@ -1373081,7 +1373081,7 @@
       {
         "feature": "elo",
         "source": "Resultados históricos reales transformados en rating Elo",
-        "available_at": "2026-10-19T21:36:03.734237+02:00",
+        "available_at": "2026-10-19T21:46:25.938051+02:00",
         "coverage": {
           "covered": 398,
           "eligible": 398,
@@ -1373102,7 +1373102,7 @@
       {
         "feature": "team_stat_model",
         "source": "football-data.co.uk · históricos de remates, SOT, córners, faltas y tarjetas",
-        "available_at": "2026-10-19T21:36:03.734237+02:00",
+        "available_at": "2026-10-19T21:46:25.938051+02:00",
         "coverage": {
           "covered": 291,
           "eligible": 398,
@@ -1373248,7 +1373248,7 @@
       {
         "feature": "tactical_matchup",
         "source": "Perfiles observados casa/fuera derivados de football-data.co.uk",
-        "available_at": "2026-10-19T21:36:03.734237+02:00",
+        "available_at": "2026-10-19T21:46:25.938051+02:00",
         "coverage": {
           "covered": 291,
           "eligible": 398,
