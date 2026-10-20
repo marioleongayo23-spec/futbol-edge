@@ -1,6 +1,6 @@
 {
   "schema_version": 7,
-  "generated_at": "2026-10-20T01:36:33.487616+02:00",
+  "generated_at": "2026-10-20T03:01:23.306171+02:00",
   "season": 2026,
   "quiniela": {
     "jornada": "15",
@@ -834835,7 +834835,7 @@
           "weather": false,
           "market_odds": false
         },
-        "refreshed_at": "2026-10-20T01:36:33.487616+02:00"
+        "refreshed_at": "2026-10-20T03:01:23.306171+02:00"
       },
       "prediction_factors": [
         {
@@ -834866,7 +834866,7 @@
           "desacuerdo alto entre modelos"
         ],
         "policy": "abstención automática por incertidumbre o falta de evidencia",
-        "refreshed_at": "2026-10-20T01:36:33.487616+02:00"
+        "refreshed_at": "2026-10-20T03:01:23.306171+02:00"
       },
       "prediction_snapshot": {
         "generated_at": "2026-08-31T10:21:28.703587+02:00",
@@ -836646,7 +836646,7 @@
         "visitante": []
       },
       "prediction_live_refresh": {
-        "checked_at": "2026-10-20T01:36:33.487616+02:00",
+        "checked_at": "2026-10-20T03:01:23.306171+02:00",
         "cadence_target_minutes": 5,
         "model_retrained": false,
         "pure_model_probs_changed": false,
@@ -837170,7 +837170,7 @@
           "weather": false,
           "market_odds": false
         },
-        "refreshed_at": "2026-10-20T01:36:33.487616+02:00"
+        "refreshed_at": "2026-10-20T03:01:23.306171+02:00"
       },
       "prediction_factors": [
         {
@@ -837199,7 +837199,7 @@
         "label": "Pronóstico publicable",
         "reasons": [],
         "policy": "abstención automática por incertidumbre o falta de evidencia",
-        "refreshed_at": "2026-10-20T01:36:33.487616+02:00"
+        "refreshed_at": "2026-10-20T03:01:23.306171+02:00"
       },
       "prediction_snapshot": {
         "generated_at": "2026-08-31T10:21:28.703587+02:00",
@@ -838996,7 +838996,7 @@
         "visitante": []
       },
       "prediction_live_refresh": {
-        "checked_at": "2026-10-20T01:36:33.487616+02:00",
+        "checked_at": "2026-10-20T03:01:23.306171+02:00",
         "cadence_target_minutes": 5,
         "model_retrained": false,
         "pure_model_probs_changed": false,
@@ -839506,10 +839506,10 @@
         }
       },
       "prediction_confidence": {
-        "score": 77,
+        "score": 74,
         "level": "alta",
         "model_disagreement_pp": 27.5,
-        "availability_penalty_pp": 5.1,
+        "availability_penalty_pp": 8.1,
         "data_completeness_pct": 55,
         "evidence": {
           "probabilities": true,
@@ -839520,7 +839520,8 @@
           "official_lineup": false,
           "weather": false,
           "market_odds": false
-        }
+        },
+        "refreshed_at": "2026-10-20T03:01:23.306171+02:00"
       },
       "prediction_factors": [
         {
@@ -839550,7 +839551,8 @@
         "reasons": [
           "desacuerdo alto entre modelos"
         ],
-        "policy": "abstención automática por incertidumbre o falta de evidencia"
+        "policy": "abstención automática por incertidumbre o falta de evidencia",
+        "refreshed_at": "2026-10-20T03:01:23.306171+02:00"
       },
       "prediction_snapshot": {
         "generated_at": "2026-08-31T10:21:28.703587+02:00",
@@ -841288,30 +841290,30 @@
         "method": "predicción por jugador (muestra real donde existe; si no, reparto por rol de la predicción de equipo) puesta como línea over"
       },
       "lineup_impact": {
-        "status": "probable",
-        "evidence": "media",
+        "status": "estimado",
+        "evidence": "baja",
         "home": {
-          "key_players": 0,
-          "expected_minutes_avg": null,
-          "starter_probability_avg_pct": null,
-          "attack_presence_index": null,
+          "key_players": 11,
+          "expected_minutes_avg": 76.0,
+          "starter_probability_avg_pct": 74,
+          "attack_presence_index": 23.87,
           "listed_absences": 3,
           "official_absences": 0,
           "confidence_penalty_pp": 2.6
         },
         "away": {
-          "key_players": 0,
-          "expected_minutes_avg": null,
-          "starter_probability_avg_pct": null,
-          "attack_presence_index": null,
+          "key_players": 11,
+          "expected_minutes_avg": 76.0,
+          "starter_probability_avg_pct": 74,
+          "attack_presence_index": 6.8,
           "listed_absences": 1,
           "official_absences": 0,
           "confidence_penalty_pp": 0.5
         },
-        "attack_presence_edge": null,
-        "confidence_penalty_pp": 5.1,
+        "attack_presence_edge": 17.07,
+        "confidence_penalty_pp": 8.1,
         "probability_adjustment": "not_applied",
-        "method": "minutos × probabilidad de titularidad × producción observada; las bajas oficiales penalizan confianza. No altera el 1X2 sin validación histórica."
+        "method": "actualización intradía de minutos/producción/bajas; no altera 1X2 puro sin gate histórico"
       },
       "match_uid": "champions:2026:20261020:man-city:pae-aek",
       "provenance": {
@@ -841416,6 +841418,18 @@
           "odds": 0.0,
           "players": 50.0
         }
+      },
+      "prediction_live_refresh": {
+        "checked_at": "2026-10-20T03:01:23.306171+02:00",
+        "cadence_target_minutes": 5,
+        "model_retrained": false,
+        "pure_model_probs_changed": false,
+        "reacts_to": [
+          "weather",
+          "lineup",
+          "absences",
+          "market"
+        ]
       }
     },
     {
@@ -841860,7 +841874,8 @@
           "official_lineup": false,
           "weather": false,
           "market_odds": false
-        }
+        },
+        "refreshed_at": "2026-10-20T03:01:23.306171+02:00"
       },
       "prediction_factors": [
         {
@@ -841890,7 +841905,8 @@
         "reasons": [
           "desacuerdo alto entre modelos"
         ],
-        "policy": "abstención automática por incertidumbre o falta de evidencia"
+        "policy": "abstención automática por incertidumbre o falta de evidencia",
+        "refreshed_at": "2026-10-20T03:01:23.306171+02:00"
       },
       "prediction_snapshot": {
         "generated_at": "2026-08-31T10:21:28.703587+02:00",
@@ -843597,27 +843613,27 @@
         "status": "probable",
         "evidence": "media",
         "home": {
-          "key_players": 0,
-          "expected_minutes_avg": null,
-          "starter_probability_avg_pct": null,
-          "attack_presence_index": null,
+          "key_players": 11,
+          "expected_minutes_avg": 82.0,
+          "starter_probability_avg_pct": 88,
+          "attack_presence_index": 13.43,
           "listed_absences": 2,
           "official_absences": 0,
           "confidence_penalty_pp": 2.1
         },
         "away": {
-          "key_players": 0,
-          "expected_minutes_avg": null,
-          "starter_probability_avg_pct": null,
-          "attack_presence_index": null,
+          "key_players": 11,
+          "expected_minutes_avg": 82.0,
+          "starter_probability_avg_pct": 88,
+          "attack_presence_index": 35.84,
           "listed_absences": 2,
           "official_absences": 0,
           "confidence_penalty_pp": 2.1
         },
-        "attack_presence_edge": null,
+        "attack_presence_edge": -22.41,
         "confidence_penalty_pp": 6.2,
         "probability_adjustment": "not_applied",
-        "method": "minutos × probabilidad de titularidad × producción observada; las bajas oficiales penalizan confianza. No altera el 1X2 sin validación histórica."
+        "method": "actualización intradía de minutos/producción/bajas; no altera 1X2 puro sin gate histórico"
       },
       "match_uid": "champions:2026:20261020:vfb-stuttgart:ath-madrid",
       "provenance": {
@@ -843722,6 +843738,18 @@
           "odds": 0.0,
           "players": 50.0
         }
+      },
+      "prediction_live_refresh": {
+        "checked_at": "2026-10-20T03:01:23.306171+02:00",
+        "cadence_target_minutes": 5,
+        "model_retrained": false,
+        "pure_model_probs_changed": false,
+        "reacts_to": [
+          "weather",
+          "lineup",
+          "absences",
+          "market"
+        ]
       }
     },
     {
@@ -844166,7 +844194,8 @@
           "official_lineup": false,
           "weather": false,
           "market_odds": false
-        }
+        },
+        "refreshed_at": "2026-10-20T03:01:23.306171+02:00"
       },
       "prediction_factors": [
         {
@@ -844196,7 +844225,8 @@
         "reasons": [
           "desacuerdo alto entre modelos"
         ],
-        "policy": "abstención automática por incertidumbre o falta de evidencia"
+        "policy": "abstención automática por incertidumbre o falta de evidencia",
+        "refreshed_at": "2026-10-20T03:01:23.306171+02:00"
       },
       "prediction_snapshot": {
         "generated_at": "2026-08-31T10:21:28.703587+02:00",
@@ -845910,27 +845940,27 @@
         "status": "probable",
         "evidence": "media",
         "home": {
-          "key_players": 0,
-          "expected_minutes_avg": null,
-          "starter_probability_avg_pct": null,
-          "attack_presence_index": null,
+          "key_players": 11,
+          "expected_minutes_avg": 82.0,
+          "starter_probability_avg_pct": 88,
+          "attack_presence_index": 40.41,
           "listed_absences": 1,
           "official_absences": 0,
           "confidence_penalty_pp": 1.0
         },
         "away": {
-          "key_players": 0,
-          "expected_minutes_avg": null,
-          "starter_probability_avg_pct": null,
-          "attack_presence_index": null,
+          "key_players": 11,
+          "expected_minutes_avg": 82.0,
+          "starter_probability_avg_pct": 88,
+          "attack_presence_index": 6.02,
           "listed_absences": 3,
           "official_absences": 0,
           "confidence_penalty_pp": 3.1
         },
-        "attack_presence_edge": null,
+        "attack_presence_edge": 34.39,
         "confidence_penalty_pp": 6.1,
         "probability_adjustment": "not_applied",
-        "method": "minutos × probabilidad de titularidad × producción observada; las bajas oficiales penalizan confianza. No altera el 1X2 sin validación histórica."
+        "method": "actualización intradía de minutos/producción/bajas; no altera 1X2 puro sin gate histórico"
       },
       "extended_value": [],
       "match_uid": "champions:2026:20261020:liverpool:villarreal",
@@ -846036,6 +846066,18 @@
           "odds": 0.0,
           "players": 50.0
         }
+      },
+      "prediction_live_refresh": {
+        "checked_at": "2026-10-20T03:01:23.306171+02:00",
+        "cadence_target_minutes": 5,
+        "model_retrained": false,
+        "pure_model_probs_changed": false,
+        "reacts_to": [
+          "weather",
+          "lineup",
+          "absences",
+          "market"
+        ]
       }
     },
     {
@@ -846465,10 +846507,10 @@
         }
       },
       "prediction_confidence": {
-        "score": 74,
-        "level": "alta",
+        "score": 71,
+        "level": "media",
         "model_disagreement_pp": 4.9,
-        "availability_penalty_pp": 4.0,
+        "availability_penalty_pp": 7.0,
         "data_completeness_pct": 55,
         "evidence": {
           "probabilities": true,
@@ -846479,7 +846521,8 @@
           "official_lineup": false,
           "weather": false,
           "market_odds": false
-        }
+        },
+        "refreshed_at": "2026-10-20T03:01:23.306171+02:00"
       },
       "prediction_factors": [
         {
@@ -846507,7 +846550,8 @@
         "decision": "eligible",
         "label": "Pronóstico publicable",
         "reasons": [],
-        "policy": "abstención automática por incertidumbre o falta de evidencia"
+        "policy": "abstención automática por incertidumbre o falta de evidencia",
+        "refreshed_at": "2026-10-20T03:01:23.306171+02:00"
       },
       "prediction_snapshot": {
         "generated_at": "2026-08-31T10:21:28.703587+02:00",
@@ -848234,30 +848278,30 @@
         "method": "predicción por jugador (muestra real donde existe; si no, reparto por rol de la predicción de equipo) puesta como línea over"
       },
       "lineup_impact": {
-        "status": "probable",
-        "evidence": "media",
+        "status": "estimado",
+        "evidence": "baja",
         "home": {
-          "key_players": 0,
-          "expected_minutes_avg": null,
-          "starter_probability_avg_pct": null,
-          "attack_presence_index": null,
+          "key_players": 11,
+          "expected_minutes_avg": 76.0,
+          "starter_probability_avg_pct": 74,
+          "attack_presence_index": 17.07,
           "listed_absences": 1,
           "official_absences": 0,
           "confidence_penalty_pp": 1.0
         },
         "away": {
-          "key_players": 0,
-          "expected_minutes_avg": null,
-          "starter_probability_avg_pct": null,
-          "attack_presence_index": null,
+          "key_players": 11,
+          "expected_minutes_avg": 76.0,
+          "starter_probability_avg_pct": 74,
+          "attack_presence_index": 12.09,
           "listed_absences": 1,
           "official_absences": 0,
           "confidence_penalty_pp": 1.0
         },
-        "attack_presence_edge": null,
-        "confidence_penalty_pp": 4.0,
+        "attack_presence_edge": 4.98,
+        "confidence_penalty_pp": 7.0,
         "probability_adjustment": "not_applied",
-        "method": "minutos × probabilidad de titularidad × producción observada; las bajas oficiales penalizan confianza. No altera el 1X2 sin validación histórica."
+        "method": "actualización intradía de minutos/producción/bajas; no altera 1X2 puro sin gate histórico"
       },
       "extended_value": [],
       "match_uid": "champions:2026:20261020:as-roma:sk-slovan-bratislava",
@@ -848363,6 +848407,18 @@
           "odds": 0.0,
           "players": 50.0
         }
+      },
+      "prediction_live_refresh": {
+        "checked_at": "2026-10-20T03:01:23.306171+02:00",
+        "cadence_target_minutes": 5,
+        "model_retrained": false,
+        "pure_model_probs_changed": false,
+        "reacts_to": [
+          "weather",
+          "lineup",
+          "absences",
+          "market"
+        ]
       }
     },
     {
@@ -848807,7 +848863,8 @@
           "official_lineup": false,
           "weather": false,
           "market_odds": false
-        }
+        },
+        "refreshed_at": "2026-10-20T03:01:23.306171+02:00"
       },
       "prediction_factors": [
         {
@@ -848837,7 +848894,8 @@
         "reasons": [
           "desacuerdo alto entre modelos"
         ],
-        "policy": "abstención automática por incertidumbre o falta de evidencia"
+        "policy": "abstención automática por incertidumbre o falta de evidencia",
+        "refreshed_at": "2026-10-20T03:01:23.306171+02:00"
       },
       "prediction_snapshot": {
         "generated_at": "2026-08-31T10:21:28.703587+02:00",
@@ -850543,27 +850601,27 @@
         "status": "probable",
         "evidence": "media",
         "home": {
-          "key_players": 0,
-          "expected_minutes_avg": null,
-          "starter_probability_avg_pct": null,
-          "attack_presence_index": null,
+          "key_players": 11,
+          "expected_minutes_avg": 82.0,
+          "starter_probability_avg_pct": 88,
+          "attack_presence_index": 17.07,
           "listed_absences": 2,
           "official_absences": 0,
           "confidence_penalty_pp": 2.1
         },
         "away": {
-          "key_players": 0,
-          "expected_minutes_avg": null,
-          "starter_probability_avg_pct": null,
-          "attack_presence_index": null,
+          "key_players": 11,
+          "expected_minutes_avg": 82.0,
+          "starter_probability_avg_pct": 88,
+          "attack_presence_index": 32.33,
           "listed_absences": 2,
           "official_absences": 0,
           "confidence_penalty_pp": 2.1
         },
-        "attack_presence_edge": null,
+        "attack_presence_edge": -15.26,
         "confidence_penalty_pp": 6.2,
         "probability_adjustment": "not_applied",
-        "method": "minutos × probabilidad de titularidad × producción observada; las bajas oficiales penalizan confianza. No altera el 1X2 sin validación histórica."
+        "method": "actualización intradía de minutos/producción/bajas; no altera 1X2 puro sin gate histórico"
       },
       "match_uid": "champions:2026:20261020:porto:psv",
       "provenance": {
@@ -850668,6 +850726,18 @@
           "odds": 0.0,
           "players": 50.0
         }
+      },
+      "prediction_live_refresh": {
+        "checked_at": "2026-10-20T03:01:23.306171+02:00",
+        "cadence_target_minutes": 5,
+        "model_retrained": false,
+        "pure_model_probs_changed": false,
+        "reacts_to": [
+          "weather",
+          "lineup",
+          "absences",
+          "market"
+        ]
       }
     },
     {
@@ -851098,10 +851168,10 @@
         }
       },
       "prediction_confidence": {
-        "score": 67,
+        "score": 64,
         "level": "media",
         "model_disagreement_pp": 21.0,
-        "availability_penalty_pp": 3.5,
+        "availability_penalty_pp": 6.5,
         "data_completeness_pct": 55,
         "evidence": {
           "probabilities": true,
@@ -851112,7 +851182,8 @@
           "official_lineup": false,
           "weather": false,
           "market_odds": false
-        }
+        },
+        "refreshed_at": "2026-10-20T03:01:23.306171+02:00"
       },
       "prediction_factors": [
         {
@@ -851142,7 +851213,8 @@
         "reasons": [
           "desacuerdo alto entre modelos"
         ],
-        "policy": "abstención automática por incertidumbre o falta de evidencia"
+        "policy": "abstención automática por incertidumbre o falta de evidencia",
+        "refreshed_at": "2026-10-20T03:01:23.306171+02:00"
       },
       "prediction_snapshot": {
         "generated_at": "2026-08-31T10:21:28.703587+02:00",
@@ -852863,30 +852935,30 @@
         "method": "predicción por jugador (muestra real donde existe; si no, reparto por rol de la predicción de equipo) puesta como línea over"
       },
       "lineup_impact": {
-        "status": "probable",
-        "evidence": "media",
+        "status": "estimado",
+        "evidence": "baja",
         "home": {
-          "key_players": 0,
-          "expected_minutes_avg": null,
-          "starter_probability_avg_pct": null,
-          "attack_presence_index": null,
+          "key_players": 11,
+          "expected_minutes_avg": 76.0,
+          "starter_probability_avg_pct": 74,
+          "attack_presence_index": 12.5,
           "listed_absences": 1,
           "official_absences": 0,
           "confidence_penalty_pp": 0.5
         },
         "away": {
-          "key_players": 0,
-          "expected_minutes_avg": null,
-          "starter_probability_avg_pct": null,
-          "attack_presence_index": null,
+          "key_players": 11,
+          "expected_minutes_avg": 76.0,
+          "starter_probability_avg_pct": 74,
+          "attack_presence_index": 20.92,
           "listed_absences": 1,
           "official_absences": 0,
           "confidence_penalty_pp": 1.0
         },
-        "attack_presence_edge": null,
-        "confidence_penalty_pp": 3.5,
+        "attack_presence_edge": -8.42,
+        "confidence_penalty_pp": 6.5,
         "probability_adjustment": "not_applied",
-        "method": "minutos × probabilidad de titularidad × producción observada; las bajas oficiales penalizan confianza. No altera el 1X2 sin validación histórica."
+        "method": "actualización intradía de minutos/producción/bajas; no altera 1X2 puro sin gate histórico"
       },
       "match_uid": "champions:2026:20261020:ssc-napoli:fk-bod-glimt",
       "provenance": {
@@ -852991,6 +853063,18 @@
           "odds": 0.0,
           "players": 50.0
         }
+      },
+      "prediction_live_refresh": {
+        "checked_at": "2026-10-20T03:01:23.306171+02:00",
+        "cadence_target_minutes": 5,
+        "model_retrained": false,
+        "pure_model_probs_changed": false,
+        "reacts_to": [
+          "weather",
+          "lineup",
+          "absences",
+          "market"
+        ]
       }
     },
     {
@@ -853430,10 +853514,10 @@
         }
       },
       "prediction_confidence": {
-        "score": 82,
+        "score": 79,
         "level": "alta",
         "model_disagreement_pp": 19.0,
-        "availability_penalty_pp": 9.8,
+        "availability_penalty_pp": 12.8,
         "data_completeness_pct": 55,
         "evidence": {
           "probabilities": true,
@@ -853444,7 +853528,8 @@
           "official_lineup": false,
           "weather": false,
           "market_odds": false
-        }
+        },
+        "refreshed_at": "2026-10-20T03:01:23.306171+02:00"
       },
       "prediction_factors": [
         {
@@ -853474,7 +853559,8 @@
         "reasons": [
           "desacuerdo alto entre modelos"
         ],
-        "policy": "abstención automática por incertidumbre o falta de evidencia"
+        "policy": "abstención automática por incertidumbre o falta de evidencia",
+        "refreshed_at": "2026-10-20T03:01:23.306171+02:00"
       },
       "prediction_snapshot": {
         "generated_at": "2026-08-31T10:21:28.703587+02:00",
@@ -855265,30 +855351,30 @@
         "method": "predicción por jugador (muestra real donde existe; si no, reparto por rol de la predicción de equipo) puesta como línea over"
       },
       "lineup_impact": {
-        "status": "probable",
-        "evidence": "media",
+        "status": "estimado",
+        "evidence": "baja",
         "home": {
-          "key_players": 0,
-          "expected_minutes_avg": null,
-          "starter_probability_avg_pct": null,
-          "attack_presence_index": null,
+          "key_players": 11,
+          "expected_minutes_avg": 76.0,
+          "starter_probability_avg_pct": 74,
+          "attack_presence_index": 37.9,
           "listed_absences": 3,
           "official_absences": 0,
           "confidence_penalty_pp": 3.1
         },
         "away": {
-          "key_players": 0,
-          "expected_minutes_avg": null,
-          "starter_probability_avg_pct": null,
-          "attack_presence_index": null,
+          "key_players": 11,
+          "expected_minutes_avg": 76.0,
+          "starter_probability_avg_pct": 74,
+          "attack_presence_index": 16.36,
           "listed_absences": 5,
           "official_absences": 0,
           "confidence_penalty_pp": 4.7
         },
-        "attack_presence_edge": null,
-        "confidence_penalty_pp": 9.8,
+        "attack_presence_edge": 21.54,
+        "confidence_penalty_pp": 12.8,
         "probability_adjustment": "not_applied",
-        "method": "minutos × probabilidad de titularidad × producción observada; las bajas oficiales penalizan confianza. No altera el 1X2 sin validación histórica."
+        "method": "actualización intradía de minutos/producción/bajas; no altera 1X2 puro sin gate histórico"
       },
       "extended_value": [],
       "match_uid": "champions:2026:20261020:paris-saint-germain-fc:barcelona",
@@ -855394,6 +855480,18 @@
           "odds": 0.0,
           "players": 50.0
         }
+      },
+      "prediction_live_refresh": {
+        "checked_at": "2026-10-20T03:01:23.306171+02:00",
+        "cadence_target_minutes": 5,
+        "model_retrained": false,
+        "pure_model_probs_changed": false,
+        "reacts_to": [
+          "weather",
+          "lineup",
+          "absences",
+          "market"
+        ]
       }
     },
     {
@@ -1380976,14 +1381074,14 @@
     }
   },
   "feature_truth_table": {
-    "generated_at": "2026-10-20T01:36:33.487616+02:00",
+    "generated_at": "2026-10-20T03:01:23.306171+02:00",
     "principle": "candidate -> leakage-safe snapshot -> walk-forward -> compare vs accepted engine + no-vig market -> promote only on improvement",
     "eligible_matches": 399,
     "features": [
       {
         "feature": "dixon_coles_score_model",
         "source": "Resultados históricos reales · Football-Data/API-Football + score model Dixon-Coles",
-        "available_at": "2026-10-20T01:36:33.487616+02:00",
+        "available_at": "2026-10-20T03:01:23.306171+02:00",
         "coverage": {
           "covered": 399,
           "eligible": 399,
@@ -1381005,7 +1381103,7 @@
       {
         "feature": "elo",
         "source": "Resultados históricos reales transformados en rating Elo",
-        "available_at": "2026-10-20T01:36:33.487616+02:00",
+        "available_at": "2026-10-20T03:01:23.306171+02:00",
         "coverage": {
           "covered": 399,
           "eligible": 399,
@@ -1381026,7 +1381124,7 @@
       {
         "feature": "team_stat_model",
         "source": "football-data.co.uk · históricos de remates, SOT, córners, faltas y tarjetas",
-        "available_at": "2026-10-20T01:36:33.487616+02:00",
+        "available_at": "2026-10-20T03:01:23.306171+02:00",
         "coverage": {
           "covered": 292,
           "eligible": 399,
@@ -1381172,7 +1381270,7 @@
       {
         "feature": "tactical_matchup",
         "source": "Perfiles observados casa/fuera derivados de football-data.co.uk",
-        "available_at": "2026-10-20T01:36:33.487616+02:00",
+        "available_at": "2026-10-20T03:01:23.306171+02:00",
         "coverage": {
           "covered": 292,
           "eligible": 399,
