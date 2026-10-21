@@ -1,6 +1,6 @@
 {
   "schema_version": 7,
-  "generated_at": "2026-10-21T12:25:24.450869+02:00",
+  "generated_at": "2026-10-21T13:43:25.925249+02:00",
   "season": 2026,
   "quiniela": {
     "jornada": "16",
@@ -94917,7 +94917,7 @@
   },
   "content_audit": {
     "window": "continuo",
-    "checked_at": "2026-10-21T12:25:27.871432+02:00",
+    "checked_at": "2026-10-21T13:43:29.096322+02:00",
     "matches_today": 10,
     "complete": 0,
     "incomplete": [
@@ -94956,6 +94956,7 @@
         "id": "football_data-575371",
         "partido": "FC Internazionale Milano - FK Shakhtar Donetsk",
         "missing": [
+          "clima",
           "cuotas"
         ]
       },
@@ -94963,6 +94964,7 @@
         "id": "football_data-575372",
         "partido": "FC Bayern München - Arsenal FC",
         "missing": [
+          "clima",
           "cuotas"
         ]
       },
@@ -94970,6 +94972,7 @@
         "id": "football_data-575373",
         "partido": "Club Brugge KV - Racing Club de Lens",
         "missing": [
+          "clima",
           "cuotas"
         ]
       },
@@ -94977,6 +94980,7 @@
         "id": "football_data-575374",
         "partido": "Aston Villa FC - Viking FK",
         "missing": [
+          "clima",
           "cuotas"
         ]
       },
@@ -94984,6 +94988,7 @@
         "id": "football_data-575375",
         "partido": "Sporting Clube de Portugal - LASK Linz",
         "missing": [
+          "clima",
           "cuotas"
         ]
       },
@@ -95021,10 +95026,9 @@
         "ok": 10
       },
       "weather": {
-        "missing": 2,
+        "missing": 7,
         "stale": 1,
-        "ok": 2,
-        "scheduled": 5
+        "ok": 2
       },
       "absences": {
         "ok": 9,
@@ -854291,11 +854295,11 @@
           "Alberto Dossena",
           "Marc-Oliver Kempf",
           "Alberto Moreno",
-          "Máximo Perrone",
           "Sergi Roberto",
+          "Máximo Perrone",
           "Nico Paz",
           "Gabriel Strefezza",
-          "Lucas Da Cunha",
+          "Alieu Fadera",
           "Patrick Cutrone"
         ],
         "visitante": [
@@ -854308,7 +854312,7 @@
           "Kobbie Mainoo",
           "Bruno Fernandes",
           "Amad Diallo",
-          "Alejandro Garnacho",
+          "Marcus Rashford",
           "Rasmus Højlund"
         ],
         "posiciones_local": [
@@ -854483,7 +854487,7 @@
             }
           },
           {
-            "jugador": "Máximo Perrone",
+            "jugador": "Sergi Roberto",
             "position": "MCD",
             "g": 0.08,
             "a": 0.09,
@@ -854510,7 +854514,7 @@
             }
           },
           {
-            "jugador": "Sergi Roberto",
+            "jugador": "Máximo Perrone",
             "position": "MC",
             "g": 0.12,
             "a": 0.14,
@@ -854591,7 +854595,7 @@
             }
           },
           {
-            "jugador": "Lucas Da Cunha",
+            "jugador": "Alieu Fadera",
             "position": "EI",
             "g": 0.31,
             "a": 0.18,
@@ -854890,7 +854894,7 @@
             }
           },
           {
-            "jugador": "Alejandro Garnacho",
+            "jugador": "Marcus Rashford",
             "position": "EI",
             "g": 0.22,
             "a": 0.13,
@@ -854960,7 +854964,7 @@
             "tipo": "ventaja_estadistica_sin_cuota"
           },
           {
-            "jugador": "Lucas Da Cunha",
+            "jugador": "Alieu Fadera",
             "lado": "local",
             "score": 2.94,
             "motivo": "76 min · 2.1 remates · 0.9 a puerta",
@@ -855007,9 +855011,9 @@
         ],
         "provider": "Gemini",
         "model": "gemini-3.6-flash",
-        "generated_at": "2026-10-21T12:22:03.174234+02:00",
-        "ts": "2026-10-21T12:22:03.174234+02:00",
-        "fuente": "Estimación T-383m · continuidad oficial + IA · sin fuente externa suficiente",
+        "generated_at": "2026-10-21T13:40:31.354350+02:00",
+        "ts": "2026-10-21T13:40:31.354350+02:00",
+        "fuente": "Estimación T-304m · continuidad oficial + IA · sin fuente externa suficiente",
         "input_fingerprint": "31b75f15cf98813a",
         "impacto_bajas": {
           "local": {
@@ -855026,11 +855030,11 @@
           },
           "fuente": "goles+asistencias reales de la temporada · informativo, no altera la probabilidad"
         },
-        "critical_probable_checked_at": "2026-10-21T12:22:03.174234+02:00",
+        "critical_probable_checked_at": "2026-10-21T13:40:31.354350+02:00",
         "critical_media_fingerprint": "4f53cda18c2baa0c",
         "critical_media_fingerprint_previous": "4f53cda18c2baa0c",
         "player_props_source": "Predictivo híbrido · 0/22 con muestra individual real",
-        "player_props_checked_at": "2026-10-21T12:22:03.174234+02:00",
+        "player_props_checked_at": "2026-10-21T13:40:31.354350+02:00",
         "player_props_lineup_status": "estimado",
         "cache_status": "recuperado_de_cache",
         "position_source": "model_unverified",
@@ -855062,11 +855066,12 @@
         "source_quality": "model_only",
         "display_warning": "XI estimado por modelo; no existe evidencia externa suficiente para ambos equipos.",
         "probable_refresh_windows": {
-          "T-383m": "2026-10-21T12:22:03.174234+02:00"
+          "T-383m": "2026-10-21T12:22:03.174234+02:00",
+          "T-304m": "2026-10-21T13:40:31.354350+02:00"
         },
-        "probable_refresh_window_last": "T-383m",
-        "source_updated_at": "2026-10-21T12:22:03.174234+02:00",
-        "critical_probable_generated_at": "2026-10-21T12:22:03.174234+02:00"
+        "probable_refresh_window_last": "T-304m",
+        "source_updated_at": "2026-10-21T13:40:31.354350+02:00",
+        "critical_probable_generated_at": "2026-10-21T13:40:31.354350+02:00"
       },
       "lineup_impact": {
         "status": "estimado",
@@ -855185,7 +855190,7 @@
           "weather": false,
           "market_odds": false
         },
-        "refreshed_at": "2026-10-21T12:25:24.450869+02:00"
+        "refreshed_at": "2026-10-21T13:43:25.925249+02:00"
       },
       "prediction_factors": [
         {
@@ -855219,7 +855224,7 @@
         "label": "Pronóstico publicable",
         "reasons": [],
         "policy": "abstención automática por incertidumbre o falta de evidencia",
-        "refreshed_at": "2026-10-21T12:25:24.450869+02:00"
+        "refreshed_at": "2026-10-21T13:43:25.925249+02:00"
       },
       "prediction_snapshot": {
         "generated_at": "2026-10-21T07:02:01.613227+02:00",
@@ -856387,11 +856392,11 @@
       "operational_checks": {
         "absences_checked_at": "2026-10-21T12:22:00.136022+02:00",
         "absences_check_result": "fixture_not_found",
-        "player_props_checked_at": "2026-10-21T12:22:03.174234+02:00",
+        "player_props_checked_at": "2026-10-21T13:40:31.354350+02:00",
         "player_props_check_result": "complete_hybrid"
       },
       "matchday_player_rates": {
-        "checked_at": "2026-10-21T12:22:03.174234+02:00",
+        "checked_at": "2026-10-21T13:40:31.354350+02:00",
         "source": "API-Football · players",
         "season": 2026,
         "league_id": 2,
@@ -856400,7 +856405,7 @@
         "visitante": []
       },
       "prediction_live_refresh": {
-        "checked_at": "2026-10-21T12:25:24.450869+02:00",
+        "checked_at": "2026-10-21T13:43:25.925249+02:00",
         "cadence_target_minutes": 5,
         "model_retrained": false,
         "pure_model_probs_changed": false,
@@ -856431,7 +856436,7 @@
           },
           "absences": {
             "state": "ok",
-            "required": false,
+            "required": true,
             "checked_at": "2026-10-21T12:22:00.136022+02:00",
             "source": "API-Football",
             "detail": "fixture_not_found",
@@ -856441,7 +856446,7 @@
           "lineup_probable": {
             "state": "scheduled",
             "required": false,
-            "checked_at": "2026-10-21T12:22:03.174234+02:00",
+            "checked_at": "2026-10-21T13:40:31.354350+02:00",
             "source": "Gemini",
             "detail": "ventana T−3h",
             "freshness_known": true,
@@ -857255,8 +857260,8 @@
           "Alexsandro",
           "Gabriel Gudmundsson",
           "Benjamin André",
+          "Ngal'ayel Mukau",
           "Angel Gomes",
-          "Rémy Cabella",
           "Edon Zhegrova",
           "Osame Sahraoui",
           "Jonathan David"
@@ -857473,7 +857478,7 @@
             }
           },
           {
-            "jugador": "Angel Gomes",
+            "jugador": "Ngal'ayel Mukau",
             "position": "MC",
             "g": 0.09,
             "a": 0.1,
@@ -857500,7 +857505,7 @@
             }
           },
           {
-            "jugador": "Rémy Cabella",
+            "jugador": "Angel Gomes",
             "position": "MP",
             "g": 0.18,
             "a": 0.17,
@@ -857964,9 +857969,9 @@
         ],
         "provider": "Gemini",
         "model": "gemini-3.6-flash",
-        "generated_at": "2026-10-21T12:22:03.174234+02:00",
-        "ts": "2026-10-21T12:22:03.174234+02:00",
-        "fuente": "Estimación T-383m · continuidad oficial + IA · sin fuente externa suficiente",
+        "generated_at": "2026-10-21T13:40:31.354350+02:00",
+        "ts": "2026-10-21T13:40:31.354350+02:00",
+        "fuente": "Estimación T-304m · continuidad oficial + IA · sin fuente externa suficiente",
         "input_fingerprint": "76294c38da04b99e",
         "impacto_bajas": {
           "local": {
@@ -857983,11 +857988,11 @@
           },
           "fuente": "goles+asistencias reales de la temporada · informativo, no altera la probabilidad"
         },
-        "critical_probable_checked_at": "2026-10-21T12:22:03.174234+02:00",
+        "critical_probable_checked_at": "2026-10-21T13:40:31.354350+02:00",
         "critical_media_fingerprint": "4f53cda18c2baa0c",
         "critical_media_fingerprint_previous": "4f53cda18c2baa0c",
         "player_props_source": "Predictivo híbrido · 0/22 con muestra individual real",
-        "player_props_checked_at": "2026-10-21T12:22:03.174234+02:00",
+        "player_props_checked_at": "2026-10-21T13:40:31.354350+02:00",
         "player_props_lineup_status": "estimado",
         "cache_status": "recuperado_de_cache",
         "position_source": "model_unverified",
@@ -858019,11 +858024,12 @@
         "source_quality": "model_only",
         "display_warning": "XI estimado por modelo; no existe evidencia externa suficiente para ambos equipos.",
         "probable_refresh_windows": {
-          "T-383m": "2026-10-21T12:22:03.174234+02:00"
+          "T-383m": "2026-10-21T12:22:03.174234+02:00",
+          "T-304m": "2026-10-21T13:40:31.354350+02:00"
         },
-        "probable_refresh_window_last": "T-383m",
-        "source_updated_at": "2026-10-21T12:22:03.174234+02:00",
-        "critical_probable_generated_at": "2026-10-21T12:22:03.174234+02:00"
+        "probable_refresh_window_last": "T-304m",
+        "source_updated_at": "2026-10-21T13:40:31.354350+02:00",
+        "critical_probable_generated_at": "2026-10-21T13:40:31.354350+02:00"
       },
       "lineup_impact": {
         "status": "estimado",
@@ -858142,7 +858148,7 @@
           "weather": false,
           "market_odds": false
         },
-        "refreshed_at": "2026-10-21T12:25:24.450869+02:00"
+        "refreshed_at": "2026-10-21T13:43:25.925249+02:00"
       },
       "prediction_factors": [
         {
@@ -858178,7 +858184,7 @@
           "desacuerdo alto entre modelos"
         ],
         "policy": "abstención automática por incertidumbre o falta de evidencia",
-        "refreshed_at": "2026-10-21T12:25:24.450869+02:00"
+        "refreshed_at": "2026-10-21T13:43:25.925249+02:00"
       },
       "prediction_snapshot": {
         "generated_at": "2026-10-21T07:02:01.613227+02:00",
@@ -859343,11 +859349,11 @@
       "operational_checks": {
         "absences_checked_at": "2026-10-21T12:22:00.136022+02:00",
         "absences_check_result": "fixture_not_found",
-        "player_props_checked_at": "2026-10-21T12:22:03.174234+02:00",
+        "player_props_checked_at": "2026-10-21T13:40:31.354350+02:00",
         "player_props_check_result": "complete_hybrid"
       },
       "matchday_player_rates": {
-        "checked_at": "2026-10-21T12:22:03.174234+02:00",
+        "checked_at": "2026-10-21T13:40:31.354350+02:00",
         "source": "API-Football · players",
         "season": 2026,
         "league_id": 2,
@@ -859356,7 +859362,7 @@
         "visitante": []
       },
       "prediction_live_refresh": {
-        "checked_at": "2026-10-21T12:25:24.450869+02:00",
+        "checked_at": "2026-10-21T13:43:25.925249+02:00",
         "cadence_target_minutes": 5,
         "model_retrained": false,
         "pure_model_probs_changed": false,
@@ -859387,7 +859393,7 @@
           },
           "absences": {
             "state": "ok",
-            "required": false,
+            "required": true,
             "checked_at": "2026-10-21T12:22:00.136022+02:00",
             "source": "API-Football",
             "detail": "fixture_not_found",
@@ -859397,7 +859403,7 @@
           "lineup_probable": {
             "state": "scheduled",
             "required": false,
-            "checked_at": "2026-10-21T12:22:03.174234+02:00",
+            "checked_at": "2026-10-21T13:40:31.354350+02:00",
             "source": "Gemini",
             "detail": "ventana T−3h",
             "freshness_known": true,
@@ -866670,7 +866676,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "dixon-coles",
-      "updatedAt": "2026-10-21T12:19:32.361030+02:00",
+      "updatedAt": "2026-10-21T13:40:16.246805+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -867107,7 +867113,7 @@
           "weather": true,
           "market_odds": false
         },
-        "refreshed_at": "2026-10-21T12:25:24.450869+02:00"
+        "refreshed_at": "2026-10-21T13:43:25.925249+02:00"
       },
       "prediction_factors": [
         {
@@ -867143,7 +867149,7 @@
           "desacuerdo alto entre modelos"
         ],
         "policy": "abstención automática por incertidumbre o falta de evidencia",
-        "refreshed_at": "2026-10-21T12:25:24.450869+02:00"
+        "refreshed_at": "2026-10-21T13:43:25.925249+02:00"
       },
       "prediction_snapshot": {
         "generated_at": "2026-08-31T10:21:28.703587+02:00",
@@ -868072,9 +868078,9 @@
         ],
         "provider": "Gemini",
         "model": "gemini-3.6-flash",
-        "generated_at": "2026-10-21T12:22:03.174234+02:00",
-        "ts": "2026-10-21T12:22:03.174234+02:00",
-        "fuente": "T-518m · medios recientes para ambos equipos + continuidad oficial + IA",
+        "generated_at": "2026-10-21T13:40:31.354350+02:00",
+        "ts": "2026-10-21T13:40:31.354350+02:00",
+        "fuente": "T-439m · medios recientes para ambos equipos + continuidad oficial + IA",
         "input_fingerprint": "f5d28d535f4cca5f",
         "impacto_bajas": {
           "local": {
@@ -868091,7 +868097,7 @@
           },
           "fuente": "goles+asistencias reales de la temporada · informativo, no altera la probabilidad"
         },
-        "critical_probable_checked_at": "2026-10-21T12:22:03.174234+02:00",
+        "critical_probable_checked_at": "2026-10-21T13:40:31.354350+02:00",
         "critical_media_fingerprint": "51ecde07972e6213",
         "critical_media_fingerprint_previous": "51ecde07972e6213",
         "position_source": "model_unverified",
@@ -868255,13 +868261,14 @@
         "probable_refresh_windows": {
           "T-1183m": "2026-10-21T01:16:52.301572+02:00",
           "T-835m": "2026-10-21T07:04:53.672714+02:00",
-          "T-518m": "2026-10-21T12:22:03.174234+02:00"
+          "T-518m": "2026-10-21T12:22:03.174234+02:00",
+          "T-439m": "2026-10-21T13:40:31.354350+02:00"
         },
-        "probable_refresh_window_last": "T-518m",
-        "source_updated_at": "2026-10-21T12:22:03.174234+02:00",
-        "critical_probable_generated_at": "2026-10-21T12:22:03.174234+02:00",
+        "probable_refresh_window_last": "T-439m",
+        "source_updated_at": "2026-10-21T13:40:31.354350+02:00",
+        "critical_probable_generated_at": "2026-10-21T13:40:31.354350+02:00",
         "player_props_source": "Predictivo híbrido · 0/22 con muestra individual real",
-        "player_props_checked_at": "2026-10-21T12:22:03.174234+02:00",
+        "player_props_checked_at": "2026-10-21T13:40:31.354350+02:00",
         "player_props_lineup_status": "probable",
         "cache_status": "recuperado_de_cache"
       },
@@ -868271,40 +868278,40 @@
       },
       "weather": {
         "forecast_for": "2026-10-21T21:00:00",
-        "temperature_c": 12.7,
-        "apparent_temperature_c": 11.0,
-        "humidity_pct": 56,
+        "temperature_c": 13.2,
+        "apparent_temperature_c": 11.7,
+        "humidity_pct": 60,
         "precipitation_mm": 0.0,
         "precipitation_probability_pct": 0,
-        "wind_kmh": 2.4,
-        "weather_code": 0,
+        "wind_kmh": 3.3,
+        "weather_code": 1,
         "heat_stress": {
           "level": "bajo",
-          "index": 12.7,
+          "index": 13.2,
           "method": "temperatura aparente + humedad; no es WBGT"
         },
         "source": "Open-Meteo",
         "source_url": "https://open-meteo.com/",
         "license": "CC BY 4.0",
         "model_use": "ajuste_cuantitativo_contextual",
-        "source_updated_at": "2026-10-21T01:11:45.458305+02:00"
+        "source_updated_at": "2026-10-21T13:40:16.246805+02:00"
       },
       "weather_adjustment": {
         "applied": false,
-        "weather_source_updated_at": "2026-10-21T01:11:45.458305+02:00",
+        "weather_source_updated_at": "2026-10-21T13:40:16.246805+02:00",
         "weather_forecast_for": "2026-10-21T21:00:00",
         "weather_source": "Open-Meteo",
         "weather_snapshot": {
           "forecast_for": "2026-10-21T21:00:00",
-          "temperature_c": 12.7,
-          "apparent_temperature_c": 11.0,
-          "humidity_pct": 56,
+          "temperature_c": 13.2,
+          "apparent_temperature_c": 11.7,
+          "humidity_pct": 60,
           "precipitation_mm": 0.0,
           "precipitation_probability_pct": 0,
-          "wind_kmh": 2.4,
-          "weather_code": 0
+          "wind_kmh": 3.3,
+          "weather_code": 1
         },
-        "applied_at": "2026-10-21T12:25:24.450869+02:00",
+        "applied_at": "2026-10-21T13:43:25.925249+02:00",
         "reason": "condiciones dentro de umbrales neutros",
         "reasons": [],
         "multipliers": {
@@ -869144,10 +869151,10 @@
         "fixture": {
           "source": "football_data",
           "source_id": "575370",
-          "available_at": "2026-10-21T10:19:32.361030+00:00",
+          "available_at": "2026-10-21T11:40:16.246805+00:00",
           "phase": "prematch",
           "quality": "observed",
-          "observed_at": "2026-10-21T10:19:32.361030+00:00"
+          "observed_at": "2026-10-21T11:40:16.246805+00:00"
         }
       },
       "source_refs": {
@@ -869161,11 +869168,13 @@
       "operational_checks": {
         "absences_checked_at": "2026-10-21T12:22:00.136022+02:00",
         "absences_check_result": "fixture_not_found",
-        "player_props_checked_at": "2026-10-21T12:22:03.174234+02:00",
-        "player_props_check_result": "complete_hybrid"
+        "player_props_checked_at": "2026-10-21T13:40:31.354350+02:00",
+        "player_props_check_result": "complete_hybrid",
+        "weather_checked_at": "2026-10-21T13:40:16.246805+02:00",
+        "weather_check_result": "ok"
       },
       "matchday_player_rates": {
-        "checked_at": "2026-10-21T12:22:03.174234+02:00",
+        "checked_at": "2026-10-21T13:40:31.354350+02:00",
         "source": "API-Football · players",
         "season": 2026,
         "league_id": 2,
@@ -869175,7 +869184,7 @@
       },
       "value": [],
       "prediction_live_refresh": {
-        "checked_at": "2026-10-21T12:25:24.450869+02:00",
+        "checked_at": "2026-10-21T13:43:25.925249+02:00",
         "cadence_target_minutes": 5,
         "model_retrained": false,
         "pure_model_probs_changed": false,
@@ -869193,16 +869202,16 @@
           "fixture": {
             "state": "ok",
             "required": true,
-            "checked_at": "2026-10-21T12:19:32.361030+02:00",
+            "checked_at": "2026-10-21T13:40:16.246805+02:00",
             "source": "football_data",
             "detail": "calendario cargado"
           },
           "weather": {
             "state": "ok",
-            "required": false,
-            "checked_at": "2026-10-21T01:11:45.458305+02:00",
+            "required": true,
+            "checked_at": "2026-10-21T13:40:16.246805+02:00",
             "source": "Open-Meteo",
-            "detail": "previsión disponible",
+            "detail": "ok",
             "freshness_known": true,
             "ttl_hours": 12
           },
@@ -869218,7 +869227,7 @@
           "lineup_probable": {
             "state": "ok",
             "required": false,
-            "checked_at": "2026-10-21T12:22:03.174234+02:00",
+            "checked_at": "2026-10-21T13:40:31.354350+02:00",
             "source": "Gemini",
             "detail": "XI respaldado por fuente",
             "freshness_known": true,
@@ -869702,7 +869711,7 @@
           "weather": false,
           "market_odds": false
         },
-        "refreshed_at": "2026-10-21T12:25:24.450869+02:00"
+        "refreshed_at": "2026-10-21T13:43:25.925249+02:00"
       },
       "prediction_factors": [
         {
@@ -869738,7 +869747,7 @@
           "desacuerdo alto entre modelos"
         ],
         "policy": "abstención automática por incertidumbre o falta de evidencia",
-        "refreshed_at": "2026-10-21T12:25:24.450869+02:00"
+        "refreshed_at": "2026-10-21T13:43:25.925249+02:00"
       },
       "prediction_snapshot": {
         "generated_at": "2026-08-31T10:21:28.703587+02:00",
@@ -869926,10 +869935,10 @@
           "Francesco Acerbi",
           "Alessandro Bastoni",
           "Denzel Dumfries",
-          "Federico Dimarco",
           "Hakan Çalhanoğlu",
           "Nicolò Barella",
           "Henrikh Mkhitaryan",
+          "Federico Dimarco",
           "Marcus Thuram",
           "Lautaro Martínez"
         ],
@@ -869943,7 +869952,7 @@
           "Artem Bondarenko",
           "Georgiy Sudakov",
           "Oleksandr Zubkov",
-          "Eguinaldo",
+          "Kevin",
           "Danylo Sikan"
         ],
         "posiciones_local": [
@@ -869952,10 +869961,10 @@
           "DFC",
           "DFC",
           "CAD",
-          "CAI",
           "MCD",
           "MC",
           "MC",
+          "CAI",
           "DC",
           "DC"
         ],
@@ -870118,33 +870127,6 @@
             }
           },
           {
-            "jugador": "Federico Dimarco",
-            "position": "CAI",
-            "g": 0.11,
-            "a": 0.27,
-            "r": 1.39,
-            "rp": 0.48,
-            "fc": 1.04,
-            "fr": 1.23,
-            "t": 0.19,
-            "min": 76.0,
-            "tit": 0.74,
-            "sample_minutes": 0,
-            "sample_quality": "sin_muestra_individual",
-            "source": "Modelo · rol + predicción de equipo",
-            "evidence_type": "model_estimate",
-            "prediction_kind": "role_team_residual_allocation",
-            "team_prediction_totals": {
-              "g": 2.42,
-              "a": 1.74,
-              "r": 18.39,
-              "rp": 6.81,
-              "fc": 12.0,
-              "fr": 12.0,
-              "t": 2.2
-            }
-          },
-          {
             "jugador": "Hakan Çalhanoğlu",
             "position": "MCD",
             "g": 0.12,
@@ -870208,6 +870190,33 @@
             "fc": 1.17,
             "fr": 1.46,
             "t": 0.2,
+            "min": 76.0,
+            "tit": 0.74,
+            "sample_minutes": 0,
+            "sample_quality": "sin_muestra_individual",
+            "source": "Modelo · rol + predicción de equipo",
+            "evidence_type": "model_estimate",
+            "prediction_kind": "role_team_residual_allocation",
+            "team_prediction_totals": {
+              "g": 2.42,
+              "a": 1.74,
+              "r": 18.39,
+              "rp": 6.81,
+              "fc": 12.0,
+              "fr": 12.0,
+              "t": 2.2
+            }
+          },
+          {
+            "jugador": "Federico Dimarco",
+            "position": "CAI",
+            "g": 0.11,
+            "a": 0.27,
+            "r": 1.39,
+            "rp": 0.48,
+            "fc": 1.04,
+            "fr": 1.23,
+            "t": 0.19,
             "min": 76.0,
             "tit": 0.74,
             "sample_minutes": 0,
@@ -870525,7 +870534,7 @@
             }
           },
           {
-            "jugador": "Eguinaldo",
+            "jugador": "Kevin",
             "position": "EI",
             "g": 0.12,
             "a": 0.07,
@@ -870636,9 +870645,9 @@
         ],
         "provider": "Gemini",
         "model": "gemini-3.6-flash",
-        "generated_at": "2026-10-21T12:22:03.174234+02:00",
-        "ts": "2026-10-21T12:22:03.174234+02:00",
-        "fuente": "Estimación T-518m · continuidad oficial + IA · sin fuente externa suficiente",
+        "generated_at": "2026-10-21T13:40:31.354350+02:00",
+        "ts": "2026-10-21T13:40:31.354350+02:00",
+        "fuente": "Estimación T-439m · continuidad oficial + IA · sin fuente externa suficiente",
         "input_fingerprint": "fe709bec88829299",
         "impacto_bajas": {
           "local": {
@@ -870655,7 +870664,7 @@
           },
           "fuente": "goles+asistencias reales de la temporada · informativo, no altera la probabilidad"
         },
-        "critical_probable_checked_at": "2026-10-21T12:22:03.174234+02:00",
+        "critical_probable_checked_at": "2026-10-21T13:40:31.354350+02:00",
         "critical_media_fingerprint": "4f53cda18c2baa0c",
         "critical_media_fingerprint_previous": "4f53cda18c2baa0c",
         "position_source": "model_unverified",
@@ -870689,13 +870698,14 @@
         "probable_refresh_windows": {
           "T-1183m": "2026-10-21T01:16:52.301572+02:00",
           "T-835m": "2026-10-21T07:04:53.672714+02:00",
-          "T-518m": "2026-10-21T12:22:03.174234+02:00"
+          "T-518m": "2026-10-21T12:22:03.174234+02:00",
+          "T-439m": "2026-10-21T13:40:31.354350+02:00"
         },
-        "probable_refresh_window_last": "T-518m",
-        "source_updated_at": "2026-10-21T12:22:03.174234+02:00",
-        "critical_probable_generated_at": "2026-10-21T12:22:03.174234+02:00",
+        "probable_refresh_window_last": "T-439m",
+        "source_updated_at": "2026-10-21T13:40:31.354350+02:00",
+        "critical_probable_generated_at": "2026-10-21T13:40:31.354350+02:00",
         "player_props_source": "Predictivo híbrido · 0/22 con muestra individual real",
-        "player_props_checked_at": "2026-10-21T12:22:03.174234+02:00",
+        "player_props_checked_at": "2026-10-21T13:40:31.354350+02:00",
         "player_props_lineup_status": "estimado",
         "cache_status": "recuperado_de_cache"
       },
@@ -871510,11 +871520,11 @@
       "operational_checks": {
         "absences_checked_at": "2026-10-21T12:22:00.136022+02:00",
         "absences_check_result": "fixture_not_found",
-        "player_props_checked_at": "2026-10-21T12:22:03.174234+02:00",
+        "player_props_checked_at": "2026-10-21T13:40:31.354350+02:00",
         "player_props_check_result": "complete_hybrid"
       },
       "matchday_player_rates": {
-        "checked_at": "2026-10-21T12:22:03.174234+02:00",
+        "checked_at": "2026-10-21T13:40:31.354350+02:00",
         "source": "API-Football · players",
         "season": 2026,
         "league_id": 2,
@@ -871523,7 +871533,7 @@
         "visitante": []
       },
       "prediction_live_refresh": {
-        "checked_at": "2026-10-21T12:25:24.450869+02:00",
+        "checked_at": "2026-10-21T13:43:25.925249+02:00",
         "cadence_target_minutes": 5,
         "model_retrained": false,
         "pure_model_probs_changed": false,
@@ -871546,9 +871556,9 @@
             "detail": "calendario cargado"
           },
           "weather": {
-            "state": "scheduled",
-            "required": false,
-            "detail": "ventana T−8h",
+            "state": "missing",
+            "required": true,
+            "detail": "sin previsión",
             "freshness_known": false,
             "ttl_hours": 12
           },
@@ -871564,7 +871574,7 @@
           "lineup_probable": {
             "state": "scheduled",
             "required": false,
-            "checked_at": "2026-10-21T12:22:03.174234+02:00",
+            "checked_at": "2026-10-21T13:40:31.354350+02:00",
             "source": "Gemini",
             "detail": "ventana T−3h",
             "freshness_known": true,
@@ -871584,6 +871594,7 @@
           }
         },
         "missing_required": [
+          "weather",
           "odds"
         ]
       },
@@ -871592,6 +871603,7 @@
         "tier": "insufficient",
         "verified": 0.4,
         "required_missing": [
+          "weather",
           "odds"
         ],
         "components": {
@@ -872056,7 +872068,7 @@
           "weather": false,
           "market_odds": false
         },
-        "refreshed_at": "2026-10-21T12:25:24.450869+02:00"
+        "refreshed_at": "2026-10-21T13:43:25.925249+02:00"
       },
       "prediction_factors": [
         {
@@ -872090,7 +872102,7 @@
         "label": "Pronóstico publicable",
         "reasons": [],
         "policy": "abstención automática por incertidumbre o falta de evidencia",
-        "refreshed_at": "2026-10-21T12:25:24.450869+02:00"
+        "refreshed_at": "2026-10-21T13:43:25.925249+02:00"
       },
       "prediction_snapshot": {
         "generated_at": "2026-08-31T10:21:28.703587+02:00",
@@ -872272,30 +872284,30 @@
       },
       "alineacion": {
         "local": [
-          "Neuer",
-          "Kimmich",
-          "Upamecano",
+          "Manuel Neuer",
+          "Joshua Kimmich",
+          "Dayot Upamecano",
           "Kim Min-jae",
-          "Davies",
-          "Goretzka",
-          "Laimer",
-          "Sané",
-          "Musiala",
-          "Gnabry",
-          "Kane"
+          "Alphonso Davies",
+          "Leon Goretzka",
+          "Aleksandar Pavlović",
+          "Jamal Musiala",
+          "Leroy Sané",
+          "Kingsley Coman",
+          "Harry Kane"
         ],
         "visitante": [
-          "Raya",
-          "White",
-          "Saliba",
-          "Gabriel",
-          "Zinchenko",
-          "Rice",
-          "Ødegaard",
-          "Havertz",
-          "Saka",
-          "Martinelli",
-          "Gabriel Jesus"
+          "David Raya",
+          "Ben White",
+          "William Saliba",
+          "Gabriel Magalhães",
+          "Oleksandr Zinchenko",
+          "Declan Rice",
+          "Thomas Partey",
+          "Martin Ødegaard",
+          "Bukayo Saka",
+          "Gabriel Martinelli",
+          "Kai Havertz"
         ],
         "posiciones_local": [
           "POR",
@@ -872303,10 +872315,10 @@
           "DFC",
           "DFC",
           "LI",
+          "MCD",
           "MC",
-          "MC",
-          "ED",
           "MP",
+          "ED",
           "EI",
           "DC"
         ],
@@ -872318,7 +872330,7 @@
           "LI",
           "MCD",
           "MC",
-          "MC",
+          "MP",
           "ED",
           "EI",
           "DC"
@@ -872335,7 +872347,7 @@
         ],
         "clave_local": [
           {
-            "jugador": "Neuer",
+            "jugador": "Manuel Neuer",
             "position": "POR",
             "g": 0.0,
             "a": 0.0,
@@ -872362,15 +872374,15 @@
             }
           },
           {
-            "jugador": "Kimmich",
+            "jugador": "Joshua Kimmich",
             "position": "LD",
             "g": 0.04,
-            "a": 0.11,
-            "r": 0.6,
-            "rp": 0.17,
-            "fc": 1.29,
-            "fr": 0.86,
-            "t": 0.26,
+            "a": 0.12,
+            "r": 0.62,
+            "rp": 0.18,
+            "fc": 1.25,
+            "fr": 0.88,
+            "t": 0.25,
             "min": 76.0,
             "tit": 0.74,
             "sample_minutes": 0,
@@ -872389,15 +872401,15 @@
             }
           },
           {
-            "jugador": "Upamecano",
+            "jugador": "Dayot Upamecano",
             "position": "DFC",
             "g": 0.05,
             "a": 0.02,
-            "r": 0.51,
+            "r": 0.52,
             "rp": 0.14,
-            "fc": 1.52,
-            "fr": 0.56,
-            "t": 0.35,
+            "fc": 1.48,
+            "fr": 0.57,
+            "t": 0.33,
             "min": 76.0,
             "tit": 0.74,
             "sample_minutes": 0,
@@ -872420,11 +872432,11 @@
             "position": "DFC",
             "g": 0.05,
             "a": 0.02,
-            "r": 0.51,
+            "r": 0.52,
             "rp": 0.14,
-            "fc": 1.52,
-            "fr": 0.56,
-            "t": 0.35,
+            "fc": 1.48,
+            "fr": 0.57,
+            "t": 0.33,
             "min": 76.0,
             "tit": 0.74,
             "sample_minutes": 0,
@@ -872443,176 +872455,176 @@
             }
           },
           {
-            "jugador": "Davies",
+            "jugador": "Alphonso Davies",
             "position": "LI",
             "g": 0.04,
-            "a": 0.11,
-            "r": 0.6,
-            "rp": 0.17,
-            "fc": 1.29,
-            "fr": 0.86,
-            "t": 0.26,
-            "min": 76.0,
-            "tit": 0.74,
-            "sample_minutes": 0,
-            "sample_quality": "sin_muestra_individual",
-            "source": "Modelo · rol + predicción de equipo",
-            "evidence_type": "model_estimate",
-            "prediction_kind": "role_team_residual_allocation",
-            "team_prediction_totals": {
-              "g": 1.73,
-              "a": 1.25,
-              "r": 13.15,
-              "rp": 4.86,
-              "fc": 12.0,
-              "fr": 12.0,
-              "t": 2.2
-            }
-          },
-          {
-            "jugador": "Goretzka",
-            "position": "MC",
-            "g": 0.12,
-            "a": 0.14,
-            "r": 1.11,
-            "rp": 0.36,
-            "fc": 1.34,
-            "fr": 1.26,
-            "t": 0.24,
-            "min": 76.0,
-            "tit": 0.74,
-            "sample_minutes": 0,
-            "sample_quality": "sin_muestra_individual",
-            "source": "Modelo · rol + predicción de equipo",
-            "evidence_type": "model_estimate",
-            "prediction_kind": "role_team_residual_allocation",
-            "team_prediction_totals": {
-              "g": 1.73,
-              "a": 1.25,
-              "r": 13.15,
-              "rp": 4.86,
-              "fc": 12.0,
-              "fr": 12.0,
-              "t": 2.2
-            }
-          },
-          {
-            "jugador": "Laimer",
-            "position": "MC",
-            "g": 0.12,
-            "a": 0.14,
-            "r": 1.11,
-            "rp": 0.36,
-            "fc": 1.34,
-            "fr": 1.26,
-            "t": 0.24,
-            "min": 76.0,
-            "tit": 0.74,
-            "sample_minutes": 0,
-            "sample_quality": "sin_muestra_individual",
-            "source": "Modelo · rol + predicción de equipo",
-            "evidence_type": "model_estimate",
-            "prediction_kind": "role_team_residual_allocation",
-            "team_prediction_totals": {
-              "g": 1.73,
-              "a": 1.25,
-              "r": 13.15,
-              "rp": 4.86,
-              "fc": 12.0,
-              "fr": 12.0,
-              "t": 2.2
-            }
-          },
-          {
-            "jugador": "Sané",
-            "position": "ED",
-            "g": 0.31,
-            "a": 0.18,
-            "r": 2.14,
-            "rp": 0.87,
-            "fc": 0.76,
-            "fr": 1.72,
-            "t": 0.11,
-            "min": 76.0,
-            "tit": 0.74,
-            "sample_minutes": 0,
-            "sample_quality": "sin_muestra_individual",
-            "source": "Modelo · rol + predicción de equipo",
-            "evidence_type": "model_estimate",
-            "prediction_kind": "role_team_residual_allocation",
-            "team_prediction_totals": {
-              "g": 1.73,
-              "a": 1.25,
-              "r": 13.15,
-              "rp": 4.86,
-              "fc": 12.0,
-              "fr": 12.0,
-              "t": 2.2
-            }
-          },
-          {
-            "jugador": "Musiala",
-            "position": "MP",
-            "g": 0.25,
-            "a": 0.23,
-            "r": 1.82,
-            "rp": 0.69,
-            "fc": 0.83,
-            "fr": 1.65,
-            "t": 0.14,
-            "min": 76.0,
-            "tit": 0.74,
-            "sample_minutes": 0,
-            "sample_quality": "sin_muestra_individual",
-            "source": "Modelo · rol + predicción de equipo",
-            "evidence_type": "model_estimate",
-            "prediction_kind": "role_team_residual_allocation",
-            "team_prediction_totals": {
-              "g": 1.73,
-              "a": 1.25,
-              "r": 13.15,
-              "rp": 4.86,
-              "fc": 12.0,
-              "fr": 12.0,
-              "t": 2.2
-            }
-          },
-          {
-            "jugador": "Gnabry",
-            "position": "EI",
-            "g": 0.31,
-            "a": 0.18,
-            "r": 2.14,
-            "rp": 0.87,
-            "fc": 0.76,
-            "fr": 1.72,
-            "t": 0.11,
-            "min": 76.0,
-            "tit": 0.74,
-            "sample_minutes": 0,
-            "sample_quality": "sin_muestra_individual",
-            "source": "Modelo · rol + predicción de equipo",
-            "evidence_type": "model_estimate",
-            "prediction_kind": "role_team_residual_allocation",
-            "team_prediction_totals": {
-              "g": 1.73,
-              "a": 1.25,
-              "r": 13.15,
-              "rp": 4.86,
-              "fc": 12.0,
-              "fr": 12.0,
-              "t": 2.2
-            }
-          },
-          {
-            "jugador": "Kane",
-            "position": "DC",
-            "g": 0.44,
             "a": 0.12,
-            "r": 2.59,
-            "rp": 1.08,
-            "fc": 1.08,
-            "fr": 1.44,
+            "r": 0.62,
+            "rp": 0.18,
+            "fc": 1.25,
+            "fr": 0.88,
+            "t": 0.25,
+            "min": 76.0,
+            "tit": 0.74,
+            "sample_minutes": 0,
+            "sample_quality": "sin_muestra_individual",
+            "source": "Modelo · rol + predicción de equipo",
+            "evidence_type": "model_estimate",
+            "prediction_kind": "role_team_residual_allocation",
+            "team_prediction_totals": {
+              "g": 1.73,
+              "a": 1.25,
+              "r": 13.15,
+              "rp": 4.86,
+              "fc": 12.0,
+              "fr": 12.0,
+              "t": 2.2
+            }
+          },
+          {
+            "jugador": "Leon Goretzka",
+            "position": "MCD",
+            "g": 0.08,
+            "a": 0.09,
+            "r": 0.81,
+            "rp": 0.25,
+            "fc": 1.62,
+            "fr": 1.05,
+            "t": 0.32,
+            "min": 76.0,
+            "tit": 0.74,
+            "sample_minutes": 0,
+            "sample_quality": "sin_muestra_individual",
+            "source": "Modelo · rol + predicción de equipo",
+            "evidence_type": "model_estimate",
+            "prediction_kind": "role_team_residual_allocation",
+            "team_prediction_totals": {
+              "g": 1.73,
+              "a": 1.25,
+              "r": 13.15,
+              "rp": 4.86,
+              "fc": 12.0,
+              "fr": 12.0,
+              "t": 2.2
+            }
+          },
+          {
+            "jugador": "Aleksandar Pavlović",
+            "position": "MC",
+            "g": 0.12,
+            "a": 0.14,
+            "r": 1.13,
+            "rp": 0.37,
+            "fc": 1.3,
+            "fr": 1.28,
+            "t": 0.23,
+            "min": 76.0,
+            "tit": 0.74,
+            "sample_minutes": 0,
+            "sample_quality": "sin_muestra_individual",
+            "source": "Modelo · rol + predicción de equipo",
+            "evidence_type": "model_estimate",
+            "prediction_kind": "role_team_residual_allocation",
+            "team_prediction_totals": {
+              "g": 1.73,
+              "a": 1.25,
+              "r": 13.15,
+              "rp": 4.86,
+              "fc": 12.0,
+              "fr": 12.0,
+              "t": 2.2
+            }
+          },
+          {
+            "jugador": "Jamal Musiala",
+            "position": "MP",
+            "g": 0.26,
+            "a": 0.24,
+            "r": 1.86,
+            "rp": 0.71,
+            "fc": 0.81,
+            "fr": 1.69,
+            "t": 0.13,
+            "min": 76.0,
+            "tit": 0.74,
+            "sample_minutes": 0,
+            "sample_quality": "sin_muestra_individual",
+            "source": "Modelo · rol + predicción de equipo",
+            "evidence_type": "model_estimate",
+            "prediction_kind": "role_team_residual_allocation",
+            "team_prediction_totals": {
+              "g": 1.73,
+              "a": 1.25,
+              "r": 13.15,
+              "rp": 4.86,
+              "fc": 12.0,
+              "fr": 12.0,
+              "t": 2.2
+            }
+          },
+          {
+            "jugador": "Leroy Sané",
+            "position": "ED",
+            "g": 0.32,
+            "a": 0.18,
+            "r": 2.19,
+            "rp": 0.89,
+            "fc": 0.74,
+            "fr": 1.75,
+            "t": 0.11,
+            "min": 76.0,
+            "tit": 0.74,
+            "sample_minutes": 0,
+            "sample_quality": "sin_muestra_individual",
+            "source": "Modelo · rol + predicción de equipo",
+            "evidence_type": "model_estimate",
+            "prediction_kind": "role_team_residual_allocation",
+            "team_prediction_totals": {
+              "g": 1.73,
+              "a": 1.25,
+              "r": 13.15,
+              "rp": 4.86,
+              "fc": 12.0,
+              "fr": 12.0,
+              "t": 2.2
+            }
+          },
+          {
+            "jugador": "Kingsley Coman",
+            "position": "EI",
+            "g": 0.32,
+            "a": 0.18,
+            "r": 2.19,
+            "rp": 0.89,
+            "fc": 0.74,
+            "fr": 1.75,
+            "t": 0.11,
+            "min": 76.0,
+            "tit": 0.74,
+            "sample_minutes": 0,
+            "sample_quality": "sin_muestra_individual",
+            "source": "Modelo · rol + predicción de equipo",
+            "evidence_type": "model_estimate",
+            "prediction_kind": "role_team_residual_allocation",
+            "team_prediction_totals": {
+              "g": 1.73,
+              "a": 1.25,
+              "r": 13.15,
+              "rp": 4.86,
+              "fc": 12.0,
+              "fr": 12.0,
+              "t": 2.2
+            }
+          },
+          {
+            "jugador": "Harry Kane",
+            "position": "DC",
+            "g": 0.45,
+            "a": 0.14,
+            "r": 2.67,
+            "rp": 1.1,
+            "fc": 1.06,
+            "fr": 1.47,
             "t": 0.11,
             "min": 76.0,
             "tit": 0.74,
@@ -872634,13 +872646,13 @@
         ],
         "clave_visitante": [
           {
-            "jugador": "Raya",
+            "jugador": "David Raya",
             "position": "POR",
             "g": 0.0,
             "a": 0.0,
             "r": 0.01,
             "rp": 0.01,
-            "fc": 0.26,
+            "fc": 0.27,
             "fr": 0.11,
             "t": 0.03,
             "min": 76.0,
@@ -872661,15 +872673,15 @@
             }
           },
           {
-            "jugador": "White",
+            "jugador": "Ben White",
             "position": "LD",
             "g": 0.03,
             "a": 0.09,
-            "r": 0.48,
-            "rp": 0.14,
-            "fc": 1.21,
-            "fr": 0.91,
-            "t": 0.24,
+            "r": 0.46,
+            "rp": 0.13,
+            "fc": 1.25,
+            "fr": 0.88,
+            "t": 0.25,
             "min": 76.0,
             "tit": 0.74,
             "sample_minutes": 0,
@@ -872688,15 +872700,15 @@
             }
           },
           {
-            "jugador": "Saliba",
+            "jugador": "William Saliba",
             "position": "DFC",
             "g": 0.04,
-            "a": 0.02,
-            "r": 0.41,
+            "a": 0.01,
+            "r": 0.38,
             "rp": 0.11,
-            "fc": 1.42,
-            "fr": 0.59,
-            "t": 0.32,
+            "fc": 1.48,
+            "fr": 0.57,
+            "t": 0.33,
             "min": 76.0,
             "tit": 0.74,
             "sample_minutes": 0,
@@ -872715,15 +872727,15 @@
             }
           },
           {
-            "jugador": "Gabriel",
+            "jugador": "Gabriel Magalhães",
             "position": "DFC",
             "g": 0.04,
-            "a": 0.02,
-            "r": 0.41,
+            "a": 0.01,
+            "r": 0.38,
             "rp": 0.11,
-            "fc": 1.42,
-            "fr": 0.59,
-            "t": 0.32,
+            "fc": 1.48,
+            "fr": 0.57,
+            "t": 0.33,
             "min": 76.0,
             "tit": 0.74,
             "sample_minutes": 0,
@@ -872742,15 +872754,15 @@
             }
           },
           {
-            "jugador": "Zinchenko",
+            "jugador": "Oleksandr Zinchenko",
             "position": "LI",
             "g": 0.03,
             "a": 0.09,
-            "r": 0.48,
-            "rp": 0.14,
-            "fc": 1.21,
-            "fr": 0.91,
-            "t": 0.24,
+            "r": 0.46,
+            "rp": 0.13,
+            "fc": 1.25,
+            "fr": 0.88,
+            "t": 0.25,
             "min": 76.0,
             "tit": 0.74,
             "sample_minutes": 0,
@@ -872769,15 +872781,15 @@
             }
           },
           {
-            "jugador": "Rice",
+            "jugador": "Declan Rice",
             "position": "MCD",
             "g": 0.06,
             "a": 0.07,
-            "r": 0.63,
-            "rp": 0.2,
-            "fc": 1.56,
-            "fr": 1.09,
-            "t": 0.3,
+            "r": 0.6,
+            "rp": 0.18,
+            "fc": 1.62,
+            "fr": 1.05,
+            "t": 0.32,
             "min": 76.0,
             "tit": 0.74,
             "sample_minutes": 0,
@@ -872796,15 +872808,15 @@
             }
           },
           {
-            "jugador": "Ødegaard",
+            "jugador": "Thomas Partey",
             "position": "MC",
-            "g": 0.1,
-            "a": 0.11,
-            "r": 0.89,
-            "rp": 0.29,
-            "fc": 1.25,
-            "fr": 1.33,
-            "t": 0.22,
+            "g": 0.09,
+            "a": 0.1,
+            "r": 0.84,
+            "rp": 0.27,
+            "fc": 1.3,
+            "fr": 1.28,
+            "t": 0.23,
             "min": 76.0,
             "tit": 0.74,
             "sample_minutes": 0,
@@ -872823,15 +872835,15 @@
             }
           },
           {
-            "jugador": "Havertz",
-            "position": "MC",
-            "g": 0.1,
-            "a": 0.11,
-            "r": 0.89,
-            "rp": 0.29,
-            "fc": 1.25,
-            "fr": 1.33,
-            "t": 0.22,
+            "jugador": "Martin Ødegaard",
+            "position": "MP",
+            "g": 0.19,
+            "a": 0.17,
+            "r": 1.38,
+            "rp": 0.53,
+            "fc": 0.81,
+            "fr": 1.69,
+            "t": 0.13,
             "min": 76.0,
             "tit": 0.74,
             "sample_minutes": 0,
@@ -872850,14 +872862,14 @@
             }
           },
           {
-            "jugador": "Saka",
+            "jugador": "Bukayo Saka",
             "position": "ED",
-            "g": 0.26,
-            "a": 0.15,
-            "r": 1.71,
-            "rp": 0.71,
-            "fc": 0.71,
-            "fr": 1.81,
+            "g": 0.24,
+            "a": 0.14,
+            "r": 1.62,
+            "rp": 0.66,
+            "fc": 0.74,
+            "fr": 1.75,
             "t": 0.11,
             "min": 76.0,
             "tit": 0.74,
@@ -872877,14 +872889,14 @@
             }
           },
           {
-            "jugador": "Martinelli",
+            "jugador": "Gabriel Martinelli",
             "position": "EI",
-            "g": 0.26,
-            "a": 0.15,
-            "r": 1.71,
-            "rp": 0.71,
-            "fc": 0.71,
-            "fr": 1.81,
+            "g": 0.24,
+            "a": 0.14,
+            "r": 1.62,
+            "rp": 0.66,
+            "fc": 0.74,
+            "fr": 1.75,
             "t": 0.11,
             "min": 76.0,
             "tit": 0.74,
@@ -872904,15 +872916,15 @@
             }
           },
           {
-            "jugador": "Gabriel Jesus",
+            "jugador": "Kai Havertz",
             "position": "DC",
-            "g": 0.36,
-            "a": 0.11,
-            "r": 2.11,
-            "rp": 0.89,
-            "fc": 1.0,
-            "fr": 1.52,
-            "t": 0.09,
+            "g": 0.32,
+            "a": 0.1,
+            "r": 1.98,
+            "rp": 0.81,
+            "fc": 1.06,
+            "fr": 1.47,
+            "t": 0.11,
             "min": 76.0,
             "tit": 0.74,
             "sample_minutes": 0,
@@ -872933,24 +872945,24 @@
         ],
         "best_props": [
           {
-            "jugador": "Kane",
+            "jugador": "Harry Kane",
             "lado": "local",
-            "score": 3.61,
-            "motivo": "76 min · 2.6 remates · 1.1 a puerta",
+            "score": 3.72,
+            "motivo": "76 min · 2.7 remates · 1.1 a puerta",
             "tipo": "ventaja_estadistica_sin_cuota"
           },
           {
-            "jugador": "Gabriel Jesus",
-            "lado": "visitante",
-            "score": 2.97,
-            "motivo": "76 min · 2.1 remates · 0.9 a puerta",
+            "jugador": "Leroy Sané",
+            "lado": "local",
+            "score": 3.03,
+            "motivo": "76 min · 2.2 remates · 0.9 a puerta",
             "tipo": "ventaja_estadistica_sin_cuota"
           },
           {
-            "jugador": "Sané",
+            "jugador": "Kingsley Coman",
             "lado": "local",
-            "score": 2.96,
-            "motivo": "76 min · 2.1 remates · 0.9 a puerta",
+            "score": 3.03,
+            "motivo": "76 min · 2.2 remates · 0.9 a puerta",
             "tipo": "ventaja_estadistica_sin_cuota"
           }
         ],
@@ -872994,10 +873006,10 @@
           }
         ],
         "provider": "Gemini",
-        "model": "gemini-3-flash-preview",
-        "generated_at": "2026-10-21T07:04:53.672714+02:00",
-        "ts": "2026-10-21T07:04:53.672714+02:00",
-        "fuente": "Estimación T-835m · continuidad oficial + IA · sin fuente externa suficiente",
+        "model": "gemini-3.6-flash",
+        "generated_at": "2026-10-21T13:40:31.354350+02:00",
+        "ts": "2026-10-21T13:40:31.354350+02:00",
+        "fuente": "Estimación T-439m · continuidad oficial + IA · sin fuente externa suficiente",
         "input_fingerprint": "22aabb4a44d90447",
         "impacto_bajas": {
           "local": {
@@ -873014,7 +873026,7 @@
           },
           "fuente": "goles+asistencias reales de la temporada · informativo, no altera la probabilidad"
         },
-        "critical_probable_checked_at": "2026-10-21T12:22:03.174234+02:00",
+        "critical_probable_checked_at": "2026-10-21T13:40:31.354350+02:00",
         "critical_media_fingerprint": "4f53cda18c2baa0c",
         "critical_media_fingerprint_previous": "4f53cda18c2baa0c",
         "position_source": "model_unverified",
@@ -873047,13 +873059,14 @@
         "display_warning": "XI estimado por modelo; no existe evidencia externa suficiente para ambos equipos.",
         "probable_refresh_windows": {
           "T-1183m": "2026-10-21T01:16:52.301572+02:00",
-          "T-835m": "2026-10-21T07:04:53.672714+02:00"
+          "T-835m": "2026-10-21T07:04:53.672714+02:00",
+          "T-439m": "2026-10-21T13:40:31.354350+02:00"
         },
-        "probable_refresh_window_last": "T-835m",
-        "source_updated_at": "2026-10-21T07:04:53.672714+02:00",
-        "critical_probable_generated_at": "2026-10-21T07:04:53.672714+02:00",
+        "probable_refresh_window_last": "T-439m",
+        "source_updated_at": "2026-10-21T13:40:31.354350+02:00",
+        "critical_probable_generated_at": "2026-10-21T13:40:31.354350+02:00",
         "player_props_source": "Predictivo híbrido · 0/22 con muestra individual real",
-        "player_props_checked_at": "2026-10-21T12:22:03.174234+02:00",
+        "player_props_checked_at": "2026-10-21T13:40:31.354350+02:00",
         "player_props_lineup_status": "estimado",
         "cache_status": "recuperado_de_cache"
       },
@@ -873868,11 +873881,11 @@
       "operational_checks": {
         "absences_checked_at": "2026-10-21T12:22:00.136022+02:00",
         "absences_check_result": "fixture_not_found",
-        "player_props_checked_at": "2026-10-21T12:22:03.174234+02:00",
+        "player_props_checked_at": "2026-10-21T13:40:31.354350+02:00",
         "player_props_check_result": "complete_hybrid"
       },
       "matchday_player_rates": {
-        "checked_at": "2026-10-21T12:22:03.174234+02:00",
+        "checked_at": "2026-10-21T13:40:31.354350+02:00",
         "source": "API-Football · players",
         "season": 2026,
         "league_id": 2,
@@ -873881,7 +873894,7 @@
         "visitante": []
       },
       "prediction_live_refresh": {
-        "checked_at": "2026-10-21T12:25:24.450869+02:00",
+        "checked_at": "2026-10-21T13:43:25.925249+02:00",
         "cadence_target_minutes": 5,
         "model_retrained": false,
         "pure_model_probs_changed": false,
@@ -873904,9 +873917,9 @@
             "detail": "calendario cargado"
           },
           "weather": {
-            "state": "scheduled",
-            "required": false,
-            "detail": "ventana T−8h",
+            "state": "missing",
+            "required": true,
+            "detail": "sin previsión",
             "freshness_known": false,
             "ttl_hours": 12
           },
@@ -873922,7 +873935,7 @@
           "lineup_probable": {
             "state": "scheduled",
             "required": false,
-            "checked_at": "2026-10-21T07:04:53.672714+02:00",
+            "checked_at": "2026-10-21T13:40:31.354350+02:00",
             "source": "Gemini",
             "detail": "ventana T−3h",
             "freshness_known": true,
@@ -873942,6 +873955,7 @@
           }
         },
         "missing_required": [
+          "weather",
           "odds"
         ]
       },
@@ -873950,6 +873964,7 @@
         "tier": "insufficient",
         "verified": 0.4,
         "required_missing": [
+          "weather",
           "odds"
         ],
         "components": {
@@ -874406,7 +874421,7 @@
           "weather": false,
           "market_odds": false
         },
-        "refreshed_at": "2026-10-21T12:25:24.450869+02:00"
+        "refreshed_at": "2026-10-21T13:43:25.925249+02:00"
       },
       "prediction_factors": [
         {
@@ -874442,7 +874457,7 @@
           "desacuerdo alto entre modelos"
         ],
         "policy": "abstención automática por incertidumbre o falta de evidencia",
-        "refreshed_at": "2026-10-21T12:25:24.450869+02:00"
+        "refreshed_at": "2026-10-21T13:43:25.925249+02:00"
       },
       "prediction_snapshot": {
         "generated_at": "2026-08-31T10:21:28.703587+02:00",
@@ -874627,28 +874642,28 @@
         "local": [
           "Simon Mignolet",
           "Kyriani Sabbe",
-          "Joel Ordóñez",
           "Brandon Mechele",
+          "Zaid Romero",
           "Maxim De Cuyper",
           "Raphael Onyedika",
+          "Ardon Jashari",
           "Hans Vanaken",
-          "Hugo Vetlesen",
           "Andreas Skov Olsen",
-          "Christos Tzolis",
-          "Ferran Jutglà"
+          "Gustaf Nilsson",
+          "Christos Tzolis"
         ],
         "visitante": [
           "Brice Samba",
-          "Przemyslaw Frankowski",
+          "Jonathan Gradit",
           "Kevin Danso",
           "Facundo Medina",
-          "Deiver Machado",
+          "Przemyslaw Frankowski",
+          "Nampalys Mendy",
           "Andy Diouf",
+          "Deiver Machado",
           "Adrien Thomasson",
-          "Angelo Fulgini",
           "Florian Sotoca",
-          "Anass Zaroury",
-          "Wesley Saïd"
+          "M'Bala Nzola"
         ],
         "posiciones_local": [
           "POR",
@@ -874658,26 +874673,26 @@
           "LI",
           "MCD",
           "MC",
-          "MC",
+          "MP",
           "ED",
-          "EI",
-          "DC"
+          "DC",
+          "EI"
         ],
         "posiciones_visitante": [
           "POR",
-          "LD",
           "DFC",
           "DFC",
-          "LI",
+          "DFC",
+          "CAD",
+          "MCD",
           "MC",
-          "MC",
+          "CAI",
           "MP",
-          "ED",
-          "EI",
+          "DC",
           "DC"
         ],
         "formacion_local": "4-3-3",
-        "formacion_visitante": "4-3-3",
+        "formacion_visitante": "5-3-2",
         "positions_inferred": false,
         "bajas_local": [
           "Casper Nielsen (lesión: muscular)"
@@ -874693,8 +874708,8 @@
             "g": 0.01,
             "a": 0.01,
             "r": 0.03,
-            "rp": 0.02,
-            "fc": 0.26,
+            "rp": 0.01,
+            "fc": 0.27,
             "fr": 0.11,
             "t": 0.03,
             "min": 76.0,
@@ -874718,39 +874733,12 @@
             "jugador": "Kyriani Sabbe",
             "position": "LD",
             "g": 0.09,
-            "a": 0.26,
-            "r": 1.31,
-            "rp": 0.39,
-            "fc": 1.21,
-            "fr": 0.91,
-            "t": 0.24,
-            "min": 76.0,
-            "tit": 0.74,
-            "sample_minutes": 0,
-            "sample_quality": "sin_muestra_individual",
-            "source": "Modelo · rol + predicción de equipo",
-            "evidence_type": "model_estimate",
-            "prediction_kind": "role_team_residual_allocation",
-            "team_prediction_totals": {
-              "g": 3.48,
-              "a": 2.51,
-              "r": 26.45,
-              "rp": 9.79,
-              "fc": 12.0,
-              "fr": 12.0,
-              "t": 2.2
-            }
-          },
-          {
-            "jugador": "Joel Ordóñez",
-            "position": "DFC",
-            "g": 0.12,
-            "a": 0.04,
-            "r": 1.1,
-            "rp": 0.31,
-            "fc": 1.42,
-            "fr": 0.59,
-            "t": 0.32,
+            "a": 0.24,
+            "r": 1.24,
+            "rp": 0.36,
+            "fc": 1.25,
+            "fr": 0.88,
+            "t": 0.25,
             "min": 76.0,
             "tit": 0.74,
             "sample_minutes": 0,
@@ -874771,13 +874759,40 @@
           {
             "jugador": "Brandon Mechele",
             "position": "DFC",
-            "g": 0.12,
+            "g": 0.11,
             "a": 0.04,
-            "r": 1.1,
-            "rp": 0.31,
-            "fc": 1.42,
-            "fr": 0.59,
-            "t": 0.32,
+            "r": 1.04,
+            "rp": 0.29,
+            "fc": 1.48,
+            "fr": 0.57,
+            "t": 0.33,
+            "min": 76.0,
+            "tit": 0.74,
+            "sample_minutes": 0,
+            "sample_quality": "sin_muestra_individual",
+            "source": "Modelo · rol + predicción de equipo",
+            "evidence_type": "model_estimate",
+            "prediction_kind": "role_team_residual_allocation",
+            "team_prediction_totals": {
+              "g": 3.48,
+              "a": 2.51,
+              "r": 26.45,
+              "rp": 9.79,
+              "fc": 12.0,
+              "fr": 12.0,
+              "t": 2.2
+            }
+          },
+          {
+            "jugador": "Zaid Romero",
+            "position": "DFC",
+            "g": 0.11,
+            "a": 0.04,
+            "r": 1.04,
+            "rp": 0.29,
+            "fc": 1.48,
+            "fr": 0.57,
+            "t": 0.33,
             "min": 76.0,
             "tit": 0.74,
             "sample_minutes": 0,
@@ -874799,12 +874814,12 @@
             "jugador": "Maxim De Cuyper",
             "position": "LI",
             "g": 0.09,
-            "a": 0.26,
-            "r": 1.31,
-            "rp": 0.39,
-            "fc": 1.21,
-            "fr": 0.91,
-            "t": 0.24,
+            "a": 0.24,
+            "r": 1.24,
+            "rp": 0.36,
+            "fc": 1.25,
+            "fr": 0.88,
+            "t": 0.25,
             "min": 76.0,
             "tit": 0.74,
             "sample_minutes": 0,
@@ -874825,13 +874840,40 @@
           {
             "jugador": "Raphael Onyedika",
             "position": "MCD",
-            "g": 0.17,
-            "a": 0.2,
-            "r": 1.73,
-            "rp": 0.54,
-            "fc": 1.56,
-            "fr": 1.09,
-            "t": 0.3,
+            "g": 0.16,
+            "a": 0.18,
+            "r": 1.63,
+            "rp": 0.5,
+            "fc": 1.62,
+            "fr": 1.05,
+            "t": 0.32,
+            "min": 76.0,
+            "tit": 0.74,
+            "sample_minutes": 0,
+            "sample_quality": "sin_muestra_individual",
+            "source": "Modelo · rol + predicción de equipo",
+            "evidence_type": "model_estimate",
+            "prediction_kind": "role_team_residual_allocation",
+            "team_prediction_totals": {
+              "g": 3.48,
+              "a": 2.51,
+              "r": 26.45,
+              "rp": 9.79,
+              "fc": 12.0,
+              "fr": 12.0,
+              "t": 2.2
+            }
+          },
+          {
+            "jugador": "Ardon Jashari",
+            "position": "MC",
+            "g": 0.24,
+            "a": 0.29,
+            "r": 2.28,
+            "rp": 0.75,
+            "fc": 1.3,
+            "fr": 1.28,
+            "t": 0.23,
             "min": 76.0,
             "tit": 0.74,
             "sample_minutes": 0,
@@ -874851,41 +874893,14 @@
           },
           {
             "jugador": "Hans Vanaken",
-            "position": "MC",
-            "g": 0.26,
-            "a": 0.31,
-            "r": 2.42,
-            "rp": 0.8,
-            "fc": 1.25,
-            "fr": 1.33,
-            "t": 0.22,
-            "min": 76.0,
-            "tit": 0.74,
-            "sample_minutes": 0,
-            "sample_quality": "sin_muestra_individual",
-            "source": "Modelo · rol + predicción de equipo",
-            "evidence_type": "model_estimate",
-            "prediction_kind": "role_team_residual_allocation",
-            "team_prediction_totals": {
-              "g": 3.48,
-              "a": 2.51,
-              "r": 26.45,
-              "rp": 9.79,
-              "fc": 12.0,
-              "fr": 12.0,
-              "t": 2.2
-            }
-          },
-          {
-            "jugador": "Hugo Vetlesen",
-            "position": "MC",
-            "g": 0.26,
-            "a": 0.31,
-            "r": 2.42,
-            "rp": 0.8,
-            "fc": 1.25,
-            "fr": 1.33,
-            "t": 0.22,
+            "position": "MP",
+            "g": 0.51,
+            "a": 0.48,
+            "r": 3.75,
+            "rp": 1.43,
+            "fc": 0.81,
+            "fr": 1.69,
+            "t": 0.13,
             "min": 76.0,
             "tit": 0.74,
             "sample_minutes": 0,
@@ -874906,13 +874921,40 @@
           {
             "jugador": "Andreas Skov Olsen",
             "position": "ED",
-            "g": 0.7,
-            "a": 0.4,
-            "r": 4.66,
-            "rp": 1.93,
-            "fc": 0.71,
-            "fr": 1.81,
+            "g": 0.64,
+            "a": 0.37,
+            "r": 4.4,
+            "rp": 1.79,
+            "fc": 0.74,
+            "fr": 1.75,
             "t": 0.11,
+            "min": 76.0,
+            "tit": 0.74,
+            "sample_minutes": 0,
+            "sample_quality": "sin_muestra_individual",
+            "source": "Modelo · rol + predicción de equipo",
+            "evidence_type": "model_estimate",
+            "prediction_kind": "role_team_residual_allocation",
+            "team_prediction_totals": {
+              "g": 3.48,
+              "a": 2.51,
+              "r": 26.45,
+              "rp": 9.79,
+              "fc": 12.0,
+              "fr": 12.0,
+              "t": 2.2
+            }
+          },
+          {
+            "jugador": "Gustaf Nilsson",
+            "position": "DC",
+            "g": 0.89,
+            "a": 0.26,
+            "r": 5.38,
+            "rp": 2.22,
+            "fc": 1.06,
+            "fr": 1.48,
+            "t": 0.12,
             "min": 76.0,
             "tit": 0.74,
             "sample_minutes": 0,
@@ -874933,40 +874975,13 @@
           {
             "jugador": "Christos Tzolis",
             "position": "EI",
-            "g": 0.7,
-            "a": 0.4,
-            "r": 4.66,
-            "rp": 1.93,
-            "fc": 0.71,
-            "fr": 1.81,
-            "t": 0.11,
-            "min": 76.0,
-            "tit": 0.74,
-            "sample_minutes": 0,
-            "sample_quality": "sin_muestra_individual",
-            "source": "Modelo · rol + predicción de equipo",
-            "evidence_type": "model_estimate",
-            "prediction_kind": "role_team_residual_allocation",
-            "team_prediction_totals": {
-              "g": 3.48,
-              "a": 2.51,
-              "r": 26.45,
-              "rp": 9.79,
-              "fc": 12.0,
-              "fr": 12.0,
-              "t": 2.2
-            }
-          },
-          {
-            "jugador": "Ferran Jutglà",
-            "position": "DC",
-            "g": 0.96,
-            "a": 0.28,
-            "r": 5.71,
-            "rp": 2.37,
-            "fc": 1.0,
-            "fr": 1.52,
-            "t": 0.09,
+            "g": 0.63,
+            "a": 0.36,
+            "r": 4.42,
+            "rp": 1.79,
+            "fc": 0.74,
+            "fr": 1.74,
+            "t": 0.1,
             "min": 76.0,
             "tit": 0.74,
             "sample_minutes": 0,
@@ -874993,8 +875008,8 @@
             "a": 0.0,
             "r": 0.01,
             "rp": 0.0,
-            "fc": 0.27,
-            "fr": 0.11,
+            "fc": 0.25,
+            "fr": 0.12,
             "t": 0.03,
             "min": 76.0,
             "tit": 0.74,
@@ -875014,15 +875029,15 @@
             }
           },
           {
-            "jugador": "Przemyslaw Frankowski",
-            "position": "LD",
-            "g": 0.02,
-            "a": 0.07,
-            "r": 0.35,
-            "rp": 0.1,
-            "fc": 1.29,
-            "fr": 0.86,
-            "t": 0.26,
+            "jugador": "Jonathan Gradit",
+            "position": "DFC",
+            "g": 0.03,
+            "a": 0.01,
+            "r": 0.32,
+            "rp": 0.09,
+            "fc": 1.38,
+            "fr": 0.62,
+            "t": 0.31,
             "min": 76.0,
             "tit": 0.74,
             "sample_minutes": 0,
@@ -875045,11 +875060,11 @@
             "position": "DFC",
             "g": 0.03,
             "a": 0.01,
-            "r": 0.3,
-            "rp": 0.08,
-            "fc": 1.52,
-            "fr": 0.56,
-            "t": 0.35,
+            "r": 0.32,
+            "rp": 0.09,
+            "fc": 1.38,
+            "fr": 0.62,
+            "t": 0.31,
             "min": 76.0,
             "tit": 0.74,
             "sample_minutes": 0,
@@ -875072,11 +875087,11 @@
             "position": "DFC",
             "g": 0.03,
             "a": 0.01,
-            "r": 0.3,
-            "rp": 0.08,
-            "fc": 1.52,
-            "fr": 0.56,
-            "t": 0.35,
+            "r": 0.32,
+            "rp": 0.09,
+            "fc": 1.38,
+            "fr": 0.62,
+            "t": 0.31,
             "min": 76.0,
             "tit": 0.74,
             "sample_minutes": 0,
@@ -875095,15 +875110,42 @@
             }
           },
           {
-            "jugador": "Deiver Machado",
-            "position": "LI",
-            "g": 0.02,
-            "a": 0.07,
-            "r": 0.35,
-            "rp": 0.1,
-            "fc": 1.29,
-            "fr": 0.86,
-            "t": 0.26,
+            "jugador": "Przemyslaw Frankowski",
+            "position": "CAD",
+            "g": 0.04,
+            "a": 0.1,
+            "r": 0.55,
+            "rp": 0.19,
+            "fc": 1.07,
+            "fr": 1.18,
+            "t": 0.19,
+            "min": 76.0,
+            "tit": 0.74,
+            "sample_minutes": 0,
+            "sample_quality": "sin_muestra_individual",
+            "source": "Modelo · rol + predicción de equipo",
+            "evidence_type": "model_estimate",
+            "prediction_kind": "role_team_residual_allocation",
+            "team_prediction_totals": {
+              "g": 1.02,
+              "a": 0.73,
+              "r": 7.75,
+              "rp": 2.87,
+              "fc": 12.0,
+              "fr": 12.0,
+              "t": 2.2
+            }
+          },
+          {
+            "jugador": "Nampalys Mendy",
+            "position": "MCD",
+            "g": 0.05,
+            "a": 0.06,
+            "r": 0.5,
+            "rp": 0.16,
+            "fc": 1.52,
+            "fr": 1.15,
+            "t": 0.3,
             "min": 76.0,
             "tit": 0.74,
             "sample_minutes": 0,
@@ -875125,12 +875167,39 @@
             "jugador": "Andy Diouf",
             "position": "MC",
             "g": 0.07,
-            "a": 0.08,
-            "r": 0.65,
-            "rp": 0.21,
-            "fc": 1.34,
-            "fr": 1.26,
-            "t": 0.24,
+            "a": 0.09,
+            "r": 0.7,
+            "rp": 0.23,
+            "fc": 1.21,
+            "fr": 1.4,
+            "t": 0.21,
+            "min": 76.0,
+            "tit": 0.74,
+            "sample_minutes": 0,
+            "sample_quality": "sin_muestra_individual",
+            "source": "Modelo · rol + predicción de equipo",
+            "evidence_type": "model_estimate",
+            "prediction_kind": "role_team_residual_allocation",
+            "team_prediction_totals": {
+              "g": 1.02,
+              "a": 0.73,
+              "r": 7.75,
+              "rp": 2.87,
+              "fc": 12.0,
+              "fr": 12.0,
+              "t": 2.2
+            }
+          },
+          {
+            "jugador": "Deiver Machado",
+            "position": "CAI",
+            "g": 0.04,
+            "a": 0.1,
+            "r": 0.55,
+            "rp": 0.19,
+            "fc": 1.07,
+            "fr": 1.18,
+            "t": 0.19,
             "min": 76.0,
             "tit": 0.74,
             "sample_minutes": 0,
@@ -875150,41 +875219,14 @@
           },
           {
             "jugador": "Adrien Thomasson",
-            "position": "MC",
-            "g": 0.07,
-            "a": 0.08,
-            "r": 0.65,
-            "rp": 0.21,
-            "fc": 1.34,
-            "fr": 1.26,
-            "t": 0.24,
-            "min": 76.0,
-            "tit": 0.74,
-            "sample_minutes": 0,
-            "sample_quality": "sin_muestra_individual",
-            "source": "Modelo · rol + predicción de equipo",
-            "evidence_type": "model_estimate",
-            "prediction_kind": "role_team_residual_allocation",
-            "team_prediction_totals": {
-              "g": 1.02,
-              "a": 0.73,
-              "r": 7.75,
-              "rp": 2.87,
-              "fc": 12.0,
-              "fr": 12.0,
-              "t": 2.2
-            }
-          },
-          {
-            "jugador": "Angelo Fulgini",
             "position": "MP",
-            "g": 0.15,
-            "a": 0.13,
-            "r": 1.07,
-            "rp": 0.41,
-            "fc": 0.83,
-            "fr": 1.65,
-            "t": 0.14,
+            "g": 0.16,
+            "a": 0.16,
+            "r": 1.15,
+            "rp": 0.45,
+            "fc": 0.76,
+            "fr": 1.85,
+            "t": 0.12,
             "min": 76.0,
             "tit": 0.74,
             "sample_minutes": 0,
@@ -875204,68 +875246,41 @@
           },
           {
             "jugador": "Florian Sotoca",
-            "position": "ED",
-            "g": 0.18,
-            "a": 0.1,
-            "r": 1.26,
-            "rp": 0.51,
-            "fc": 0.76,
-            "fr": 1.72,
-            "t": 0.11,
-            "min": 76.0,
-            "tit": 0.74,
-            "sample_minutes": 0,
-            "sample_quality": "sin_muestra_individual",
-            "source": "Modelo · rol + predicción de equipo",
-            "evidence_type": "model_estimate",
-            "prediction_kind": "role_team_residual_allocation",
-            "team_prediction_totals": {
-              "g": 1.02,
-              "a": 0.73,
-              "r": 7.75,
-              "rp": 2.87,
-              "fc": 12.0,
-              "fr": 12.0,
-              "t": 2.2
-            }
-          },
-          {
-            "jugador": "Anass Zaroury",
-            "position": "EI",
-            "g": 0.18,
-            "a": 0.1,
-            "r": 1.26,
-            "rp": 0.51,
-            "fc": 0.76,
-            "fr": 1.72,
-            "t": 0.11,
-            "min": 76.0,
-            "tit": 0.74,
-            "sample_minutes": 0,
-            "sample_quality": "sin_muestra_individual",
-            "source": "Modelo · rol + predicción de equipo",
-            "evidence_type": "model_estimate",
-            "prediction_kind": "role_team_residual_allocation",
-            "team_prediction_totals": {
-              "g": 1.02,
-              "a": 0.73,
-              "r": 7.75,
-              "rp": 2.87,
-              "fc": 12.0,
-              "fr": 12.0,
-              "t": 2.2
-            }
-          },
-          {
-            "jugador": "Wesley Saïd",
             "position": "DC",
             "g": 0.27,
-            "a": 0.08,
-            "r": 1.55,
-            "rp": 0.66,
-            "fc": 1.08,
-            "fr": 1.44,
+            "a": 0.09,
+            "r": 1.66,
+            "rp": 0.69,
+            "fc": 0.99,
+            "fr": 1.63,
             "t": 0.11,
+            "min": 76.0,
+            "tit": 0.74,
+            "sample_minutes": 0,
+            "sample_quality": "sin_muestra_individual",
+            "source": "Modelo · rol + predicción de equipo",
+            "evidence_type": "model_estimate",
+            "prediction_kind": "role_team_residual_allocation",
+            "team_prediction_totals": {
+              "g": 1.02,
+              "a": 0.73,
+              "r": 7.75,
+              "rp": 2.87,
+              "fc": 12.0,
+              "fr": 12.0,
+              "t": 2.2
+            }
+          },
+          {
+            "jugador": "M'Bala Nzola",
+            "position": "DC",
+            "g": 0.3,
+            "a": 0.1,
+            "r": 1.67,
+            "rp": 0.69,
+            "fc": 0.99,
+            "fr": 1.63,
+            "t": 0.12,
             "min": 76.0,
             "tit": 0.74,
             "sample_minutes": 0,
@@ -875286,24 +875301,24 @@
         ],
         "best_props": [
           {
-            "jugador": "Ferran Jutglà",
+            "jugador": "Gustaf Nilsson",
             "lado": "local",
-            "score": 7.94,
-            "motivo": "76 min · 5.7 remates · 2.4 a puerta",
+            "score": 7.44,
+            "motivo": "76 min · 5.4 remates · 2.2 a puerta",
             "tipo": "ventaja_estadistica_sin_cuota"
           },
           {
             "jugador": "Andreas Skov Olsen",
             "lado": "local",
-            "score": 6.53,
-            "motivo": "76 min · 4.7 remates · 1.9 a puerta",
+            "score": 6.09,
+            "motivo": "76 min · 4.4 remates · 1.8 a puerta",
             "tipo": "ventaja_estadistica_sin_cuota"
           },
           {
             "jugador": "Christos Tzolis",
             "lado": "local",
-            "score": 6.53,
-            "motivo": "76 min · 4.7 remates · 1.9 a puerta",
+            "score": 6.07,
+            "motivo": "76 min · 4.4 remates · 1.8 a puerta",
             "tipo": "ventaja_estadistica_sin_cuota"
           }
         ],
@@ -875348,9 +875363,9 @@
         ],
         "provider": "Gemini",
         "model": "gemini-3.6-flash",
-        "generated_at": "2026-10-21T12:22:03.174234+02:00",
-        "ts": "2026-10-21T12:22:03.174234+02:00",
-        "fuente": "Estimación T-518m · continuidad oficial + IA · sin fuente externa suficiente",
+        "generated_at": "2026-10-21T13:40:31.354350+02:00",
+        "ts": "2026-10-21T13:40:31.354350+02:00",
+        "fuente": "Estimación T-439m · continuidad oficial + IA · sin fuente externa suficiente",
         "input_fingerprint": "c2a5f53508a7e7f5",
         "impacto_bajas": {
           "local": {
@@ -875367,11 +875382,11 @@
           },
           "fuente": "goles+asistencias reales de la temporada · informativo, no altera la probabilidad"
         },
-        "critical_probable_checked_at": "2026-10-21T12:22:03.174234+02:00",
+        "critical_probable_checked_at": "2026-10-21T13:40:31.354350+02:00",
         "critical_media_fingerprint": "4f53cda18c2baa0c",
         "critical_media_fingerprint_previous": "4f53cda18c2baa0c",
         "player_props_source": "Predictivo híbrido · 0/22 con muestra individual real",
-        "player_props_checked_at": "2026-10-21T12:22:03.174234+02:00",
+        "player_props_checked_at": "2026-10-21T13:40:31.354350+02:00",
         "player_props_lineup_status": "estimado",
         "cache_status": "recuperado_de_cache",
         "position_source": "model_unverified",
@@ -875403,11 +875418,12 @@
         "source_quality": "model_only",
         "display_warning": "XI estimado por modelo; no existe evidencia externa suficiente para ambos equipos.",
         "probable_refresh_windows": {
-          "T-518m": "2026-10-21T12:22:03.174234+02:00"
+          "T-518m": "2026-10-21T12:22:03.174234+02:00",
+          "T-439m": "2026-10-21T13:40:31.354350+02:00"
         },
-        "probable_refresh_window_last": "T-518m",
-        "source_updated_at": "2026-10-21T12:22:03.174234+02:00",
-        "critical_probable_generated_at": "2026-10-21T12:22:03.174234+02:00"
+        "probable_refresh_window_last": "T-439m",
+        "source_updated_at": "2026-10-21T13:40:31.354350+02:00",
+        "critical_probable_generated_at": "2026-10-21T13:40:31.354350+02:00"
       },
       "ai_attempts": {
         "lineup": "2026-10-20T23:11:45.458305+00:00"
@@ -876234,11 +876250,11 @@
       "operational_checks": {
         "absences_checked_at": "2026-10-21T12:22:00.136022+02:00",
         "absences_check_result": "fixture_not_found",
-        "player_props_checked_at": "2026-10-21T12:22:03.174234+02:00",
+        "player_props_checked_at": "2026-10-21T13:40:31.354350+02:00",
         "player_props_check_result": "complete_hybrid"
       },
       "matchday_player_rates": {
-        "checked_at": "2026-10-21T12:22:03.174234+02:00",
+        "checked_at": "2026-10-21T13:40:31.354350+02:00",
         "source": "API-Football · players",
         "season": 2026,
         "league_id": 2,
@@ -876247,7 +876263,7 @@
         "visitante": []
       },
       "prediction_live_refresh": {
-        "checked_at": "2026-10-21T12:25:24.450869+02:00",
+        "checked_at": "2026-10-21T13:43:25.925249+02:00",
         "cadence_target_minutes": 5,
         "model_retrained": false,
         "pure_model_probs_changed": false,
@@ -876270,9 +876286,9 @@
             "detail": "calendario cargado"
           },
           "weather": {
-            "state": "scheduled",
-            "required": false,
-            "detail": "ventana T−8h",
+            "state": "missing",
+            "required": true,
+            "detail": "sin previsión",
             "freshness_known": false,
             "ttl_hours": 12
           },
@@ -876288,7 +876304,7 @@
           "lineup_probable": {
             "state": "scheduled",
             "required": false,
-            "checked_at": "2026-10-21T12:22:03.174234+02:00",
+            "checked_at": "2026-10-21T13:40:31.354350+02:00",
             "source": "Gemini",
             "detail": "ventana T−3h",
             "freshness_known": true,
@@ -876308,6 +876324,7 @@
           }
         },
         "missing_required": [
+          "weather",
           "odds"
         ]
       },
@@ -876316,6 +876333,7 @@
         "tier": "insufficient",
         "verified": 0.4,
         "required_missing": [
+          "weather",
           "odds"
         ],
         "components": {
@@ -876771,7 +876789,7 @@
           "weather": false,
           "market_odds": false
         },
-        "refreshed_at": "2026-10-21T12:25:24.450869+02:00"
+        "refreshed_at": "2026-10-21T13:43:25.925249+02:00"
       },
       "prediction_factors": [
         {
@@ -876805,7 +876823,7 @@
         "label": "Pronóstico publicable",
         "reasons": [],
         "policy": "abstención automática por incertidumbre o falta de evidencia",
-        "refreshed_at": "2026-10-21T12:25:24.450869+02:00"
+        "refreshed_at": "2026-10-21T13:43:25.925249+02:00"
       },
       "prediction_snapshot": {
         "generated_at": "2026-08-31T10:21:28.703587+02:00",
@@ -877735,11 +877753,11 @@
           },
           "fuente": "goles+asistencias reales de la temporada · informativo, no altera la probabilidad"
         },
-        "critical_probable_checked_at": "2026-10-21T12:22:03.174234+02:00",
+        "critical_probable_checked_at": "2026-10-21T13:40:31.354350+02:00",
         "critical_media_fingerprint": "4f53cda18c2baa0c",
         "critical_media_fingerprint_previous": "4f53cda18c2baa0c",
         "player_props_source": "Predictivo híbrido · 0/22 con muestra individual real",
-        "player_props_checked_at": "2026-10-21T12:22:03.174234+02:00",
+        "player_props_checked_at": "2026-10-21T13:40:31.354350+02:00",
         "player_props_lineup_status": "estimado",
         "cache_status": "recuperado_de_cache",
         "position_source": "model_unverified",
@@ -878595,11 +878613,11 @@
       "operational_checks": {
         "absences_checked_at": "2026-10-21T12:22:00.136022+02:00",
         "absences_check_result": "fixture_not_found",
-        "player_props_checked_at": "2026-10-21T12:22:03.174234+02:00",
+        "player_props_checked_at": "2026-10-21T13:40:31.354350+02:00",
         "player_props_check_result": "complete_hybrid"
       },
       "matchday_player_rates": {
-        "checked_at": "2026-10-21T12:22:03.174234+02:00",
+        "checked_at": "2026-10-21T13:40:31.354350+02:00",
         "source": "API-Football · players",
         "season": 2026,
         "league_id": 2,
@@ -878608,7 +878626,7 @@
         "visitante": []
       },
       "prediction_live_refresh": {
-        "checked_at": "2026-10-21T12:25:24.450869+02:00",
+        "checked_at": "2026-10-21T13:43:25.925249+02:00",
         "cadence_target_minutes": 5,
         "model_retrained": false,
         "pure_model_probs_changed": false,
@@ -878631,9 +878649,9 @@
             "detail": "calendario cargado"
           },
           "weather": {
-            "state": "scheduled",
-            "required": false,
-            "detail": "ventana T−8h",
+            "state": "missing",
+            "required": true,
+            "detail": "sin previsión",
             "freshness_known": false,
             "ttl_hours": 12
           },
@@ -878669,6 +878687,7 @@
           }
         },
         "missing_required": [
+          "weather",
           "odds"
         ]
       },
@@ -878677,6 +878696,7 @@
         "tier": "insufficient",
         "verified": 0.4,
         "required_missing": [
+          "weather",
           "odds"
         ],
         "components": {
@@ -878981,7 +879001,7 @@
           "weather": false,
           "market_odds": false
         },
-        "refreshed_at": "2026-10-21T12:25:24.450869+02:00"
+        "refreshed_at": "2026-10-21T13:43:25.925249+02:00"
       },
       "prediction_factors": [
         {
@@ -879017,7 +879037,7 @@
           "desacuerdo alto entre modelos"
         ],
         "policy": "abstención automática por incertidumbre o falta de evidencia",
-        "refreshed_at": "2026-10-21T12:25:24.450869+02:00"
+        "refreshed_at": "2026-10-21T13:43:25.925249+02:00"
       },
       "score_distribution": {
         "total_goals_p10_p50_p90": [
@@ -879235,43 +879255,43 @@
       },
       "alineacion": {
         "local": [
-          "Adán",
-          "Diomande",
-          "Inácio",
-          "Coates",
+          "Franco Israel",
+          "Eduardo Quaresma",
+          "Ousmane Diomande",
+          "Gonçalo Inácio",
+          "Geny Catamo",
+          "Morten Hjulmand",
+          "Hidemasa Morita",
           "Nuno Santos",
-          "Morita",
-          "Hjulmand",
-          "Edwards",
-          "Trincão",
-          "Gyökeres",
-          "Gonçalves"
+          "Francisco Trincão",
+          "Pedro Gonçalves",
+          "Viktor Gyökeres"
         ],
         "visitante": [
-          "Schlager",
-          "Andrade",
-          "Ziereis",
-          "Baumgartner",
-          "Renner",
-          "Holzner",
-          "Jankovic",
-          "Mayer",
-          "Horvath",
-          "Kone",
-          "Grbic"
+          "Tobias Lawal",
+          "Melayro Bogarde",
+          "Philipp Ziereis",
+          "Andrés Andrade",
+          "George Bello",
+          "Branko Jovicic",
+          "Sascha Horvath",
+          "Robert Zulj",
+          "Moses Usor",
+          "Florian Flecker",
+          "Marin Ljubicic"
         ],
         "posiciones_local": [
           "POR",
-          "LD",
           "DFC",
           "DFC",
-          "LI",
-          "MCD",
+          "DFC",
+          "CAD",
           "MC",
-          "MP",
+          "MC",
           "CAI",
-          "DC",
-          "ED"
+          "ED",
+          "EI",
+          "DC"
         ],
         "posiciones_visitante": [
           "POR",
@@ -879282,12 +879302,12 @@
           "MCD",
           "MC",
           "MP",
-          "CAI",
-          "DC",
-          "ED"
+          "ED",
+          "EI",
+          "DC"
         ],
-        "formacion_local": "5-3-2",
-        "formacion_visitante": "5-3-2",
+        "formacion_local": "5-2-3",
+        "formacion_visitante": "4-3-3",
         "positions_inferred": false,
         "bajas_local": [
           "Jeremiah St. Juste (duda: muscular)"
@@ -879295,7 +879315,7 @@
         "bajas_visitante": [],
         "clave_local": [
           {
-            "jugador": "Adán",
+            "jugador": "Franco Israel",
             "position": "POR",
             "g": 0.01,
             "a": 0.01,
@@ -879322,42 +879342,15 @@
             }
           },
           {
-            "jugador": "Diomande",
-            "position": "LD",
-            "g": 0.09,
-            "a": 0.21,
-            "r": 1.2,
-            "rp": 0.36,
-            "fc": 1.21,
-            "fr": 0.93,
-            "t": 0.24,
-            "min": 76.0,
-            "tit": 0.74,
-            "sample_minutes": 0,
-            "sample_quality": "sin_muestra_individual",
-            "source": "Modelo · rol + predicción de equipo",
-            "evidence_type": "model_estimate",
-            "prediction_kind": "role_team_residual_allocation",
-            "team_prediction_totals": {
-              "g": 3.04,
-              "a": 2.19,
-              "r": 23.1,
-              "rp": 8.55,
-              "fc": 12.0,
-              "fr": 12.0,
-              "t": 2.2
-            }
-          },
-          {
-            "jugador": "Inácio",
+            "jugador": "Eduardo Quaresma",
             "position": "DFC",
-            "g": 0.11,
-            "a": 0.03,
-            "r": 1.01,
-            "rp": 0.28,
-            "fc": 1.43,
-            "fr": 0.6,
-            "t": 0.32,
+            "g": 0.1,
+            "a": 0.04,
+            "r": 0.95,
+            "rp": 0.26,
+            "fc": 1.46,
+            "fr": 0.59,
+            "t": 0.33,
             "min": 76.0,
             "tit": 0.74,
             "sample_minutes": 0,
@@ -879376,15 +879369,15 @@
             }
           },
           {
-            "jugador": "Coates",
+            "jugador": "Ousmane Diomande",
             "position": "DFC",
-            "g": 0.11,
-            "a": 0.03,
-            "r": 1.01,
-            "rp": 0.28,
-            "fc": 1.43,
-            "fr": 0.6,
-            "t": 0.32,
+            "g": 0.1,
+            "a": 0.04,
+            "r": 0.95,
+            "rp": 0.26,
+            "fc": 1.46,
+            "fr": 0.59,
+            "t": 0.33,
             "min": 76.0,
             "tit": 0.74,
             "sample_minutes": 0,
@@ -879403,15 +879396,15 @@
             }
           },
           {
-            "jugador": "Nuno Santos",
-            "position": "LI",
-            "g": 0.09,
-            "a": 0.21,
-            "r": 1.2,
-            "rp": 0.36,
-            "fc": 1.21,
-            "fr": 0.93,
-            "t": 0.24,
+            "jugador": "Gonçalo Inácio",
+            "position": "DFC",
+            "g": 0.1,
+            "a": 0.04,
+            "r": 0.95,
+            "rp": 0.26,
+            "fc": 1.46,
+            "fr": 0.59,
+            "t": 0.33,
             "min": 76.0,
             "tit": 0.74,
             "sample_minutes": 0,
@@ -879430,95 +879423,14 @@
             }
           },
           {
-            "jugador": "Morita",
-            "position": "MCD",
-            "g": 0.16,
-            "a": 0.16,
-            "r": 1.58,
-            "rp": 0.5,
-            "fc": 1.57,
-            "fr": 1.11,
-            "t": 0.3,
-            "min": 76.0,
-            "tit": 0.74,
-            "sample_minutes": 0,
-            "sample_quality": "sin_muestra_individual",
-            "source": "Modelo · rol + predicción de equipo",
-            "evidence_type": "model_estimate",
-            "prediction_kind": "role_team_residual_allocation",
-            "team_prediction_totals": {
-              "g": 3.04,
-              "a": 2.19,
-              "r": 23.1,
-              "rp": 8.55,
-              "fc": 12.0,
-              "fr": 12.0,
-              "t": 2.2
-            }
-          },
-          {
-            "jugador": "Hjulmand",
-            "position": "MC",
-            "g": 0.25,
-            "a": 0.26,
-            "r": 2.21,
-            "rp": 0.74,
-            "fc": 1.26,
-            "fr": 1.36,
-            "t": 0.22,
-            "min": 76.0,
-            "tit": 0.74,
-            "sample_minutes": 0,
-            "sample_quality": "sin_muestra_individual",
-            "source": "Modelo · rol + predicción de equipo",
-            "evidence_type": "model_estimate",
-            "prediction_kind": "role_team_residual_allocation",
-            "team_prediction_totals": {
-              "g": 3.04,
-              "a": 2.19,
-              "r": 23.1,
-              "rp": 8.55,
-              "fc": 12.0,
-              "fr": 12.0,
-              "t": 2.2
-            }
-          },
-          {
-            "jugador": "Edwards",
-            "position": "MP",
-            "g": 0.52,
-            "a": 0.43,
-            "r": 3.63,
-            "rp": 1.42,
-            "fc": 0.78,
-            "fr": 1.79,
-            "t": 0.12,
-            "min": 76.0,
-            "tit": 0.74,
-            "sample_minutes": 0,
-            "sample_quality": "sin_muestra_individual",
-            "source": "Modelo · rol + predicción de equipo",
-            "evidence_type": "model_estimate",
-            "prediction_kind": "role_team_residual_allocation",
-            "team_prediction_totals": {
-              "g": 3.04,
-              "a": 2.19,
-              "r": 23.1,
-              "rp": 8.55,
-              "fc": 12.0,
-              "fr": 12.0,
-              "t": 2.2
-            }
-          },
-          {
-            "jugador": "Trincão",
-            "position": "CAI",
-            "g": 0.15,
-            "a": 0.28,
-            "r": 1.74,
-            "rp": 0.6,
-            "fc": 1.11,
-            "fr": 1.14,
+            "jugador": "Geny Catamo",
+            "position": "CAD",
+            "g": 0.13,
+            "a": 0.29,
+            "r": 1.62,
+            "rp": 0.55,
+            "fc": 1.14,
+            "fr": 1.12,
             "t": 0.2,
             "min": 76.0,
             "tit": 0.74,
@@ -879538,15 +879450,15 @@
             }
           },
           {
-            "jugador": "Gyökeres",
-            "position": "DC",
-            "g": 0.91,
-            "a": 0.23,
-            "r": 5.21,
-            "rp": 2.21,
-            "fc": 1.03,
-            "fr": 1.57,
-            "t": 0.12,
+            "jugador": "Morten Hjulmand",
+            "position": "MC",
+            "g": 0.23,
+            "a": 0.27,
+            "r": 2.07,
+            "rp": 0.68,
+            "fc": 1.28,
+            "fr": 1.33,
+            "t": 0.22,
             "min": 76.0,
             "tit": 0.74,
             "sample_minutes": 0,
@@ -879565,15 +879477,123 @@
             }
           },
           {
-            "jugador": "Gonçalves",
+            "jugador": "Hidemasa Morita",
+            "position": "MC",
+            "g": 0.23,
+            "a": 0.27,
+            "r": 2.07,
+            "rp": 0.68,
+            "fc": 1.28,
+            "fr": 1.33,
+            "t": 0.22,
+            "min": 76.0,
+            "tit": 0.74,
+            "sample_minutes": 0,
+            "sample_quality": "sin_muestra_individual",
+            "source": "Modelo · rol + predicción de equipo",
+            "evidence_type": "model_estimate",
+            "prediction_kind": "role_team_residual_allocation",
+            "team_prediction_totals": {
+              "g": 3.04,
+              "a": 2.19,
+              "r": 23.1,
+              "rp": 8.55,
+              "fc": 12.0,
+              "fr": 12.0,
+              "t": 2.2
+            }
+          },
+          {
+            "jugador": "Nuno Santos",
+            "position": "CAI",
+            "g": 0.13,
+            "a": 0.29,
+            "r": 1.62,
+            "rp": 0.55,
+            "fc": 1.14,
+            "fr": 1.12,
+            "t": 0.2,
+            "min": 76.0,
+            "tit": 0.74,
+            "sample_minutes": 0,
+            "sample_quality": "sin_muestra_individual",
+            "source": "Modelo · rol + predicción de equipo",
+            "evidence_type": "model_estimate",
+            "prediction_kind": "role_team_residual_allocation",
+            "team_prediction_totals": {
+              "g": 3.04,
+              "a": 2.19,
+              "r": 23.1,
+              "rp": 8.55,
+              "fc": 12.0,
+              "fr": 12.0,
+              "t": 2.2
+            }
+          },
+          {
+            "jugador": "Francisco Trincão",
             "position": "ED",
-            "g": 0.64,
-            "a": 0.34,
-            "r": 4.28,
-            "rp": 1.79,
-            "fc": 0.71,
-            "fr": 1.86,
-            "t": 0.09,
+            "g": 0.6,
+            "a": 0.35,
+            "r": 3.99,
+            "rp": 1.63,
+            "fc": 0.73,
+            "fr": 1.83,
+            "t": 0.11,
+            "min": 76.0,
+            "tit": 0.74,
+            "sample_minutes": 0,
+            "sample_quality": "sin_muestra_individual",
+            "source": "Modelo · rol + predicción de equipo",
+            "evidence_type": "model_estimate",
+            "prediction_kind": "role_team_residual_allocation",
+            "team_prediction_totals": {
+              "g": 3.04,
+              "a": 2.19,
+              "r": 23.1,
+              "rp": 8.55,
+              "fc": 12.0,
+              "fr": 12.0,
+              "t": 2.2
+            }
+          },
+          {
+            "jugador": "Pedro Gonçalves",
+            "position": "EI",
+            "g": 0.6,
+            "a": 0.35,
+            "r": 3.99,
+            "rp": 1.63,
+            "fc": 0.73,
+            "fr": 1.83,
+            "t": 0.11,
+            "min": 76.0,
+            "tit": 0.74,
+            "sample_minutes": 0,
+            "sample_quality": "sin_muestra_individual",
+            "source": "Modelo · rol + predicción de equipo",
+            "evidence_type": "model_estimate",
+            "prediction_kind": "role_team_residual_allocation",
+            "team_prediction_totals": {
+              "g": 3.04,
+              "a": 2.19,
+              "r": 23.1,
+              "rp": 8.55,
+              "fc": 12.0,
+              "fr": 12.0,
+              "t": 2.2
+            }
+          },
+          {
+            "jugador": "Viktor Gyökeres",
+            "position": "DC",
+            "g": 0.81,
+            "a": 0.24,
+            "r": 4.86,
+            "rp": 2.04,
+            "fc": 1.06,
+            "fr": 1.56,
+            "t": 0.12,
             "min": 76.0,
             "tit": 0.74,
             "sample_minutes": 0,
@@ -879594,13 +879614,13 @@
         ],
         "clave_visitante": [
           {
-            "jugador": "Schlager",
+            "jugador": "Tobias Lawal",
             "position": "POR",
             "g": 0.0,
             "a": 0.0,
-            "r": 0.01,
+            "r": 0.0,
             "rp": 0.0,
-            "fc": 0.26,
+            "fc": 0.27,
             "fr": 0.11,
             "t": 0.03,
             "min": 76.0,
@@ -879621,15 +879641,15 @@
             }
           },
           {
-            "jugador": "Andrade",
+            "jugador": "Melayro Bogarde",
             "position": "LD",
-            "g": 0.02,
+            "g": 0.01,
             "a": 0.04,
-            "r": 0.21,
-            "rp": 0.06,
-            "fc": 1.21,
-            "fr": 0.93,
-            "t": 0.24,
+            "r": 0.19,
+            "rp": 0.05,
+            "fc": 1.25,
+            "fr": 0.88,
+            "t": 0.25,
             "min": 76.0,
             "tit": 0.74,
             "sample_minutes": 0,
@@ -879648,15 +879668,15 @@
             }
           },
           {
-            "jugador": "Ziereis",
+            "jugador": "Philipp Ziereis",
             "position": "DFC",
             "g": 0.02,
             "a": 0.01,
-            "r": 0.18,
-            "rp": 0.05,
-            "fc": 1.43,
-            "fr": 0.6,
-            "t": 0.32,
+            "r": 0.16,
+            "rp": 0.04,
+            "fc": 1.48,
+            "fr": 0.57,
+            "t": 0.33,
             "min": 76.0,
             "tit": 0.74,
             "sample_minutes": 0,
@@ -879675,15 +879695,15 @@
             }
           },
           {
-            "jugador": "Baumgartner",
+            "jugador": "Andrés Andrade",
             "position": "DFC",
             "g": 0.02,
             "a": 0.01,
-            "r": 0.18,
-            "rp": 0.05,
-            "fc": 1.43,
-            "fr": 0.6,
-            "t": 0.32,
+            "r": 0.16,
+            "rp": 0.04,
+            "fc": 1.48,
+            "fr": 0.57,
+            "t": 0.33,
             "min": 76.0,
             "tit": 0.74,
             "sample_minutes": 0,
@@ -879702,15 +879722,15 @@
             }
           },
           {
-            "jugador": "Renner",
+            "jugador": "George Bello",
             "position": "LI",
-            "g": 0.02,
+            "g": 0.01,
             "a": 0.04,
-            "r": 0.21,
-            "rp": 0.06,
-            "fc": 1.21,
-            "fr": 0.93,
-            "t": 0.24,
+            "r": 0.19,
+            "rp": 0.05,
+            "fc": 1.25,
+            "fr": 0.88,
+            "t": 0.25,
             "min": 76.0,
             "tit": 0.74,
             "sample_minutes": 0,
@@ -879729,15 +879749,15 @@
             }
           },
           {
-            "jugador": "Holzner",
+            "jugador": "Branko Jovicic",
             "position": "MCD",
-            "g": 0.03,
+            "g": 0.02,
             "a": 0.03,
-            "r": 0.28,
-            "rp": 0.09,
-            "fc": 1.57,
-            "fr": 1.11,
-            "t": 0.3,
+            "r": 0.25,
+            "rp": 0.08,
+            "fc": 1.62,
+            "fr": 1.05,
+            "t": 0.32,
             "min": 76.0,
             "tit": 0.74,
             "sample_minutes": 0,
@@ -879756,15 +879776,15 @@
             }
           },
           {
-            "jugador": "Jankovic",
+            "jugador": "Sascha Horvath",
             "position": "MC",
             "g": 0.04,
             "a": 0.04,
-            "r": 0.39,
-            "rp": 0.13,
-            "fc": 1.26,
-            "fr": 1.36,
-            "t": 0.22,
+            "r": 0.35,
+            "rp": 0.11,
+            "fc": 1.3,
+            "fr": 1.28,
+            "t": 0.23,
             "min": 76.0,
             "tit": 0.74,
             "sample_minutes": 0,
@@ -879783,15 +879803,15 @@
             }
           },
           {
-            "jugador": "Mayer",
+            "jugador": "Robert Zulj",
             "position": "MP",
-            "g": 0.09,
+            "g": 0.08,
             "a": 0.07,
-            "r": 0.63,
-            "rp": 0.25,
-            "fc": 0.78,
-            "fr": 1.79,
-            "t": 0.12,
+            "r": 0.57,
+            "rp": 0.22,
+            "fc": 0.81,
+            "fr": 1.69,
+            "t": 0.13,
             "min": 76.0,
             "tit": 0.74,
             "sample_minutes": 0,
@@ -879810,69 +879830,69 @@
             }
           },
           {
-            "jugador": "Horvath",
-            "position": "CAI",
-            "g": 0.03,
-            "a": 0.05,
-            "r": 0.3,
-            "rp": 0.1,
-            "fc": 1.11,
-            "fr": 1.14,
-            "t": 0.2,
-            "min": 76.0,
-            "tit": 0.74,
-            "sample_minutes": 0,
-            "sample_quality": "sin_muestra_individual",
-            "source": "Modelo · rol + predicción de equipo",
-            "evidence_type": "model_estimate",
-            "prediction_kind": "role_team_residual_allocation",
-            "team_prediction_totals": {
-              "g": 0.53,
-              "a": 0.38,
-              "r": 4.03,
-              "rp": 1.49,
-              "fc": 12.0,
-              "fr": 12.0,
-              "t": 2.2
-            }
-          },
-          {
-            "jugador": "Kone",
-            "position": "DC",
-            "g": 0.16,
-            "a": 0.04,
-            "r": 0.91,
-            "rp": 0.39,
-            "fc": 1.03,
-            "fr": 1.57,
-            "t": 0.12,
-            "min": 76.0,
-            "tit": 0.74,
-            "sample_minutes": 0,
-            "sample_quality": "sin_muestra_individual",
-            "source": "Modelo · rol + predicción de equipo",
-            "evidence_type": "model_estimate",
-            "prediction_kind": "role_team_residual_allocation",
-            "team_prediction_totals": {
-              "g": 0.53,
-              "a": 0.38,
-              "r": 4.03,
-              "rp": 1.49,
-              "fc": 12.0,
-              "fr": 12.0,
-              "t": 2.2
-            }
-          },
-          {
-            "jugador": "Grbic",
+            "jugador": "Moses Usor",
             "position": "ED",
             "g": 0.1,
-            "a": 0.05,
-            "r": 0.73,
-            "rp": 0.31,
-            "fc": 0.71,
-            "fr": 1.86,
-            "t": 0.09,
+            "a": 0.06,
+            "r": 0.67,
+            "rp": 0.27,
+            "fc": 0.74,
+            "fr": 1.75,
+            "t": 0.11,
+            "min": 76.0,
+            "tit": 0.74,
+            "sample_minutes": 0,
+            "sample_quality": "sin_muestra_individual",
+            "source": "Modelo · rol + predicción de equipo",
+            "evidence_type": "model_estimate",
+            "prediction_kind": "role_team_residual_allocation",
+            "team_prediction_totals": {
+              "g": 0.53,
+              "a": 0.38,
+              "r": 4.03,
+              "rp": 1.49,
+              "fc": 12.0,
+              "fr": 12.0,
+              "t": 2.2
+            }
+          },
+          {
+            "jugador": "Florian Flecker",
+            "position": "EI",
+            "g": 0.1,
+            "a": 0.06,
+            "r": 0.67,
+            "rp": 0.27,
+            "fc": 0.74,
+            "fr": 1.75,
+            "t": 0.11,
+            "min": 76.0,
+            "tit": 0.74,
+            "sample_minutes": 0,
+            "sample_quality": "sin_muestra_individual",
+            "source": "Modelo · rol + predicción de equipo",
+            "evidence_type": "model_estimate",
+            "prediction_kind": "role_team_residual_allocation",
+            "team_prediction_totals": {
+              "g": 0.53,
+              "a": 0.38,
+              "r": 4.03,
+              "rp": 1.49,
+              "fc": 12.0,
+              "fr": 12.0,
+              "t": 2.2
+            }
+          },
+          {
+            "jugador": "Marin Ljubicic",
+            "position": "DC",
+            "g": 0.13,
+            "a": 0.02,
+            "r": 0.82,
+            "rp": 0.36,
+            "fc": 1.06,
+            "fr": 1.47,
+            "t": 0.11,
             "min": 76.0,
             "tit": 0.74,
             "sample_minutes": 0,
@@ -879893,24 +879913,24 @@
         ],
         "best_props": [
           {
-            "jugador": "Gyökeres",
+            "jugador": "Viktor Gyökeres",
             "lado": "local",
-            "score": 7.32,
-            "motivo": "76 min · 5.2 remates · 2.2 a puerta",
+            "score": 6.77,
+            "motivo": "76 min · 4.9 remates · 2.0 a puerta",
             "tipo": "ventaja_estadistica_sin_cuota"
           },
           {
-            "jugador": "Gonçalves",
+            "jugador": "Francisco Trincão",
             "lado": "local",
-            "score": 5.98,
-            "motivo": "76 min · 4.3 remates · 1.8 a puerta",
+            "score": 5.58,
+            "motivo": "76 min · 4.0 remates · 1.6 a puerta",
             "tipo": "ventaja_estadistica_sin_cuota"
           },
           {
-            "jugador": "Edwards",
+            "jugador": "Pedro Gonçalves",
             "lado": "local",
-            "score": 5.11,
-            "motivo": "76 min · 3.6 remates · 1.4 a puerta",
+            "score": 5.58,
+            "motivo": "76 min · 4.0 remates · 1.6 a puerta",
             "tipo": "ventaja_estadistica_sin_cuota"
           }
         ],
@@ -879939,10 +879959,10 @@
         ],
         "disponibilidad_visitante": [],
         "provider": "Gemini",
-        "model": "gemini-2.5-flash-lite",
-        "generated_at": "2026-10-21T07:04:53.672714+02:00",
-        "ts": "2026-10-21T07:04:53.672714+02:00",
-        "fuente": "Estimación T-835m · continuidad oficial + IA · sin fuente externa suficiente",
+        "model": "gemini-3-flash-preview",
+        "generated_at": "2026-10-21T13:40:31.354350+02:00",
+        "ts": "2026-10-21T13:40:31.354350+02:00",
+        "fuente": "Estimación T-439m · continuidad oficial + IA · sin fuente externa suficiente",
         "input_fingerprint": "7606e8c5b146b84c",
         "impacto_bajas": {
           "local": {
@@ -879959,7 +879979,7 @@
           },
           "fuente": "goles+asistencias reales de la temporada · informativo, no altera la probabilidad"
         },
-        "critical_probable_checked_at": "2026-10-21T12:22:03.174234+02:00",
+        "critical_probable_checked_at": "2026-10-21T13:40:31.354350+02:00",
         "critical_media_fingerprint": "4f53cda18c2baa0c",
         "critical_media_fingerprint_previous": "4f53cda18c2baa0c",
         "position_source": "model_unverified",
@@ -879992,13 +880012,14 @@
         "display_warning": "XI estimado por modelo; no existe evidencia externa suficiente para ambos equipos.",
         "probable_refresh_windows": {
           "T-1183m": "2026-10-21T01:16:52.301572+02:00",
-          "T-835m": "2026-10-21T07:04:53.672714+02:00"
+          "T-835m": "2026-10-21T07:04:53.672714+02:00",
+          "T-439m": "2026-10-21T13:40:31.354350+02:00"
         },
-        "probable_refresh_window_last": "T-835m",
-        "source_updated_at": "2026-10-21T07:04:53.672714+02:00",
-        "critical_probable_generated_at": "2026-10-21T07:04:53.672714+02:00",
+        "probable_refresh_window_last": "T-439m",
+        "source_updated_at": "2026-10-21T13:40:31.354350+02:00",
+        "critical_probable_generated_at": "2026-10-21T13:40:31.354350+02:00",
         "player_props_source": "Predictivo híbrido · 0/22 con muestra individual real",
-        "player_props_checked_at": "2026-10-21T12:22:03.174234+02:00",
+        "player_props_checked_at": "2026-10-21T13:40:31.354350+02:00",
         "player_props_lineup_status": "estimado",
         "cache_status": "recuperado_de_cache"
       },
@@ -880827,11 +880848,11 @@
       "operational_checks": {
         "absences_checked_at": "2026-10-21T12:22:00.136022+02:00",
         "absences_check_result": "fixture_not_found",
-        "player_props_checked_at": "2026-10-21T12:22:03.174234+02:00",
+        "player_props_checked_at": "2026-10-21T13:40:31.354350+02:00",
         "player_props_check_result": "complete_hybrid"
       },
       "matchday_player_rates": {
-        "checked_at": "2026-10-21T12:22:03.174234+02:00",
+        "checked_at": "2026-10-21T13:40:31.354350+02:00",
         "source": "API-Football · players",
         "season": 2026,
         "league_id": 2,
@@ -880840,7 +880861,7 @@
         "visitante": []
       },
       "prediction_live_refresh": {
-        "checked_at": "2026-10-21T12:25:24.450869+02:00",
+        "checked_at": "2026-10-21T13:43:25.925249+02:00",
         "cadence_target_minutes": 5,
         "model_retrained": false,
         "pure_model_probs_changed": false,
@@ -880863,9 +880884,9 @@
             "detail": "calendario cargado"
           },
           "weather": {
-            "state": "scheduled",
-            "required": false,
-            "detail": "ventana T−8h",
+            "state": "missing",
+            "required": true,
+            "detail": "sin previsión",
             "freshness_known": false,
             "ttl_hours": 12
           },
@@ -880881,7 +880902,7 @@
           "lineup_probable": {
             "state": "scheduled",
             "required": false,
-            "checked_at": "2026-10-21T07:04:53.672714+02:00",
+            "checked_at": "2026-10-21T13:40:31.354350+02:00",
             "source": "Gemini",
             "detail": "ventana T−3h",
             "freshness_known": true,
@@ -880901,6 +880922,7 @@
           }
         },
         "missing_required": [
+          "weather",
           "odds"
         ]
       },
@@ -880909,6 +880931,7 @@
         "tier": "insufficient",
         "verified": 0.4,
         "required_missing": [
+          "weather",
           "odds"
         ],
         "components": {
@@ -880942,7 +880965,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "dixon-coles",
-      "updatedAt": "2026-10-21T12:19:32.361030+02:00",
+      "updatedAt": "2026-10-21T13:40:16.246805+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -881378,7 +881401,7 @@
           "weather": true,
           "market_odds": false
         },
-        "refreshed_at": "2026-10-21T12:25:24.450869+02:00"
+        "refreshed_at": "2026-10-21T13:43:25.925249+02:00"
       },
       "prediction_factors": [
         {
@@ -881412,7 +881435,7 @@
         "label": "Pronóstico publicable",
         "reasons": [],
         "policy": "abstención automática por incertidumbre o falta de evidencia",
-        "refreshed_at": "2026-10-21T12:25:24.450869+02:00"
+        "refreshed_at": "2026-10-21T13:43:25.925249+02:00"
       },
       "prediction_snapshot": {
         "generated_at": "2026-08-31T10:21:28.703587+02:00",
@@ -881647,13 +881670,13 @@
           "LI",
           "MCD",
           "MC",
+          "MC",
           "MP",
-          "ED",
           "EI",
           "DC"
         ],
         "formacion_local": "4-3-3",
-        "formacion_visitante": "4-3-3",
+        "formacion_visitante": "4-4-2",
         "positions_inferred": false,
         "bajas_local": [
           "Marc Bartra (lesión: tendón de Aquiles)",
@@ -881969,8 +881992,8 @@
             "g": 0.0,
             "a": 0.0,
             "r": 0.01,
-            "rp": 0.0,
-            "fc": 0.27,
+            "rp": 0.01,
+            "fc": 0.25,
             "fr": 0.11,
             "t": 0.03,
             "min": 82.0,
@@ -881995,11 +882018,11 @@
             "position": "LD",
             "g": 0.03,
             "a": 0.08,
-            "r": 0.42,
-            "rp": 0.12,
-            "fc": 1.25,
-            "fr": 0.88,
-            "t": 0.25,
+            "r": 0.46,
+            "rp": 0.14,
+            "fc": 1.2,
+            "fr": 0.91,
+            "t": 0.23,
             "min": 82.0,
             "tit": 0.88,
             "sample_minutes": 0,
@@ -882022,11 +882045,11 @@
             "position": "DFC",
             "g": 0.04,
             "a": 0.01,
-            "r": 0.36,
-            "rp": 0.1,
-            "fc": 1.48,
-            "fr": 0.57,
-            "t": 0.33,
+            "r": 0.39,
+            "rp": 0.11,
+            "fc": 1.41,
+            "fr": 0.59,
+            "t": 0.32,
             "min": 82.0,
             "tit": 0.88,
             "sample_minutes": 0,
@@ -882049,11 +882072,11 @@
             "position": "DFC",
             "g": 0.04,
             "a": 0.01,
-            "r": 0.36,
-            "rp": 0.1,
-            "fc": 1.48,
-            "fr": 0.57,
-            "t": 0.33,
+            "r": 0.39,
+            "rp": 0.11,
+            "fc": 1.41,
+            "fr": 0.59,
+            "t": 0.32,
             "min": 82.0,
             "tit": 0.88,
             "sample_minutes": 0,
@@ -882076,11 +882099,11 @@
             "position": "LI",
             "g": 0.03,
             "a": 0.08,
-            "r": 0.42,
-            "rp": 0.12,
-            "fc": 1.25,
-            "fr": 0.88,
-            "t": 0.25,
+            "r": 0.46,
+            "rp": 0.14,
+            "fc": 1.2,
+            "fr": 0.91,
+            "t": 0.23,
             "min": 82.0,
             "tit": 0.88,
             "sample_minutes": 0,
@@ -882101,13 +882124,13 @@
           {
             "jugador": "Quinten Timber",
             "position": "MCD",
-            "g": 0.05,
+            "g": 0.06,
             "a": 0.06,
-            "r": 0.56,
-            "rp": 0.17,
-            "fc": 1.62,
-            "fr": 1.05,
-            "t": 0.32,
+            "r": 0.61,
+            "rp": 0.19,
+            "fc": 1.55,
+            "fr": 1.09,
+            "t": 0.3,
             "min": 82.0,
             "tit": 0.88,
             "sample_minutes": 0,
@@ -882128,13 +882151,13 @@
           {
             "jugador": "In-beom Hwang",
             "position": "MC",
-            "g": 0.08,
+            "g": 0.09,
             "a": 0.1,
-            "r": 0.78,
-            "rp": 0.25,
-            "fc": 1.3,
-            "fr": 1.28,
-            "t": 0.23,
+            "r": 0.85,
+            "rp": 0.29,
+            "fc": 1.24,
+            "fr": 1.33,
+            "t": 0.21,
             "min": 82.0,
             "tit": 0.88,
             "sample_minutes": 0,
@@ -882154,14 +882177,14 @@
           },
           {
             "jugador": "Antoni Milambo",
-            "position": "MP",
-            "g": 0.18,
-            "a": 0.16,
-            "r": 1.28,
-            "rp": 0.49,
-            "fc": 0.81,
-            "fr": 1.69,
-            "t": 0.13,
+            "position": "MC",
+            "g": 0.09,
+            "a": 0.1,
+            "r": 0.85,
+            "rp": 0.29,
+            "fc": 1.24,
+            "fr": 1.33,
+            "t": 0.21,
             "min": 82.0,
             "tit": 0.88,
             "sample_minutes": 0,
@@ -882181,14 +882204,14 @@
           },
           {
             "jugador": "Calvin Stengs",
-            "position": "ED",
-            "g": 0.22,
-            "a": 0.13,
-            "r": 1.51,
-            "rp": 0.61,
-            "fc": 0.74,
+            "position": "MP",
+            "g": 0.2,
+            "a": 0.17,
+            "r": 1.39,
+            "rp": 0.55,
+            "fc": 0.78,
             "fr": 1.75,
-            "t": 0.11,
+            "t": 0.12,
             "min": 82.0,
             "tit": 0.88,
             "sample_minutes": 0,
@@ -882209,13 +882232,13 @@
           {
             "jugador": "Igor Paixão",
             "position": "EI",
-            "g": 0.22,
+            "g": 0.25,
             "a": 0.13,
-            "r": 1.51,
-            "rp": 0.61,
-            "fc": 0.74,
-            "fr": 1.75,
-            "t": 0.11,
+            "r": 1.64,
+            "rp": 0.69,
+            "fc": 0.71,
+            "fr": 1.82,
+            "t": 0.1,
             "min": 82.0,
             "tit": 0.88,
             "sample_minutes": 0,
@@ -882236,13 +882259,13 @@
           {
             "jugador": "Ayase Ueda",
             "position": "DC",
-            "g": 0.3,
-            "a": 0.1,
-            "r": 1.83,
-            "rp": 0.78,
-            "fc": 1.06,
-            "fr": 1.47,
-            "t": 0.11,
+            "g": 0.36,
+            "a": 0.12,
+            "r": 1.99,
+            "rp": 0.83,
+            "fc": 1.01,
+            "fr": 1.57,
+            "t": 0.13,
             "min": 82.0,
             "tit": 0.88,
             "sample_minutes": 0,
@@ -882331,10 +882354,10 @@
           }
         ],
         "provider": "Gemini",
-        "model": "gemini-3.6-flash",
-        "generated_at": "2026-10-21T12:22:03.174234+02:00",
-        "ts": "2026-10-21T12:22:03.174234+02:00",
-        "fuente": "T-518m · medios recientes para ambos equipos + continuidad oficial + IA",
+        "model": "gemini-3-flash-preview",
+        "generated_at": "2026-10-21T13:40:31.354350+02:00",
+        "ts": "2026-10-21T13:40:31.354350+02:00",
+        "fuente": "T-439m · medios recientes para ambos equipos + continuidad oficial + IA",
         "input_fingerprint": "b18edd1eb75fbf79",
         "impacto_bajas": {
           "local": {
@@ -882351,11 +882374,11 @@
           },
           "fuente": "goles+asistencias reales de la temporada · informativo, no altera la probabilidad"
         },
-        "critical_probable_checked_at": "2026-10-21T12:22:03.174234+02:00",
+        "critical_probable_checked_at": "2026-10-21T13:40:31.354350+02:00",
         "critical_media_fingerprint": "a56e65dd300e4ca2",
         "critical_media_fingerprint_previous": "a56e65dd300e4ca2",
         "player_props_source": "Predictivo híbrido · 0/22 con muestra individual real",
-        "player_props_checked_at": "2026-10-21T12:22:03.174234+02:00",
+        "player_props_checked_at": "2026-10-21T13:40:31.354350+02:00",
         "player_props_lineup_status": "probable",
         "cache_status": "recuperado_de_cache",
         "position_source": "model_unverified",
@@ -882454,51 +882477,52 @@
         "source_quality": "media_grounded",
         "display_warning": null,
         "probable_refresh_windows": {
-          "T-518m": "2026-10-21T12:22:03.174234+02:00"
+          "T-518m": "2026-10-21T12:22:03.174234+02:00",
+          "T-439m": "2026-10-21T13:40:31.354350+02:00"
         },
-        "probable_refresh_window_last": "T-518m",
-        "source_updated_at": "2026-10-21T12:22:03.174234+02:00",
-        "critical_probable_generated_at": "2026-10-21T12:22:03.174234+02:00"
+        "probable_refresh_window_last": "T-439m",
+        "source_updated_at": "2026-10-21T13:40:31.354350+02:00",
+        "critical_probable_generated_at": "2026-10-21T13:40:31.354350+02:00"
       },
       "ai_attempts": {
         "lineup": "2026-10-20T23:11:45.458305+00:00"
       },
       "weather": {
         "forecast_for": "2026-10-21T21:00:00",
-        "temperature_c": 20.0,
-        "apparent_temperature_c": 19.0,
+        "temperature_c": 20.3,
+        "apparent_temperature_c": 19.5,
         "humidity_pct": 47,
         "precipitation_mm": 0.0,
         "precipitation_probability_pct": 0,
-        "wind_kmh": 4.0,
+        "wind_kmh": 3.3,
         "weather_code": 0,
         "heat_stress": {
           "level": "bajo",
-          "index": 20.0,
+          "index": 20.3,
           "method": "temperatura aparente + humedad; no es WBGT"
         },
         "source": "Open-Meteo",
         "source_url": "https://open-meteo.com/",
         "license": "CC BY 4.0",
         "model_use": "ajuste_cuantitativo_contextual",
-        "source_updated_at": "2026-10-21T01:11:45.458305+02:00"
+        "source_updated_at": "2026-10-21T13:40:16.246805+02:00"
       },
       "weather_adjustment": {
         "applied": false,
-        "weather_source_updated_at": "2026-10-21T01:11:45.458305+02:00",
+        "weather_source_updated_at": "2026-10-21T13:40:16.246805+02:00",
         "weather_forecast_for": "2026-10-21T21:00:00",
         "weather_source": "Open-Meteo",
         "weather_snapshot": {
           "forecast_for": "2026-10-21T21:00:00",
-          "temperature_c": 20.0,
-          "apparent_temperature_c": 19.0,
+          "temperature_c": 20.3,
+          "apparent_temperature_c": 19.5,
           "humidity_pct": 47,
           "precipitation_mm": 0.0,
           "precipitation_probability_pct": 0,
-          "wind_kmh": 4.0,
+          "wind_kmh": 3.3,
           "weather_code": 0
         },
-        "applied_at": "2026-10-21T12:25:24.450869+02:00",
+        "applied_at": "2026-10-21T13:43:25.925249+02:00",
         "reason": "condiciones dentro de umbrales neutros",
         "reasons": [],
         "multipliers": {
@@ -883315,10 +883339,10 @@
         "fixture": {
           "source": "football_data",
           "source_id": "575376",
-          "available_at": "2026-10-21T10:19:32.361030+00:00",
+          "available_at": "2026-10-21T11:40:16.246805+00:00",
           "phase": "prematch",
           "quality": "observed",
-          "observed_at": "2026-10-21T10:19:32.361030+00:00"
+          "observed_at": "2026-10-21T11:40:16.246805+00:00"
         }
       },
       "source_refs": {
@@ -883332,11 +883356,13 @@
       "operational_checks": {
         "absences_checked_at": "2026-10-21T12:22:00.136022+02:00",
         "absences_check_result": "fixture_not_found",
-        "player_props_checked_at": "2026-10-21T12:22:03.174234+02:00",
-        "player_props_check_result": "complete_hybrid"
+        "player_props_checked_at": "2026-10-21T13:40:31.354350+02:00",
+        "player_props_check_result": "complete_hybrid",
+        "weather_checked_at": "2026-10-21T13:40:16.246805+02:00",
+        "weather_check_result": "ok"
       },
       "matchday_player_rates": {
-        "checked_at": "2026-10-21T12:22:03.174234+02:00",
+        "checked_at": "2026-10-21T13:40:31.354350+02:00",
         "source": "API-Football · players",
         "season": 2026,
         "league_id": 2,
@@ -883346,7 +883372,7 @@
       },
       "value": [],
       "prediction_live_refresh": {
-        "checked_at": "2026-10-21T12:25:24.450869+02:00",
+        "checked_at": "2026-10-21T13:43:25.925249+02:00",
         "cadence_target_minutes": 5,
         "model_retrained": false,
         "pure_model_probs_changed": false,
@@ -883364,16 +883390,16 @@
           "fixture": {
             "state": "ok",
             "required": true,
-            "checked_at": "2026-10-21T12:19:32.361030+02:00",
+            "checked_at": "2026-10-21T13:40:16.246805+02:00",
             "source": "football_data",
             "detail": "calendario cargado"
           },
           "weather": {
             "state": "ok",
-            "required": false,
-            "checked_at": "2026-10-21T01:11:45.458305+02:00",
+            "required": true,
+            "checked_at": "2026-10-21T13:40:16.246805+02:00",
             "source": "Open-Meteo",
-            "detail": "previsión disponible",
+            "detail": "ok",
             "freshness_known": true,
             "ttl_hours": 12
           },
@@ -883389,7 +883415,7 @@
           "lineup_probable": {
             "state": "ok",
             "required": false,
-            "checked_at": "2026-10-21T12:22:03.174234+02:00",
+            "checked_at": "2026-10-21T13:40:31.354350+02:00",
             "source": "Gemini",
             "detail": "XI respaldado por fuente",
             "freshness_known": true,
@@ -1389102,7 +1389128,7 @@
       "policy": "TTL dinámico por kickoff y créditos restantes"
     },
     "current_squads": {
-      "checked_at": "2026-10-21T12:22:03.174234+02:00",
+      "checked_at": "2026-10-21T13:40:31.354350+02:00",
       "season_context": 2026,
       "scope": "LaLiga+Segunda completas; Champions/próximos por fallback",
       "roster_ttl_hours": 24,
@@ -1389167,14 +1389193,14 @@
     }
   },
   "feature_truth_table": {
-    "generated_at": "2026-10-21T12:25:24.450869+02:00",
+    "generated_at": "2026-10-21T13:43:25.925249+02:00",
     "principle": "candidate -> leakage-safe snapshot -> walk-forward -> compare vs accepted engine + no-vig market -> promote only on improvement",
     "eligible_matches": 388,
     "features": [
       {
         "feature": "dixon_coles_score_model",
         "source": "Resultados históricos reales · Football-Data/API-Football + score model Dixon-Coles",
-        "available_at": "2026-10-21T12:25:24.450869+02:00",
+        "available_at": "2026-10-21T13:43:25.925249+02:00",
         "coverage": {
           "covered": 388,
           "eligible": 388,
@@ -1389196,7 +1389222,7 @@
       {
         "feature": "elo",
         "source": "Resultados históricos reales transformados en rating Elo",
-        "available_at": "2026-10-21T12:25:24.450869+02:00",
+        "available_at": "2026-10-21T13:43:25.925249+02:00",
         "coverage": {
           "covered": 388,
           "eligible": 388,
@@ -1389217,7 +1389243,7 @@
       {
         "feature": "team_stat_model",
         "source": "football-data.co.uk · históricos de remates, SOT, córners, faltas y tarjetas",
-        "available_at": "2026-10-21T12:25:24.450869+02:00",
+        "available_at": "2026-10-21T13:43:25.925249+02:00",
         "coverage": {
           "covered": 290,
           "eligible": 388,
@@ -1389322,7 +1389348,7 @@
       {
         "feature": "lineups_absences_minutes",
         "source": "API-Football oficial + medios recientes + continuidad histórica + snapshots pre-match",
-        "available_at": "2026-10-21T12:22:03.174234+02:00",
+        "available_at": "2026-10-21T13:40:31.354350+02:00",
         "coverage": {
           "covered": 388,
           "eligible": 388,
@@ -1389343,7 +1389369,7 @@
       {
         "feature": "player_props",
         "source": "API-Football /players + XI probable/oficial; estimación trazable solo para huecos sin muestra",
-        "available_at": "2026-10-21T12:22:03.174234+02:00",
+        "available_at": "2026-10-21T13:40:31.354350+02:00",
         "coverage": {
           "covered": 9,
           "eligible": 388,
@@ -1389363,7 +1389389,7 @@
       {
         "feature": "tactical_matchup",
         "source": "Perfiles observados casa/fuera derivados de football-data.co.uk",
-        "available_at": "2026-10-21T12:25:24.450869+02:00",
+        "available_at": "2026-10-21T13:43:25.925249+02:00",
         "coverage": {
           "covered": 290,
           "eligible": 388,
