@@ -1,6 +1,6 @@
 {
   "schema_version": 7,
-  "generated_at": "2026-10-24T22:10:31.364179+02:00",
+  "generated_at": "2026-10-24T22:16:32.514705+02:00",
   "season": 2026,
   "quiniela": {
     "jornada": "16",
@@ -907138,7 +907138,7 @@
         "football_data_uk": "880653631"
       },
       "operational_checks": {
-        "fixture_checked_at": "2026-10-24T22:03:58.337450+02:00",
+        "fixture_checked_at": "2026-10-24T22:16:01.173608+02:00",
         "fixture_check_result": "not_found"
       },
       "current_squads": {
@@ -907153,7 +907153,7 @@
           "fixture": {
             "state": "ok",
             "required": true,
-            "checked_at": "2026-10-24T22:03:58.337450+02:00",
+            "checked_at": "2026-10-24T22:16:01.173608+02:00",
             "source": "football_data_uk",
             "detail": "not_found"
           },
@@ -931511,7 +931511,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "ensemble",
-      "updatedAt": "2026-10-24T22:10:26.959428+02:00",
+      "updatedAt": "2026-10-24T22:16:28.004605+02:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "h2h": [
@@ -932815,8 +932815,8 @@
           "official": false,
           "baseline_from_official_history": true
         },
-        "generated_at": "2026-10-24T22:10:26.959428+02:00",
-        "ts": "2026-10-24T22:10:26.959428+02:00",
+        "generated_at": "2026-10-24T22:16:28.004605+02:00",
+        "ts": "2026-10-24T22:16:28.004605+02:00",
         "fuente": "Último XI oficial disponible de cada equipo · pendiente de probable actualizado",
         "input_fingerprint": "c4a2575e56a9d5a8",
         "cache_status": "recuperado_de_cache",
@@ -932836,8 +932836,8 @@
           }
         },
         "baseline_policy": "official_current > media_grounded > hybrid > last_official",
-        "source_updated_at": "2026-10-24T22:10:26.959428+02:00",
-        "current_squad_validated_at": "2026-10-24T22:10:31.364179+02:00",
+        "source_updated_at": "2026-10-24T22:16:28.004605+02:00",
+        "current_squad_validated_at": "2026-10-24T22:16:32.514705+02:00",
         "current_squad_conflicts": {
           "local": [
             "Luken Beitia"
@@ -933774,10 +933774,10 @@
         "fixture": {
           "source": "football_data",
           "source_id": "564726",
-          "available_at": "2026-10-24T20:10:26.959428+00:00",
+          "available_at": "2026-10-24T20:16:28.004605+00:00",
           "phase": "prematch",
           "quality": "observed",
-          "observed_at": "2026-10-24T20:10:26.959428+00:00"
+          "observed_at": "2026-10-24T20:16:28.004605+00:00"
         }
       },
       "source_refs": {
@@ -1440006,7 +1440006,7 @@
       "daily_remaining": 99,
       "minute_limit": 10,
       "minute_remaining": 9,
-      "checked_at": "2026-10-24T20:04:01.901905+00:00",
+      "checked_at": "2026-10-24T20:16:04.863970+00:00",
       "policy": "polling prepartido prioritario + backoff por cuota restante"
     },
     "the_odds_api": {
@@ -1440017,7 +1440017,7 @@
       "policy": "TTL dinámico por kickoff y créditos restantes"
     },
     "current_squads": {
-      "checked_at": "2026-10-24T22:10:31.364179+02:00",
+      "checked_at": "2026-10-24T22:16:32.514705+02:00",
       "season_context": 2026,
       "scope": "LaLiga+Segunda completas; Champions/próximos por fallback",
       "roster_ttl_hours": 24,
@@ -1440082,14 +1440082,14 @@
     }
   },
   "feature_truth_table": {
-    "generated_at": "2026-10-24T22:10:31.364179+02:00",
+    "generated_at": "2026-10-24T22:16:32.514705+02:00",
     "principle": "candidate -> leakage-safe snapshot -> walk-forward -> compare vs accepted engine + no-vig market -> promote only on improvement",
     "eligible_matches": 388,
     "features": [
       {
         "feature": "dixon_coles_score_model",
         "source": "Resultados históricos reales · Football-Data/API-Football + score model Dixon-Coles",
-        "available_at": "2026-10-24T22:10:31.364179+02:00",
+        "available_at": "2026-10-24T22:16:32.514705+02:00",
         "coverage": {
           "covered": 388,
           "eligible": 388,
@@ -1440111,7 +1440111,7 @@
       {
         "feature": "elo",
         "source": "Resultados históricos reales transformados en rating Elo",
-        "available_at": "2026-10-24T22:10:31.364179+02:00",
+        "available_at": "2026-10-24T22:16:32.514705+02:00",
         "coverage": {
           "covered": 388,
           "eligible": 388,
@@ -1440132,7 +1440132,7 @@
       {
         "feature": "team_stat_model",
         "source": "football-data.co.uk · históricos de remates, SOT, córners, faltas y tarjetas",
-        "available_at": "2026-10-24T22:10:31.364179+02:00",
+        "available_at": "2026-10-24T22:16:32.514705+02:00",
         "coverage": {
           "covered": 299,
           "eligible": 388,
@@ -1440237,7 +1440237,7 @@
       {
         "feature": "lineups_absences_minutes",
         "source": "API-Football oficial + medios recientes + continuidad histórica + snapshots pre-match",
-        "available_at": "2026-10-24T22:10:26.959428+02:00",
+        "available_at": "2026-10-24T22:16:28.004605+02:00",
         "coverage": {
           "covered": 388,
           "eligible": 388,
@@ -1440258,7 +1440258,7 @@
       {
         "feature": "player_props",
         "source": "API-Football /players + XI probable/oficial; estimación trazable solo para huecos sin muestra",
-        "available_at": "2026-10-24T22:10:26.959428+02:00",
+        "available_at": "2026-10-24T22:16:28.004605+02:00",
         "coverage": {
           "covered": 0,
           "eligible": 388,
@@ -1440278,7 +1440278,7 @@
       {
         "feature": "tactical_matchup",
         "source": "Perfiles observados casa/fuera derivados de football-data.co.uk",
-        "available_at": "2026-10-24T22:10:31.364179+02:00",
+        "available_at": "2026-10-24T22:16:32.514705+02:00",
         "coverage": {
           "covered": 299,
           "eligible": 388,
