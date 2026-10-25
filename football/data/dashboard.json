@@ -1,6 +1,6 @@
 {
   "schema_version": 7,
-  "generated_at": "2026-10-25T20:57:58.723524+01:00",
+  "generated_at": "2026-10-25T21:03:48.633461+01:00",
   "season": 2026,
   "quiniela": {
     "jornada": "16",
@@ -937583,7 +937583,7 @@
           "modelProb": 0.3594,
           "edge": 0.301,
           "weather_adjusted": true,
-          "prediction_refreshed_at": "2026-10-25T20:57:55.801803+01:00"
+          "prediction_refreshed_at": "2026-10-25T21:03:45.716220+01:00"
         },
         {
           "market": "1x2",
@@ -937606,7 +937606,7 @@
           "modelProb": 0.6406,
           "edge": -0.156,
           "weather_adjusted": true,
-          "prediction_refreshed_at": "2026-10-25T20:57:55.801803+01:00"
+          "prediction_refreshed_at": "2026-10-25T21:03:45.716220+01:00"
         },
         {
           "market": "1x2",
@@ -939382,7 +939382,7 @@
           "wind_kmh": 5.9,
           "weather_code": 3
         },
-        "applied_at": "2026-10-25T20:57:55.801803+01:00",
+        "applied_at": "2026-10-25T21:03:45.716220+01:00",
         "reason": "condiciones dentro de umbrales neutros",
         "reasons": [],
         "multipliers": {
@@ -940401,14 +940401,15 @@
           "weather": true,
           "market_odds": false
         },
-        "refreshed_at": "2026-10-25T20:57:55.801803+01:00",
+        "refreshed_at": "2026-10-25T21:03:45.716220+01:00",
         "raw_score_before_freshness_gate": 83.0,
         "data_freshness_gate_applied": true,
         "data_freshness_gate_status": "warning",
         "data_freshness_missing": [
           "probable_lineup",
           "official_lineup",
-          "odds"
+          "odds",
+          "player_props"
         ],
         "data_freshness_conflicts": []
       },
@@ -940448,17 +940449,18 @@
         "decision": "no_pick",
         "label": "Sin apuesta recomendada · datos por completar",
         "reasons": [
-          "gate T-2h no listo: probable_lineup, official_lineup, odds"
+          "gate T-2h no listo: probable_lineup, official_lineup, odds, player_props"
         ],
         "policy": "abstención automática: el gate T-2h debe estar ready para publicar apuesta",
-        "refreshed_at": "2026-10-25T20:57:58.723524+01:00",
+        "refreshed_at": "2026-10-25T21:03:48.633461+01:00",
         "data_freshness_gate": {
           "status": "warning",
-          "checked_at": "2026-10-25T20:57:58.723524+01:00",
+          "checked_at": "2026-10-25T21:03:48.633461+01:00",
           "missing_or_stale": [
             "probable_lineup",
             "official_lineup",
-            "odds"
+            "odds",
+            "player_props"
           ],
           "hard_conflicts": []
         }
@@ -942143,7 +942145,7 @@
         "football_data": "564723"
       },
       "operational_checks": {
-        "weather_checked_at": "2026-10-25T20:57:26.126217+01:00",
+        "weather_checked_at": "2026-10-25T21:03:18.435842+01:00",
         "weather_check_result": "ok",
         "fixture_checked_at": "2026-10-25T20:57:26.126217+01:00",
         "fixture_check_result": "not_found",
@@ -942573,7 +942575,7 @@
         "visitante": []
       },
       "prediction_live_refresh": {
-        "checked_at": "2026-10-25T20:57:55.801803+01:00",
+        "checked_at": "2026-10-25T21:03:45.716220+01:00",
         "cadence_target_minutes": 5,
         "model_retrained": false,
         "pure_model_probs_changed": false,
@@ -942586,21 +942588,22 @@
       },
       "matchday_freshness": {
         "status": "warning",
-        "checked_at": "2026-10-25T20:57:58.723524+01:00",
-        "minutes_to_kickoff": 2.0,
+        "checked_at": "2026-10-25T21:03:48.633461+01:00",
+        "minutes_to_kickoff": -3.8,
         "all_fresh": false,
         "requires_retry": true,
         "missing_or_stale": [
           "probable_lineup",
           "official_lineup",
-          "odds"
+          "odds",
+          "player_props"
         ],
         "hard_conflicts": [],
         "checks": {
           "weather": {
             "ok": true,
             "state": "fresh_kickoff_forecast",
-            "checked_at": "2026-10-25T20:57:26.126217+01:00",
+            "checked_at": "2026-10-25T21:03:18.435842+01:00",
             "age_minutes": 0.5,
             "max_age_minutes": 10,
             "forecast_for": "2026-10-25T21:00:00",
@@ -942610,14 +942613,14 @@
             "ok": true,
             "state": "fresh",
             "checked_at": "2026-10-25T20:40:53.283628+01:00",
-            "age_minutes": 17.1,
+            "age_minutes": 22.9,
             "max_age_minutes": 95
           },
           "probable_lineup": {
             "ok": false,
             "state": "stale_or_untrusted_probable",
             "checked_at": "2026-10-25T20:41:00.743696+01:00",
-            "age_minutes": 17.0,
+            "age_minutes": 22.8,
             "max_age_minutes": 15,
             "lineup_status": "estimado",
             "source_quality": "roster_grounded",
@@ -942628,7 +942631,7 @@
             "ok": false,
             "state": "official_missing_last_mile",
             "checked_at": "2026-10-25T20:57:35.403603+01:00",
-            "age_minutes": 0.4,
+            "age_minutes": 6.2,
             "max_age_minutes": 10,
             "poll_required_now": true,
             "official_required_now": true,
@@ -942646,10 +942649,10 @@
             "raw_state": "pendiente_odds_api"
           },
           "player_props": {
-            "ok": true,
-            "state": "fresh",
+            "ok": false,
+            "state": "missing_stale_or_low_sample",
             "checked_at": "2026-10-25T20:41:26.001954+01:00",
-            "age_minutes": 16.5,
+            "age_minutes": 22.4,
             "max_age_minutes": 20,
             "real_players": 22,
             "target_players": 22
@@ -942657,7 +942660,7 @@
           "prediction": {
             "ok": true,
             "state": "fresh",
-            "checked_at": "2026-10-25T20:57:55.801803+01:00",
+            "checked_at": "2026-10-25T21:03:45.716220+01:00",
             "age_minutes": 0.0,
             "max_age_minutes": 10
           }
@@ -949260,6 +949263,10 @@
             }
           ]
         }
+      },
+      "operational_checks": {
+        "absences_checked_at": "2026-10-25T21:03:28.841266+01:00",
+        "absences_check_result": "fixture_not_found"
       }
     },
     {
@@ -1447936,14 +1447943,14 @@
     }
   },
   "feature_truth_table": {
-    "generated_at": "2026-10-25T20:57:58.723524+01:00",
+    "generated_at": "2026-10-25T21:03:48.633461+01:00",
     "principle": "candidate -> leakage-safe snapshot -> walk-forward -> compare vs accepted engine + no-vig market -> promote only on improvement",
     "eligible_matches": 382,
     "features": [
       {
         "feature": "dixon_coles_score_model",
         "source": "Resultados históricos reales · Football-Data/API-Football + score model Dixon-Coles",
-        "available_at": "2026-10-25T20:57:58.723524+01:00",
+        "available_at": "2026-10-25T21:03:48.633461+01:00",
         "coverage": {
           "covered": 382,
           "eligible": 382,
@@ -1447965,7 +1447972,7 @@
       {
         "feature": "elo",
         "source": "Resultados históricos reales transformados en rating Elo",
-        "available_at": "2026-10-25T20:57:58.723524+01:00",
+        "available_at": "2026-10-25T21:03:48.633461+01:00",
         "coverage": {
           "covered": 382,
           "eligible": 382,
@@ -1447986,7 +1447993,7 @@
       {
         "feature": "team_stat_model",
         "source": "football-data.co.uk · históricos de remates, SOT, córners, faltas y tarjetas",
-        "available_at": "2026-10-25T20:57:58.723524+01:00",
+        "available_at": "2026-10-25T21:03:48.633461+01:00",
         "coverage": {
           "covered": 293,
           "eligible": 382,
@@ -1448132,7 +1448139,7 @@
       {
         "feature": "tactical_matchup",
         "source": "Perfiles observados casa/fuera derivados de football-data.co.uk",
-        "available_at": "2026-10-25T20:57:58.723524+01:00",
+        "available_at": "2026-10-25T21:03:48.633461+01:00",
         "coverage": {
           "covered": 293,
           "eligible": 382,
