@@ -1,6 +1,6 @@
 {
   "schema_version": 7,
-  "generated_at": "2026-10-29T20:56:39.308049+01:00",
+  "generated_at": "2026-10-29T21:00:59.805281+01:00",
   "season": 2026,
   "quiniela": {
     "jornada": "18",
@@ -954337,6 +954337,10 @@
             }
           ]
         }
+      },
+      "operational_checks": {
+        "absences_checked_at": "2026-10-29T21:00:59.805281+01:00",
+        "absences_check_result": "fixture_not_found"
       }
     },
     {
@@ -1462950,14 +1462954,14 @@
     }
   },
   "feature_truth_table": {
-    "generated_at": "2026-10-29T20:56:39.308049+01:00",
+    "generated_at": "2026-10-29T21:00:59.805281+01:00",
     "principle": "candidate -> leakage-safe snapshot -> walk-forward -> compare vs accepted engine + no-vig market -> promote only on improvement",
     "eligible_matches": 369,
     "features": [
       {
         "feature": "dixon_coles_score_model",
         "source": "Resultados históricos reales · Football-Data/API-Football + score model Dixon-Coles",
-        "available_at": "2026-10-29T20:56:39.308049+01:00",
+        "available_at": "2026-10-29T21:00:59.805281+01:00",
         "coverage": {
           "covered": 369,
           "eligible": 369,
@@ -1462979,7 +1462983,7 @@
       {
         "feature": "elo",
         "source": "Resultados históricos reales transformados en rating Elo",
-        "available_at": "2026-10-29T20:56:39.308049+01:00",
+        "available_at": "2026-10-29T21:00:59.805281+01:00",
         "coverage": {
           "covered": 369,
           "eligible": 369,
@@ -1463000,7 +1463004,7 @@
       {
         "feature": "team_stat_model",
         "source": "football-data.co.uk · históricos de remates, SOT, córners, faltas y tarjetas",
-        "available_at": "2026-10-29T20:56:39.308049+01:00",
+        "available_at": "2026-10-29T21:00:59.805281+01:00",
         "coverage": {
           "covered": 280,
           "eligible": 369,
@@ -1463146,7 +1463150,7 @@
       {
         "feature": "tactical_matchup",
         "source": "Perfiles observados casa/fuera derivados de football-data.co.uk",
-        "available_at": "2026-10-29T20:56:39.308049+01:00",
+        "available_at": "2026-10-29T21:00:59.805281+01:00",
         "coverage": {
           "covered": 280,
           "eligible": 369,
