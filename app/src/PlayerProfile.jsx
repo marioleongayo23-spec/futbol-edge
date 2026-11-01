@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import PlayerAvatar from "./PlayerAvatar";
+import MediaCredits from "./MediaCredits";
 import { photoForPlayer } from "./mediaIdentity.js";
 import { crestFor, fmtKick } from "./feed";
 import { nextFixture, playerMetricRows, positionGroup, profileCompleteness, resolvePlayer } from "./playerProfileData";
@@ -150,6 +151,7 @@ export default function PlayerProfile({ candidate, players, matches, onBack, onT
         </div>
       </section>
 
+      <MediaCredits players={[player]} />
       <div className="pp-source">Fuente principal: {player.rich_source || player.source || "feed consolidado"}. Los percentiles son descriptivos y todavía no alteran el 1X2 hasta superar validación walk-forward.</div>
     </div>
   );

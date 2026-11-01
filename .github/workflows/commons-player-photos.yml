@@ -1,0 +1,54 @@
+name: Wikimedia Commons licensed football photos
+
+on:
+  pull_request:
+    paths:
+      - "scripts/media/**"
+      - "football/data/media/**"
+      - ".github/workflows/commons-player-photos.yml"
+      - "app/src/verifiedPlayerMedia.js"
+  # First activation on merge into main; afterwards only weekly verification
+  # to respect public Wikimedia resources and free runner quotas.
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/commons-player-photos.yml"
+  schedule:
+    - cron: "29 7 * * 6"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: commons-curated-football-photos
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Validate rights, identities and parser offline
+        run: python -m unittest discover -s scripts/media -p "test_*.py" -v
+      - name: Verify approved Wikidata P18 images with Commons licensing metadata
+        run: python scripts/media/refresh_commons_catalog.py
+      - name: Publish approved metadata only when changed
+        if: github.event_name != 'pull_request'
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/src/verifiedPlayerMedia.js
+          if git diff --cached --quiet; then
+            echo "Commons license and thumbnail catalog unchanged"
+            exit 0
+          fi
+          git commit -m "media: refresh Commons player photo licenses and credits"
+          git fetch origin main
+          git rebase origin/main
+          git push origin HEAD:main

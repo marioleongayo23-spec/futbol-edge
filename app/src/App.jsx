@@ -15,6 +15,7 @@ import { picksForDay, wilsonInterval } from "./predictionEvidence";
 import { QualityBadge } from "./MatchQuality";
 import PlayerProfile from "./PlayerProfile";
 import PlayerAvatar from "./PlayerAvatar";
+import MediaCredits from "./MediaCredits";
 import { photoForPlayer } from "./mediaIdentity.js";
 import { lineupPlayerRecord } from "./lineupVisualData.js";
 import TeamIntelligencePanel from "./TeamIntelligencePanel";
@@ -434,7 +435,7 @@ function Jugadores({ players, onPlayer }) {
                 {rk.players.slice(0, 10).map((p) => (
                   <tr key={p.rank} role="button" tabIndex={0} onClick={() => onPlayer?.(p)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onPlayer?.(p); }}>
                     <td style={{ width: 22, color: "var(--dim)" }}>{p.rank}</td>
-                    <td className="tl"><div className="edge-roster-identity"><PlayerAvatar name={p.player} src={photoForPlayer(lineupPlayerRecord(players, p.player, p.team))} /><div><b>{p.player}</b><div className="mk-sub">{p.team}</div></div></div></td>
+                    <td className="tl"><div className="edge-roster-identity"><PlayerAvatar name={p.player} src={photoForPlayer(lineupPlayerRecord(players, p.player, p.team) || p)} /><div><b>{p.player}</b><div className="mk-sub">{p.team}</div></div></div></td>
                     <td style={{ textAlign: "right" }}><b className="value-yes">{p.value != null ? (Number.isInteger(p.value) ? p.value : p.value.toFixed(0)) : "—"}</b></td>
                   </tr>
                 ))}
@@ -443,6 +444,7 @@ function Jugadores({ players, onPlayer }) {
           </div>
         ))}
       </div>
+      <MediaCredits players={Object.values(rankings).flatMap(r=>r?.players||[]).map(p=>lineupPlayerRecord(players,p.player,p.team)||p)} />
     </>
   );
 }
@@ -1281,6 +1283,7 @@ function TeamPage({ team, matches, players, onBack, onOpen, onPlayer, isFav, onF
         </div>
       )}
       {squad.length > 0 && (
+        <>
         <div className="card" style={{ padding: "6px 10px", overflowX: "auto" }}>
           <div className="lbl" style={{ padding: "6px 6px 0" }}>Plantilla · {squad.length} jugadores <span className="dim">(Understat)</span></div>
           <table className="tbl-mk">
@@ -1300,6 +1303,8 @@ function TeamPage({ team, matches, players, onBack, onOpen, onPlayer, isFav, onF
             </tbody>
           </table>
         </div>
+        <MediaCredits players={squad} />
+        </>
       )}
       <div className="card" style={{ padding: "6px 10px", overflowX: "auto" }}>
         <div className="lbl" style={{ padding: "6px 6px 0" }}>Partidos</div>
