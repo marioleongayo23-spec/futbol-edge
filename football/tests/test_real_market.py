@@ -183,3 +183,31 @@ def test_cuotas_no_finitas_no_crean_value_en_props():
     rows = _extra_value_rows(match, quotes)
     assert len(rows) == 1
     assert rows[0]["odds"] == 2.1
+
+
+def test_market_quote_rechaza_un_precio_fechtado_como_caducado():
+    from futbol_pred.real_market import _quote_is_explicitly_stale
+    now = datetime(2026, 8, 25, 18, 0, tzinfo=timezone.utc)
+    assert _quote_is_explicitly_stale("2026-08-25T10:00:00Z", now) is True
+    assert _quote_is_explicitly_stale("2026-08-25T17:59:00Z", now) is False
+    assert _quote_is_explicitly_stale("2026-08-25T18:30:00Z", now) is True
+    assert _quote_is_explicitly_stale("not-a-timestamp", now) is True
+    assert _quote_is_explicitly_stale(None, now) is False  # no sello: estado desconocido, no "fresco"
+
+
+def test_close_no_promociona_cuotas_timestamped_caducadas():
+    now = datetime(2026, 8, 25, 18, 0, tzinfo=timezone.utc)
+    class OldClient(FakeOdds):
+        def featured(self, league):
+            return [
+                Quote(q.event_id, q.home, q.away, q.market, q.bookmaker, q.selection,
+                      q.odds, q.point, q.player, "2026-08-25T11:00:00Z")
+                for q in super().featured(league)
+            ]
+    match = _match(now)
+    # Close may legitimately fall back to co.uk, but must not identify
+    # the stale The Odds API quotes as fresh provider consensus.
+    from futbol_pred.real_market import _featured_block, _quote_is_explicitly_stale
+    quotes = [q for q in OldClient().featured("LaLiga")
+              if not _quote_is_explicitly_stale(q.updated_at, now)]
+    assert _featured_block(match, quotes).get("1x2") is None
