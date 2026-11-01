@@ -199,9 +199,12 @@ def main():
     parser.add_argument("--output", type=Path, default=DEST)
     args = parser.parse_args()
     seed = json.loads(args.seeds.read_text(encoding="utf-8"))
-    previous = (json.loads(args.output.read_text(encoding="utf-8").split("export default ", 1)[1].removesuffix(";\n"))\n                if args.output.exists() and "export default " in args.output.read_text(encoding="utf-8") else {})
+    previous = (json.loads(args.output.read_text(encoding="utf-8").split("export default ", 1)[1].removesuffix(";\n"))
+                if args.output.exists() and "export default " in args.output.read_text(encoding="utf-8") else {})
     catalog, rejected = build_entries(seed, previous=previous)
-    text = "// Generated from reviewed Wikimedia Commons metadata. Do not edit by hand.\n" + (\n        "export default " + json.dumps(catalog, indent=2, ensure_ascii=False) + ";\n"\n    )
+    text = "// Generated from reviewed Wikimedia Commons metadata. Do not edit by hand.\n" + (
+        "export default " + json.dumps(catalog, indent=2, ensure_ascii=False) + ";\n"
+    )
     if not args.output.exists() or args.output.read_text(encoding="utf-8") != text:
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(text, encoding="utf-8")
