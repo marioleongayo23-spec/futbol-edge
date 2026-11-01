@@ -189,7 +189,7 @@ def build_entries(seed, *, fetch=get_json, previous=None):
         entries.append(record)
 
     if not entries:
-        raise ValueError("Refusing to publish an empty player media catalog")
+        raise ValueError("Refusing to publish an empty player media catalog: " + json.dumps(rejected, ensure_ascii=False))
     return {"version": 1, "entries": entries}, rejected
 
 
