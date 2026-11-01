@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   ui:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04 # Playwright 1.55: ubuntu-latest ya es 26.04 y rompe Chromium
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
@@ -27,11 +27,11 @@ jobs:
       - name: Auditar dependencias runtime
         run: npm audit --omit=dev --audit-level=high
         working-directory: app
-      - name: Instalar Chromium
-        run: npx playwright install --with-deps chromium
-        working-directory: app
       - name: Contratos, lint y build
         run: npm test && npm run lint && npm run build
+        working-directory: app
+      - name: Instalar Chromium
+        run: npx playwright install --with-deps chromium
         working-directory: app
       - name: E2E escritorio y móvil
         run: npm run test:e2e
