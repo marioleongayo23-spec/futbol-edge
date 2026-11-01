@@ -41,7 +41,8 @@ test("XI valid: pitch, positions, authentic photo and profile back navigation",a
  const board=page.getByTestId("lineup-board");
  await expect(board).toBeVisible();
  await expect(board.getByText("XI oficial")).toBeVisible();
- await expect(board.locator("..").getByText("0",{exact:true})).toHaveCount(0);
+ const emptyNumericChildren=await board.evaluate(el=>[...el.childNodes].some(node=>node.nodeType===3&&node.textContent.trim()==="0"));
+ expect(emptyNumericChildren,"React must never show a lone 0 when warnings are absent").toBe(false);
  await expect(board.locator("..").getByText("Alineaciones · XI oficial")).toHaveCount(0);
  await expect(board.locator(".lineup-v3-half.home .lineup-v3-slot")).toHaveCount(11);
  await expect(board.locator(".lineup-v3-half.away .lineup-v3-slot")).toHaveCount(11);
