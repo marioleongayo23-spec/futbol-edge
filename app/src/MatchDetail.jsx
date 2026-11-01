@@ -319,13 +319,6 @@ function Alineacion({ m, a, players, onPlayer, canProps = true, onUpgrade }) {
   const isOfficial = confirmedLineup(a);
   return (
     <div className="card">
-      <div className="row-between">
-        <div className="lbl">Alineaciones · {isOfficial ? "XI oficial" : "previa"}</div>
-        <div className="chips">
-          <span className={"pill " + (isOfficial ? "y" : "")}>{isOfficial ? "Confirmado" : status === "confirmado" ? "Incompleto" : status}</span>
-          {a.cache_status && <span className="chip">recuperado de caché</span>}
-        </div>
-      </div>
       <LineupBoard match={m} lineup={a} players={players} onPlayer={onPlayer} />
       {((a.bajas_local || []).length > 0 || (a.bajas_visitante || []).length > 0 || (a.disponibilidad_local || []).length > 0 || (a.disponibilidad_visitante || []).length > 0) && (
         <div className="xi-grid" style={{ marginTop: 10 }}>
@@ -339,11 +332,11 @@ function Alineacion({ m, a, players, onPlayer, canProps = true, onUpgrade }) {
           🔒 Player props (goles, tiros, tarjetas por jugador) · función <b>Pro</b> — pulsa para desbloquear
         </button>
       ) : <>
-        {(a.best_props || []).length > 0 && (
+        {(a.best_props || []).length > 0 ? (
           <div className="chips" style={{ marginTop: 10 }}>
             {(a.best_props || []).map((item) => <span className="chip" key={`${item.lado}-${item.jugador}`} title="Ventaja estadística interna; no incluye cuota de casa">★ {item.jugador} · {item.motivo}</span>)}
           </div>
-        )}
+        ) : null}
         {((a.clave_local || []).length > 0 || (a.clave_visitante || []).length > 0) ? <div className="xi-grid" style={{ marginTop: 10 }}>
           <PropsTable title={m.home} clave={a.clave_local} best={a.best_props} />
           <PropsTable title={m.away} clave={a.clave_visitante} best={a.best_props} />
