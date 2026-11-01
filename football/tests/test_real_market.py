@@ -239,6 +239,7 @@ def test_ranking_descarta_props_sin_timestamp_y_conserva_observaciones():
 
     now = datetime(2026, 8, 25, 18, tzinfo=timezone.utc)
     match = _match(now)
+    match["markets"]["btts"] = 0.6
     result = attach_extended_market_value(
         [match], now, client=Timestamped(),
         stats_models={"LaLiga": FakeStats()}, max_event_requests=4
