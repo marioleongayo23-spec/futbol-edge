@@ -67,9 +67,11 @@ jobs:
       - name: Verificar canal de datos vivo
         run: |
           set -euo pipefail
-          curl -fsS --max-time 20 \
-            "https://raw.githubusercontent.com/marioleongayo23-spec/futbol-edge/main/football/data/dashboard.json?t=$(date +%s)" \
-            -o /tmp/dashboard.json
+          # El contenido de raw.githubusercontent.com puede seguir sirviendo
+          # una versión cacheada durante la propagación de un commit reciente.
+          # Tomamos el árbol autoritativo de main por Git, no de esa caché.
+          git fetch --quiet --depth=1 origin main
+          git show origin/main:football/data/dashboard.json > /tmp/dashboard.json
           python - <<'PY'
           import json
           from datetime import datetime, timezone
@@ -83,8 +85,27 @@ jobs:
           ts = datetime.fromisoformat(generated.replace('Z', '+00:00'))
           age_h = (datetime.now(timezone.utc) - ts.astimezone(timezone.utc)).total_seconds() / 3600
           assert age_h < 3, f'Feed demasiado antiguo: {age_h:.1f} h'
-          print(f'Feed vivo OK: {generated} · edad={age_h:.2f} h · partidos={len(d.get("matches", []))}')
+          print(f'Feed autoritativo OK: {generated} · edad={age_h:.2f} h · partidos={len(d.get("matches", []))}')
           PY
+          # Comprobar también acceso del CDN, sin confundir un caché aún no
+          # propagado con un fallo de la generación de datos autoritativos.
+          if curl -fsS --max-time 20 \
+              "https://raw.githubusercontent.com/marioleongayo23-spec/futbol-edge/main/football/data/dashboard.json?t=$(date +%s)" \
+              -o /tmp/dashboard-cdn.json; then
+            python - <<'PY'
+          import json
+          from datetime import datetime, timezone
+          d = json.load(open('/tmp/dashboard-cdn.json', encoding='utf-8'))
+          ts = datetime.fromisoformat(str(d.get('generated_at', '')).replace('Z', '+00:00'))
+          age_h = (datetime.now(timezone.utc) - ts.astimezone(timezone.utc)).total_seconds() / 3600
+          if age_h >= 3:
+              print(f'::warning::Raw CDN todavia no ha propagado el feed reciente (edad={age_h:.2f}h). La web debe advertir la antiguedad.')
+          else:
+              print(f'Raw CDN OK: edad={age_h:.2f}h')
+          PY
+          else
+            echo '::warning::Raw CDN no disponible; el frontend mostrara su estado de respaldo'
+          fi
 
       - name: Verificar alias de producción si responde públicamente
         continue-on-error: true
