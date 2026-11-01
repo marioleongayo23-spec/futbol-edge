@@ -1283,8 +1283,8 @@ function TeamPage({ team, matches, players, onBack, onOpen, onPlayer, isFav, onF
         </div>
       )}
       {squad.length > 0 && (
-        <MediaCredits players={squad} />
-      <div className="card" style={{ padding: "6px 10px", overflowX: "auto" }}>
+        <>
+        <div className="card" style={{ padding: "6px 10px", overflowX: "auto" }}>
           <div className="lbl" style={{ padding: "6px 6px 0" }}>Plantilla · {squad.length} jugadores <span className="dim">(Understat)</span></div>
           <table className="tbl-mk">
             <thead><tr><th className="tl">Jugador</th><th>Pos</th><th>G</th><th>A</th><th>Rem</th><th>xG</th><th>🟨</th></tr></thead>
@@ -1303,6 +1303,8 @@ function TeamPage({ team, matches, players, onBack, onOpen, onPlayer, isFav, onF
             </tbody>
           </table>
         </div>
+        <MediaCredits players={squad} />
+        </>
       )}
       <div className="card" style={{ padding: "6px 10px", overflowX: "auto" }}>
         <div className="lbl" style={{ padding: "6px 6px 0" }}>Partidos</div>
