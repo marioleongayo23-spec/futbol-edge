@@ -100,6 +100,10 @@ export default function ProbabilityQualityPanel({ quality }) {
     quality.published_vs_market?.n || 0,
   );
   const overallSample = sampleMeta(pairedN || quality.published?.n || 0);
+  const marketComparison = quality.published_vs_market;
+  const marketOutperformsInSample = marketComparison?.n >= 30
+    && Number(marketComparison.log_loss_delta) > 0
+    && Number(marketComparison.rps_delta) > 0;
 
   return (
     <div className="card" data-testid="probability-quality-panel">
@@ -110,6 +114,13 @@ export default function ProbabilityQualityPanel({ quality }) {
         </div>
         <span className={"pill " + overallSample.className}>{overallSample.label}</span>
       </div>
+
+      {marketOutperformsInSample && (
+        <div className="quality-market-warning" role="note">
+          <strong>Señal a revisar: el mercado rinde mejor en esta muestra.</strong>
+          <span>En {marketComparison.n} partidos comparables, la probabilidad publicada presenta mayor LogLoss y RPS que el mercado. Esto no demuestra que el mercado vaya a ganar a futuro; requiere verificar procedencia de cuotas y validación temporal antes de ajustar el modelo.</span>
+        </div>
+      )}
 
       <QualityVisual rows={rows} />
 
