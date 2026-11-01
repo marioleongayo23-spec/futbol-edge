@@ -27,7 +27,7 @@ ALLOWED_LICENSES = re.compile(
     re.I,
 )
 QID = re.compile(r"^Q[1-9][0-9]{0,12}$")
-ALLOWED_IMAGE_HOSTS = {"upload.wikimedia.org"}
+ALLOWED_IMAGE_HOSTS = {"upload.wikimedia.org", "thumb.wikimedia.org"}
 MAX_SEEDS = 20
 
 
@@ -113,7 +113,7 @@ def license_from_commons(payload):
     image = info[0]
     ext = image.get("extmetadata") or {}
     meta = lambda key: (ext.get(key) or {}).get("value")
-    license_url = str(meta("LicenseUrl") or "").strip()
+    license_url = str(meta("LicenseUrl") or "").strip().rstrip("/") + "/"
     if not ALLOWED_LICENSES.fullmatch(license_url):
         return None
     author = plain(meta("Attribution") or meta("Artist"))
