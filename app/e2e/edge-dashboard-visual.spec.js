@@ -15,6 +15,7 @@ test("redesigned matchday: filter, navigation, spacing and no horizontal overflo
   }).format(kickoff);
   const sample = structuredClone(feed);
   sample.generated_at = new Date().toISOString();
+  sample.alerts = [{ severity: "critical", message: "Cuotas pendientes de actualización" }];
   // The production guard intentionally rejects feeds smaller than 20 matches.
   // Retain 20+ realistic historical fixtures while fixing three upcoming matches
   // on the selected date, so the UI is really exercising the normal fetch guard.
@@ -31,6 +32,11 @@ test("redesigned matchday: filter, navigation, spacing and no horizontal overflo
   }));
   await page.goto("/");
   await expect(page.getByRole("region", { name: "Partido destacado" })).toBeVisible();
+  const health = page.getByRole("region", { name: "Avisos sobre el estado de los datos" });
+  await expect(health).toBeVisible();
+  await expect(health.getByText("Atención: datos con incidencias")).toBeVisible();
+  await health.locator("summary").click();
+  await expect(health.getByText("Cuotas pendientes de actualización")).toBeVisible();
   const leagueFilter = page.getByRole("group", { name: "Filtrar partidos por competición" });
   await expect(leagueFilter.getByRole("button", { name: /^Todos/ })).toBeVisible();
   await expect(page.locator(".day-matches .mrow")).toHaveCount(3);
