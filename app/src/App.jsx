@@ -88,7 +88,7 @@ function MatchRow({ m, onOpen, formMap }) {
   const val = verifiedOdds && candidate?.market === "1x2" ? candidate : null;
   return (
     <button type="button" className="mrow" onClick={() => onOpen(m)}
-      aria-label={`Abrir análisis de ${m.home} contra ${m.away}, ${m.league}, ${m.finished ? "finalizado" : hhmm(m.kickoff)}`}>
+      aria-label={`Ver partido ${m.home} contra ${m.away}, ${m.league}, ${m.finished ? "finalizado" : hhmm(m.kickoff)}`}>
       <span className="mrow-time">{m.finished ? "FT" : hhmm(m.kickoff)}</span>
       <span className="mrow-body">
         <span className="mrow-line">
@@ -625,7 +625,7 @@ function ValueBets({ matches, bank, setBank, globalValue }) {
       </div>
       {!ms.length && <div className="state">No hay partidos con predicción.</div>}
       {rows.map((r) => (
-        <div className="card" key={r.i} data-recommendation={r.blocked ? "no_pick" : "eligible"}>
+        <div className="card" key={r.m.id} data-recommendation={r.blocked ? "no_pick" : "eligible"}>
           <div className="row" style={{ justifyContent: "space-between" }}>
             <div className="tn" style={{ flex: 1 }}>{r.m.home} vs {r.m.away}</div>
             <div className="chips">{["1", "X", "2"].map((s, j) => <span key={s} className="chip">{s} <b>{r.m.probs[j]}%</b>{r.fair ? <span className="dim"> / {(r.fair[j] * 100).toFixed(0)}%</span> : null}</span>)}</div>
