@@ -41,12 +41,12 @@ def test_reimport_is_idempotent_and_postmatch_never_leaks_into_prematch(tmp_path
     csv_path = make_csv(tmp_path / "source.csv", row())
     db = tmp_path / "shadow.sqlite"
     assert import_csv(csv_path, db) == {
-        "rows_checked": 1, "matches": 1, "observations_added": 1,
+        "rows_checked": 1, "matches": 1, "observations_added": 2,
         "promotion": "disabled", "source": "openfootball",
     }
     assert import_csv(csv_path, db)["observations_added"] == 0
     store = HistoricalFeatureStore(db)
-    assert store.observation_count() == 1
+    assert store.observation_count() == 2
     uid = row()["match_uid"]
     assert store.snapshot_as_of(uid, "2026-10-19T12:00:00Z") == {}
     assert store.snapshot_as_of(uid, "2026-10-22T12:00:00Z") == {}
@@ -54,7 +54,8 @@ def test_reimport_is_idempotent_and_postmatch_never_leaks_into_prematch(tmp_path
         uid, "2026-10-22T12:00:00Z", phases=("postmatch",),
     )
     assert available[("result.score", "match")]["value"] == [2, 1]
-    assert available[("result.score", "match")]["quality"] == "observed_date_only"
+    assert available[("result.score", "match")]["quality"] == "observed"
+    assert available[("fixture.kickoff_precision", "match")]["value"] == "date_only"
 
 
 @pytest.mark.parametrize("override", [
@@ -90,7 +91,7 @@ def test_distinct_time_observations_and_source_revisions_are_immutable(tmp_path)
                     row(record_id="of-1-v2", available_at="2026-10-22T07:00:00Z",
                         value_json="[3,1]"))
     db = tmp_path / "shadow.sqlite"
-    assert import_csv(path, db)["observations_added"] == 2
+    assert import_csv(path, db)["observations_added"] == 4
     store = HistoricalFeatureStore(db)
     prior = store.snapshot_as_of(uid, "2026-10-21T12:00:00Z", phases=("postmatch",))
     assert prior[("result.score", "match")]["value"] == [2, 1]
