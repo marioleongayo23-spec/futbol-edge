@@ -39,9 +39,11 @@ jobs:
         run: npm run test:e2e
         working-directory: app
       - uses: actions/upload-artifact@v4
-        if: failure()
+        # Keep desktop/mobile comparison screenshots on PRs for visual review,
+        # including successful test runs. No additional hosted service needed.
+        if: always() && github.event_name == 'pull_request'
         with:
           name: playwright-report-${{ github.run_id }}
           path: app/playwright-report
           if-no-files-found: ignore
-          retention-days: 7
+          retention-days: 3
