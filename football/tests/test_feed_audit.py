@@ -97,3 +97,19 @@ def test_audit_highlights_upcoming_fixtures_without_a_pre_match_capture():
     })["leagues"]["LaLiga"]
     assert group["upcoming_48h"] == 2
     assert group["upcoming_48h_without_snapshot"] == 1
+
+
+def test_48h_coverage_gate_detects_missing_archival():
+    from futbol_pred.feed_audit import _upcoming_snapshot_gaps
+    payload = {
+        "generated_at": "2026-09-20T18:00:00+02:00",
+        "matches": [{
+            "id": "fixture", "league": "LaLiga",
+            "kickoff": "2026-09-20T20:00:00+02:00", "finished": False,
+            "probs": [51, 26, 23],
+            "prediction_history": [],
+        }],
+    }
+    report = audit_payload(payload)
+    assert _upcoming_snapshot_gaps(report) == 1
+    assert _upcoming_snapshot_gaps({"status": "invalid_feed"}) == -1
