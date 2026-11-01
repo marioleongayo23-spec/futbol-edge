@@ -20,7 +20,7 @@ from urllib.request import Request, urlopen
 
 BASE = Path(__file__).resolve().parents[2]
 SEEDS = BASE / "football/data/media/approved_wikidata_players.json"
-DEST = BASE / "app/src/verifiedPlayerMedia.json"
+DEST = BASE / "app/src/verifiedPlayerMedia.js"
 USER_AGENT = "FutbolEdge-CuratedMedia/1.0 (https://github.com/marioleongayo23-spec/futbol-edge; Commons image attribution)"
 ALLOWED_LICENSES = re.compile(
     r"^https://creativecommons\.org/(?:licenses/(?:by|by-sa)/(?:3\.0|4\.0)/|publicdomain/(?:zero/1\.0/|mark/1\.0/))$",
@@ -199,9 +199,9 @@ def main():
     parser.add_argument("--output", type=Path, default=DEST)
     args = parser.parse_args()
     seed = json.loads(args.seeds.read_text(encoding="utf-8"))
-    previous = json.loads(args.output.read_text(encoding="utf-8")) if args.output.exists() else {}
+    previous = (json.loads(args.output.read_text(encoding="utf-8").split("export default ", 1)[1].removesuffix(";\n"))\n                if args.output.exists() and "export default " in args.output.read_text(encoding="utf-8") else {})
     catalog, rejected = build_entries(seed, previous=previous)
-    text = json.dumps(catalog, indent=2, ensure_ascii=False) + "\n"
+    text = "// Generated from reviewed Wikimedia Commons metadata. Do not edit by hand.\n" + (\n        "export default " + json.dumps(catalog, indent=2, ensure_ascii=False) + ";\n"\n    )
     if not args.output.exists() or args.output.read_text(encoding="utf-8") != text:
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(text, encoding="utf-8")
