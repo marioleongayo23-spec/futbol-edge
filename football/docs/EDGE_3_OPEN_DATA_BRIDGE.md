@@ -100,6 +100,19 @@ Poisson secuencial con parámetros de ataque y vulnerabilidad defensiva
 individuales, regularización y olvido temporal. Está diseñado para ejecutarse
 después en el motor `walk_forward`; hoy no altera el campeón en producción.
 
+Evaluación descriptiva de nuestro nuevo challenger frente al modelo
+publicado sobre los mismos encuentros y con embargo temporal:
+
+```bash
+cd football
+python -m futbol_pred.dynamic_shadow_eval data/dashboard.json --league LaLiga
+```
+
+El comando utiliza solo snapshots estrictamente anteriores al partido,
+prohíbe datos del día previo durante el entrenamiento y produce Log Loss,
+Brier, RPS y, cuando hay muestra suficiente, un intervalo bootstrap por días.
+**Nunca aplica pesos ni recomienda picks en producción.**
+
 Antes de habilitarlo deben completarse:
 - Unir los partidos históricos de distintas fuentes por identidad fiable,
   sin confundir temporadas, homónimos ni encuentros aplazados.
