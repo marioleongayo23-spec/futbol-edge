@@ -127,7 +127,15 @@ function Resumen({ data, matches, onOpen, goto, favs, onTeam }) {
     const i = days.findIndex((d) => d >= t);
     return i < 0 ? Math.max(0, days.length - 1) : i;
   }, [days]);
-  const [idx, setIdx] = useState(startIdx);
+  // Select by stable date rather than array index: a refreshed feed may add
+  // or remove dates before the current selection.
+  const [selectedDay, setSelectedDay] = useState(() => days[startIdx] || null);
+  const idx = days.includes(selectedDay) ? days.indexOf(selectedDay) : startIdx;
+  const setIdx = (next) => {
+    const target = typeof next === "function" ? next(idx) : next;
+    const bounded = Math.max(0, Math.min(days.length - 1, target));
+    setSelectedDay(days[bounded] || null);
+  };
   const [renderedAt] = useState(() => Date.now());
 
   const day = days[idx];
