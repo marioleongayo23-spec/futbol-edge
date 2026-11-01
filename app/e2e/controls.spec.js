@@ -4,6 +4,11 @@ import { readFileSync } from "node:fs";
 const feedData = JSON.parse(readFileSync(new URL("../../football/data/dashboard.json", import.meta.url), "utf8"));
 const enriched = feedData.matches.find((match) => !match.finished && Array.isArray(match.probs));
 if (enriched) {
+  // The simulator intentionally excludes past kickoffs, so fixture inputs
+  // must place this synthetic no_pick scenario ahead of the current clock.
+  enriched.kickoff = new Date(Date.now() + 6 * 3600_000).toISOString();
+  enriched.finished = false;
+  enriched.result = null;
   const vector = Object.fromEntries(["attack_volume", "territorial_pressure", "defensive_exposure", "finishing_efficiency", "contact_intensity"].map((key, index) => [key, { label: key, score: 55 + index, observed: 10 + index, unit: "por partido" }]));
   enriched.tactical_matchup = { ...(enriched.tactical_matchup || {}), home: { style_vector: vector }, away: { style_vector: vector }, style_clashes: [{ edge: "contact", label: "Cruce de estilos", strength: 72 }] };
   enriched.lineup_impact = { evidence: "media", confidence_penalty_pp: 2, method: "Método auditable", home: { expected_minutes_avg: 76, starter_probability_avg_pct: 81, attack_presence_index: 9.2, official_absences: 0 }, away: { expected_minutes_avg: 74, starter_probability_avg_pct: 79, attack_presence_index: 8.7, official_absences: 1 } };
