@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { feedFreshness, dayEvidence } from "./evidenceStatus.js";
+import { feedFreshness, dayEvidence, verifiedOneXTwo } from "./evidenceStatus.js";
 
 const NOW = Date.parse("2026-11-01T13:00:00Z");
 test("feed freshness distinguishes remote, fallback and stale", () => {
@@ -41,4 +41,25 @@ test("a source-timestamped 1X2 price counts only when both recent and pre-kickof
   assert.equal(dayEvidence([{
     ...match, odds: { ...match.odds, meta: { source_updated_at: "2026-10-31T12:00:00Z" } },
   }], NOW).verifiedPriced, 0);
+});
+
+test("the Kelly calculator can only inherit genuine fresh 1X2 odds", () => {
+  const match = {
+    id: "m-1",
+    kickoff: "2026-11-01T18:00:00Z", finished: false,
+    odds: {
+      "1x2": { odds: { "1": 2.1, X: 3.2, "2": 4.2 } },
+      meta: { provider: "The Odds API", movement_source: "the_odds_api_live",
+        source_updated_at: "2026-11-01T12:59:00Z" },
+    },
+  };
+  assert.deepEqual(verifiedOneXTwo(match, NOW), match.odds["1x2"].odds);
+  assert.equal(verifiedOneXTwo({ ...match, finished: true }, NOW), null);
+  assert.equal(verifiedOneXTwo({ ...match, kickoff: "2026-11-01T12:00:00Z" }, NOW), null);
+  assert.equal(verifiedOneXTwo({ ...match, odds: {
+    ...match.odds, meta: { ...match.odds.meta, movement_source: "legacy_csv" },
+  } }, NOW), null);
+  assert.equal(verifiedOneXTwo({ ...match, odds: {
+    ...match.odds, meta: { ...match.odds.meta, source_updated_at: null },
+  } }, NOW), null);
 });
