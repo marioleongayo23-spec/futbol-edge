@@ -69,6 +69,13 @@ export default function PlayerProfile({ candidate, players, matches, onBack, onT
   const group = positionGroup(player.position || player.api_position);
   const completeness = profileCompleteness(player);
   const teamMatch = next ? (next.home === player.team ? { rival: next.away, crest: next.awayCrest, colors: next.awayColors } : { rival: next.home, crest: next.homeCrest, colors: next.homeColors }) : null;
+  const teamFixture = (matches || []).find((m) => m.home === player.team || m.away === player.team);
+  const playerTeamCrest = teamFixture
+    ? (teamFixture.home === player.team ? teamFixture.homeCrest : teamFixture.awayCrest)
+    : null;
+  const playerTeamColors = teamFixture
+    ? (teamFixture.home === player.team ? teamFixture.homeColors : teamFixture.awayColors)
+    : null;
 
   return (
     <div className="player-profile" data-testid="player-profile">
@@ -80,7 +87,11 @@ export default function PlayerProfile({ candidate, players, matches, onBack, onT
         <div className="pp-identity">
           <div className="pp-eyebrow">PLAYER INTELLIGENCE · {posLabel[group]}</div>
           <h1>{player.player}</h1>
-          <button type="button" className="pp-team-link" onClick={() => onTeam?.(player.team)}>{player.team || "Equipo por confirmar"}</button>
+          <div className="pp-team-identity">
+            <img className="pp-team-crest" src={crestFor(player.team, playerTeamColors, playerTeamCrest)} alt="" loading="lazy"
+              onError={e => { e.currentTarget.onerror = null; e.currentTarget.src = crestFor(player.team, playerTeamColors, null); }}/>
+            <button type="button" className="pp-team-link" onClick={() => onTeam?.(player.team)}>{player.team || "Equipo por confirmar"}</button>
+          </div>
           <div className="pp-tags">
             {(player.position || player.api_position) && <span>{player.position || player.api_position}</span>}
             {profile.age && <span>{profile.age} años</span>}
