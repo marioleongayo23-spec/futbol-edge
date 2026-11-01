@@ -35,9 +35,9 @@ export default function EvidenceRibbon({ feed, matches }) {
           <small>{day.total ? `${coverage}% con distribución 1X2 válida` : "No hay partidos seleccionados"}</small>
         </div>
         <div className="evidence-fact">
-          <span className="evidence-fact-label">Cuotas 1X2 presentes</span>
-          <strong>{day.priced} <span className="evidence-denom">/ {day.total}</span></strong>
-          <small>Presencia no implica vigencia ni ventaja real. Comprueba cada cuota y su fuente.</small>
+          <span className="evidence-fact-label">Cuotas con sello reciente</span>
+          <strong>{day.verifiedPriced} <span className="evidence-denom">/ {day.priced}</span></strong>
+          <small>{day.priced - day.verifiedPriced} con fecha sin verificar o ya antiguas. El precio puede cambiar antes de apostar.</small>
         </div>
       </div>
     </section>
