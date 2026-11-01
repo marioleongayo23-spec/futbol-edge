@@ -1,4 +1,5 @@
 import { validProbabilities } from "./probabilityContract.js";
+import { quoteEvidence } from "./extendedValue.js";
 
 export function feedFreshness(generatedAt, fromFallback = false, now = Date.now()) {
   const stamp = Date.parse(generatedAt || "");
@@ -10,13 +11,21 @@ export function feedFreshness(generatedAt, fromFallback = false, now = Date.now(
   return { tone: "fresh", label: "Feed actualizado", stamp };
 }
 
-export function dayEvidence(matches) {
+export function dayEvidence(matches, now = Date.now()) {
   const rows = Array.isArray(matches) ? matches : [];
   const predicted = rows.filter(m => validProbabilities(m?.probs)).length;
-  const priced = rows.filter(m => {
+  let priced = 0, verifiedPriced = 0;
+  for (const m of rows) {
     const odds = m?.odds?.["1x2"]?.odds;
-    return odds && ["1", "X", "2"].every(k =>
-      typeof odds[k] === "number" && Number.isFinite(odds[k]) && odds[k] > 1);
-  }).length;
-  return { total: rows.length, predicted, priced };
+    if (!odds || !["1", "X", "2"].every(k =>
+      typeof odds[k] === "number" && Number.isFinite(odds[k]) && odds[k] > 1)) continue;
+    priced++;
+    // A complete set of prices is not proof that those prices are current.
+    const kickoff = Date.parse(m?.kickoff || "");
+    if (kickoff > now &&
+        quoteEvidence({ source_updated_at: m?.odds?.meta?.source_updated_at }, now) === "verified_recent") {
+      verifiedPriced++;
+    }
+  }
+  return { total: rows.length, predicted, priced, verifiedPriced };
 }
