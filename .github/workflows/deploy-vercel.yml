@@ -68,10 +68,14 @@ jobs:
         run: npm install -g vercel@latest
 
       - name: Descargar configuración de producción
-        run: vercel pull --yes --environment=production --token="${{ secrets.VERCEL_TOKEN }}"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: vercel pull --yes --environment=production
 
       - name: Construir (SPA + feed empaquetado + build-version)
-        run: vercel build --prod --token="${{ secrets.VERCEL_TOKEN }}"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: vercel build --prod
 
       - name: Validar build-version antes de publicar
         run: |
@@ -87,13 +91,17 @@ jobs:
 
       - name: Desplegar a producción
         id: deploy
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: |
           set -euo pipefail
-          url="$(vercel deploy --prebuilt --prod --token="${{ secrets.VERCEL_TOKEN }}")"
+          url="$(vercel deploy --prebuilt --prod)"
           echo "url=$url" >> "$GITHUB_OUTPUT"
           echo "Desplegado en: $url"
 
       - name: Verificar deployment autenticado
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: |
           set -euo pipefail
           url="${{ steps.deploy.outputs.url }}"
@@ -104,5 +112,5 @@ jobs:
           # El dominio de producción está protegido por Vercel Authentication y
           # responde 302 a peticiones anónimas. Verificamos por CLI autenticada
           # para no confundir la protección SSO con un fallo de despliegue.
-          vercel inspect "$url" --token="${{ secrets.VERCEL_TOKEN }}"
+          vercel inspect "$url"
           echo "Deployment de producción verificado: $url"
