@@ -12,7 +12,9 @@ permissions:
 
 jobs:
   ui:
-    runs-on: ubuntu-latest
+    # Playwright 1.55 does not support Ubuntu 26.04 shipped by ubuntu-latest.
+    # Pin a supported runner until the Playwright version is upgraded.
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
@@ -27,11 +29,11 @@ jobs:
       - name: Auditar dependencias runtime
         run: npm audit --omit=dev --audit-level=high
         working-directory: app
-      - name: Instalar Chromium
-        run: npx playwright install --with-deps chromium
-        working-directory: app
       - name: Contratos, lint y build
         run: npm test && npm run lint && npm run build
+        working-directory: app
+      - name: Instalar Chromium
+        run: npx playwright install --with-deps chromium
         working-directory: app
       - name: E2E escritorio y móvil
         run: npm run test:e2e
