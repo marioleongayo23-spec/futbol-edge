@@ -260,3 +260,27 @@ def test_published_matrix_is_restored_without_post_match_refitting():
     apply_prediction_snapshots([current], [old], datetime(2026, 8, 25, 12, tzinfo=MADRID))
     assert current['score_matrix'] == matrix
     assert current['score_matrix'] is not matrix
+
+
+def test_no_snapshot_si_hora_del_partido_no_es_verificable():
+    from futbol_pred.prediction_snapshots import latest_pre_match_snapshot
+    match = _match([60, 25, 15])
+    match.pop("kickoff")
+    match["prediction_history"] = [{
+        "generated_at": "2026-08-24T15:00:00+02:00",
+        "probs": [60, 25, 15],
+    }]
+    assert latest_pre_match_snapshot(match) is None
+    apply_prediction_snapshots([match], [], datetime(2026, 8, 24, 15, tzinfo=MADRID))
+    assert "prediction_snapshot" not in match
+
+
+def test_no_recupera_snapshot_si_kickoff_es_invalido():
+    from futbol_pred.prediction_snapshots import latest_pre_match_snapshot
+    match = _match()
+    match["kickoff"] = "fecha-invalida"
+    match["prediction_history"] = [{
+        "generated_at": "2026-08-24T15:00:00+02:00",
+        "probs": [60, 25, 15],
+    }]
+    assert latest_pre_match_snapshot(match) is None
