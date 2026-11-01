@@ -214,9 +214,9 @@ function Resumen({ data, matches, onOpen, goto, favs, onTeam }) {
           </div>
           {competitions.length > 2 && (
             <div className="league-filters" role="group" aria-label="Filtrar partidos por competición">
-              {competitions.map((comp) => <button type="button" key={comp.key}
+              {competitions.map((comp) => <button type="button" key={comp.key} onClick={() => setSelectedLeague(comp.key)}
                 className={"league-filter" + (activeLeague === comp.key ? " on" : "")}
-                aria-pressed={activeLeague === comp.key} onClick={() => setSelectedLeague(comp.key)}>
+                aria-pressed={activeLeague === comp.key}>
                 {comp.label} <span>{comp.count}</span>
               </button>)}
             </div>
@@ -1446,8 +1446,8 @@ export default function App() {
       </div>
       <nav className="bottom-nav" aria-label="Navegación móvil">
         {[["resumen", "Inicio"], ["partidos", "Partidos"], ["value", "Value"], ["cartera", "Cartera"]].map(([key, label]) => (
-          <button type="button" key={key} aria-current={view === key && !sel ? "page" : undefined}
-            className={view === key && !sel ? "on" : ""} onClick={() => goto(key)}>
+          <button type="button" key={key} onClick={() => goto(key)} aria-current={view === key && !sel ? "page" : undefined}
+            className={view === key && !sel ? "on" : ""}>
             <Icon name={key} /><span>{label}</span>
           </button>
         ))}
