@@ -4,6 +4,7 @@ import "./styles.css";
 import "./premium.css";
 import "./lineup-orientation.css";
 import "./professional.css";
+import "./edge-refinement.css";
 import App from "./App.jsx";
 
 createRoot(document.getElementById("root")).render(
