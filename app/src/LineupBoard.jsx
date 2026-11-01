@@ -64,7 +64,7 @@ export default function LineupBoard({ match, lineup, players, onPlayer }) {
       </div>
       {(!home.full||!away.full)&&<p className="lineup-v3-warning" role="status">
         Alineación incompleta: {match.home} {home.count}/11 · {match.away} {away.count}/11. No se presenta como XI confirmado.</p>}
-      {(home.duplicates||away.duplicates)&&<p className="lineup-v3-warning" role="status">Se han omitido nombres duplicados hasta verificar los datos.</p>}
+      {(home.duplicates > 0 || away.duplicates > 0) && <p className="lineup-v3-warning" role="status">Se han omitido nombres duplicados hasta verificar los datos.</p>}
       <p className="lineup-v3-footnote">Pulsa un jugador para abrir su ficha. Las imágenes aparecen solo cuando coincide la identidad completa con el equipo.</p>
     </div>
   );
