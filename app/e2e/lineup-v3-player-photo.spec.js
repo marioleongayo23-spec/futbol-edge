@@ -27,7 +27,7 @@ async function openMatch(page,target,feed) {
   status:200,contentType:"application/json",body:JSON.stringify(feed)}));
  await page.route("https://media.api-sports.io/**",r=>r.fulfill({
   contentType:"image/png",
-  body:Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO5rr1sAAAAASUVORK5CYII=","base64")
+  body:Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFUlEQVR4nGN0O7HgPwMDAwMTAxQAACiuArEc0XZZAAAAAElFTkSuQmCC","base64")
  }));
  await page.goto("/");
  if((page.viewportSize()?.width||1000)<=860)await page.getByRole("button",{name:"Abrir menú"}).click();
@@ -44,7 +44,9 @@ test("XI valid: pitch, positions, authentic photo and profile back navigation",a
  await expect(board.locator(".lineup-v3-half.home .lineup-v3-slot")).toHaveCount(11);
  await expect(board.locator(".lineup-v3-half.away .lineup-v3-slot")).toHaveCount(11);
  await expect(board.locator(".lineup-v3-half.home .edge-player-avatar img")).toHaveCount(1);
- await expect(board.locator(".lineup-v3-half.home .edge-player-avatar img")).toHaveJSProperty("naturalWidth",1);
+ const portrait=board.locator(".lineup-v3-half.home .edge-player-avatar img");
+ await portrait.scrollIntoViewIfNeeded(); // loading="lazy" on mobile
+ await expect(portrait).toHaveJSProperty("naturalWidth",2);
  await board.getByRole("button",{name:`Ver ficha de Álex García, ${target.home}`}).click();
  const profile=page.getByTestId("player-profile");
  await expect(profile).toBeVisible();
