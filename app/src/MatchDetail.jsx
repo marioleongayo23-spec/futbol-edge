@@ -12,6 +12,8 @@ import { QualityBadge, MatchQualityCard } from "./MatchQuality";
 import "./markets-detail.css";
 import PredictionEvidence from "./PredictionEvidence";
 import { publishedMatrix, validProbabilities } from "./predictionEvidence";
+import LineupBoard from "./LineupBoard";
+import { confirmedLineup } from "./lineupVisualData.js";
 
 function Teams({ m, onTeam }) {
   return (
@@ -236,70 +238,6 @@ function StateSimulation({ simulation, home, away }) {
 }
 
 const FALLBACK_POSITIONS = ["POR", "LI", "DFC", "DFC", "LD", "MC", "MCD", "MC", "EI", "DC", "ED"];
-const POSITION_LINE = {
-  POR: 0,
-  LI: 1, DFC: 1, LD: 1, CAI: 1, CAD: 1,
-  MCD: 2, MC: 2, MI: 2, MD: 2, MP: 2,
-  EI: 3, DC: 3, ED: 3,
-};
-const POSITION_ORDER = {
-  POR: 3,
-  LI: 1, CAI: 1, DFC: 3, CAD: 5, LD: 5,
-  MI: 1, MCD: 3, MC: 3, MP: 3, MD: 5,
-  EI: 1, DC: 3, ED: 5,
-};
-
-/* Respeta línea y lateralidad real; los feeds antiguos caen a un 4-3-3 seguro. */
-function _lines(xi, positions) {
-  const players = (xi || []).slice(0, 11).map((name, index) => {
-    const supplied = positions?.[index];
-    return {
-      name,
-      position: POSITION_LINE[supplied] != null ? supplied : FALLBACK_POSITIONS[index],
-      index,
-    };
-  });
-  if (!players.length) return [];
-  const lines = [0, 1, 2, 3].map((line) => players
-    .filter((player) => (POSITION_LINE[player.position] ?? Math.min(3, Math.floor(player.index / 3))) === line)
-    .sort((a, b) => (POSITION_ORDER[a.position] ?? 3) - (POSITION_ORDER[b.position] ?? 3) || a.index - b.index));
-  return lines.filter((line) => line.length);
-}
-
-function _short(name) {
-  const parts = String(name).trim().split(/\s+/);
-  return parts.length > 1 ? parts[parts.length - 1] : parts[0];
-}
-
-function TeamHalf({ xi, positions, side, color }) {
-  const lines = _lines(xi, positions);
-  // Local: portero arriba (su portería) → delanteros hacia el centro.
-  // Visitante: se invierte para que ataque hacia el centro también.
-  const ordered = side === "home" ? lines : lines.slice().reverse();
-  if (!lines.length) return <div className="pitch-half empty">once sin confirmar</div>;
-  return (
-    <div className={"pitch-half " + side}>
-      {ordered.map((line, li) => (
-        <div className="pitch-line" key={li}>
-          {/* Ambas mitades invierten el orden horizontal del XI. La mitad
-             visitante lo revierte de nuevo por CSS (row-reverse), de modo que
-             local y visitante quedan como MITADES ESPEJO: en un campo vertical
-             cada equipo ataca en sentido opuesto, así que el LI del local va a la
-             derecha y el del visitante a la izquierda (antes el local salía con
-             los laterales invertidos respecto al visitante). */}
-          {line.slice().reverse().map((p) => (
-            <div className="player" key={p.name} title={`${p.name} · ${p.position}`}>
-              <span className="dot" style={{ background: color }} />
-              <span className="pn">{_short(p.name)}</span>
-              <span className="pp">{p.position}</span>
-            </div>
-          ))}
-        </div>
-      ))}
-    </div>
-  );
-}
-
 function PropsTable({ title, clave, best }) {
   if (!(clave || []).length) return null;
   const highlighted = new Set((best || []).map((item) => item.jugador));
@@ -373,33 +311,22 @@ function AbsenceImpact({ imp, home, away }) {
 }
 
 /* Once probable sobre el campo + bajas + jugadores clave con props (IA). */
-function Alineacion({ m, a, canProps = true, onUpgrade }) {
+function Alineacion({ m, a, players, onPlayer, canProps = true, onUpgrade }) {
   const provider = a.provider || a.fuente || "IA";
   const completeness = a.quality?.score != null ? ` · completitud ${Math.round(a.quality.score * 100)}%` : "";
   const status = a.status || (provider === "Motor estadístico local" ? "estimado" : "probable");
   const updated = a.source_updated_at || a.generated_at || a.ts;
-  const isOfficial = status === "confirmado";
+  const isOfficial = confirmedLineup(a);
   return (
     <div className="card">
       <div className="row-between">
-        <div className="lbl">👥 Once {status}</div>
+        <div className="lbl">Alineaciones · {isOfficial ? "XI oficial" : "previa"}</div>
         <div className="chips">
-          <span className={"pill " + (isOfficial ? "y" : "")}>{status}</span>
+          <span className={"pill " + (isOfficial ? "y" : "")}>{isOfficial ? "Confirmado" : status === "confirmado" ? "Incompleto" : status}</span>
           {a.cache_status && <span className="chip">recuperado de caché</span>}
         </div>
       </div>
-      <div className="pitch">
-        <div className="pitch-names">
-          <span>{m.home}{a.formacion_local ? ` · ${a.formacion_local}` : ""}</span>
-          <span>{m.away}{a.formacion_visitante ? ` · ${a.formacion_visitante}` : ""}</span>
-        </div>
-        <div className="pitch-grass">
-          <div className="pitch-mid" />
-          <div className="pitch-circle" />
-          <TeamHalf xi={a.local} positions={a.posiciones_local} side="home" color="var(--green)" />
-          <TeamHalf xi={a.visitante} positions={a.posiciones_visitante} side="away" color="var(--blue)" />
-        </div>
-      </div>
+      <LineupBoard match={m} lineup={a} players={players} onPlayer={onPlayer} />
       {((a.bajas_local || []).length > 0 || (a.bajas_visitante || []).length > 0 || (a.disponibilidad_local || []).length > 0 || (a.disponibilidad_visitante || []).length > 0) && (
         <div className="xi-grid" style={{ marginTop: 10 }}>
           <Availability title={`Disponibilidad ${m.home}`} rows={a.disponibilidad_local} legacy={a.bajas_local} />
@@ -796,7 +723,7 @@ function PlayerMarkets({ pm, home, away }) {
   );
 }
 
-export default function MatchDetail({ m, onBack, onTeam, plan = "vip", onUpgrade }) {
+export default function MatchDetail({ m, onBack, onTeam, players, onPlayer, plan = "vip", onUpgrade }) {
   const canProps = hasAccess(plan, "props");
   const [copied, setCopied] = useState(false);
 
@@ -966,7 +893,7 @@ export default function MatchDetail({ m, onBack, onTeam, plan = "vip", onUpgrade
       )}
 
       {/* ============ 2 · ONCES PROBABLES + JUGADORES ============ */}
-      {m.alineacion && <div className="section-anchor" id="match-lineup"><Alineacion m={m} a={m.alineacion} canProps={canProps} onUpgrade={onUpgrade} /></div>}
+      {m.alineacion && <div className="section-anchor" id="match-lineup"><Alineacion m={m} a={m.alineacion} players={players} onPlayer={onPlayer} canProps={canProps} onUpgrade={onUpgrade} /></div>}
       {m.player_markets && <PlayerMarkets pm={m.player_markets} home={m.home} away={m.away} />}
 
       {/* ============ 3 · PREDICCIONES POR MERCADO ============ */}
