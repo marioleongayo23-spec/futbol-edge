@@ -22,8 +22,12 @@ export function dayEvidence(matches, now = Date.now()) {
     priced++;
     // A complete set of prices is not proof that those prices are current.
     const kickoff = Date.parse(m?.kickoff || "");
-    if (kickoff > now &&
-        quoteEvidence({ source_updated_at: m?.odds?.meta?.source_updated_at }, now) === "verified_recent") {
+    const meta = m?.odds?.meta;
+    // Legacy feeds can carry a synthesized timestamp. Only the provider's
+    // timestamped live-price pathway is sufficient evidence of freshness.
+    if (kickoff > now && meta?.provider === "The Odds API" &&
+        meta?.movement_source === "the_odds_api_live" &&
+        quoteEvidence({ source_updated_at: meta?.source_updated_at }, now) === "verified_recent") {
       verifiedPriced++;
     }
   }
