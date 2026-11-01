@@ -36,4 +36,4 @@ jobs:
       - name: Ejecutar suite Python
         run: pytest -q
       - name: Auditar muestras reales del feed (sin APIs externas)
-        run: python -m futbol_pred.feed_audit data/dashboard.json
+        run: python -m futbol_pred.feed_audit data/dashboard.json --enforce-upcoming-coverage
