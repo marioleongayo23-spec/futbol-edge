@@ -1,4 +1,4 @@
-from futbol_pred.feed_semantic import semantic_digest, semantic_feed
+from futbol_pred.feed_semantic import semantic_digest, semantic_feed, publication_reason
 
 
 def _feed():
@@ -80,3 +80,36 @@ def test_no_elimina_timestamps_de_snapshots_reales():
 
     normalized = semantic_feed(feed)
     assert normalized["matches"][0]["closing_odds"]["captured_at"] == "2026-08-25T18:00:00+02:00"
+
+
+def test_heartbeat_publication_only_after_90_minutes_without_sports_changes():
+    first = _feed()
+    second = _feed()
+    second["generated_at"] = "2026-08-25T11:44:00+02:00"
+    assert publication_reason(first, second) == "unchanged"
+    second["generated_at"] = "2026-08-25T11:45:00+02:00"
+    assert publication_reason(first, second) == "heartbeat"
+    second["generated_at"] = "2026-08-25T12:15:00+02:00"
+    assert publication_reason(first, second) == "heartbeat"
+
+
+def test_publication_suppresses_out_of_order_or_invalid_snapshots():
+    first = _feed()
+    second = _feed()
+    second["generated_at"] = "2026-08-25T10:14:59+02:00"
+    second["matches"][0]["probs"] = [20, 30, 50]
+    assert publication_reason(first, second) == "stale_candidate"
+    second["generated_at"] = "not a timestamp"
+    assert publication_reason(first, second) == "invalid"
+    second["generated_at"] = "2026-08-25T10:16:00+02:00"
+    assert publication_reason(first, second) == "content_changed"
+
+
+def test_publication_handles_missing_old_timestamp_and_dst():
+    first = _feed()
+    second = _feed()
+    first.pop("generated_at")
+    assert publication_reason(first, second) == "missing_previous_timestamp"
+    first["generated_at"] = "2026-10-25T02:30:00+02:00"
+    second["generated_at"] = "2026-10-25T03:01:00+01:00"
+    assert publication_reason(first, second, heartbeat_minutes=90) == "heartbeat"
