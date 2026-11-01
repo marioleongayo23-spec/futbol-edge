@@ -391,10 +391,14 @@ def _extra_value_rows(match: dict, quotes: list[Quote], stats_model=None) -> lis
                     elif q.point is not None:
                         over = _poisson_over(mean, q.point)
                         model_prob = over if selection.casefold() == "over" else 1 - over if selection.casefold() == "under" else None
-        if model_prob is None:
+        if model_prob is None or not math.isfinite(model_prob) or not (0 <= model_prob <= 1):
+            continue
+        if not math.isfinite(q.odds) or q.odds <= 1:
             continue
         if edge is None:
             edge = model_prob * q.odds - 1.0
+        if not math.isfinite(edge):
+            continue
         out.append({
             "market": q.market, "selection": selection, "line": q.point,
             "player": q.player, "bookmaker": q.bookmaker, "odds": round(q.odds, 3),
@@ -418,7 +422,8 @@ def attach_extended_market_value(
     if not client.available:
         co_cache: dict[str, list[dict]] = {}
         for match in matches:
-            if match.get("finished"):
+            kickoff = _dt(match.get("kickoff"))
+            if match.get("finished") or kickoff is None or kickoff <= now:
                 continue
             block = _co_uk_featured(match, co_cache)
             ah = block.get("asian_handicap") or {}
@@ -442,7 +447,7 @@ def attach_extended_market_value(
                     edge = float(row.get("edge", -99))
                 except (TypeError, ValueError):
                     continue
-                if edge > 0.02 and match.get("recommendation", {}).get("decision") != "no_pick":
+                if math.isfinite(edge) and edge > 0.02 and match.get("recommendation", {}).get("decision") != "no_pick":
                     global_rows.append({
                         **row, "match_id": match.get("id"), "home": match.get("home"),
                         "away": match.get("away"), "league": match.get("league"),
@@ -451,19 +456,19 @@ def attach_extended_market_value(
         ranking = sorted(global_rows, key=lambda row: float(row.get("edge", -99)), reverse=True)[:40]
         return {"refreshed": 0, "ranking": ranking, "source": "football-data.co.uk fallback"}
     for match in matches:
-        if match.get("finished"):
+        kickoff = _dt(match.get("kickoff"))
+        if match.get("finished") or kickoff is None or kickoff <= now:
             continue
         old = prev.get(str(match.get("id"))) or {}
         old_market = old.get("extended_market")
         stamp = _dt((old_market or {}).get("captured_at"))
         age = (now - stamp).total_seconds() / 3600 if stamp else None
-        kickoff = _dt(match.get("kickoff"))
-        hours_to = (kickoff - now).total_seconds() / 3600 if kickoff else 999
+        hours_to = (kickoff - now).total_seconds() / 3600
         if isinstance(old_market, dict) and age is not None and age < ttl_hours:
             match["extended_market"] = old_market
             rows = list(old.get("extended_value") or [])
             match["extended_value"] = rows
-        elif requests_left > 0 and -1 <= hours_to <= 36 and match.get("league") in SPORT_KEYS:
+        elif requests_left > 0 and 0 < hours_to <= 36 and match.get("league") in SPORT_KEYS:
             event_id = _match_event(match, client.events(match.get("league")))
             if event_id:
                 quotes = client.event_odds(match.get("league"), event_id, player_props=False)
@@ -485,7 +490,7 @@ def attach_extended_market_value(
                 edge = float(row.get("edge"))
             except (TypeError, ValueError):
                 continue
-            if edge <= 0.02 or match.get("recommendation", {}).get("decision") == "no_pick":
+            if not math.isfinite(edge) or edge <= 0.02 or match.get("recommendation", {}).get("decision") == "no_pick":
                 continue
             global_rows.append({
                 **row, "match_id": match.get("id"), "home": match.get("home"),
