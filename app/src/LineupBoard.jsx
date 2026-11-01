@@ -18,8 +18,8 @@ function PlayerSlot({ row, team, players, onPlayer }) {
     {row.position && <small className="lineup-v3-pos">{row.position}</small>}
   </>;
   return onPlayer
-    ? <button type="button" className="lineup-v3-slot" title={row.name}
-        aria-label={`Ver ficha de ${row.name}, ${team}`} onClick={() => onPlayer(candidate)}>{content}</button>
+    ? <button type="button" onClick={() => onPlayer(candidate)} className="lineup-v3-slot" title={row.name}
+        aria-label={`Ver ficha de ${row.name}, ${team}`}>{content}</button>
     : <div className="lineup-v3-slot" title={row.name}>{content}</div>;
 }
 function Half({ side, team, crest, colors, data, players, onPlayer }) {
