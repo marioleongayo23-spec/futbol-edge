@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
+import { madridDayKey } from "./dateKey.js";
+import { validBet, portfolioStats } from "./portfolioMath.js";
 import { crestFor, feedAgeHours, fmtKick, hasPrediction, isStale, subscribeFeed } from "./feed";
 import { entropy, fairProbs, kelly, overround, plenoSign } from "./poisson";
 import { leaguesIn, projectedTable } from "./standings";
@@ -59,10 +61,7 @@ function Skeletons({ n = 5 }) {
 
 
 /* ---------- Utilidades de calendario ---------- */
-const todayKey = () => {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-};
+const todayKey = () => madridDayKey();
 const dayLong = (s) => { try { return new Date(s + "T12:00:00").toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" }); } catch { return s; } };
 const dayWd = (s) => { try { return new Date(s + "T12:00:00").toLocaleDateString("es-ES", { weekday: "short" }); } catch { return ""; } };
 const dayNum = (s) => { try { return new Date(s + "T12:00:00").toLocaleDateString("es-ES", { day: "2-digit" }); } catch { return s; } };
@@ -127,7 +126,13 @@ function Resumen({ data, matches, onOpen, goto, favs, onTeam }) {
     const i = days.findIndex((d) => d >= t);
     return i < 0 ? Math.max(0, days.length - 1) : i;
   }, [days]);
-  const [idx, setIdx] = useState(startIdx);
+  // Guardar la fecha, no el índice: el feed puede añadir/eliminar jornadas entre refrescos.
+  const [chosenDay, setChosenDay] = useState(null);
+  const idx = chosenDay && days.includes(chosenDay) ? days.indexOf(chosenDay) : startIdx;
+  const setIdx = (next) => {
+    const index = typeof next === "function" ? next(idx) : next;
+    setChosenDay(days[index] || null);
+  };
   const [renderedAt] = useState(() => Date.now());
 
   const day = days[idx];
@@ -173,7 +178,7 @@ function Resumen({ data, matches, onOpen, goto, favs, onTeam }) {
           <button type="button" className="cal-btn" disabled={idx <= 0} onClick={() => setIdx((i) => Math.max(0, i - 1))} aria-label="Día anterior">‹</button>
           <div className="cal-title"><b>{dayLong(day)}</b>{day === t && <span className="cal-today">HOY</span>}</div>
           <button type="button" className="cal-btn" disabled={idx >= days.length - 1} onClick={() => setIdx((i) => Math.min(days.length - 1, i + 1))} aria-label="Día siguiente">›</button>
-          <button type="button" className="cal-btn wide" onClick={() => setIdx(startIdx)}>Hoy</button>
+          <button type="button" className="cal-btn wide" onClick={() => setChosenDay(null)}>Hoy</button>
         </div>
         <div className="cal-strip">
           {strip.map((d) => {
@@ -1085,12 +1090,7 @@ function Cartera({ matches }) {
   const suggestions = useMemo(() => matches.filter(hasPrediction).slice(0, 200).map((m) => `${m.home} - ${m.away}`), [matches]);
 
   const pl = (b) => b.result === "won" ? b.stake * (b.odds - 1) : b.result === "lost" ? -b.stake : 0;
-  const settled = bets.filter((b) => b.result !== "open");
-  const staked = settled.reduce((s, b) => s + b.stake, 0);
-  const profit = settled.reduce((s, b) => s + pl(b), 0);
-  const roi = staked ? (profit / staked) * 100 : 0;
-  const wins = settled.filter((b) => b.result === "won").length;
-  const hit = settled.length ? (wins / settled.length) * 100 : 0;
+  const { staked, profit, roi, wins, hit, settled: settledCount } = portfolioStats(bets);
   const bank = Number(bank0) + profit;
   const curve = useMemo(() => {
     const chrono = bets.filter((b) => b.result !== "open").slice().reverse();
@@ -1100,7 +1100,7 @@ function Cartera({ matches }) {
 
   const add = () => {
     const odds = Number(f.odds), stake = Number(f.stake);
-    if (!(odds > 1) || !(stake > 0) || !f.match.trim()) {
+    if (!validBet(odds, stake) || !f.match.trim()) {
       setMessage("Completa partido, cuota mayor que 1 y stake positivo.");
       return;
     }
@@ -1118,9 +1118,9 @@ function Cartera({ matches }) {
     <>
       <div className="stat-tiles">
         <div className="stat"><span className="stat-k">Bankroll</span><b className="stat-v">{bank.toFixed(0)}€</b><span className="stat-s">inicio {Number(bank0).toFixed(0)}€</span></div>
-        <div className="stat"><span className="stat-k">Beneficio</span><b className={"stat-v " + (profit >= 0 ? "accent" : "")} style={profit < 0 ? { color: "var(--red)" } : null}>{profit >= 0 ? "+" : ""}{profit.toFixed(2)}€</b><span className="stat-s">{settled.length} apuestas cerradas</span></div>
-        <div className="stat"><span className="stat-k">ROI / Yield</span><b className="stat-v" style={{ color: roi >= 0 ? "var(--green)" : "var(--red)" }}>{roi >= 0 ? "+" : ""}{roi.toFixed(1)}%</b><span className="stat-s">{staked.toFixed(0)}€ apostados</span></div>
-        <div className="stat"><span className="stat-k">Acierto</span><b className="stat-v">{hit.toFixed(0)}%</b><span className="stat-s">{wins}/{settled.length} ganadas</span></div>
+        <div className="stat"><span className="stat-k">Beneficio</span><b className={"stat-v " + (profit >= 0 ? "accent" : "")} style={profit < 0 ? { color: "var(--red)" } : null}>{profit >= 0 ? "+" : ""}{profit.toFixed(2)}€</b><span className="stat-s">{settledCount} apuestas liquidadas</span></div>
+        <div className="stat"><span className="stat-k">ROI / Yield</span><b className="stat-v" style={{ color: roi == null ? "var(--muted)" : roi >= 0 ? "var(--green)" : "var(--red)" }}>{roi == null ? "—" : `${roi >= 0 ? "+" : ""}${roi.toFixed(1)}%`}</b><span className="stat-s">{staked.toFixed(0)}€ liquidados</span></div>
+        <div className="stat"><span className="stat-k">Acierto</span><b className="stat-v">{hit == null ? "—" : `${hit.toFixed(0)}%`}</b><span className="stat-s">{wins}/{settledCount} ganadas</span></div>
       </div>
 
       <ClvPanel bets={bets} matches={matches} />
@@ -1305,7 +1305,7 @@ export default function App() {
   const openPlayer = (player) => { setPlayerSel(player); setSel(null); setQ(""); window.scrollTo(0, 0); };
   const onFav = (name) => setFavs(new Set(toggleFav(name)));
   const goto = (v) => { setView(v); setSel(null); setTeamSel(null); setPlayerSel(null); setMenuOpen(false); window.scrollTo(0, 0); };
-  const userName = session?.user?.email?.split("@")[0] || "Mario León";
+  const userName = session?.user?.email?.split("@")[0] || "Invitado";
   const plan = resolvePlan(session);
   const planInfo = PLANS[plan] || PLANS.free;
   const login = async () => {
