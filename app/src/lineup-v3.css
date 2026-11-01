@@ -58,3 +58,11 @@ button.lineup-v3-slot:hover,button.lineup-v3-slot:focus-visible{background:rgba(
 }
 @media(max-width:380px){.lineup-v3-row{gap:0}.lineup-v3-slot{max-width:61px;flex-basis:61px}.lineup-v3-name{font-size:.56rem}}
 @media(prefers-reduced-motion:reduce){.lineup-v3-slot{transition:none}}
+
+/* Team-page roster and player leaderboard: compact, identical identity treatment. */
+.edge-roster-identity{display:flex;align-items:center;gap:10px;min-width:0;text-align:left}
+.edge-roster-identity>div{min-width:0;overflow:hidden}
+.edge-roster-identity .edge-player-avatar{height:32px;width:32px;flex-basis:32px;border:1px solid var(--line);box-shadow:none;font-size:.67rem}
+.edge-roster-identity b{line-height:1.2;white-space:nowrap;text-overflow:ellipsis;overflow:hidden;display:block}
+.edge-roster-identity .mk-sub{white-space:nowrap;text-overflow:ellipsis;overflow:hidden}
+@media(max-width:560px){.edge-roster-identity{gap:7px}.edge-roster-identity .edge-player-avatar{height:27px;width:27px;flex-basis:27px}}
