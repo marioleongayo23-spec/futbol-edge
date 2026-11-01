@@ -62,7 +62,7 @@ export function analyseLineup(names, positions) {
 }
 
 export function confirmedLineup(a) {
-  if (!a || a.status !== "confirmado") return false;
+  if (!a || String(a.status || "").toLowerCase() !== "confirmado") return false;
   return analyseLineup(a.local, a.posiciones_local).full &&
     analyseLineup(a.visitante, a.posiciones_visitante).full;
 }
