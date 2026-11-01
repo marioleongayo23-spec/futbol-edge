@@ -8,7 +8,10 @@ printf '{"commit":"%s","ref":"%s","built_at":"%s"}\n' \
   "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
   > app/public/build-version.json
 
-cp football/data/dashboard.json app/public/dashboard.json
+# El feed completo (~45 MB) se lee directamente desde GitHub. No copiarlo
+# al bundle de Vercel: duplicaba decenas de MB en cada despliegue y en la
+# instalación PWA. app/public/dashboard.json es una copia ligera de emergencia.
+# La interfaz la etiqueta explícitamente como respaldo si la utiliza.
 
 cd app
 npm run build
