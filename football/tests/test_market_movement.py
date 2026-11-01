@@ -180,3 +180,33 @@ def test_rebuild_preserva_market_history_y_snapshot_archiva_ajuste():
     assert len(rebuilt["market_history"]) == 2
     assert rebuilt["market_history"][0]["captured_at"] == history[0]["captured_at"]
     assert rebuilt["prediction_snapshot"]["market_movement_adjustment"]["before"] == [47, 31, 22]
+
+
+def test_market_movement_snapshot_necesita_sello_de_fuente_real_y_reciente():
+    kickoff = datetime(2026, 9, 7, 21, tzinfo=MADRID)
+    captured = kickoff - timedelta(hours=2)
+    kwargs = {
+        "kickoff": kickoff, "captured_at": captured,
+        "odds_1x2": {"1": 2.0, "X": 3.4, "2": 4.2},
+        "fair_1x2": {"1": 0.48, "X": 0.3, "2": 0.22},
+        "provider": "The Odds API",
+    }
+    assert build_market_snapshot(**kwargs) is None
+    assert build_market_snapshot(**kwargs, source_updated_at=captured - timedelta(hours=4)) is None
+    assert build_market_snapshot(**kwargs, source_updated_at=captured + timedelta(minutes=10)) is None
+    fresh = build_market_snapshot(**kwargs, source_updated_at=captured - timedelta(minutes=3))
+    assert fresh is not None
+    assert fresh["source_updated_at"] == (captured - timedelta(minutes=3)).isoformat()
+
+
+def test_market_movement_snapshot_rechaza_cuotas_invalidas():
+    kickoff = datetime(2026, 9, 7, 21, tzinfo=MADRID)
+    captured = kickoff - timedelta(hours=2)
+    for bad in (float("nan"), float("inf"), -1, 0.9):
+        assert build_market_snapshot(
+            kickoff=kickoff, captured_at=captured,
+            source_updated_at=captured,
+            odds_1x2={"1": bad, "X": 3.4, "2": 4.2},
+            fair_1x2={"1": 0.48, "X": 0.3, "2": 0.22},
+            provider="The Odds API",
+        ) is None
