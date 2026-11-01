@@ -1,5 +1,6 @@
 import { crestFor } from "./feed";
 import PlayerAvatar from "./PlayerAvatar";
+import MediaCredits from "./MediaCredits";
 import { photoForPlayer } from "./mediaIdentity.js";
 import { analyseLineup, confirmedLineup, lineupPlayerRecord } from "./lineupVisualData.js";
 import "./lineup-v3.css";
@@ -10,8 +11,8 @@ const short = name => {
 };
 function PlayerSlot({ row, team, players, onPlayer }) {
   const record = lineupPlayerRecord(players, row.name, team);
-  const photo = photoForPlayer(record);
   const candidate = record || { player:row.name, team, position:row.position || null };
+  const photo = photoForPlayer(candidate);
   const content = <>
     <PlayerAvatar name={row.name} src={photo} />
     <span className="lineup-v3-name">{short(row.name)}</span>
@@ -66,6 +67,10 @@ export default function LineupBoard({ match, lineup, players, onPlayer }) {
         Alineación incompleta: {match.home} {home.count}/11 · {match.away} {away.count}/11. No se presenta como XI confirmado.</p>}
       {(home.duplicates > 0 || away.duplicates > 0) && <p className="lineup-v3-warning" role="status">Se han omitido nombres duplicados hasta verificar los datos.</p>}
       <p className="lineup-v3-footnote">Pulsa un jugador para abrir su ficha. Las imágenes aparecen solo cuando coincide la identidad completa con el equipo.</p>
+      <MediaCredits players={[
+        ...home.roster.map(p=>lineupPlayerRecord(players,p.name,match.home)||{player:p.name,team:match.home}),
+        ...away.roster.map(p=>lineupPlayerRecord(players,p.name,match.away)||{player:p.name,team:match.away})
+      ]}/>
     </div>
   );
 }
