@@ -502,7 +502,8 @@ def attach_extended_market_value(
                 if (_is_actionable_price(row, now)
                         and match.get("recommendation", {}).get("decision") != "no_pick"):
                     global_rows.append({
-                        **row, "match_id": match.get("id"), "home": match.get("home"),
+                        **row, "source_time_status": "verified_recent",
+                        "match_id": match.get("id"), "home": match.get("home"),
                         "away": match.get("away"), "league": match.get("league"),
                         "kickoff": match.get("kickoff"),
                     })
@@ -549,7 +550,8 @@ def attach_extended_market_value(
                     or match.get("recommendation", {}).get("decision") == "no_pick"):
                 continue
             global_rows.append({
-                **row, "match_id": match.get("id"), "home": match.get("home"),
+                **row, "source_time_status": "verified_recent",
+                "match_id": match.get("id"), "home": match.get("home"),
                 "away": match.get("away"), "league": match.get("league"),
                 "kickoff": match.get("kickoff"),
             })
