@@ -211,3 +211,49 @@ def test_close_no_promociona_cuotas_timestamped_caducadas():
     quotes = [q for q in OldClient().featured("LaLiga")
               if not _quote_is_explicitly_stale(q.updated_at, now)]
     assert _featured_block(match, quotes).get("1x2") is None
+
+
+def test_ranking_exige_fecha_verificable_del_proveedor():
+    from futbol_pred.real_market import _is_actionable_price, _provider_time_status
+    now = datetime(2026, 8, 25, 18, tzinfo=timezone.utc)
+    valid = {"market": "btts", "edge": .12, "odds": 2.1,
+             "source_updated_at": "2026-08-25T17:55:00Z"}
+    assert _is_actionable_price(valid, now)
+    assert _provider_time_status(valid["source_updated_at"], now) == "verified_recent"
+    assert not _is_actionable_price({**valid, "source_updated_at": None}, now)
+    assert not _is_actionable_price({**valid, "source_updated_at": "2026-08-25T11:00:00Z"}, now)
+    assert not _is_actionable_price({**valid, "edge": float("inf")}, now)
+    assert not _is_actionable_price({**valid, "odds": float("nan")}, now)
+
+
+def test_ranking_descarta_props_sin_timestamp_y_conserva_observaciones():
+    from dataclasses import replace
+
+    class Timestamped(FakeOdds):
+        def event_odds(self, league, event_id, player_props=False):
+            rows = super().event_odds(league, event_id, player_props)
+            return [
+                replace(q, updated_at="2026-08-25T17:58:00Z")
+                if q.market == "btts" else q for q in rows
+            ]
+
+    now = datetime(2026, 8, 25, 18, tzinfo=timezone.utc)
+    match = _match(now)
+    result = attach_extended_market_value(
+        [match], now, client=Timestamped(),
+        stats_models={"LaLiga": FakeStats()}, max_event_requests=4
+    )
+    assert result["refreshed"] == 1
+    assert any(row["market"] == "btts" for row in result["ranking"])
+    assert all(row.get("source_updated_at") for row in result["ranking"])
+    assert all(row["source_time_status"] == "verified_recent"
+               if "source_time_status" in row else True for row in result["ranking"])
+    assert any(row.get("source_time_status") == "unverified" for row in match["extended_value"])
+
+
+def test_cierre_distingue_real_sin_fecha_de_actualizacion():
+    now = datetime(2026, 8, 25, 18, tzinfo=timezone.utc)
+    match = _match(now)
+    assert attach_closing_snapshots([match], now, client=FakeOdds()) == 1
+    assert match["closing_odds"]["source_time_status"] == "unverified"
+    assert match["closing_odds"]["source_updated_at"] is None
