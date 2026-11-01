@@ -10,14 +10,22 @@ if (candidates.some(m => !m)) throw new Error("Real feed fixtures missing for vi
 
 test("redesigned matchday: filter, navigation, spacing and no horizontal overflow", async ({ page }, testInfo) => {
   const kickoff = new Date(Date.now() + 6 * 3600_000);
-  const date = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid",
-    year: "numeric", month: "2-digit", day: "2-digit" }).format(kickoff);
+  const date = new Intl.DateTimeFormat("sv-SE", {
+    timeZone: "Europe/Madrid", year: "numeric", month: "2-digit", day: "2-digit",
+  }).format(kickoff);
   const sample = structuredClone(feed);
   sample.generated_at = new Date().toISOString();
-  sample.matches = candidates.map((m, i) => ({
-    ...m, id: "e2e-edge-" + i, date, kickoff: kickoff.toISOString(),
-    finished: false, result: null, probs: [58, 24, 18], xg: [1.4, 0.9],
-  }));
+  // The production guard intentionally rejects feeds smaller than 20 matches.
+  // Retain 20+ realistic historical fixtures while fixing three upcoming matches
+  // on the selected date, so the UI is really exercising the normal fetch guard.
+  sample.matches = [
+    ...feed.matches.slice(0, 21).map(m => ({ ...m, date: "2025-01-01" })),
+    ...candidates.map((m, i) => ({
+      ...m, id: "e2e-edge-" + i, date, kickoff: kickoff.toISOString(),
+      finished: false, result: null, probs: [58, 24, 18], xg: [1.4, 0.9],
+    })),
+  ];
+  sample.counts = { ...(sample.counts || {}), total: sample.matches.length };
   await page.route("**/dashboard.json*", route => route.fulfill({
     status: 200, contentType: "application/json", body: JSON.stringify(sample),
   }));
