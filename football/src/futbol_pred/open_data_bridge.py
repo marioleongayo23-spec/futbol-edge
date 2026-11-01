@@ -86,7 +86,10 @@ def parse_rows(path: str | Path, *, now: datetime | None = None) -> list[dict]:
                 "feature": row["feature"], "value": values,
                 "source": row["source"], "source_id": row["record_id"],
                 "available_at": available.isoformat(), "phase": "postmatch",
-                "quality": row["quality"],
+                # The canonical observation quality vocabulary is intentionally
+                # fixed; carry date-only precision as a separate metadata fact.
+                "quality": "observed",
+                "kickoff_precision": row["kickoff_precision"],
             })
     return rows
 
@@ -109,6 +112,14 @@ def import_csv(path: str | Path, db_path: str | Path) -> dict:
             value=row["value"], source=row["source"],
             source_id=row["source_id"], available_at=row["available_at"],
             phase=row["phase"], quality=row["quality"],
+        ))
+        # Protect future training adapters from mistaking a date-only index
+        # for an actual, provider-verified match kickoff.
+        inserted += int(store.append_observation(
+            match_uid=row["match_uid"], feature="fixture.kickoff_precision",
+            value=row["kickoff_precision"], source=row["source"],
+            source_id=row["source_id"], available_at=row["available_at"],
+            phase="postmatch", quality="observed",
         ))
     return {
         "rows_checked": len(parsed), "matches": len(match_ids),
