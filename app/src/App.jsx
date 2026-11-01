@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { crestFor, feedAgeHours, fmtKick, hasPrediction, isStale, subscribeFeed } from "./feed";
-import { entropy, fairProbs, kelly, overround, plenoSign } from "./poisson";
+import { entropy, fairProbs, kelly, overround, plenoSign, validDecimalOdds } from "./poisson";
 import { madridDateKey, madridTime, selectedDayIndex } from "./calendarTime.js";
 import { leaguesIn, projectedTable } from "./standings";
 import { teamProfile, teamSquad } from "./teams";
@@ -551,7 +551,7 @@ function Quiniela({ matches, quiniela, tri, dob, setTri, setDob }) {
 function ValueBets({ matches, bank, setBank, globalValue }) {
   const ms = matches.filter(hasPrediction).filter((m) => !m.finished);
   const [odds, setOdds] = useState({});
-  const bankN = Number(bank) || 1000;
+  const bankN = Number.isFinite(Number(bank)) && Number(bank) > 0 ? Number(bank) : 0;
   let rows = ms.map((m, i) => {
     const pr = [m.probs[0] / 100, m.probs[1] / 100, m.probs[2] / 100];
     const blocked = m.recommendation?.decision === "no_pick";
@@ -563,12 +563,12 @@ function ValueBets({ matches, bank, setBank, globalValue }) {
       const v = odds[i + s];
       return Number(v != null && v !== "" ? v : (feedO ? feedO[s] : NaN));
     });
-    const haveAll = o.every((x) => x > 1);
+    const haveAll = o.every(validDecimalOdds);
     const fair = haveAll ? fairProbs(o) : null;
     const vig = haveAll ? overround(o) : null;
     let best = null;
     if (!blocked) {
-      o.forEach((oo, j) => { if (oo > 1) { const e = pr[j] * oo - 1; if (!best || e > best.e) best = { j, s: ["1", "X", "2"][j], o: oo, e }; } });
+      o.forEach((oo, j) => { if (validDecimalOdds(oo)) { const e = pr[j] * oo - 1; if (!best || e > best.e) best = { j, s: ["1", "X", "2"][j], o: oo, e }; } });
     }
     const stake = !blocked && best ? Math.min(bankN * kelly(pr[best.j], best.o) * 0.25, bankN * 0.05) : 0;
     return { m, i, pr, o, feedO, fair, vig, best, stake, blocked, reasons, haveAll };
@@ -598,7 +598,7 @@ function ValueBets({ matches, bank, setBank, globalValue }) {
           </div>
           <div className="row" style={{ marginTop: 8 }}>
             {["1", "X", "2"].map((s, j) => {
-              const e = !r.blocked && r.o[j] > 1 ? r.pr[j] * r.o[j] - 1 : null;
+              const e = !r.blocked && validDecimalOdds(r.o[j]) ? r.pr[j] * r.o[j] - 1 : null;
               return (
                 <div key={s} className="odds-in">
                   <input type="number" step="0.01" placeholder={"Cuota " + s} style={{ width: 92 }} value={odds[r.i + s] ?? (r.feedO ? r.feedO[s] : "")} onChange={(ev) => setOdds({ ...odds, [r.i + s]: ev.target.value })} />
