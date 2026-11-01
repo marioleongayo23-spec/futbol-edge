@@ -11,6 +11,24 @@ export function feedFreshness(generatedAt, fromFallback = false, now = Date.now(
   return { tone: "fresh", label: "Feed actualizado", stamp };
 }
 
+export function verifiedOneXTwo(match, now = Date.now()) {
+  const kickoff = Date.parse(match?.kickoff || "");
+  const odds = match?.odds?.["1x2"]?.odds;
+  const meta = match?.odds?.meta;
+  if (match?.finished || !Number.isFinite(kickoff) || kickoff <= now ||
+      !odds || !["1", "X", "2"].every(k =>
+        typeof odds[k] === "number" && Number.isFinite(odds[k]) && odds[k] > 1)) {
+    return null;
+  }
+  // Legacy data can have a generated_at field masquerading as source time.
+  if (meta?.provider !== "The Odds API" ||
+      meta?.movement_source !== "the_odds_api_live" ||
+      quoteEvidence({ source_updated_at: meta?.source_updated_at }, now) !== "verified_recent") {
+    return null;
+  }
+  return odds;
+}
+
 export function dayEvidence(matches, now = Date.now()) {
   const rows = Array.isArray(matches) ? matches : [];
   const predicted = rows.filter(m => validProbabilities(m?.probs)).length;
@@ -22,14 +40,7 @@ export function dayEvidence(matches, now = Date.now()) {
     priced++;
     // A complete set of prices is not proof that those prices are current.
     const kickoff = Date.parse(m?.kickoff || "");
-    const meta = m?.odds?.meta;
-    // Legacy feeds can carry a synthesized timestamp. Only the provider's
-    // timestamped live-price pathway is sufficient evidence of freshness.
-    if (kickoff > now && meta?.provider === "The Odds API" &&
-        meta?.movement_source === "the_odds_api_live" &&
-        quoteEvidence({ source_updated_at: meta?.source_updated_at }, now) === "verified_recent") {
-      verifiedPriced++;
-    }
+    if (verifiedOneXTwo(m, now)) verifiedPriced++;
   }
   return { total: rows.length, predicted, priced, verifiedPriced };
 }
