@@ -9,6 +9,7 @@ import MatchDetail from "./MatchDetail";
 import MissionOverview from "./MissionOverview";
 import EvidenceRibbon from "./EvidenceRibbon";
 import { verifiedOneXTwo } from "./evidenceStatus.js";
+import { ALL_LEAGUES, competitionFilters, visibleMatchday } from "./dashboardFilters.js";
 import { picksForDay, wilsonInterval } from "./predictionEvidence";
 import { QualityBadge } from "./MatchQuality";
 import PlayerProfile from "./PlayerProfile";
@@ -82,9 +83,12 @@ function FormDots({ form }) {
 function MatchRow({ m, onOpen, formMap }) {
   const pred = hasPrediction(m);
   const best = pred ? ["1", "X", "2"][m.probs.indexOf(Math.max(...m.probs))] : null;
-  const val = bestValue(m);
+  const verifiedOdds = verifiedOneXTwo(m);
+  const candidate = bestValue(m);
+  const val = verifiedOdds && candidate?.market === "1x2" ? candidate : null;
   return (
-    <button type="button" className="mrow" onClick={() => onOpen(m)}>
+    <button type="button" className="mrow" onClick={() => onOpen(m)}
+      aria-label={`Abrir análisis de ${m.home} contra ${m.away}, ${m.league}, ${m.finished ? "finalizado" : hhmm(m.kickoff)}`}>
       <span className="mrow-time">{m.finished ? "FT" : hhmm(m.kickoff)}</span>
       <span className="mrow-body">
         <span className="mrow-line">
@@ -100,7 +104,7 @@ function MatchRow({ m, onOpen, formMap }) {
       </span>
       {m.match_quality && <QualityBadge mq={m.match_quality} compact />}
       <span className="mrow-tag">
-        {val && <span className="tag-val" title={`Value ${val.selection}: edge ${(val.edge * 100).toFixed(1)}%`}>◆</span>}
+        {val && <span className="tag-val" title={`EV teórico ${val.selection}: +${(val.edge * 100).toFixed(1)}% con fuente verificada`}>◆</span>}
         {({ LaLiga: "1ª", "LaLiga Hypermotion": "2ª", "Champions League": "UCL" }[m.league] || m.league)}{best ? ` · ${best}` : ""}
       </span>
     </button>
@@ -121,6 +125,7 @@ function pickSelLabel(pick, m) {
 }
 
 function Resumen({ data, matches, onOpen, goto, favs, onTeam }) {
+  const [selectedLeague, setSelectedLeague] = useState(ALL_LEAGUES);
   const days = useMemo(() => [...new Set(matches.map((m) => m.date).filter(Boolean))].sort(), [matches]);
   const startIdx = useMemo(() => {
     const t = todayKey();
@@ -140,6 +145,9 @@ function Resumen({ data, matches, onOpen, goto, favs, onTeam }) {
 
   const day = days[idx];
   const dayMatches = useMemo(() => matches.filter((m) => m.date === day).sort((a, b) => (a.kickoff || "").localeCompare(b.kickoff || "")), [matches, day]);
+  const competitions = useMemo(() => competitionFilters(dayMatches), [dayMatches]);
+  const activeLeague = competitions.some((c) => c.key === selectedLeague) ? selectedLeague : ALL_LEAGUES;
+  const visibleMatches = useMemo(() => visibleMatchday(dayMatches, activeLeague), [dayMatches, activeLeague]);
   const predicted = dayMatches.filter(hasPrediction);
   const pick = predicted
     .map((m) => { const mx = Math.max(...m.probs); return { m, mx, s: ["1", "X", "2"][m.probs.indexOf(mx)] }; })
@@ -198,10 +206,27 @@ function Resumen({ data, matches, onOpen, goto, favs, onTeam }) {
         </div>
       </div>
 
-      <div className="day-matches">
-        {dayMatches.length ? dayMatches.map((m) => <MatchRow key={m.id} m={m} onOpen={onOpen} formMap={formMap} />)
-          : <div className="state">No hay partidos este día.</div>}
-      </div>
+      <section className="matchday-workspace" aria-label="Partidos del día">
+        <div className="matchday-toolbar">
+          <div className="matchday-title">
+            <span className="eyebrow">PROGRAMACIÓN · {day === t ? "HOY" : "JORNADA"}</span>
+            <h3>Encuentros <span className="matchday-count">{visibleMatches.length.toString().padStart(2, "0")}</span></h3>
+          </div>
+          {competitions.length > 2 && (
+            <div className="league-filters" role="group" aria-label="Filtrar partidos por competición">
+              {competitions.map((comp) => <button type="button" key={comp.key}
+                className={"league-filter" + (activeLeague === comp.key ? " on" : "")}
+                aria-pressed={activeLeague === comp.key} onClick={() => setSelectedLeague(comp.key)}>
+                {comp.label} <span>{comp.count}</span>
+              </button>)}
+            </div>
+          )}
+        </div>
+        <div className="day-matches">
+          {visibleMatches.length ? visibleMatches.map((m) => <MatchRow key={m.id} m={m} onOpen={onOpen} formMap={formMap} />)
+            : <div className="state">No hay partidos para este día y competición.</div>}
+        </div>
+      </section>
 
       {picks.length > 0 && (
         <div className="card">
@@ -1420,8 +1445,11 @@ export default function App() {
         </main>
       </div>
       <nav className="bottom-nav" aria-label="Navegación móvil">
-        {[["resumen", "⌂", "Inicio"], ["partidos", "⚽", "Partidos"], ["value", "◆", "Value"], ["cartera", "▣", "Cartera"]].map(([key, icon, label]) => (
-          <button type="button" key={key} className={view === key && !sel ? "on" : ""} onClick={() => goto(key)}><span>{icon}</span>{label}</button>
+        {[["resumen", "Inicio"], ["partidos", "Partidos"], ["value", "Value"], ["cartera", "Cartera"]].map(([key, label]) => (
+          <button type="button" key={key} aria-current={view === key && !sel ? "page" : undefined}
+            className={view === key && !sel ? "on" : ""} onClick={() => goto(key)}>
+            <Icon name={key} /><span>{label}</span>
+          </button>
         ))}
       </nav>
       {menuOpen && <button type="button" className="scrim" onClick={() => setMenuOpen(false)} aria-label="Cerrar menú" />}
