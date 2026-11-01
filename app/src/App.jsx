@@ -8,6 +8,7 @@ import { bestValue, countdown, getFavs, modelAccuracy, recentForm, toggleFav } f
 import MatchDetail from "./MatchDetail";
 import MissionOverview from "./MissionOverview";
 import EvidenceRibbon from "./EvidenceRibbon";
+import { verifiedOneXTwo } from "./evidenceStatus.js";
 import { picksForDay, wilsonInterval } from "./predictionEvidence";
 import { QualityBadge } from "./MatchQuality";
 import PlayerProfile from "./PlayerProfile";
@@ -551,19 +552,24 @@ function Quiniela({ matches, quiniela, tri, dob, setTri, setDob }) {
 
 /* ---------- Value bets ---------- */
 function ValueBets({ matches, bank, setBank, globalValue }) {
-  const ms = matches.filter(hasPrediction).filter((m) => !m.finished);
+  const ms = matches.filter(hasPrediction).filter((m) =>
+    !m.finished && Date.parse(m.kickoff || "") > Date.now());
   const [odds, setOdds] = useState({});
   const bankN = Number.isFinite(Number(bank)) && Number(bank) > 0 ? Number(bank) : 0;
   let rows = ms.map((m, i) => {
     const pr = [m.probs[0] / 100, m.probs[1] / 100, m.probs[2] / 100];
     const blocked = m.recommendation?.decision === "no_pick";
     const reasons = m.recommendation?.reasons || [];
-    // Cuotas reales de mercado (media de casas, co.uk) cargadas del feed;
-    // el usuario puede sobrescribirlas escribiendo en el input.
-    const feedO = m.odds?.["1x2"]?.odds || null;
+    // The feed quote must carry a genuine, recent provider update timestamp.
+    // Any manual edit is a *scenario*, not an automatically verified quote.
+    const feedO = verifiedOneXTwo(m);
+    const edited = ["1", "X", "2"].some((s) =>
+      Object.prototype.hasOwnProperty.call(odds, m.id + "|" + s));
+    const actionable = Boolean(feedO) && !edited;
     const o = ["1", "X", "2"].map((s) => {
-      const v = odds[i + s];
-      return Number(v != null && v !== "" ? v : (feedO ? feedO[s] : NaN));
+      const key = m.id + "|" + s;
+      const v = odds[key];
+      return v !== undefined ? (v === "" ? NaN : Number(v)) : (feedO ? feedO[s] : NaN);
     });
     const haveAll = o.every(validDecimalOdds);
     const fair = haveAll ? fairProbs(o) : null;
@@ -572,12 +578,13 @@ function ValueBets({ matches, bank, setBank, globalValue }) {
     if (!blocked) {
       o.forEach((oo, j) => { if (validDecimalOdds(oo)) { const e = pr[j] * oo - 1; if (!best || e > best.e) best = { j, s: ["1", "X", "2"][j], o: oo, e }; } });
     }
-    const stake = !blocked && best ? Math.min(bankN * kelly(pr[best.j], best.o) * 0.25, bankN * 0.05) : 0;
-    return { m, i, pr, o, feedO, fair, vig, best, stake, blocked, reasons, haveAll };
+    const stake = !blocked && actionable && best
+      ? Math.min(bankN * kelly(pr[best.j], best.o) * 0.25, bankN * 0.05) : 0;
+    return { m, i, pr, o, feedO, fair, vig, best, stake, blocked, reasons, haveAll, actionable, edited };
   });
   rows = rows.sort((a, b) => Number(a.blocked) - Number(b.blocked) || (b.best?.e ?? -9) - (a.best?.e ?? -9));
-  const nValue = rows.filter((r) => !r.blocked && r.best && r.best.e > 0.02).length;
-  const nWithOdds = rows.filter((r) => r.haveAll).length;
+  const nValue = rows.filter((r) => !r.blocked && r.actionable && r.best && r.best.e > 0.02).length;
+  const nWithOdds = rows.filter((r) => r.haveAll && r.actionable).length;
   return (
     <>
       <GlobalValuePanel rows={globalValue} />
@@ -585,11 +592,11 @@ function ValueBets({ matches, bank, setBank, globalValue }) {
         <div className="row" style={{ justifyContent: "space-between" }}>
           <div><div className="lbl">Bankroll (€)</div><input aria-label="Bankroll para calcular stakes" type="number" value={bank} style={{ width: 130 }} onChange={(e) => setBank(e.target.value)} /></div>
           <div className="chips">
-            <span className="chip">Con cuota <b>{nWithOdds}</b></span>
-            <span className="chip">Value elegible (edge&gt;2%) <b className={nValue ? "value-yes" : ""}>{nValue}</b></span>
+            <span className="chip">Con cuota de origen verificado <b>{nWithOdds}</b></span>
+            <span className="chip">Value verificable (EV&gt;2%) <b className={nValue ? "value-yes" : ""}>{nValue}</b></span>
           </div>
         </div>
-        <p className="note" style={{ color: "var(--muted)" }}>Cuotas de mercado (media de casas, co.uk) cargadas automáticamente; puedes sobrescribirlas. Se quita el margen y se compara con el modelo. Solo los partidos elegibles calculan edge y stake = Kelly ¼ (máx. 5%).</p>
+        <p className="note" style={{ color: "var(--muted)" }}>Las cuotas automáticas se muestran únicamente si su actualización real está verificada. Puedes introducir precios manualmente para simular EV, pero no generan recomendaciones de stake. Kelly ¼ (máximo 5%) solo se calcula con cuota verificada y decisión elegible.</p>
       </div>
       {!ms.length && <div className="state">No hay partidos con predicción.</div>}
       {rows.map((r) => (
@@ -603,7 +610,7 @@ function ValueBets({ matches, bank, setBank, globalValue }) {
               const e = !r.blocked && validDecimalOdds(r.o[j]) ? r.pr[j] * r.o[j] - 1 : null;
               return (
                 <div key={s} className="odds-in">
-                  <input type="number" step="0.01" placeholder={"Cuota " + s} style={{ width: 92 }} value={odds[r.i + s] ?? (r.feedO ? r.feedO[s] : "")} onChange={(ev) => setOdds({ ...odds, [r.i + s]: ev.target.value })} />
+                  <input type="number" step="0.01" placeholder={"Cuota " + s} style={{ width: 92 }} value={odds[r.m.id + "|" + s] ?? (r.feedO ? r.feedO[s] : "")} onChange={(ev) => setOdds({ ...odds, [r.m.id + "|" + s]: ev.target.value })} />
                   {e != null && <span className={"edge " + (e > 0.02 ? "value-yes" : "value-no")}>{e > 0 ? "+" : ""}{(e * 100).toFixed(1)}%</span>}
                 </div>
               );
@@ -612,8 +619,10 @@ function ValueBets({ matches, bank, setBank, globalValue }) {
           <div className="row" style={{ marginTop: 6 }}>
             {r.vig != null && <span className="chip">Margen casa <b>{(r.vig * 100).toFixed(1)}%</b></span>}
             {r.blocked ? <span className="value-no">Sin apuesta recomendada{r.reasons.length ? ` · ${r.reasons.join(" · ")}` : ""}</span>
-              : r.best && r.best.e > 0.02 ? <span className="pill y">VALUE {r.best.s}: edge {(r.best.e * 100).toFixed(1)}% · apostar {r.stake.toFixed(2)}€</span>
-              : r.best ? <span className="value-no">Sin value (mejor {r.best.s}: {(r.best.e * 100).toFixed(1)}%)</span> : null}
+              : r.best && r.best.e > 0.02 && r.actionable ? <span className="pill y">EV teórico {r.best.s}: +{(r.best.e * 100).toFixed(1)}% · stake orientativo {r.stake.toFixed(2)}€</span>
+              : r.best && r.best.e > 0.02 ? <span className="dim">Simulación · EV +{(r.best.e * 100).toFixed(1)}% · sin cuota verificable para recomendar stake</span>
+              : r.best ? <span className="value-no">Sin value (mejor {r.best.s}: {(r.best.e * 100).toFixed(1)}%)</span>
+              : <span className="dim">Sin cotización verificable · introduce cuotas para simular</span>}
           </div>
         </div>
       ))}
