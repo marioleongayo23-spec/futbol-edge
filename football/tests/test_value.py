@@ -67,3 +67,21 @@ def test_stake_respeta_tope():
     pol = BankrollPolicy(kelly_multiplier=1.0, max_stake_pct=0.05, min_edge=0.0)
     stake = pol.stake(1000, 0.9, 2.0)  # Kelly enorme, debe capar al 5%.
     assert stake <= 50.0
+
+
+def test_find_value_rechaza_datos_no_finitos():
+    from math import inf, nan
+    for prob, odds in [(nan, 2.0), (inf, 2.0), (0.5, nan),
+                       (0.5, inf), (-0.1, 2.0), (1.1, 2.0),
+                       (0.5, 1.0), ("sin datos", 2.0)]:
+        with pytest.raises(ValueError):
+            find_value(prob, odds, "1x2", "1")
+
+
+def test_scan_market_descarta_proveedor_corrupto_y_mantiene_el_valido():
+    bets = scan_market(
+        {"1": 0.55, "X": float("nan"), "2": 0.20},
+        {"1": 2.1, "X": 7.0, "2": float("inf")},
+        "1x2", min_edge=0.03,
+    )
+    assert [bet.selection for bet in bets] == ["1"]
