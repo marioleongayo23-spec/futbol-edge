@@ -314,7 +314,6 @@ function AbsenceImpact({ imp, home, away }) {
 function Alineacion({ m, a, players, onPlayer, canProps = true, onUpgrade }) {
   const provider = a.provider || a.fuente || "IA";
   const completeness = a.quality?.score != null ? ` · completitud ${Math.round(a.quality.score * 100)}%` : "";
-  const status = a.status || (provider === "Motor estadístico local" ? "estimado" : "probable");
   const updated = a.source_updated_at || a.generated_at || a.ts;
   const isOfficial = confirmedLineup(a);
   return (
@@ -343,7 +342,7 @@ function Alineacion({ m, a, players, onPlayer, canProps = true, onUpgrade }) {
         </div> : <div className="note" style={{ marginTop: 10 }}>Props numéricos: sin datos reales suficientes. La IA no rellena estimaciones individuales.</div>}
       </>}
       <p className="note" style={{ color: "var(--muted)", marginTop: 6 }}>
-        {isOfficial ? "Once oficial" : "Estimación"} · fuente {provider}{updated ? ` · actualizada ${new Date(updated).toLocaleString("es-ES")}` : ""}{completeness}. Props: MIN minutos · TIT prob. de inicio · G goles · A asist. · R remates · AP a puerta · FC/FR faltas · T tarjetas. {!isOfficial && "La alineación todavía no es oficial; verifica antes de apostar."}
+        {isOfficial ? "Once oficial" : "Estimación no confirmada"} · fuente {provider}{a.cache_status ? " · copia de caché" : ""}{updated ? ` · actualizada ${new Date(updated).toLocaleString("es-ES")}` : ""}{completeness}. Props: MIN minutos · TIT prob. de inicio · G goles · A asist. · R remates · AP a puerta · FC/FR faltas · T tarjetas. {!isOfficial && "La alineación todavía no es oficial; verifica antes de apostar."}
       </p>
     </div>
   );
