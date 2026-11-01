@@ -70,3 +70,30 @@ def test_bootstrap_uses_match_days_and_is_deterministic():
     assert a["delta_log_loss_ci95"][1] < 0
     assert a["delta_rps_ci95"][1] < 0
     assert _block_bootstrap(rows[:10]) is None
+
+
+def test_audit_explains_historical_missing_snapshots_without_backfilling():
+    missing = _match("no-snap", [2, 0], "2026-09-20T12:00:00+02:00", [55, 25, 20])
+    missing.pop("prediction_history")
+    late = _match("late", [1, 0], "2026-09-20T20:05:00+02:00", [55, 25, 20])
+    invalid = _match("invalid", [1, 0], "2026-09-20T12:00:00+02:00", [100, 100, 100])
+    group = audit_payload({"matches": [missing, late, invalid]})["leagues"]["LaLiga"]
+    assert group["finished_without_valid_snapshot"] == 3
+    assert group["missing_snapshot_reasons"] == {
+        "no_snapshots_preserved": 1,
+        "captured_only_after_kickoff": 1,
+        "pre_kickoff_probs_invalid": 1,
+    }
+
+
+def test_audit_highlights_upcoming_fixtures_without_a_pre_match_capture():
+    with_snapshot = _match("ready", [1, 0], "2026-09-20T12:00:00+02:00", [55, 25, 20])
+    with_snapshot["finished"] = False
+    with_snapshot.pop("result")
+    missing = {**with_snapshot, "id": "pending", "prediction_history": []}
+    group = audit_payload({
+        "generated_at": "2026-09-20T18:00:00+02:00",
+        "matches": [with_snapshot, missing],
+    })["leagues"]["LaLiga"]
+    assert group["upcoming_48h"] == 2
+    assert group["upcoming_48h_without_snapshot"] == 1
