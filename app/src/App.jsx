@@ -7,6 +7,7 @@ import { teamProfile, teamSquad } from "./teams";
 import { bestValue, countdown, getFavs, modelAccuracy, recentForm, toggleFav } from "./insights";
 import MatchDetail from "./MatchDetail";
 import MissionOverview from "./MissionOverview";
+import EvidenceRibbon from "./EvidenceRibbon";
 import { picksForDay, wilsonInterval } from "./predictionEvidence";
 import { QualityBadge } from "./MatchQuality";
 import PlayerProfile from "./PlayerProfile";
@@ -171,6 +172,7 @@ function Resumen({ data, matches, onOpen, goto, favs, onTeam }) {
     <>
       <MissionOverview pick={pick} dayMatches={dayMatches} predicted={predicted} strong={strong}
         goalsDay={goalsDay} acc={acc} interval={accuracyInterval} onOpen={onOpen} />
+      <EvidenceRibbon feed={data} matches={dayMatches} />
 
       <div className="section-heading"><h2>Agenda de partidos</h2><span>{dayLong(day)}</span></div>
 
