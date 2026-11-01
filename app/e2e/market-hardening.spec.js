@@ -4,6 +4,12 @@ import { readFileSync } from "node:fs";
 const feedData = JSON.parse(readFileSync(new URL("../../football/data/dashboard.json", import.meta.url), "utf8"));
 const target = feedData.matches.find((match) => !match.finished && Array.isArray(match.probs)) || feedData.matches[0];
 if (!target) throw new Error("El feed E2E necesita al menos un partido");
+// A saved quote is not live simply because the fixture was scheduled in 2026.
+const fixtureKickoff = new Date(Date.now() + 6 * 3600_000).toISOString();
+const providerUpdated = new Date(Date.now() - 60_000).toISOString();
+target.kickoff = fixtureKickoff;
+target.finished = false;
+target.result = null;
 
 target.weather_adjustment = {
   applied: true,
@@ -13,9 +19,10 @@ target.weather_adjustment = {
   one_x_two_adjusted: false,
 };
 feedData.value_ranking = [
-  { match_id: target.id, home: target.home, away: target.away, league: target.league, market: "btts", selection: "Yes", odds: 2.15, modelProb: 0.55, edge: 0.1825, bookmaker: "Book A" },
-  { match_id: target.id, home: target.home, away: target.away, league: target.league, market: "alternate_totals_corners", selection: "Over", line: 9.5, odds: 2.05, modelProb: 0.54, edge: 0.107, bookmaker: "Book B" },
-  { match_id: target.id, home: target.home, away: target.away, league: target.league, market: "player_shots", selection: "Over", line: 2.5, player: "Jugador Real", odds: 2.30, modelProb: 0.49, edge: 0.127, bookmaker: "Book C" },
+  { match_id: target.id, home: target.home, away: target.away, league: target.league, market: "btts", selection: "Yes", odds: 2.15, modelProb: 0.55, edge: 0.1825, bookmaker: "Book A", kickoff: fixtureKickoff, source_updated_at: providerUpdated },
+  { match_id: target.id, home: target.home, away: target.away, league: target.league, market: "alternate_totals_corners", selection: "Over", line: 9.5, odds: 2.05, modelProb: 0.54, edge: 0.107, bookmaker: "Book B", kickoff: fixtureKickoff, source_updated_at: providerUpdated },
+  { match_id: target.id, home: target.home, away: target.away, league: target.league, market: "player_shots", selection: "Over", line: 2.5, player: "Jugador Real", odds: 2.30, modelProb: 0.49, edge: 0.127, bookmaker: "Book C", kickoff: fixtureKickoff, source_updated_at: providerUpdated },
+  { match_id: target.id, home: target.home, away: target.away, league: target.league, market: "btts", selection: "No", odds: 9.3, modelProb: 0.90, edge: 7.37, bookmaker: "Unknown book", kickoff: fixtureKickoff },
 ];
 feedData.historical_seed = {
   laliga: {
@@ -52,6 +59,8 @@ test("ranking global muestra solo señales con cuota real", async ({ page }) => 
   await expect(panel.getByText("Remates jugador", { exact: true })).toBeVisible();
   await expect(panel.getByText("+18.3%", { exact: true })).toBeVisible();
   await expect(panel.getByText("Book A", { exact: true })).toBeVisible();
+  await expect(panel.getByText("Unknown book", { exact: true })).toHaveCount(0);
+  await expect(panel.getByTestId("unverified-value-count")).toContainText("1 sin hora de origen");
 });
 
 test("datos separa la semilla histórica de la temporada actual", async ({ page }) => {
