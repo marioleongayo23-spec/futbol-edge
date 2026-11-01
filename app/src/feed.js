@@ -264,6 +264,7 @@ export function fmtKick(iso) {
   try {
     return new Date(iso).toLocaleString("es-ES", {
       weekday: "short", day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit",
+      timeZone: "Europe/Madrid",
     });
   } catch {
     return iso || "";
