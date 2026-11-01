@@ -62,6 +62,23 @@ def _quote_is_explicitly_stale(updated_at, now: datetime, *, max_age_hours: floa
     return not (-5.0 / 60 <= age <= max_age_hours)
 
 
+def _provider_time_status(updated_at, now: datetime) -> str:
+    """Treat unknown provider time as unknown, never as retrieval-time fresh."""
+    if not updated_at:
+        return "unverified"
+    return "stale_or_invalid" if _quote_is_explicitly_stale(updated_at, now) else "verified_recent"
+
+
+def _is_actionable_price(row: dict, now: datetime) -> bool:
+    """A published ranking requires a real, recent provider timestamp."""
+    if not isinstance(row, dict):
+        return False
+    if _provider_time_status(row.get("source_updated_at"), now) != "verified_recent":
+        return False
+    edge, odd = _num(row.get("edge")), _num(row.get("odds"))
+    return edge is not None and edge > 0.02 and odd is not None and odd > 1
+
+
 def _num(value) -> float | None:
     try:
         number = float(value)
@@ -236,6 +253,11 @@ def _featured_block(match: dict, quotes: list[Quote]) -> dict:
         out["ou25_books"] = min(len(totals[("over", 2.5)]), len(totals[("under", 2.5)]))
     if spreads:
         out["spreads"] = spreads
+    # Evidence must come from the bookmakers, never from the polling timestamp.
+    times = [q.updated_at for q in rows if q.market == "h2h" and
+             (_key(q.selection) in {_key(home), _key(away)} or q.selection.casefold() == "draw")]
+    if times and all(times):
+        out["source_updated_at"] = min(times, key=lambda stamp: _dt(stamp))
     return out
 
 
@@ -315,6 +337,8 @@ def attach_closing_snapshots(
             "minutes_to_kickoff": round(minutes, 1),
             "capture_kind": "t_minus_2h",
             "is_real": True,
+            "source_updated_at": block.get("source_updated_at"),
+            "source_time_status": _provider_time_status(block.get("source_updated_at"), now),
         }
         if ou and ou.get("over") and ou.get("under"):
             close["ou25"] = {"over": round(float(ou["over"]), 3), "under": round(float(ou["under"]), 3)}
@@ -430,6 +454,7 @@ def _extra_value_rows(match: dict, quotes: list[Quote], stats_model=None) -> lis
             "player": q.player, "bookmaker": q.bookmaker, "odds": round(q.odds, 3),
             "modelProb": round(model_prob, 4), "edge": round(edge, 4),
             "market_source": "The Odds API", "source_updated_at": q.updated_at,
+            "source_time_status": "unverified" if not q.updated_at else "provider_timestamped",
         })
     return out
 
@@ -466,6 +491,7 @@ def attach_extended_market_value(
                     "market": "spreads", "selection": selection, "line": signed_line,
                     "odds": round(price, 3), "modelProb": round(pwin, 4),
                     "edge": round(edge, 4), "market_source": "football-data.co.uk",
+                    "source_time_status": "unverified", "observed_at": now.isoformat(),
                 }
                 match.setdefault("extended_value", []).append(row)
             for row in (match.get("value") or []) + (match.get("extended_value") or []):
@@ -473,7 +499,8 @@ def attach_extended_market_value(
                     edge = float(row.get("edge", -99))
                 except (TypeError, ValueError):
                     continue
-                if math.isfinite(edge) and edge > 0.02 and match.get("recommendation", {}).get("decision") != "no_pick":
+                if (_is_actionable_price(row, now)
+                        and match.get("recommendation", {}).get("decision") != "no_pick"):
                     global_rows.append({
                         **row, "match_id": match.get("id"), "home": match.get("home"),
                         "away": match.get("away"), "league": match.get("league"),
@@ -518,7 +545,8 @@ def attach_extended_market_value(
                 edge = float(row.get("edge"))
             except (TypeError, ValueError):
                 continue
-            if not math.isfinite(edge) or edge <= 0.02 or match.get("recommendation", {}).get("decision") == "no_pick":
+            if (not _is_actionable_price(row, now)
+                    or match.get("recommendation", {}).get("decision") == "no_pick"):
                 continue
             global_rows.append({
                 **row, "match_id": match.get("id"), "home": match.get("home"),
