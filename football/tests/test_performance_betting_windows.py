@@ -79,3 +79,20 @@ def test_calidad_no_puntua_vector_de_probabilidades_no_finito():
         )],
     }
     assert build_performance([match]) is None
+
+
+def test_metricas_no_admiten_vector_1x2_incoherente():
+    bad = _snapshot("initial", "2026-08-24T12:00:00+02:00", [100, 100, 100])
+    match = {
+        "league": "LaLiga", "finished": True, "result": [2, 0],
+        "kickoff": "2026-08-24T21:00:00+02:00",
+        "prediction_history": [bad],
+    }
+    assert build_performance([match]) is None
+
+
+def test_sin_kickoff_no_se_puede_acreditar_snapshot_prepartido():
+    snapshot = _snapshot("initial", "2026-08-24T12:00:00+02:00", [60, 25, 15])
+    match = {"league": "LaLiga", "finished": True, "result": [1, 0],
+             "prediction_history": [snapshot]}
+    assert build_performance([match]) is None
