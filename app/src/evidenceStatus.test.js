@@ -25,11 +25,19 @@ test("a source-timestamped 1X2 price counts only when both recent and pre-kickof
     kickoff: "2026-11-01T18:00:00Z", probs: [55, 25, 20],
     odds: {
       "1x2": { odds: { "1": 2.1, X: 3.2, "2": 4.2 } },
-      meta: { source_updated_at: "2026-11-01T12:55:00Z" },
+      meta: {
+        provider: "The Odds API", movement_source: "the_odds_api_live",
+        source_updated_at: "2026-11-01T12:55:00Z",
+      },
     },
   };
   assert.deepEqual(dayEvidence([match], NOW), { total: 1, predicted: 1, priced: 1, verifiedPriced: 1 });
   assert.equal(dayEvidence([{ ...match, kickoff: "2026-11-01T12:00:00Z" }], NOW).verifiedPriced, 0);
+  assert.equal(dayEvidence([{
+    ...match, odds: { ...match.odds, meta: {
+      ...match.odds.meta, provider: "football-data.co.uk",
+    } },
+  }], NOW).verifiedPriced, 0);
   assert.equal(dayEvidence([{
     ...match, odds: { ...match.odds, meta: { source_updated_at: "2026-10-31T12:00:00Z" } },
   }], NOW).verifiedPriced, 0);
