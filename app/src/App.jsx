@@ -1346,6 +1346,7 @@ export default function App() {
   const open = (m) => { setPlayerSel(null); setSel(m); window.scrollTo(0, 0); };
   const openTeam = (name) => { setPlayerSel(null); setTeamSel(name); setSel(null); setQ(""); window.scrollTo(0, 0); };
   const openPlayer = (player) => { setPlayerSel(player); setSel(null); setQ(""); window.scrollTo(0, 0); };
+  const openPlayerFromMatch = (player) => { setPlayerSel(player); setQ(""); window.scrollTo(0, 0); };
   const onFav = (name) => setFavs(new Set(toggleFav(name)));
   const goto = (v) => { setView(v); setSel(null); setTeamSel(null); setPlayerSel(null); setMenuOpen(false); window.scrollTo(0, 0); };
   const userName = session?.user?.email?.split("@")[0] || "Mario León";
@@ -1421,7 +1422,7 @@ export default function App() {
 
           {data && playerSel && <PlayerProfile candidate={playerSel} players={data.players} matches={matches} onBack={() => setPlayerSel(null)} onTeam={openTeam} />}
 
-          {data && !playerSel && sel && <MatchDetail m={matches.find(m => m.id === sel.id) || sel} onBack={() => setSel(null)} onTeam={openTeam} plan={plan} onUpgrade={() => { setSel(null); goto("planes"); }} />}
+          {data && !playerSel && sel && <MatchDetail m={matches.find(m => m.id === sel.id) || sel} onBack={() => setSel(null)} onTeam={openTeam} players={data.players} onPlayer={openPlayerFromMatch} plan={plan} onUpgrade={() => { setSel(null); goto("planes"); }} />}
 
           {data && !playerSel && !sel && teamSel && <TeamPage team={teamSel} matches={matches} players={data.players} onBack={() => setTeamSel(null)} onOpen={open} onPlayer={openPlayer} isFav={favs.has(teamSel)} onFav={onFav} />}
 
