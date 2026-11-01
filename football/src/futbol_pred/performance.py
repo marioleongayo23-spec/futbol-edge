@@ -36,14 +36,18 @@ def _probability_dict(values) -> dict[str, float] | None:
             raw = {sign: float(values[sign]) for sign in SIGNS}
         else:
             return None
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         return None
     if any(not math.isfinite(value) or value < 0 for value in raw.values()):
         return None
     if max(raw.values(), default=0.0) > 1.0:
+        if any(value > 100 for value in raw.values()):
+            return None
         raw = {sign: value / 100.0 for sign, value in raw.items()}
     total = sum(raw.values())
-    if total <= 0:
+    # Refuse malformed 1X2 vectors instead of normalizing arbitrary totals
+    # (e.g. [100, 100, 100]) into deceptively plausible performance metrics.
+    if not math.isfinite(total) or not 0.98 <= total <= 1.02:
         return None
     return {sign: raw[sign] / total for sign in SIGNS}
 
@@ -221,7 +225,8 @@ def build_performance(matches: list[dict]) -> dict | None:
 
     for match in matches:
         result = match.get("result")
-        if not match.get("finished") or not isinstance(result, list) or len(result) != 2:
+        if (not match.get("finished") or not isinstance(result, list) or len(result) != 2
+                or _parse(match.get("kickoff")) is None):
             continue
         snapshot = latest_pre_match_snapshot(match)
         probs = (snapshot or {}).get("probs")
