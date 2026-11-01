@@ -158,3 +158,28 @@ def test_extended_market_persiste_y_rankea_solo_edge_positivo():
     )
     assert result2["refreshed"] == 0
     assert rebuilt["extended_market"] == match["extended_market"]
+
+
+def test_los_mercados_secundarios_no_se_promocionan_despues_del_saque():
+    now = datetime(2026, 8, 25, 18, tzinfo=timezone.utc)
+    match = _match(now)
+    match["kickoff"] = (now - timedelta(minutes=10)).isoformat()
+    result = attach_extended_market_value(
+        [match], now, client=FakeOdds(),
+        stats_models={"LaLiga": FakeStats()}, max_event_requests=3
+    )
+    assert result["refreshed"] == 0
+    assert result["ranking"] == []
+    assert "extended_market" not in match
+
+
+def test_cuotas_no_finitas_no_crean_value_en_props():
+    match = {"home": "Real Madrid", "away": "Valencia", "markets": {"btts": 0.6}}
+    quotes = [
+        Quote("e", "Real Madrid", "Valencia", "btts", "Book", "Yes", float("inf")),
+        Quote("e", "Real Madrid", "Valencia", "btts", "Book", "Yes", float("nan")),
+        Quote("e", "Real Madrid", "Valencia", "btts", "Book", "Yes", 2.1),
+    ]
+    rows = _extra_value_rows(match, quotes)
+    assert len(rows) == 1
+    assert rows[0]["odds"] == 2.1
