@@ -57,3 +57,16 @@ def test_audit_splits_competitions_and_does_not_score_unfinished_results():
     assert league["future_with_valid_prediction"] == 1
     assert league["probability_quality"]["published"] is None
     assert audit_payload({"matches": None})["status"] == "invalid_feed"
+
+
+def test_bootstrap_uses_match_days_and_is_deterministic():
+    from futbol_pred.feed_audit import _block_bootstrap
+    champion = {"1": 0.6, "X": 0.2, "2": 0.2}
+    baseline = {"1": 0.45, "X": 0.3, "2": 0.25}
+    rows = [(f"2026-09-{(i % 20) + 1:02d}", champion, baseline, "1") for i in range(40)]
+    a = _block_bootstrap(rows)
+    assert a == _block_bootstrap(rows)
+    assert a["n_days"] == 20
+    assert a["delta_log_loss_ci95"][1] < 0
+    assert a["delta_rps_ci95"][1] < 0
+    assert _block_bootstrap(rows[:10]) is None
