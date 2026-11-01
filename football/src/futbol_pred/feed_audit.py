@@ -217,16 +217,29 @@ def audit_payload(payload: dict) -> dict:
     }
 
 
+def _upcoming_snapshot_gaps(report: dict) -> int:
+    if report.get("status") != "ok":
+        return -1
+    return sum(int(league.get("upcoming_48h_without_snapshot", 0))
+               for league in report.get("leagues", {}).values())
+
+
 def main() -> int:
-    path = Path(sys.argv[1]) if len(sys.argv) > 1 else Path("data/dashboard.json")
+    args = [arg for arg in sys.argv[1:] if not arg.startswith("--")]
+    enforce = "--enforce-upcoming-coverage" in sys.argv[1:]
+    path = Path(args[0]) if args else Path("data/dashboard.json")
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, UnicodeError, ValueError) as exc:
         print("EDGE_FEED_AUDIT_JSON=" + json.dumps({"status": "unreadable", "error": type(exc).__name__}))
-        return 0  # Observability step should not mask the existing strict feed guard.
+        return 1 if enforce else 0
     report = audit_payload(payload)
     print("EDGE_FEED_AUDIT_JSON=" + json.dumps(report, ensure_ascii=False, separators=(",", ":"), allow_nan=False))
-    return 0
+    gaps = _upcoming_snapshot_gaps(report)
+    print("EDGE_UPCOMING_48H_SNAPSHOT_GAPS=" + str(gaps))
+    # Fail only on absence of evidence for future fixtures, never reconstruct
+    # historical records to make a dashboard appear more accurate.
+    return 1 if enforce and gaps != 0 else 0
 
 
 if __name__ == "__main__":
