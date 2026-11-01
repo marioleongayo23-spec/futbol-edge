@@ -3,6 +3,12 @@ name: OpenFootball CC0 archive (daily)
 # Separate historical-data archive. Does not use private APIs, cookies, odds
 # providers, paid feeds, prediction weights or the serving dashboard JSON.
 on:
+  # Bootstrap immediately on first merge; subsequent data changes do not
+  # retrigger the collector (daily cron handles those).
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/openfootball-archive.yml"
   schedule:
     - cron: "17 7 * * *"
       timezone: "Europe/Madrid"
