@@ -1,4 +1,6 @@
 import { useMemo } from "react";
+import PlayerAvatar from "./PlayerAvatar";
+import { photoForPlayer } from "./mediaIdentity.js";
 import { crestFor, fmtKick } from "./feed";
 import { nextFixture, playerMetricRows, positionGroup, profileCompleteness, resolvePlayer } from "./playerProfileData";
 import "./player-profile.css";
@@ -15,11 +17,6 @@ const posLabel = {
   attacker: "Atacante",
   other: "Jugador",
 };
-
-function Initials({ name }) {
-  const chars = String(name || "?").split(/\s+/).filter(Boolean).slice(0, 2).map((x) => x[0]).join("");
-  return <div className="pp-avatar-fallback" aria-hidden="true">{chars || "?"}</div>;
-}
 
 function Radar({ metrics }) {
   const rows = metrics.filter((m) => m.percentile != null).slice(0, 6);
@@ -78,8 +75,7 @@ export default function PlayerProfile({ candidate, players, matches, onBack, onT
       <button type="button" className="back" onClick={onBack}>← Volver</button>
       <section className="pp-hero card">
         <div className="pp-photo-wrap">
-          {profile.photo ? <img className="pp-photo" src={profile.photo} alt={`Foto de ${player.player}`} onError={(e) => { e.currentTarget.style.display = "none"; e.currentTarget.nextElementSibling?.classList.add("show"); }} /> : null}
-          <Initials name={player.player} />
+          <PlayerAvatar name={player.player} src={photoForPlayer(player)} large />
         </div>
         <div className="pp-identity">
           <div className="pp-eyebrow">PLAYER INTELLIGENCE · {posLabel[group]}</div>
