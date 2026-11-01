@@ -16,14 +16,26 @@ GATE_METRICS = ("log_loss", "rps")
 
 
 def _dict(values) -> dict[str, float] | None:
-    if isinstance(values, list) and len(values) == 3:
-        raw = {key: float(values[i]) / 100.0 for i, key in enumerate(SIGNS)}
-    elif isinstance(values, dict) and all(key in values for key in SIGNS):
-        raw = {key: float(values[key]) for key in SIGNS}
-    else:
+    """Accept only finite, complete probability distributions.
+
+    Model snapshots store three percentages; market fair odds store three
+    fractions. Bad values must not enter the calibration optimiser.
+    """
+    try:
+        if isinstance(values, list) and len(values) == 3:
+            raw = {key: float(values[i]) / 100.0 for i, key in enumerate(SIGNS)}
+        elif isinstance(values, dict) and all(key in values for key in SIGNS):
+            raw = {key: float(values[key]) for key in SIGNS}
+        else:
+            return None
+    except (TypeError, ValueError, OverflowError):
+        return None
+    if any(not math.isfinite(p) or p < 0 or p > 1 for p in raw.values()):
         return None
     total = sum(raw.values())
-    return {key: raw[key] / total for key in SIGNS} if total > 0 else None
+    if not math.isfinite(total) or not 0.98 <= total <= 1.02:
+        return None
+    return {key: raw[key] / total for key in SIGNS}
 
 
 def _blend(model: dict[str, float], market: dict[str, float], weight: float, temp: float) -> dict[str, float]:
