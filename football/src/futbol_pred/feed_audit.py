@@ -10,10 +10,11 @@ from collections import defaultdict
 from datetime import datetime
 import json
 import math
+import random
 from pathlib import Path
 import sys
 
-from .backtest.metrics import aggregate
+from .backtest.metrics import aggregate, rps
 from .prediction_snapshots import latest_pre_match_snapshot
 
 SIGNS = ("1", "X", "2")
@@ -60,6 +61,38 @@ def _metrics(rows: list[tuple[dict, str]]) -> dict | None:
     }
 
 
+def _block_bootstrap(paired: list[tuple[str, dict, dict, str]]) -> dict | None:
+    """95% descriptive uncertainty for a paired delta, resampling match days.
+
+    This is NOT out-of-sample evaluation and never authorizes promotion.
+    """
+    if len(paired) < 30:
+        return None
+    days = defaultdict(list)
+    for day, candidate, baseline, actual in paired:
+        diff_loss = math.log(max(1e-12, baseline[actual])) - math.log(max(1e-12, candidate[actual]))
+        diff_rps = rps(candidate, actual) - rps(baseline, actual)
+        days[day].append((diff_loss, diff_rps))
+    keys = sorted(days)
+    if len(keys) < 8:
+        return None
+    rng = random.Random(20261101)
+    draws_loss, draws_rps = [], []
+    for _ in range(1200):
+        sampled = [v for day in (keys[rng.randrange(len(keys))] for _ in keys) for v in days[day]]
+        n = len(sampled)
+        draws_loss.append(sum(v[0] for v in sampled) / n)
+        draws_rps.append(sum(v[1] for v in sampled) / n)
+    def bounds(values):
+        ordered = sorted(values)
+        return [round(ordered[int(.025 * (len(ordered)-1))], 4),
+                round(ordered[int(.975 * (len(ordered)-1))], 4)]
+    return {"method": "paired_day_block_bootstrap_descriptive",
+            "n_days": len(keys), "resamples": 1200,
+            "delta_log_loss_ci95": bounds(draws_loss),
+            "delta_rps_ci95": bounds(draws_rps)}
+
+
 def _bucket():
     return {
         "matches": 0, "finished": 0, "finished_with_snapshot": 0,
@@ -68,6 +101,7 @@ def _bucket():
         "published": [], "model": [], "market": [], "uniform": [],
         "published_model": [], "paired_model": [],
         "published_market": [], "paired_market": [],
+        "paired_model_records": [], "paired_market_records": [],
     }
 
 
@@ -102,6 +136,7 @@ def audit_payload(payload: dict) -> dict:
             group["model"].append((model, outcome))
             group["published_model"].append((published, outcome))
             group["paired_model"].append((model, outcome))
+            group["paired_model_records"].append((str(match.get("kickoff"))[:10], published, model, outcome))
 
         odds = snapshot.get("odds")
         market_fair = (odds.get("1x2") or {}).get("fair") if isinstance(odds, dict) and isinstance(odds.get("1x2"), dict) else None
@@ -110,6 +145,7 @@ def audit_payload(payload: dict) -> dict:
             group["market"].append((market, outcome))
             group["published_market"].append((published, outcome))
             group["paired_market"].append((market, outcome))
+            group["paired_market_records"].append((str(match.get("kickoff"))[:10], published, market, outcome))
 
     out = {}
     for league, group in sorted(groups.items()):
@@ -131,6 +167,7 @@ def audit_payload(payload: dict) -> dict:
                 "delta_rps": round(left["rps"] - right["rps"], 4),
                 "better_both": left["log_loss"] < right["log_loss"] and left["rps"] < right["rps"],
                 "preliminary": left["n"] < 30,
+                "uncertainty": _block_bootstrap(group["paired_model_records" if label == "published_vs_model_paired" else "paired_market_records"]),
             } if left and right else None
         out[league] = report
     return {
@@ -138,7 +175,7 @@ def audit_payload(payload: dict) -> dict:
         "season": payload.get("season"), "schema_version": payload.get("schema_version"),
         "total_matches": len(payload["matches"]),
         "leagues": out,
-        "limitations": "Snapshots prepartido del dashboard, no holdout ni prueba de edge. Comparaciones emparejadas; n<30 preliminar. ROI requiere cuotas reales fechadas.",
+        "limitations": "Snapshots prepartido del dashboard, no holdout ni prueba de edge. Comparaciones emparejadas; CI por fecha describe incertidumbre y no demuestra causalidad. ROI requiere cuotas reales fechadas.",
     }
 
 
