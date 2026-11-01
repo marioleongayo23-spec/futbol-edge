@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { crestFor, feedAgeHours, fmtKick, hasPrediction, isStale, subscribeFeed } from "./feed";
 import { entropy, fairProbs, kelly, overround, plenoSign } from "./poisson";
+import { madridDateKey, madridTime, selectedDayIndex } from "./calendarTime.js";
 import { leaguesIn, projectedTable } from "./standings";
 import { teamProfile, teamSquad } from "./teams";
 import { bestValue, countdown, getFavs, modelAccuracy, recentForm, toggleFav } from "./insights";
@@ -59,14 +60,11 @@ function Skeletons({ n = 5 }) {
 
 
 /* ---------- Utilidades de calendario ---------- */
-const todayKey = () => {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-};
+const todayKey = madridDateKey;
 const dayLong = (s) => { try { return new Date(s + "T12:00:00").toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" }); } catch { return s; } };
 const dayWd = (s) => { try { return new Date(s + "T12:00:00").toLocaleDateString("es-ES", { weekday: "short" }); } catch { return ""; } };
 const dayNum = (s) => { try { return new Date(s + "T12:00:00").toLocaleDateString("es-ES", { day: "2-digit" }); } catch { return s; } };
-const hhmm = (iso) => { try { return new Date(iso).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" }); } catch { return ""; } };
+const hhmm = madridTime;
 
 /* Puntos de forma reciente (V/E/D) */
 function FormDots({ form }) {
@@ -130,7 +128,7 @@ function Resumen({ data, matches, onOpen, goto, favs, onTeam }) {
   // Select by stable date rather than array index: a refreshed feed may add
   // or remove dates before the current selection.
   const [selectedDay, setSelectedDay] = useState(() => days[startIdx] || null);
-  const idx = days.includes(selectedDay) ? days.indexOf(selectedDay) : startIdx;
+  const idx = selectedDayIndex(days, selectedDay, startIdx);
   const setIdx = (next) => {
     const target = typeof next === "function" ? next(idx) : next;
     const bounded = Math.max(0, Math.min(days.length - 1, target));
