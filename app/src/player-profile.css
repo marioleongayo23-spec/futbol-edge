@@ -2,3 +2,12 @@
 /* Unified portrait with a guaranteed initials fallback if a remote photo fails. */
 .pp-photo-wrap .edge-player-avatar{width:100%;height:100%;flex-basis:100%;border:0;border-radius:inherit;box-shadow:none}
 .pp-photo-wrap .edge-player-avatar img{width:100%;height:100%;object-fit:cover}
+
+.pp-team-identity{display:flex;align-items:center;gap:9px;margin:8px 0 0}
+.pp-team-crest{width:26px;height:26px;object-fit:contain;flex:0 0 26px}
+.pp-hero{background:radial-gradient(ellipse 80% 130% at 90% 0%,color-mix(in srgb,var(--accent) 8%,transparent),transparent 65%),var(--card)}
+.pp-identity{min-width:0}
+.pp-identity h1{text-wrap:balance}
+.pp-team-link{font-size:.89rem;letter-spacing:-.01em}
+.pp-hero .edge-player-avatar{width:100%;height:100%;border-radius:21px}
+@media(max-width:560px){.pp-team-identity{justify-content:center}.pp-team-crest{width:24px;height:24px;flex-basis:24px}}
