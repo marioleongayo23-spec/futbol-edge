@@ -16,6 +16,7 @@ import copy
 import hashlib
 import json
 import sys
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 # Contadores derivados de la ejecución actual. El estado que representan vive
@@ -77,10 +78,61 @@ def digest_file(path: str | Path) -> str:
     return semantic_digest(payload)
 
 
+def _feed_timestamp(value: object) -> datetime | None:
+    if not isinstance(value, str) or not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return parsed.astimezone(timezone.utc) if parsed.tzinfo is not None else None
+
+
+def publication_reason(current: dict, candidate: dict, heartbeat_minutes: int = 90) -> str:
+    """Publish content changes or a bounded freshness heartbeat.
+
+    A semantic digest alone ignores generated_at by design; without a heartbeat
+    a successful run that recomputes unchanged sports data leaves the serving
+    feed appearing stale. Skip regressions so concurrent jobs cannot replace a
+    newer production snapshot with an older one.
+    """
+    if not isinstance(current, dict) or not isinstance(candidate, dict):
+        return "invalid"
+    new_time = _feed_timestamp(candidate.get("generated_at"))
+    old_time = _feed_timestamp(current.get("generated_at"))
+    if new_time is None:
+        return "invalid"
+    if old_time is not None and new_time <= old_time:
+        return "stale_candidate"
+    if semantic_digest(current) != semantic_digest(candidate):
+        return "content_changed"
+    if old_time is None:
+        return "missing_previous_timestamp"
+    if new_time - old_time >= timedelta(minutes=heartbeat_minutes):
+        return "heartbeat"
+    return "unchanged"
+
+
+def publication_reason_files(current_path: str | Path, candidate_path: str | Path) -> str:
+    with Path(current_path).open(encoding="utf-8") as old:
+        previous = json.load(old)
+    with Path(candidate_path).open(encoding="utf-8") as new:
+        candidate = json.load(new)
+    return publication_reason(previous, candidate)
+
+
 def main(argv: list[str] | None = None) -> int:
     args = list(sys.argv[1:] if argv is None else argv)
+    if len(args) == 3 and args[0] == "publish-reason":
+        try:
+            reason = publication_reason_files(args[1], args[2])
+        except (OSError, ValueError, json.JSONDecodeError) as exc:
+            print(f"feed inválido: {exc}", file=sys.stderr)
+            return 2
+        print(reason)
+        return 0 if reason != "invalid" else 2
     if len(args) != 1:
-        print("uso: python -m futbol_pred.feed_semantic <dashboard.json>", file=sys.stderr)
+        print("uso: python -m futbol_pred.feed_semantic [publish-reason old.json new.json | dashboard.json]", file=sys.stderr)
         return 2
     try:
         print(digest_file(args[0]))

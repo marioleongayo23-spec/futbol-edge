@@ -20,6 +20,9 @@ SIGNS = ("1", "X", "2")
 SCHEMA = "market-snapshot-v1"
 POLICY_SCHEMA = "market-movement-calibration-v1"
 MAX_HISTORY = 32
+# Provider observation must be recent at capture time, never invented by the poll.
+MAX_SOURCE_AGE_MINUTES = 180
+MAX_SOURCE_FUTURE_SKEW_MINUTES = 5
 MIN_SAMPLE = 60
 MIN_VALIDATION = 20
 BETA_GRID = (-3.0, -2.0, -1.5, -1.0, -0.5, -0.25, 0.0, 0.25, 0.5, 0.75, 1.0, 1.5, 2.0, 3.0)
@@ -118,17 +121,24 @@ def build_market_snapshot(
     kickoff_dt = _parse(kickoff)
     captured_dt = _parse(captured_at)
     fair = _normalise(fair_1x2)
-    if kickoff_dt is None or captured_dt is None or fair is None or captured_dt >= kickoff_dt:
+    source_dt = _parse(source_updated_at) if source_updated_at is not None else None
+    if (kickoff_dt is None or captured_dt is None or source_dt is None
+            or fair is None or captured_dt >= kickoff_dt):
+        return None
+    source_age_minutes = (captured_dt - source_dt).total_seconds() / 60.0
+    if not (-MAX_SOURCE_FUTURE_SKEW_MINUTES <= source_age_minutes <= MAX_SOURCE_AGE_MINUTES):
         return None
     try:
         odds = {sign: round(float(odds_1x2[sign]), 4) for sign in SIGNS}
-    except (KeyError, TypeError, ValueError):
+    except (KeyError, TypeError, ValueError, OverflowError):
+        return None
+    if any(not math.isfinite(odd) or odd <= 1 for odd in odds.values()):
         return None
     minutes = (kickoff_dt - captured_dt).total_seconds() / 60.0
     return {
         "schema": SCHEMA,
         "captured_at": captured_dt.isoformat(),
-        "source_updated_at": str(source_updated_at or captured_dt.isoformat()),
+        "source_updated_at": source_dt.isoformat(),
         "minutes_to_kickoff": round(minutes, 1),
         "horizon": _horizon_bucket(minutes),
         "provider": str(provider or "unknown"),

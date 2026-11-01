@@ -11,7 +11,7 @@ def _event():
         "away_team": "Real Sociedad",
         "bookmakers": [
             {
-                "key": "book-a", "title": "Book A", "last_update": "2026-08-26T16:58:00Z",
+                "key": "book-a", "title": "Book A", "last_update": "2026-08-26T15:58:00Z",
                 "markets": [
                     {"key": "h2h", "outcomes": [
                         {"name": "Real Madrid", "price": 1.80},
@@ -29,7 +29,7 @@ def _event():
                 ],
             },
             {
-                "key": "book-b", "title": "Book B", "last_update": "2026-08-26T16:59:00Z",
+                "key": "book-b", "title": "Book B", "last_update": "2026-08-26T15:59:00Z",
                 "markets": [
                     {"key": "h2h", "outcomes": [
                         {"name": "Real Madrid", "price": 1.82},
@@ -160,3 +160,38 @@ def test_una_llamada_por_liga_refresca_varios_partidos():
 
     assert stats["leagues_queried"] == 1
     assert client.calls == ["LaLiga"]
+
+
+def test_precio_de_api_caducado_no_recalibra_ni_produce_value():
+    payload = _payload()
+    client = FakeClient()
+    stale = _event()
+    for bookmaker in stale["bookmakers"]:
+        bookmaker["last_update"] = "2026-08-26T10:00:00Z"
+    client.featured = lambda _league: [stale]
+    before = list(payload["matches"][0]["probs"])
+    changed, stats = refresh_payload(
+        payload, now=datetime.fromisoformat("2026-08-26T18:00:00+02:00"), client=client
+    )
+    match = payload["matches"][0]
+    assert stats["refreshed"] == 0
+    assert "market_history" not in match
+    assert match["probs"] == before
+    assert changed is True  # source_health and observation policy may change
+
+
+def test_cuota_futura_o_sin_timestamp_no_se_considera_fresca():
+    from futbol_pred.matchday_market_refresh import _quote_timestamp_usable
+    now = datetime.fromisoformat("2026-08-26T18:00:00+02:00")
+    assert not _quote_timestamp_usable(None, now)
+    assert not _quote_timestamp_usable("2026-08-26T16:30:00Z", now)
+    assert _quote_timestamp_usable("2026-08-26T15:58:00Z", now)
+
+
+def test_consenso_no_mezcla_precio_anticuado_con_precio_reciente():
+    from futbol_pred.matchday_market_refresh import _event_market
+    event = _event()
+    event["bookmakers"][0]["last_update"] = "2026-08-26T10:00:00Z"
+    result = _event_market(event, datetime.fromisoformat("2026-08-26T18:00:00+02:00"))
+    assert result["1x2"] == {"1": 1.82, "X": 3.76, "2": 4.40}
+    assert result["source_updated_at"] == "2026-08-26T15:59:00Z"

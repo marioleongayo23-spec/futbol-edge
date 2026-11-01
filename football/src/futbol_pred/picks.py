@@ -14,6 +14,7 @@ ya calculó (probs calibradas, value/edge, prediction_confidence).
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import math
 
 MIN_EDGE = 0.03          # 3%: mismo umbral que el pipeline de valor.
 MIN_CONFIDENCE_PROB = 0.50   # solo se sugiere una predicción si el modelo la ve >50%.
@@ -35,8 +36,16 @@ def _kickoff_hours(match: dict, now: datetime) -> float | None:
 def _best_value(match: dict) -> dict | None:
     rows = [
         row for row in (match.get("value") or [])
-        if isinstance(row, dict) and isinstance(row.get("edge"), (int, float))
-        and isinstance(row.get("odds"), (int, float))
+        if isinstance(row, dict)
+        and isinstance(row.get("edge"), (int, float)) and math.isfinite(row["edge"])
+        and isinstance(row.get("odds"), (int, float)) and math.isfinite(row["odds"])
+        and row["odds"] > 1
+        and (
+            row.get("modelProb") is None
+            or (isinstance(row["modelProb"], (int, float))
+                and math.isfinite(row["modelProb"])
+                and 0 <= row["modelProb"] <= 1)
+        )
     ]
     return max(rows, key=lambda row: row["edge"], default=None)
 
@@ -47,17 +56,24 @@ def build_picks(matches: list[dict], now: datetime | None = None, limit: int = 6
     now = _aware(now or datetime.now(timezone.utc))
     picks: list[dict] = []
     for match in matches or []:
-        if not isinstance(match, dict) or match.get("finished"):
+        if (not isinstance(match, dict) or match.get("finished")
+                or (match.get("recommendation") or {}).get("decision") == "no_pick"):
             continue
         probs = match.get("probs")
-        if not (isinstance(probs, list) and len(probs) == 3 and all(isinstance(x, (int, float)) for x in probs)):
+        if not (isinstance(probs, list) and len(probs) == 3
+                and all(isinstance(x, (int, float)) and math.isfinite(x)
+                        and 0 <= x <= 100 for x in probs)
+                and abs(sum(probs) - 100) <= 1.1):
             continue
         hours = _kickoff_hours(match, now)
-        if hours is None or not (-2.0 <= hours <= HORIZON_HOURS):
+        if hours is None or not (0 < hours <= HORIZON_HOURS):
             continue
-        total = sum(probs) or 1
+        total = sum(probs)
         norm = [x / total for x in probs]
         confidence = (match.get("prediction_confidence") or {}).get("score")
+        if not (isinstance(confidence, (int, float)) and math.isfinite(confidence)
+                and 0 <= confidence <= 100):
+            confidence = None
         base = {
             "match_id": match.get("id"),
             "home": match.get("home"),

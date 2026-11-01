@@ -1,0 +1,55 @@
+/* Fútbol Edge visual refinement — isolated, reversible layer.
+   Preserve analytical colour semantics and readable light mode. */
+:root{
+  --fe-radius:18px;
+  --fe-focus:color-mix(in srgb,var(--blue) 65%,white);
+}
+.content{max-width:1440px;margin-inline:auto}
+.view-heading{padding-block:8px 14px}
+.view-heading .view-title{letter-spacing:-.045em;text-wrap:balance}
+.card,.mission-metrics .stat,.spotlight,.mrow{
+  transition:border-color .18s ease,box-shadow .18s ease,transform .18s ease;
+}
+.card,.mission-metrics .stat{
+  box-shadow:0 7px 28px rgba(0,0,0,.10);
+}
+.mrow:hover,.card.click:hover{
+  border-color:color-mix(in srgb,var(--blue) 48%,var(--line));
+  box-shadow:0 10px 32px rgba(0,0,0,.16);
+}
+.mrow:focus-visible,.cal-day:focus-visible,.analysis-button:focus-visible,
+.snav-item:focus-visible,.bottom-nav button:focus-visible{
+  outline:3px solid var(--fe-focus);
+  outline-offset:3px;
+}
+.spotlight{
+  background:
+    radial-gradient(440px 300px at 96% 0%,rgba(34,201,138,.10),transparent 75%),
+    radial-gradient(420px 260px at 0% 100%,rgba(90,162,255,.08),transparent 76%),
+    var(--card);
+}
+.mission-metrics .stat-v,.mrow-time,.mrow-probabilities b,
+.probability-key b,.badge-cal{font-variant-numeric:tabular-nums}
+.mission-metrics .stat-v{letter-spacing:-.055em}
+.mrow{border:1px solid var(--line)}
+.mrow .tn{white-space:normal;overflow-wrap:anywhere;line-height:1.35}
+.cal-day.on{border-color:color-mix(in srgb,var(--green) 32%,var(--line))}
+.cal-day:hover:not(.on){background:var(--card2)}
+.eyebrow,.instrument-label,.stat-k{letter-spacing:.09em}
+.spotlight-note{max-width:65ch}
+:root:has(.theme-toggle:checked) .card,
+:root:has(.theme-toggle:checked) .mission-metrics .stat{box-shadow:0 6px 22px rgba(19,40,70,.06)}
+@media(min-width:1200px){
+  .content{padding-inline:36px}
+  .mission-overview{gap:20px}
+}
+@media(max-width:720px){
+  .content{min-width:0}
+  .mrow{gap:8px}
+  .mrow-body{min-width:0}
+  .mission-metrics .stat{min-width:0}
+  .mission-metrics .stat-s{overflow-wrap:anywhere}
+}
+@media(prefers-reduced-motion:reduce){
+ .card,.mission-metrics .stat,.spotlight,.mrow{transition:none}
+}

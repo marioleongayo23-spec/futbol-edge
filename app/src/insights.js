@@ -48,10 +48,14 @@ export function confidence(m) {
 
 // Mejor value bet del partido (edge máximo) si supera el umbral.
 export function bestValue(m, min = 0.03) {
-  if (m.recommendation?.decision === "no_pick") return null;
+  if (!m || m.finished || m.recommendation?.decision === "no_pick") return null;
   if (!Array.isArray(m.value) || !m.value.length) return null;
-  const b = m.value[0]; // ya viene ordenado por edge desc
-  return b.edge > min ? b : null;
+  // A completed fixture must never surface as a current opportunity.
+  // Do not rely on the backend's sort order or let non-finite edges win.
+  return m.value.reduce((best, row) => {
+    if (!row || !Number.isFinite(row.edge) || row.edge <= min) return best;
+    return !best || row.edge > best.edge ? row : best;
+  }, null);
 }
 
 // ¿El favorito del modelo NO es el favorito del mercado? (pick sorpresa)

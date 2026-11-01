@@ -48,3 +48,17 @@ def test_calibracion_mercado_usa_solo_snapshots_prepartido():
     assert isinstance(result["accepted"], bool)
     assert result["acceptance_gate"]["rule"] == "strictly_better_than_published_model"
     assert 0.05 <= result["production"]["model_weight"] <= 0.95
+
+
+def test_market_calibration_rejects_broken_probability_vectors():
+    from futbol_pred.market_calibration import _dict
+    for values in (
+        [float("nan"), 30, 70], [float("inf"), 30, 70],
+        [-1, 50, 51], [0, 0, 0], [25, 25, 25],
+        {"1": -0.1, "X": 0.6, "2": 0.5},
+        {"1": 0.6, "X": float("nan"), "2": 0.4},
+        {"1": "invalid", "X": 0.2, "2": 0.8},
+    ):
+        assert _dict(values) is None
+    clean = _dict([52, 28, 20])
+    assert clean is not None and abs(sum(clean.values()) - 1) < 1e-12

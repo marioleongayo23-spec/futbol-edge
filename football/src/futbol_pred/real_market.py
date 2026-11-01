@@ -47,6 +47,38 @@ def _dt(value) -> datetime | None:
         return None
 
 
+def _quote_is_explicitly_stale(updated_at, now: datetime, *, max_age_hours: float = 3.0) -> bool:
+    """Reject known-stale provider observations without pretending missing=recent.
+
+    Missing source timestamps are treated as unverified separately; this
+    predicate only prevents *known* stale/future prices from being promoted.
+    """
+    if not updated_at:
+        return False
+    source = _dt(updated_at)
+    if source is None:
+        return True
+    age = (now - source).total_seconds() / 3600.0
+    return not (-5.0 / 60 <= age <= max_age_hours)
+
+
+def _provider_time_status(updated_at, now: datetime) -> str:
+    """Treat unknown provider time as unknown, never as retrieval-time fresh."""
+    if not updated_at:
+        return "unverified"
+    return "stale_or_invalid" if _quote_is_explicitly_stale(updated_at, now) else "verified_recent"
+
+
+def _is_actionable_price(row: dict, now: datetime) -> bool:
+    """A published ranking requires a real, recent provider timestamp."""
+    if not isinstance(row, dict):
+        return False
+    if _provider_time_status(row.get("source_updated_at"), now) != "verified_recent":
+        return False
+    edge, odd = _num(row.get("edge")), _num(row.get("odds"))
+    return edge is not None and edge > 0.02 and odd is not None and odd > 1
+
+
 def _num(value) -> float | None:
     try:
         number = float(value)
@@ -221,6 +253,11 @@ def _featured_block(match: dict, quotes: list[Quote]) -> dict:
         out["ou25_books"] = min(len(totals[("over", 2.5)]), len(totals[("under", 2.5)]))
     if spreads:
         out["spreads"] = spreads
+    # Evidence must come from the bookmakers, never from the polling timestamp.
+    times = [q.updated_at for q in rows if q.market == "h2h" and
+             (_key(q.selection) in {_key(home), _key(away)} or q.selection.casefold() == "draw")]
+    if times and all(times) and all(_dt(stamp) is not None for stamp in times):
+        out["source_updated_at"] = min(times, key=lambda stamp: _dt(stamp))
     return out
 
 
@@ -274,14 +311,25 @@ def attach_closing_snapshots(
         if client.available and label in SPORT_KEYS:
             if label not in featured_cache:
                 featured_cache[label] = client.featured(label)
-            block = _featured_block(match, featured_cache[label])
+            block = _featured_block(
+                match, [q for q in featured_cache[label]
+                        if not _quote_is_explicitly_stale(q.updated_at, now)]
+            )
         if not block.get("1x2"):
             block = _co_uk_featured(match, co_cache)
         one = block.get("1x2")
         ou = block.get("ou25")
         if not one or not all(_num(one.get(k)) and one[k] > 1 for k in ("1", "X", "2")):
             continue
-        source = "The Odds API consensus" if client.available and label in featured_cache and _featured_block(match, featured_cache[label]).get("1x2") else "football-data.co.uk"
+        source = (
+            "The Odds API consensus"
+            if client.available and label in featured_cache
+            and _featured_block(
+                match, [q for q in featured_cache[label]
+                        if not _quote_is_explicitly_stale(q.updated_at, now)]
+            ).get("1x2")
+            else "football-data.co.uk"
+        )
         close = {
             "1x2": {k: round(float(one[k]), 3) for k in ("1", "X", "2")},
             "market_source": source,
@@ -289,6 +337,8 @@ def attach_closing_snapshots(
             "minutes_to_kickoff": round(minutes, 1),
             "capture_kind": "t_minus_2h",
             "is_real": True,
+            "source_updated_at": block.get("source_updated_at"),
+            "source_time_status": _provider_time_status(block.get("source_updated_at"), now),
         }
         if ou and ou.get("over") and ou.get("under"):
             close["ou25"] = {"over": round(float(ou["over"]), 3), "under": round(float(ou["under"]), 3)}
@@ -391,15 +441,20 @@ def _extra_value_rows(match: dict, quotes: list[Quote], stats_model=None) -> lis
                     elif q.point is not None:
                         over = _poisson_over(mean, q.point)
                         model_prob = over if selection.casefold() == "over" else 1 - over if selection.casefold() == "under" else None
-        if model_prob is None:
+        if model_prob is None or not math.isfinite(model_prob) or not (0 <= model_prob <= 1):
+            continue
+        if not math.isfinite(q.odds) or q.odds <= 1:
             continue
         if edge is None:
             edge = model_prob * q.odds - 1.0
+        if not math.isfinite(edge):
+            continue
         out.append({
             "market": q.market, "selection": selection, "line": q.point,
             "player": q.player, "bookmaker": q.bookmaker, "odds": round(q.odds, 3),
             "modelProb": round(model_prob, 4), "edge": round(edge, 4),
             "market_source": "The Odds API", "source_updated_at": q.updated_at,
+            "source_time_status": "unverified" if not q.updated_at else "provider_timestamped",
         })
     return out
 
@@ -418,7 +473,8 @@ def attach_extended_market_value(
     if not client.available:
         co_cache: dict[str, list[dict]] = {}
         for match in matches:
-            if match.get("finished"):
+            kickoff = _dt(match.get("kickoff"))
+            if match.get("finished") or kickoff is None or kickoff <= now:
                 continue
             block = _co_uk_featured(match, co_cache)
             ah = block.get("asian_handicap") or {}
@@ -435,6 +491,7 @@ def attach_extended_market_value(
                     "market": "spreads", "selection": selection, "line": signed_line,
                     "odds": round(price, 3), "modelProb": round(pwin, 4),
                     "edge": round(edge, 4), "market_source": "football-data.co.uk",
+                    "source_time_status": "unverified", "observed_at": now.isoformat(),
                 }
                 match.setdefault("extended_value", []).append(row)
             for row in (match.get("value") or []) + (match.get("extended_value") or []):
@@ -442,28 +499,30 @@ def attach_extended_market_value(
                     edge = float(row.get("edge", -99))
                 except (TypeError, ValueError):
                     continue
-                if edge > 0.02 and match.get("recommendation", {}).get("decision") != "no_pick":
+                if (_is_actionable_price(row, now)
+                        and match.get("recommendation", {}).get("decision") != "no_pick"):
                     global_rows.append({
-                        **row, "match_id": match.get("id"), "home": match.get("home"),
+                        **row, "source_time_status": "verified_recent",
+                        "match_id": match.get("id"), "home": match.get("home"),
                         "away": match.get("away"), "league": match.get("league"),
                         "kickoff": match.get("kickoff"),
                     })
         ranking = sorted(global_rows, key=lambda row: float(row.get("edge", -99)), reverse=True)[:40]
         return {"refreshed": 0, "ranking": ranking, "source": "football-data.co.uk fallback"}
     for match in matches:
-        if match.get("finished"):
+        kickoff = _dt(match.get("kickoff"))
+        if match.get("finished") or kickoff is None or kickoff <= now:
             continue
         old = prev.get(str(match.get("id"))) or {}
         old_market = old.get("extended_market")
         stamp = _dt((old_market or {}).get("captured_at"))
         age = (now - stamp).total_seconds() / 3600 if stamp else None
-        kickoff = _dt(match.get("kickoff"))
-        hours_to = (kickoff - now).total_seconds() / 3600 if kickoff else 999
+        hours_to = (kickoff - now).total_seconds() / 3600
         if isinstance(old_market, dict) and age is not None and age < ttl_hours:
             match["extended_market"] = old_market
             rows = list(old.get("extended_value") or [])
             match["extended_value"] = rows
-        elif requests_left > 0 and -1 <= hours_to <= 36 and match.get("league") in SPORT_KEYS:
+        elif requests_left > 0 and 0 < hours_to <= 36 and match.get("league") in SPORT_KEYS:
             event_id = _match_event(match, client.events(match.get("league")))
             if event_id:
                 quotes = client.event_odds(match.get("league"), event_id, player_props=False)
@@ -471,6 +530,8 @@ def attach_extended_market_value(
                 if 0 <= hours_to <= 12 and requests_left > 0 and match.get("league") == "LaLiga":
                     quotes += client.event_odds(match.get("league"), event_id, player_props=True)
                     requests_left -= 1
+                # Never promote a quote with an explicitly old provider update.
+                quotes = [q for q in quotes if not _quote_is_explicitly_stale(q.updated_at, now)]
                 stats_model = (stats_models or {}).get(match.get("league"))
                 rows = _extra_value_rows(match, quotes, stats_model)
                 match["extended_market"] = {
@@ -485,10 +546,12 @@ def attach_extended_market_value(
                 edge = float(row.get("edge"))
             except (TypeError, ValueError):
                 continue
-            if edge <= 0.02 or match.get("recommendation", {}).get("decision") == "no_pick":
+            if (not _is_actionable_price(row, now)
+                    or match.get("recommendation", {}).get("decision") == "no_pick"):
                 continue
             global_rows.append({
-                **row, "match_id": match.get("id"), "home": match.get("home"),
+                **row, "source_time_status": "verified_recent",
+                "match_id": match.get("id"), "home": match.get("home"),
                 "away": match.get("away"), "league": match.get("league"),
                 "kickoff": match.get("kickoff"),
             })

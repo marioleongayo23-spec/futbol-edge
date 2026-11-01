@@ -169,9 +169,17 @@ jobs:
 
             feed_same=0
             if [ -f "$current" ]; then
-              current_hash="$(python -m futbol_pred.feed_semantic "$current")"
-              generated_hash="$(python -m futbol_pred.feed_semantic "$generated")"
-              [ "$current_hash" = "$generated_hash" ] && feed_same=1
+              # Un cambio real publica siempre; sin cambios, un heartbeat cada
+              # 90 min evita servir un generated_at obsoleto por mera deduplicación.
+              # Nunca pisar un feed más reciente publicado por otro workflow.
+              reason="$(python -m futbol_pred.feed_semantic publish-reason "$current" "$generated")"
+              echo "[feed-publish] decision=$reason"
+              [ "$reason" = unchanged ] && feed_same=1
+              if [ "$reason" = stale_candidate ]; then
+                echo "Otro job ha publicado un feed más reciente; no sobrescribir"
+                pushed=1
+                break
+              fi
             fi
 
             truth_same=1

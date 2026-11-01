@@ -1,11 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { crestFor, feedAgeHours, fmtKick, hasPrediction, isStale, subscribeFeed } from "./feed";
-import { entropy, fairProbs, kelly, overround, plenoSign } from "./poisson";
+import { entropy, fairProbs, kelly, overround, plenoSign, validDecimalOdds } from "./poisson";
+import { madridDateKey, madridTime, selectedDayIndex } from "./calendarTime.js";
 import { leaguesIn, projectedTable } from "./standings";
 import { teamProfile, teamSquad } from "./teams";
 import { bestValue, countdown, getFavs, modelAccuracy, recentForm, toggleFav } from "./insights";
 import MatchDetail from "./MatchDetail";
 import MissionOverview from "./MissionOverview";
+import EvidenceRibbon from "./EvidenceRibbon";
+import FeedHealthStrip from "./FeedHealthStrip";
+import { verifiedOneXTwo } from "./evidenceStatus.js";
+import { ALL_LEAGUES, competitionFilters, visibleMatchday } from "./dashboardFilters.js";
 import { picksForDay, wilsonInterval } from "./predictionEvidence";
 import { QualityBadge } from "./MatchQuality";
 import PlayerProfile from "./PlayerProfile";
@@ -59,14 +64,11 @@ function Skeletons({ n = 5 }) {
 
 
 /* ---------- Utilidades de calendario ---------- */
-const todayKey = () => {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-};
+const todayKey = madridDateKey;
 const dayLong = (s) => { try { return new Date(s + "T12:00:00").toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" }); } catch { return s; } };
 const dayWd = (s) => { try { return new Date(s + "T12:00:00").toLocaleDateString("es-ES", { weekday: "short" }); } catch { return ""; } };
 const dayNum = (s) => { try { return new Date(s + "T12:00:00").toLocaleDateString("es-ES", { day: "2-digit" }); } catch { return s; } };
-const hhmm = (iso) => { try { return new Date(iso).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" }); } catch { return ""; } };
+const hhmm = madridTime;
 
 /* Puntos de forma reciente (V/E/D) */
 function FormDots({ form }) {
@@ -82,9 +84,12 @@ function FormDots({ form }) {
 function MatchRow({ m, onOpen, formMap }) {
   const pred = hasPrediction(m);
   const best = pred ? ["1", "X", "2"][m.probs.indexOf(Math.max(...m.probs))] : null;
-  const val = bestValue(m);
+  const verifiedOdds = verifiedOneXTwo(m);
+  const candidate = bestValue(m);
+  const val = verifiedOdds && candidate?.market === "1x2" ? candidate : null;
   return (
-    <button type="button" className="mrow" onClick={() => onOpen(m)}>
+    <button type="button" className="mrow" onClick={() => onOpen(m)}
+      aria-label={`Ver partido ${m.home} contra ${m.away}, ${m.league}, ${m.finished ? "finalizado" : hhmm(m.kickoff)}`}>
       <span className="mrow-time">{m.finished ? "FT" : hhmm(m.kickoff)}</span>
       <span className="mrow-body">
         <span className="mrow-line">
@@ -100,7 +105,7 @@ function MatchRow({ m, onOpen, formMap }) {
       </span>
       {m.match_quality && <QualityBadge mq={m.match_quality} compact />}
       <span className="mrow-tag">
-        {val && <span className="tag-val" title={`Value ${val.selection}: edge ${(val.edge * 100).toFixed(1)}%`}>◆</span>}
+        {val && <span className="tag-val" title={`EV teórico ${val.selection}: +${(val.edge * 100).toFixed(1)}% con fuente verificada`}>◆</span>}
         {({ LaLiga: "1ª", "LaLiga Hypermotion": "2ª", "Champions League": "UCL" }[m.league] || m.league)}{best ? ` · ${best}` : ""}
       </span>
     </button>
@@ -121,17 +126,29 @@ function pickSelLabel(pick, m) {
 }
 
 function Resumen({ data, matches, onOpen, goto, favs, onTeam }) {
+  const [selectedLeague, setSelectedLeague] = useState(ALL_LEAGUES);
   const days = useMemo(() => [...new Set(matches.map((m) => m.date).filter(Boolean))].sort(), [matches]);
   const startIdx = useMemo(() => {
     const t = todayKey();
     const i = days.findIndex((d) => d >= t);
     return i < 0 ? Math.max(0, days.length - 1) : i;
   }, [days]);
-  const [idx, setIdx] = useState(startIdx);
+  // Select by stable date rather than array index: a refreshed feed may add
+  // or remove dates before the current selection.
+  const [selectedDay, setSelectedDay] = useState(() => days[startIdx] || null);
+  const idx = selectedDayIndex(days, selectedDay, startIdx);
+  const setIdx = (next) => {
+    const target = typeof next === "function" ? next(idx) : next;
+    const bounded = Math.max(0, Math.min(days.length - 1, target));
+    setSelectedDay(days[bounded] || null);
+  };
   const [renderedAt] = useState(() => Date.now());
 
   const day = days[idx];
   const dayMatches = useMemo(() => matches.filter((m) => m.date === day).sort((a, b) => (a.kickoff || "").localeCompare(b.kickoff || "")), [matches, day]);
+  const competitions = useMemo(() => competitionFilters(dayMatches), [dayMatches]);
+  const activeLeague = competitions.some((c) => c.key === selectedLeague) ? selectedLeague : ALL_LEAGUES;
+  const visibleMatches = useMemo(() => visibleMatchday(dayMatches, activeLeague), [dayMatches, activeLeague]);
   const predicted = dayMatches.filter(hasPrediction);
   const pick = predicted
     .map((m) => { const mx = Math.max(...m.probs); return { m, mx, s: ["1", "X", "2"][m.probs.indexOf(mx)] }; })
@@ -165,6 +182,7 @@ function Resumen({ data, matches, onOpen, goto, favs, onTeam }) {
     <>
       <MissionOverview pick={pick} dayMatches={dayMatches} predicted={predicted} strong={strong}
         goalsDay={goalsDay} acc={acc} interval={accuracyInterval} onOpen={onOpen} />
+      <EvidenceRibbon feed={data} matches={dayMatches} />
 
       <div className="section-heading"><h2>Agenda de partidos</h2><span>{dayLong(day)}</span></div>
 
@@ -189,10 +207,27 @@ function Resumen({ data, matches, onOpen, goto, favs, onTeam }) {
         </div>
       </div>
 
-      <div className="day-matches">
-        {dayMatches.length ? dayMatches.map((m) => <MatchRow key={m.id} m={m} onOpen={onOpen} formMap={formMap} />)
-          : <div className="state">No hay partidos este día.</div>}
-      </div>
+      <section className="matchday-workspace" aria-label="Partidos del día">
+        <div className="matchday-toolbar">
+          <div className="matchday-title">
+            <span className="eyebrow">PROGRAMACIÓN · {day === t ? "HOY" : "JORNADA"}</span>
+            <h3>Encuentros <span className="matchday-count">{visibleMatches.length.toString().padStart(2, "0")}</span></h3>
+          </div>
+          {competitions.length > 2 && (
+            <div className="league-filters" role="group" aria-label="Filtrar partidos por competición">
+              {competitions.map((comp) => <button type="button" key={comp.key} onClick={() => setSelectedLeague(comp.key)}
+                className={"league-filter" + (activeLeague === comp.key ? " on" : "")}
+                aria-pressed={activeLeague === comp.key}>
+                {comp.label} <span>{comp.count}</span>
+              </button>)}
+            </div>
+          )}
+        </div>
+        <div className="day-matches">
+          {visibleMatches.length ? visibleMatches.map((m) => <MatchRow key={m.id} m={m} onOpen={onOpen} formMap={formMap} />)
+            : <div className="state">No hay partidos para este día y competición.</div>}
+        </div>
+      </section>
 
       {picks.length > 0 && (
         <div className="card">
@@ -543,33 +578,39 @@ function Quiniela({ matches, quiniela, tri, dob, setTri, setDob }) {
 
 /* ---------- Value bets ---------- */
 function ValueBets({ matches, bank, setBank, globalValue }) {
-  const ms = matches.filter(hasPrediction).filter((m) => !m.finished);
+  const ms = matches.filter(hasPrediction).filter((m) =>
+    !m.finished && Date.parse(m.kickoff || "") > Date.now());
   const [odds, setOdds] = useState({});
-  const bankN = Number(bank) || 1000;
+  const bankN = Number.isFinite(Number(bank)) && Number(bank) > 0 ? Number(bank) : 0;
   let rows = ms.map((m, i) => {
     const pr = [m.probs[0] / 100, m.probs[1] / 100, m.probs[2] / 100];
     const blocked = m.recommendation?.decision === "no_pick";
     const reasons = m.recommendation?.reasons || [];
-    // Cuotas reales de mercado (media de casas, co.uk) cargadas del feed;
-    // el usuario puede sobrescribirlas escribiendo en el input.
-    const feedO = m.odds?.["1x2"]?.odds || null;
+    // The feed quote must carry a genuine, recent provider update timestamp.
+    // Any manual edit is a *scenario*, not an automatically verified quote.
+    const feedO = verifiedOneXTwo(m);
+    const edited = ["1", "X", "2"].some((s) =>
+      Object.prototype.hasOwnProperty.call(odds, m.id + "|" + s));
+    const actionable = Boolean(feedO) && !edited;
     const o = ["1", "X", "2"].map((s) => {
-      const v = odds[i + s];
-      return Number(v != null && v !== "" ? v : (feedO ? feedO[s] : NaN));
+      const key = m.id + "|" + s;
+      const v = odds[key];
+      return v !== undefined ? (v === "" ? NaN : Number(v)) : (feedO ? feedO[s] : NaN);
     });
-    const haveAll = o.every((x) => x > 1);
+    const haveAll = o.every(validDecimalOdds);
     const fair = haveAll ? fairProbs(o) : null;
     const vig = haveAll ? overround(o) : null;
     let best = null;
     if (!blocked) {
-      o.forEach((oo, j) => { if (oo > 1) { const e = pr[j] * oo - 1; if (!best || e > best.e) best = { j, s: ["1", "X", "2"][j], o: oo, e }; } });
+      o.forEach((oo, j) => { if (validDecimalOdds(oo)) { const e = pr[j] * oo - 1; if (!best || e > best.e) best = { j, s: ["1", "X", "2"][j], o: oo, e }; } });
     }
-    const stake = !blocked && best ? Math.min(bankN * kelly(pr[best.j], best.o) * 0.25, bankN * 0.05) : 0;
-    return { m, i, pr, o, feedO, fair, vig, best, stake, blocked, reasons, haveAll };
+    const stake = !blocked && actionable && best
+      ? Math.min(bankN * kelly(pr[best.j], best.o) * 0.25, bankN * 0.05) : 0;
+    return { m, i, pr, o, feedO, fair, vig, best, stake, blocked, reasons, haveAll, actionable, edited };
   });
   rows = rows.sort((a, b) => Number(a.blocked) - Number(b.blocked) || (b.best?.e ?? -9) - (a.best?.e ?? -9));
-  const nValue = rows.filter((r) => !r.blocked && r.best && r.best.e > 0.02).length;
-  const nWithOdds = rows.filter((r) => r.haveAll).length;
+  const nValue = rows.filter((r) => !r.blocked && r.actionable && r.best && r.best.e > 0.02).length;
+  const nWithOdds = rows.filter((r) => r.haveAll && r.actionable).length;
   return (
     <>
       <GlobalValuePanel rows={globalValue} />
@@ -577,25 +618,25 @@ function ValueBets({ matches, bank, setBank, globalValue }) {
         <div className="row" style={{ justifyContent: "space-between" }}>
           <div><div className="lbl">Bankroll (€)</div><input aria-label="Bankroll para calcular stakes" type="number" value={bank} style={{ width: 130 }} onChange={(e) => setBank(e.target.value)} /></div>
           <div className="chips">
-            <span className="chip">Con cuota <b>{nWithOdds}</b></span>
-            <span className="chip">Value elegible (edge&gt;2%) <b className={nValue ? "value-yes" : ""}>{nValue}</b></span>
+            <span className="chip">Con cuota de origen verificado <b>{nWithOdds}</b></span>
+            <span className="chip">Value verificable (EV&gt;2%) <b className={nValue ? "value-yes" : ""}>{nValue}</b></span>
           </div>
         </div>
-        <p className="note" style={{ color: "var(--muted)" }}>Cuotas de mercado (media de casas, co.uk) cargadas automáticamente; puedes sobrescribirlas. Se quita el margen y se compara con el modelo. Solo los partidos elegibles calculan edge y stake = Kelly ¼ (máx. 5%).</p>
+        <p className="note" style={{ color: "var(--muted)" }}>Las cuotas automáticas se muestran únicamente si su actualización real está verificada. Puedes introducir precios manualmente para simular EV, pero no generan recomendaciones de stake. Kelly ¼ (máximo 5%) solo se calcula con cuota verificada y decisión elegible.</p>
       </div>
       {!ms.length && <div className="state">No hay partidos con predicción.</div>}
       {rows.map((r) => (
-        <div className="card" key={r.i} data-recommendation={r.blocked ? "no_pick" : "eligible"}>
+        <div className="card" key={r.m.id} data-recommendation={r.blocked ? "no_pick" : "eligible"}>
           <div className="row" style={{ justifyContent: "space-between" }}>
             <div className="tn" style={{ flex: 1 }}>{r.m.home} vs {r.m.away}</div>
             <div className="chips">{["1", "X", "2"].map((s, j) => <span key={s} className="chip">{s} <b>{r.m.probs[j]}%</b>{r.fair ? <span className="dim"> / {(r.fair[j] * 100).toFixed(0)}%</span> : null}</span>)}</div>
           </div>
           <div className="row" style={{ marginTop: 8 }}>
             {["1", "X", "2"].map((s, j) => {
-              const e = !r.blocked && r.o[j] > 1 ? r.pr[j] * r.o[j] - 1 : null;
+              const e = !r.blocked && validDecimalOdds(r.o[j]) ? r.pr[j] * r.o[j] - 1 : null;
               return (
                 <div key={s} className="odds-in">
-                  <input type="number" step="0.01" placeholder={"Cuota " + s} style={{ width: 92 }} value={odds[r.i + s] ?? (r.feedO ? r.feedO[s] : "")} onChange={(ev) => setOdds({ ...odds, [r.i + s]: ev.target.value })} />
+                  <input type="number" step="0.01" placeholder={"Cuota " + s} style={{ width: 92 }} value={odds[r.m.id + "|" + s] ?? (r.feedO ? r.feedO[s] : "")} onChange={(ev) => setOdds({ ...odds, [r.m.id + "|" + s]: ev.target.value })} />
                   {e != null && <span className={"edge " + (e > 0.02 ? "value-yes" : "value-no")}>{e > 0 ? "+" : ""}{(e * 100).toFixed(1)}%</span>}
                 </div>
               );
@@ -604,8 +645,10 @@ function ValueBets({ matches, bank, setBank, globalValue }) {
           <div className="row" style={{ marginTop: 6 }}>
             {r.vig != null && <span className="chip">Margen casa <b>{(r.vig * 100).toFixed(1)}%</b></span>}
             {r.blocked ? <span className="value-no">Sin apuesta recomendada{r.reasons.length ? ` · ${r.reasons.join(" · ")}` : ""}</span>
-              : r.best && r.best.e > 0.02 ? <span className="pill y">VALUE {r.best.s}: edge {(r.best.e * 100).toFixed(1)}% · apostar {r.stake.toFixed(2)}€</span>
-              : r.best ? <span className="value-no">Sin value (mejor {r.best.s}: {(r.best.e * 100).toFixed(1)}%)</span> : null}
+              : r.best && r.best.e > 0.02 && r.actionable ? <span className="pill y">EV teórico {r.best.s}: +{(r.best.e * 100).toFixed(1)}% · stake orientativo {r.stake.toFixed(2)}€</span>
+              : r.best && r.best.e > 0.02 ? <span className="dim">Simulación · EV +{(r.best.e * 100).toFixed(1)}% · sin cuota verificable para recomendar stake</span>
+              : r.best ? <span className="value-no">Sin value (mejor {r.best.s}: {(r.best.e * 100).toFixed(1)}%)</span>
+              : <span className="dim">Sin cotización verificable · introduce cuotas para simular</span>}
           </div>
         </div>
       ))}
@@ -1372,10 +1415,7 @@ export default function App() {
         </header>
 
         <main className="content" id="main-content">
-          {data && isStale(data) && <div className="banner warn">⚠️ El feed puede estar desactualizado (hace {Math.round(feedAgeHours(data))} h). Se revisa a las 00:15 y 10:15, con control adicional cuando hay onces oficiales.</div>}
-          {data?.alerts?.some((item) => item.severity === "critical") && <div className="banner warn">⚠️ {[...new Set(data.alerts.filter((item) => item.severity === "critical").map((item) => item.message))].join(" · ")}</div>}
-          {data?.alerts?.some((item) => item.severity === "warning") && <details className="system-notice"><summary>Hay fuentes con incidencias · ver detalle</summary><p>{[...new Set(data.alerts.filter((item) => item.severity === "warning").map((item) => item.message))].join(" · ")}</p></details>}
-          {data?._fromFallback && <div className="banner">Mostrando copia local del feed (no se pudo cargar el remoto).</div>}
+          {data && <FeedHealthStrip data={data} stale={isStale(data)} ageHours={feedAgeHours(data)} />}
           {err && <div className="state">No se pudo cargar el feed.<br />{err}</div>}
           {!data && !err && <Skeletons n={5} />}
 
@@ -1403,8 +1443,11 @@ export default function App() {
         </main>
       </div>
       <nav className="bottom-nav" aria-label="Navegación móvil">
-        {[["resumen", "⌂", "Inicio"], ["partidos", "⚽", "Partidos"], ["value", "◆", "Value"], ["cartera", "▣", "Cartera"]].map(([key, icon, label]) => (
-          <button type="button" key={key} className={view === key && !sel ? "on" : ""} onClick={() => goto(key)}><span>{icon}</span>{label}</button>
+        {[["resumen", "Inicio"], ["partidos", "Partidos"], ["value", "Value"], ["cartera", "Cartera"]].map(([key, label]) => (
+          <button type="button" key={key} onClick={() => goto(key)} aria-current={view === key && !sel ? "page" : undefined}
+            className={view === key && !sel ? "on" : ""}>
+            <Icon name={key} /><span>{label}</span>
+          </button>
         ))}
       </nav>
       {menuOpen && <button type="button" className="scrim" onClick={() => setMenuOpen(false)} aria-label="Cerrar menú" />}

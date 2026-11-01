@@ -68,10 +68,14 @@ export function topScores(m, n) {
   return a.slice(0, n);
 }
 
+export function validDecimalOdds(o) {
+  return typeof o === "number" && Number.isFinite(o) && o > 1;
+}
+
 export function kelly(p, o) {
-  const b = o - 1;
-  if (b <= 0) return 0;
-  return Math.max(0, (b * p - (1 - p)) / b);
+  if (!Number.isFinite(p) || p < 0 || p > 1 || !validDecimalOdds(o)) return 0;
+  const stake = (p * o - 1) / (o - 1);
+  return Number.isFinite(stake) ? Math.max(0, stake) : 0;
 }
 
 export function entropy(pr) {
@@ -81,7 +85,7 @@ export function entropy(pr) {
 // Cuotas decimales -> probabilidades implícitas "justas" (sin margen del
 // operador). Normaliza 1/cuota para que sumen 1, quitando el overround (vig).
 export function fairProbs(odds) {
-  const inv = odds.map((o) => (o > 1 ? 1 / o : 0));
+  const inv = odds.map((o) => (validDecimalOdds(o) ? 1 / o : 0));
   const s = inv.reduce((a, b) => a + b, 0);
   if (s <= 0) return odds.map(() => 0);
   return inv.map((v) => v / s);
@@ -89,7 +93,7 @@ export function fairProbs(odds) {
 
 // Margen del operador (overround) a partir de las cuotas: cuánto se lleva la casa.
 export function overround(odds) {
-  return odds.reduce((a, o) => a + (o > 1 ? 1 / o : 0), 0) - 1;
+  return odds.reduce((a, o) => a + (validDecimalOdds(o) ? 1 / o : 0), 0) - 1;
 }
 
 // Signo del Pleno al 15 de la quiniela: 0, 1, 2 o M (3 o más goles).

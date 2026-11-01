@@ -41,6 +41,10 @@ SPORT_KEYS = {
     "Champions League": "soccer_uefa_champs_league",
 }
 SIGNS = ("1", "X", "2")
+# A provider's price timestamp is not the same as our latest polling time.
+# Keep a conservative upper bound for quotations driving probabilities/value.
+MAX_QUOTE_AGE_MINUTES = 180
+MAX_FUTURE_SKEW_MINUTES = 5
 
 
 def _key(value: str | None) -> str:
@@ -158,15 +162,29 @@ def _latest_update(event: dict) -> str | None:
     return max(values) if values else None
 
 
-def _event_market(event: dict) -> dict:
+def _quote_timestamp_usable(source_updated_at, as_of: datetime) -> bool:
+    source_time = _stamp(source_updated_at)
+    if source_time is None:
+        return False
+    age_minutes = (_aware(as_of).astimezone(MADRID) - source_time).total_seconds() / 60.0
+    return -MAX_FUTURE_SKEW_MINUTES <= age_minutes <= MAX_QUOTE_AGE_MINUTES
+
+
+def _event_market(event: dict, as_of: datetime | None = None) -> dict:
     home, away = str(event.get("home_team") or ""), str(event.get("away_team") or "")
     h2h = {"1": [], "X": [], "2": []}
     totals = {"over": [], "under": []}
     spreads = []
+    used_updates = []
     for book in event.get("bookmakers") or []:
         bookmaker = str(book.get("title") or book.get("key") or "")
         for market in book.get("markets") or []:
             key = str(market.get("key") or "")
+            updated = market.get("last_update") or book.get("last_update")
+            if as_of is not None and not _quote_timestamp_usable(updated, as_of):
+                continue
+            if updated:
+                used_updates.append(str(updated))
             for outcome in market.get("outcomes") or []:
                 price = _num(outcome.get("price"))
                 if price is None or price <= 1:
@@ -195,7 +213,8 @@ def _event_market(event: dict) -> dict:
         "1x2": one if len(one) == 3 else None,
         "ou25": ou if len(ou) == 2 else None,
         "spreads": spreads,
-        "source_updated_at": _latest_update(event),
+        # Earliest contributing update is conservative when books update at different times.
+        "source_updated_at": min(used_updates, key=lambda v: _stamp(v)) if used_updates else None,
     }
 
 
@@ -248,7 +267,7 @@ def _apply_market(
     movement_policy: dict | None = None,
 ) -> bool:
     one = market.get("1x2")
-    if not one:
+    if not one or not _quote_timestamp_usable(market.get("source_updated_at"), now_local):
         return False
     fair_values = _remove_vig([one["1"], one["X"], one["2"]])
     fair = {"1": fair_values[0], "X": fair_values[1], "2": fair_values[2]}
@@ -265,7 +284,7 @@ def _apply_market(
         "movement_pct": _movement(opening, one),
         "movement_source": "the_odds_api_live",
         "provider": "The Odds API",
-        "source_updated_at": market.get("source_updated_at") or stamp,
+        "source_updated_at": market.get("source_updated_at"),
         "checked_at": stamp,
         "ttl_minutes": ttl,
     }
@@ -295,7 +314,7 @@ def _apply_market(
         odds_1x2=one,
         fair_1x2=fair,
         provider="The Odds API",
-        source_updated_at=market.get("source_updated_at") or stamp,
+        source_updated_at=market.get("source_updated_at"),
     )
     append_market_snapshot(match, snapshot)
     movement = movement_summary(
@@ -487,7 +506,7 @@ def refresh_payload(payload: dict, now: datetime | None = None, client: OddsHotC
             event = _match_event(match, events)
             if not event:
                 continue
-            market = _event_market(event)
+            market = _event_market(event, now_local)
             before_history = len(match.get("market_history") or [])
             if _apply_market(
                 match,

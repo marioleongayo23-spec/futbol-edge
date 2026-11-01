@@ -158,3 +158,103 @@ def test_extended_market_persiste_y_rankea_solo_edge_positivo():
     )
     assert result2["refreshed"] == 0
     assert rebuilt["extended_market"] == match["extended_market"]
+
+
+def test_los_mercados_secundarios_no_se_promocionan_despues_del_saque():
+    now = datetime(2026, 8, 25, 18, tzinfo=timezone.utc)
+    match = _match(now)
+    match["kickoff"] = (now - timedelta(minutes=10)).isoformat()
+    result = attach_extended_market_value(
+        [match], now, client=FakeOdds(),
+        stats_models={"LaLiga": FakeStats()}, max_event_requests=3
+    )
+    assert result["refreshed"] == 0
+    assert result["ranking"] == []
+    assert "extended_market" not in match
+
+
+def test_cuotas_no_finitas_no_crean_value_en_props():
+    match = {"home": "Real Madrid", "away": "Valencia", "markets": {"btts": 0.6}}
+    quotes = [
+        Quote("e", "Real Madrid", "Valencia", "btts", "Book", "Yes", float("inf")),
+        Quote("e", "Real Madrid", "Valencia", "btts", "Book", "Yes", float("nan")),
+        Quote("e", "Real Madrid", "Valencia", "btts", "Book", "Yes", 2.1),
+    ]
+    rows = _extra_value_rows(match, quotes)
+    assert len(rows) == 1
+    assert rows[0]["odds"] == 2.1
+
+
+def test_market_quote_rechaza_un_precio_fechtado_como_caducado():
+    from futbol_pred.real_market import _quote_is_explicitly_stale
+    now = datetime(2026, 8, 25, 18, 0, tzinfo=timezone.utc)
+    assert _quote_is_explicitly_stale("2026-08-25T10:00:00Z", now) is True
+    assert _quote_is_explicitly_stale("2026-08-25T17:59:00Z", now) is False
+    assert _quote_is_explicitly_stale("2026-08-25T18:30:00Z", now) is True
+    assert _quote_is_explicitly_stale("not-a-timestamp", now) is True
+    assert _quote_is_explicitly_stale(None, now) is False  # no sello: estado desconocido, no "fresco"
+
+
+def test_close_no_promociona_cuotas_timestamped_caducadas():
+    now = datetime(2026, 8, 25, 18, 0, tzinfo=timezone.utc)
+    class OldClient(FakeOdds):
+        def featured(self, league):
+            return [
+                Quote(q.event_id, q.home, q.away, q.market, q.bookmaker, q.selection,
+                      q.odds, q.point, q.player, "2026-08-25T11:00:00Z")
+                for q in super().featured(league)
+            ]
+    match = _match(now)
+    # Close may legitimately fall back to co.uk, but must not identify
+    # the stale The Odds API quotes as fresh provider consensus.
+    from futbol_pred.real_market import _featured_block, _quote_is_explicitly_stale
+    quotes = [q for q in OldClient().featured("LaLiga")
+              if not _quote_is_explicitly_stale(q.updated_at, now)]
+    assert _featured_block(match, quotes).get("1x2") is None
+
+
+def test_ranking_exige_fecha_verificable_del_proveedor():
+    from futbol_pred.real_market import _is_actionable_price, _provider_time_status
+    now = datetime(2026, 8, 25, 18, tzinfo=timezone.utc)
+    valid = {"market": "btts", "edge": .12, "odds": 2.1,
+             "source_updated_at": "2026-08-25T17:55:00Z"}
+    assert _is_actionable_price(valid, now)
+    assert _provider_time_status(valid["source_updated_at"], now) == "verified_recent"
+    assert not _is_actionable_price({**valid, "source_updated_at": None}, now)
+    assert not _is_actionable_price({**valid, "source_updated_at": "2026-08-25T11:00:00Z"}, now)
+    assert not _is_actionable_price({**valid, "edge": float("inf")}, now)
+    assert not _is_actionable_price({**valid, "odds": float("nan")}, now)
+
+
+def test_ranking_descarta_props_sin_timestamp_y_conserva_observaciones():
+    from dataclasses import replace
+
+    class Timestamped(FakeOdds):
+        def event_odds(self, league, event_id, player_props=False):
+            rows = super().event_odds(league, event_id, player_props)
+            return [
+                replace(q, updated_at="2026-08-25T17:58:00Z")
+                if q.market == "btts" else q for q in rows
+            ]
+
+    now = datetime(2026, 8, 25, 18, tzinfo=timezone.utc)
+    match = _match(now)
+    match["markets"]["btts"] = 0.6
+    result = attach_extended_market_value(
+        [match], now, client=Timestamped(),
+        stats_models={"LaLiga": FakeStats()}, max_event_requests=4
+    )
+    assert result["refreshed"] == 1
+    assert any(row["market"] == "btts" for row in result["ranking"])
+    assert all(row.get("source_updated_at") for row in result["ranking"])
+    assert all(row["source_time_status"] == "verified_recent"
+               if "source_time_status" in row else True for row in result["ranking"])
+    assert any(row.get("source_time_status") == "unverified" for row in match["extended_value"])
+
+
+def test_cierre_distingue_real_sin_fecha_de_actualizacion():
+    now = datetime(2026, 8, 25, 18, tzinfo=timezone.utc)
+    match = _match(now)
+    assert attach_closing_snapshots([match], now, client=FakeOdds()) == 1
+    assert match["closing_odds"]["source_time_status"] == "unverified"
+    assert match["closing_odds"]["source_updated_at"] is None

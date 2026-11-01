@@ -1,6 +1,7 @@
 """Picks del día: valor cuando hay cuotas, confianza cuando no."""
 
 from datetime import datetime, timedelta, timezone
+import math
 
 from futbol_pred.picks import build_picks
 
@@ -63,3 +64,40 @@ def test_valor_ordena_antes_que_confianza():
     confianza = _match("c", [88, 8, 4], prediction_confidence={"score": 99})
     picks = build_picks([confianza, valor], now=NOW)
     assert [p["kind"] for p in picks] == ["value", "confianza"]
+
+
+def test_no_publica_pick_cuando_el_encuentro_ya_ha_empezado():
+    started = _match("started", [70, 20, 10], hours=-1)
+    at_kickoff = _match("kickoff", [70, 20, 10], hours=0)
+    assert build_picks([started, at_kickoff], now=NOW) == []
+
+
+def test_respeta_abstencion_del_backend_aun_con_edge():
+    blocked = _match("blocked", [70, 20, 10], recommendation={"decision": "no_pick"},
+                     value=[{"market": "1x2", "selection": "1", "odds": 2.4,
+                             "edge": 0.68, "modelProb": 0.7}])
+    assert build_picks([blocked], now=NOW) == []
+
+
+def test_descarta_distribuciones_no_finitas_y_que_no_suman_cien():
+    rows = [_match(str(i), probs) for i, probs in enumerate(
+        [[math.nan, 25, 75], [math.inf, 10, 20], [-10, 80, 30], [0, 0, 0], [0.8, 0.1, 0.1]]
+    )]
+    assert build_picks(rows, now=NOW) == []
+
+
+def test_descarta_cuotas_y_edges_imposibles_sin_inventar_value():
+    invalid_rows = [
+        {"market": "1x2", "selection": "1", "odds": math.inf, "edge": 0.8},
+        {"market": "1x2", "selection": "1", "odds": 1, "edge": 0.8},
+        {"market": "1x2", "selection": "1", "odds": 2.3, "edge": math.nan},
+        {"market": "1x2", "selection": "1", "odds": 2.3, "edge": 0.5, "modelProb": math.nan},
+    ]
+    low = _match("low", [40, 35, 25], value=invalid_rows)
+    assert build_picks([low], now=NOW) == []
+
+
+def test_confianza_invalida_no_corrompe_el_orden():
+    m = _match("conf", [70, 20, 10], prediction_confidence={"score": float("nan")})
+    picks = build_picks([m], now=NOW)
+    assert len(picks) == 1 and picks[0]["confidence"] is None

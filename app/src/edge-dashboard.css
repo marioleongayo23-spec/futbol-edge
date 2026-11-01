@@ -1,0 +1,382 @@
+/* Fútbol Edge 2.0 — Matchday Intelligence.
+   Design system / layout pass. Kept separate from existing product styles,
+   so it can be reviewed and reverted without altering the predictive engine. */
+
+:root {
+  --edge-glass: color-mix(in srgb,var(--card) 96%,var(--bg2));
+  --edge-quiet: color-mix(in srgb,var(--card2) 72%,var(--bg));
+  --edge-contrast-line: color-mix(in srgb,var(--line) 82%,var(--muted));
+  --edge-active: rgba(34,201,138,.095);
+  --edge-bounce: cubic-bezier(.22,1,.36,1);
+  --edge-soft-shadow: 0 12px 40px rgba(0,0,0,.12);
+}
+:root:has(.theme-toggle:checked) {
+  --edge-active: rgba(16,148,102,.10);
+  --edge-soft-shadow: 0 10px 32px rgba(30,53,88,.06);
+}
+
+/* Architecture: sidebar, work area and top command bar. */
+.layout{grid-template-columns:254px minmax(0,1fr)}
+.side{
+  padding:24px 16px 18px;
+  background:linear-gradient(180deg,color-mix(in srgb,var(--bg2) 91%,var(--card)) 0%,var(--bg2) 70%);
+  border-right:1px solid var(--line);
+}
+.brand{padding:7px 7px 24px;gap:12px;border-bottom:1px solid var(--line)}
+.logo{width:42px;height:42px;min-width:42px;border-radius:13px;color:#fff;box-shadow:0 8px 22px rgba(34,201,138,.14)}
+.logo svg{width:29px;height:29px}
+.bname{font-size:1.1rem;letter-spacing:-.045em;font-weight:820}
+.btag{font-size:.57rem;letter-spacing:.16em;color:var(--muted);font-weight:760}
+.snav{gap:5px;margin-top:16px}
+.snav-item{
+  border:1px solid transparent;border-radius:11px;
+  padding:11px 12px;gap:12px;font-weight:620;font-size:.82rem;
+  min-height:44px;letter-spacing:-.005em;
+}
+.snav-item svg{width:18px;height:18px;opacity:.72}
+.snav-item:hover{color:var(--tx);background:var(--card2);border-color:var(--line)}
+.snav-item.on{
+  color:var(--tx);border-color:color-mix(in srgb,var(--green) 30%,var(--line));
+  background:linear-gradient(96deg,rgba(34,201,138,.13),rgba(34,201,138,.035));
+  box-shadow:inset 3px 0 var(--green);
+}
+.snav-item.on svg{opacity:1;color:var(--green)}
+.side-foot .cal-card{border-radius:13px;padding:14px;background:var(--card)}
+.side-foot .user{border-top:1px solid var(--line);padding-top:15px}
+.topbar{
+  min-height:72px;padding:12px clamp(18px,2.6vw,38px);
+  background:color-mix(in srgb,var(--bg2) 92%,transparent);
+  border-bottom:1px solid var(--line);
+  backdrop-filter:blur(18px) saturate(1.2);
+}
+.topbar .search{
+  max-width:540px;min-width:0;height:43px;border-radius:12px;
+  background:var(--card);border-color:var(--line);
+  transition:border-color .16s,box-shadow .16s;
+}
+.topbar .search:focus-within{border-color:var(--blue);box-shadow:0 0 0 3px rgba(90,162,255,.10)}
+.search input{min-width:0}
+.badge-cal{font-size:.73rem;font-variant-numeric:tabular-nums;letter-spacing:.01em;color:var(--muted)}
+.content{max-width:1510px;padding:30px clamp(18px,3.2vw,52px) 100px;min-width:0}
+.view-heading{margin:0 0 26px;padding:0 0 22px;border-bottom:1px solid var(--line)}
+.view-heading .eyebrow{font-size:.7rem;letter-spacing:.13em;text-transform:uppercase;font-weight:750}
+.view-heading .view-title{
+  font-size:clamp(2rem,3vw,3rem);font-weight:740;line-height:1.04;
+  margin:10px 0 0;letter-spacing:-.055em;text-wrap:balance;
+}
+.workspace-label{font-size:.65rem;letter-spacing:.07em;font-weight:650}
+
+/* Spotlight: one intentional focal point, not a generic summary box. */
+.mission-overview{grid-template-columns:minmax(0,1.65fr) minmax(270px,.9fr);gap:16px;margin-bottom:20px}
+.spotlight{
+  padding:clamp(20px,2.25vw,32px);
+  border-radius:22px;
+  overflow:hidden;isolation:isolate;
+  border-color:color-mix(in srgb,var(--line) 64%,var(--green));
+  background:
+    radial-gradient(ellipse 480px 300px at 100% -10%,rgba(34,201,138,.12),transparent 75%),
+    radial-gradient(ellipse 380px 300px at 2% 110%,rgba(90,162,255,.09),transparent 80%),
+    var(--edge-glass);
+  box-shadow:var(--edge-soft-shadow);
+}
+.spotlight::before{
+  content:"";position:absolute;right:-50px;bottom:-90px;width:270px;height:270px;
+  border:1px solid rgba(90,162,255,.11);border-radius:50%;
+  box-shadow:0 0 0 48px rgba(90,162,255,.02),0 0 0 96px rgba(90,162,255,.014);
+  pointer-events:none;
+}
+.spotlight-heading .eyebrow{font-size:.69rem;letter-spacing:.1em;font-weight:800;color:var(--muted)}
+.instrument-label{font-size:.66rem;letter-spacing:.11em}
+.spotlight-body{padding:24px 0 19px;gap:16px}
+.spotlight-meta{font-size:.77rem;letter-spacing:.02em;color:var(--muted)}
+.spotlight h2{font-size:clamp(1.24rem,2vw,2.2rem);font-weight:720;line-height:1.22;letter-spacing:-.048em}
+.spotlight h2>span{gap:12px;margin:11px 0}
+.spotlight .crest{width:38px;height:38px;flex-shrink:0}
+.probability-ring{width:clamp(126px,11vw,166px);height:auto}
+.ring-value{font-size:35px;font-weight:800;letter-spacing:-2px}
+.ring-label{font-size:8.3px;letter-spacing:1px}
+.spotlight-bottom{position:relative;z-index:1;padding-top:17px;border-top:1px solid var(--line);gap:18px}
+.probability-key{font-size:.75rem;gap:15px}
+.probability-key b{font-weight:760}
+.analysis-button{
+  border-radius:10px;min-height:42px;padding:11px 14px;
+  font-weight:750;letter-spacing:-.01em;
+  box-shadow:0 6px 15px rgba(34,201,138,.10);
+}
+.analysis-button:hover{transform:translateY(-1px)}
+.spotlight-note{font-size:.72rem;line-height:1.5;margin-top:14px;color:var(--muted)}
+.mission-metrics{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.mission-metrics .stat{
+  background:var(--edge-glass);
+  border:1px solid var(--line);border-radius:17px;
+  padding:18px 19px;min-width:0;min-height:135px;
+  display:flex;flex-direction:column;justify-content:space-between;
+  box-shadow:0 4px 16px rgba(0,0,0,.035);
+}
+.mission-metrics .stat:first-child{border-top:1px solid var(--line)}
+.mission-metrics .stat:nth-child(1){border-top:2px solid var(--green)}
+.mission-metrics .stat:nth-child(2){border-top:2px solid var(--blue)}
+.mission-metrics .stat:nth-child(3){border-top:2px solid var(--amber)}
+.mission-metrics .stat:nth-child(4){border-top:2px solid var(--muted)}
+.mission-metrics .stat-k{font-size:.66rem;font-weight:760;text-transform:uppercase;letter-spacing:.08em}
+.mission-metrics .stat-v{font-size:clamp(1.8rem,2.4vw,2.65rem);line-height:1.1;font-weight:760;letter-spacing:-.06em;margin:7px 0}
+.mission-metrics .stat-s{font-size:.72rem;line-height:1.4;color:var(--muted)}
+
+/* Common card and editorial section rhythm. */
+.card{border-radius:18px;padding:clamp(16px,1.8vw,24px);margin:16px 0;box-shadow:var(--edge-soft-shadow)}
+.card::before{display:none}
+.card .lbl{margin-top:0;font-weight:750;color:var(--muted);font-size:.75rem}
+.card .row-between{align-items:center}
+.section-heading,.sec-h{margin:28px 0 12px}
+.section-heading h2,.sec-h h2{font-size:1.4rem;letter-spacing:-.045em;font-weight:740;line-height:1.2}
+.section-heading>span{font-size:.78rem}
+.quick-links{gap:12px}
+.qlink{border:1px solid var(--line);border-radius:14px;background:var(--card);min-height:72px;transition:transform .15s var(--edge-bounce),border-color .15s}
+.qlink:hover{border-color:var(--blue);transform:translateY(-2px)}
+.qlink svg{color:var(--green)}
+.tbl-wrap{max-width:100%;overflow-x:auto;overscroll-behavior-x:contain;border-radius:12px}
+.tbl-mk{border-collapse:separate;border-spacing:0}
+.tbl-mk th{font-size:.7rem;letter-spacing:.04em;font-weight:750;color:var(--muted);text-transform:uppercase;background:var(--edge-quiet)}
+.tbl-mk td{font-variant-numeric:tabular-nums;padding:12px 10px}
+.tbl-mk th{padding:12px 10px}
+.tbl-mk tbody tr:last-child td{border-bottom:0}
+.tbl-mk tbody tr:hover{background:rgba(90,162,255,.05)}
+
+/* Calendar is a compact instrument above the interactive match list. */
+.cal{
+  margin:0 0 18px;padding:16px 18px;border-radius:18px;
+  background:var(--card);
+  box-shadow:0 4px 18px rgba(0,0,0,.04)
+}
+.cal-nav{margin:0 0 14px;gap:8px}
+.cal-title{font-size:.9rem;font-weight:650;text-transform:capitalize}
+.cal-btn{min-height:40px;min-width:40px;border-radius:10px;background:var(--card2);font-weight:760}
+.cal-btn:disabled{opacity:.32}
+.cal-day{
+  min-height:66px;min-width:50px;
+  border-radius:12px;border:1px solid transparent;
+  background:transparent;
+  transition:background .15s,border-color .15s;
+}
+.cal-day:hover:not(.on){background:var(--card2)}
+.cal-day.on{
+  background:var(--edge-active);
+  border:1px solid color-mix(in srgb,var(--green) 45%,var(--line));
+  box-shadow:inset 0 -2px var(--green);
+}
+.cal-day.on .cd-dm{font-weight:800}
+.cal-day .cd-wd{font-size:.66rem;font-weight:700;letter-spacing:.06em}
+.cal-day .cd-dm{font-size:1.25rem;font-variant-numeric:tabular-nums}
+.cal-day .cd-n{font-size:.68rem;color:var(--muted)}
+.cal-day.on .cd-n{color:var(--green)}
+
+/* The matchday filter bar is functional, keyed to feed competitions. */
+.matchday-workspace{margin-top:14px}
+.matchday-toolbar{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;flex-wrap:wrap;margin:0 0 12px}
+.matchday-title .eyebrow{font-size:.66rem;letter-spacing:.10em;color:var(--muted);font-weight:760}
+.matchday-title h3{font-size:1.3rem;letter-spacing:-.04em;font-weight:760;margin:4px 0 0;display:flex;gap:10px;align-items:center}
+.matchday-count{
+  display:inline-flex;align-items:center;justify-content:center;
+  min-width:32px;padding:4px 7px;background:var(--card2);
+  border:1px solid var(--line);border-radius:8px;font-size:.78rem;letter-spacing:0;
+  color:var(--muted);font-variant-numeric:tabular-nums;
+}
+.league-filters{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+.league-filter{
+  display:inline-flex;align-items:center;gap:8px;
+  min-height:35px;padding:7px 11px;
+  background:var(--card);border:1px solid var(--line);
+  border-radius:10px;font-size:.75rem;font-weight:680;color:var(--muted);
+  cursor:pointer;transition:border-color .14s,background .14s,color .14s
+}
+.league-filter span{
+  font-size:.7rem;font-weight:770;font-variant-numeric:tabular-nums;
+  color:var(--dim);
+}
+.league-filter:hover{border-color:var(--blue);color:var(--tx)}
+.league-filter.on{
+  background:var(--edge-active);
+  border-color:color-mix(in srgb,var(--green) 42%,var(--line));
+  color:var(--tx)
+}
+.league-filter.on span{color:var(--green)}
+.league-filter:focus-visible{outline:3px solid color-mix(in srgb,var(--blue) 60%,transparent);outline-offset:2px}
+
+/* Football fixture cards: score hierarchy, club marks, readable probabilities. */
+.day-matches{display:grid;gap:10px}
+.mrow{
+  position:relative;display:flex;align-items:center;gap:16px;width:100%;
+  min-height:112px;margin:0;padding:17px 20px;
+  border:1px solid var(--line);border-radius:16px;
+  background:var(--edge-glass);text-align:left;
+  box-shadow:0 3px 16px rgba(0,0,0,.035);
+  transition:transform .15s var(--edge-bounce),border-color .15s,box-shadow .15s;
+}
+.mrow::before{
+  content:"";position:absolute;left:0;top:18px;bottom:18px;
+  width:2px;background:var(--green);opacity:0;transition:opacity .15s
+}
+.mrow:hover{
+  transform:translateY(-2px);
+  background:var(--card);border-color:color-mix(in srgb,var(--blue) 54%,var(--line));
+  box-shadow:0 11px 30px rgba(0,0,0,.11)
+}
+.mrow:hover::before,.mrow:focus-visible::before{opacity:1}
+.mrow-time{
+  flex:0 0 53px;width:53px;text-align:left;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;
+  font-size:.76rem;font-weight:750;color:var(--muted)
+}
+.mrow-body{flex:1;min-width:0}
+.mrow-line{grid-template-columns:minmax(0,1fr) minmax(62px,auto) minmax(0,1fr);gap:13px}
+.mrow-team{gap:10px;min-width:0}
+.mrow-team .crest{width:28px;height:28px}
+.mrow-team .tn{font-size:.89rem;line-height:1.32;font-weight:700;color:var(--tx);min-width:0}
+.mrow-cen{min-width:62px;color:var(--tx);font-size:1.25rem;font-weight:800;line-height:1.1;letter-spacing:-.035em}
+.mrow-cen small{font-size:.64rem;line-height:1.15;letter-spacing:0;font-weight:550;margin-top:5px}
+.mrow-probabilities{
+  grid-template-columns:repeat(3,minmax(0,1fr));gap:7px 12px;
+  margin-top:14px;color:var(--muted);font-size:.75rem
+}
+.mrow-probabilities b{color:var(--tx);font-weight:780}
+.mrow-probabilities .mrow-bar{height:5px;border:0;background:var(--line);border-radius:999px;margin-top:2px}
+.mrow-tag{
+  flex:0 0 auto;min-width:65px;max-width:92px;
+  font-size:.66rem;font-weight:750;text-align:right;
+  color:var(--muted);line-height:1.5;letter-spacing:.015em
+}
+.mrow .mq-badge{font-size:.64rem;flex-shrink:0}
+.mrow .tag-val{color:var(--green);font-size:.9rem;margin-right:4px}
+.mrow:focus-visible{outline:3px solid var(--blue);outline-offset:3px}
+
+/* Value ledger: risk language rather than promotional green blocks. */
+#main-content .tbl-wrap{scrollbar-width:thin}
+#main-content .tbl-wrap:focus-within{border-radius:12px}
+#main-content .value-yes{font-variant-numeric:tabular-nums}
+#main-content .state{border:1px dashed var(--line);border-radius:14px;background:var(--edge-quiet);padding:30px 16px;margin-top:12px;font-size:.83rem}
+#main-content .seg-toggle-btn{font-size:.76rem;font-weight:740;border-radius:10px}
+#main-content .controls{margin:12px 0 18px}
+#main-content .controls select{min-height:42px}
+#main-content .odds-in input{max-width:100%}
+
+/* Mobile: promote fixtures above ornamental chrome. */
+@media(max-width:1150px){
+  .mission-overview{grid-template-columns:minmax(0,1.15fr) minmax(255px,1fr)}
+  .content{padding-inline:24px}
+  .spotlight-body{padding:18px 0}
+  .mission-metrics .stat{padding:15px}
+  .mrow{gap:10px;padding-inline:13px}
+  .mrow-time{flex-basis:44px;width:44px}
+  .mrow-tag{min-width:55px;max-width:65px}
+}
+@media(max-width:950px){
+  .mission-overview{grid-template-columns:1fr;gap:12px}
+  .mission-metrics{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .mission-metrics .stat{min-height:118px}
+  .mission-metrics .stat-v{font-size:2rem}
+}
+@media(max-width:860px){
+  .layout{grid-template-columns:minmax(0,1fr)}
+  .topbar{min-height:64px;padding:9px 16px}
+  .content{padding:24px 20px 105px}
+  .view-heading{margin-bottom:20px;padding-bottom:17px}
+  .side{border-right:1px solid var(--line)}
+  .bottom-nav{
+    gap:4px;min-height:66px;
+    border-top:1px solid var(--line);
+    background:color-mix(in srgb,var(--bg2) 94%,transparent);
+    backdrop-filter:blur(18px);
+    padding:6px 8px max(6px,env(safe-area-inset-bottom))
+  }
+  .bottom-nav button{
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+    min-height:50px;border-radius:11px;font-size:.7rem;line-height:1.2;
+  }
+  .bottom-nav button svg{width:19px;height:19px}
+  .bottom-nav button span{font-size:.68rem}
+  .bottom-nav button.on{background:var(--edge-active);color:var(--green)}
+}
+@media(max-width:650px){
+  .content{padding:19px 14px 108px}
+  .view-heading{margin-bottom:19px;align-items:flex-start}
+  .view-heading .view-title{font-size:2.1rem}
+  .spotlight{padding:19px;border-radius:18px}
+  .spotlight-body{padding:16px 0;align-items:center}
+  .spotlight .crest{width:27px;height:27px}
+  .spotlight h2{font-size:1.21rem;line-height:1.26}
+  .spotlight h2>span{gap:7px;margin:9px 0}
+  .probability-ring{width:102px;flex-shrink:0}
+  .spotlight-bottom{align-items:stretch;flex-direction:column;gap:13px}
+  .probability-key{width:100%;gap:6px;justify-content:space-between;font-size:.67rem}
+  .analysis-button{width:100%;display:flex;justify-content:space-between}
+  .mission-metrics{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+  .mission-metrics .stat{min-height:115px;padding:13px 14px}
+  .mission-metrics .stat-k{font-size:.63rem}
+  .mission-metrics .stat-v{font-size:1.9rem}
+  .mission-metrics .stat-s{font-size:.67rem;line-height:1.36}
+  .section-heading h2{font-size:1.2rem}
+  .cal{padding:13px 10px}
+  .cal-nav{gap:5px}
+  .cal-title{font-size:.78rem}
+  .cal-title b{max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .cal-strip{gap:4px}
+  .cal-day{flex-basis:44px;min-width:44px}
+  .matchday-toolbar{align-items:flex-start;flex-direction:column;gap:12px}
+  .league-filters{width:100%;overflow-x:auto;flex-wrap:nowrap;padding-bottom:5px;scrollbar-width:thin}
+  .league-filter{white-space:nowrap;min-height:38px}
+  .mrow{flex-wrap:wrap;align-items:center;gap:10px 8px;padding:13px 12px}
+  .mrow-time{order:0;flex:0 0 auto;width:auto;font-size:.73rem}
+  .mrow-tag{order:1;margin-left:auto;max-width:none;text-align:right}
+  .mrow .mq-badge{order:2}
+  .mrow-body{order:3;flex:1 1 100%;width:100%}
+  .mrow-line{grid-template-columns:minmax(0,1fr) 60px minmax(0,1fr);gap:6px}
+  .mrow-team,.mrow-team.rev{flex-direction:column;text-align:center;gap:5px}
+  .mrow-team.rev{flex-direction:column-reverse}
+  .mrow-team .crest{width:30px;height:30px}
+  .mrow-team .tn{font-size:.79rem;line-height:1.25;text-wrap:balance}
+  .mrow-cen{font-size:1.22rem;min-width:56px}
+  .mrow-cen small{font-size:.58rem}
+  .mrow-probabilities{margin-top:12px;font-size:.7rem;gap:7px 3px}
+  .mrow-probabilities b{margin-left:3px}
+  .card{padding:16px;border-radius:15px}
+  .workspace-label{display:none}
+}
+@media(max-width:390px){
+  .view-heading .view-title{font-size:1.9rem}
+  .spotlight h2{font-size:1.04rem}
+  .probability-ring{width:88px}
+  .spotlight .crest{width:23px;height:23px}
+  .top-right .badge-cal{display:none}
+  .mrow-team .tn{font-size:.74rem}
+}
+@media(prefers-reduced-motion:reduce){
+  .mrow,.league-filter,.cal-day,.analysis-button,.qlink{transition:none}
+  .mrow:hover,.qlink:hover,.analysis-button:hover{transform:none}
+}
+
+/* One visible safety summary replaces stacks of repetitive oversized banners.
+   Source details are available on demand, including every critical alert. */
+.feed-health-strip{
+  margin:0 0 20px;padding:13px 17px;border:1px solid color-mix(in srgb,var(--amber) 54%,var(--line));
+  border-radius:14px;background:color-mix(in srgb,var(--amber) 4%,var(--card));
+  color:var(--tx);font-size:.8rem;line-height:1.5;
+}
+.feed-health-info{border-color:var(--line);background:var(--card)}
+.feed-health-topline{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+.feed-health-indicator{width:8px;height:8px;flex:0 0 8px;border-radius:50%;background:var(--amber)}
+.feed-health-info .feed-health-indicator{background:var(--blue)}
+.feed-health-topline strong{font-size:.78rem;letter-spacing:-.01em;font-weight:760}
+.feed-health-number{margin-left:auto;font-size:.66rem;font-weight:760;color:var(--muted);white-space:nowrap}
+.feed-health-strip p{margin:5px 0 0 17px;font-size:.73rem;line-height:1.5;color:var(--muted)}
+.feed-health-details{margin:5px 0 0 17px}
+.feed-health-details summary{display:list-item;cursor:pointer;width:fit-content;color:var(--tx);font-size:.71rem;font-weight:700;text-underline-offset:3px}
+.feed-health-details summary:hover{text-decoration:underline}
+.feed-health-details ul{margin:11px 0 0 0;padding:0 0 0 16px;display:grid;gap:8px}
+.feed-health-details li{padding-left:3px;overflow-wrap:anywhere;font-size:.75rem;line-height:1.5;color:var(--muted)}
+.feed-health-details li b{color:var(--tx)}
+.feed-health-details summary:focus-visible{outline:3px solid var(--blue);outline-offset:3px;border-radius:3px}
+@media(max-width:650px){
+  .feed-health-strip{padding:12px 13px;margin-bottom:17px;border-radius:12px}
+  .feed-health-strip p{margin-left:17px;font-size:.72rem;line-height:1.38}
+  .feed-health-details{margin-left:17px}
+  .feed-health-topline strong{font-size:.73rem}
+}

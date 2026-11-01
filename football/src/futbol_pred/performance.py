@@ -6,7 +6,7 @@ import math
 from collections import defaultdict
 
 from .backtest.metrics import aggregate
-from .prediction_snapshots import latest_pre_match_snapshot
+from .prediction_snapshots import latest_pre_match_snapshot, _parse
 
 SIGNS = ("1", "X", "2")
 
@@ -36,14 +36,18 @@ def _probability_dict(values) -> dict[str, float] | None:
             raw = {sign: float(values[sign]) for sign in SIGNS}
         else:
             return None
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         return None
     if any(not math.isfinite(value) or value < 0 for value in raw.values()):
         return None
     if max(raw.values(), default=0.0) > 1.0:
+        if any(value > 100 for value in raw.values()):
+            return None
         raw = {sign: value / 100.0 for sign, value in raw.items()}
     total = sum(raw.values())
-    if total <= 0:
+    # Refuse malformed 1X2 vectors instead of normalizing arbitrary totals
+    # (e.g. [100, 100, 100]) into deceptively plausible performance metrics.
+    if not math.isfinite(total) or not 0.98 <= total <= 1.02:
         return None
     return {sign: raw[sign] / total for sign in SIGNS}
 
@@ -136,13 +140,30 @@ def _betting_stage(window: str | None) -> str | None:
     return mapping.get(window)
 
 
-def _stage_snapshot_map(match: dict) -> dict[str, dict]:
+def _pre_match_items(match: dict) -> list[dict]:
+    """Return only snapshots captured strictly before kickoff, in actual time order.
+
+    Never use timestamps after kickoff in historic comparisons, even if an
+    upstream archive accidentally publishes them under an early-stage label.
+    """
+    kickoff = _parse(match.get("kickoff"))
+    if kickoff is None:
+        return []
     source = [
         *(item for item in (match.get("prediction_history") or []) if isinstance(item, dict)),
         *([match["prediction_snapshot"]] if isinstance(match.get("prediction_snapshot"), dict) else []),
     ]
+    eligible = []
+    for item in source:
+        generated = _parse(item.get("generated_at"))
+        if generated is not None and generated < kickoff:
+            eligible.append((generated, item))
+    return [item for _, item in sorted(eligible, key=lambda pair: pair[0])]
+
+
+def _stage_snapshot_map(match: dict) -> dict[str, dict]:
     out = {}
-    for item in sorted(source, key=lambda row: str(row.get("generated_at") or "")):
+    for item in _pre_match_items(match):
         stage = _betting_stage(item.get("window"))
         if stage and _probability_dict(item.get("probs")):
             out[stage] = item
@@ -204,20 +225,22 @@ def build_performance(matches: list[dict]) -> dict | None:
 
     for match in matches:
         result = match.get("result")
-        if not match.get("finished") or not isinstance(result, list) or len(result) != 2:
+        if (not match.get("finished") or not isinstance(result, list) or len(result) != 2
+                or _parse(match.get("kickoff")) is None):
             continue
         snapshot = latest_pre_match_snapshot(match)
         probs = (snapshot or {}).get("probs")
         if not isinstance(probs, list) or len(probs) != 3:
             continue
         outcome = _sign(result)
+        published = _probability_dict(probs)
+        if published is None:
+            continue
         brier_rows.append({
             "league": match.get("league") or "Sin competición",
-            "confidence": _confidence(probs),
-            "brier": _brier(probs, outcome),
+            "confidence": _confidence([published[key] * 100 for key in SIGNS]),
+            "brier": _brier([published[key] for key in SIGNS], outcome),
         })
-
-        published = _probability_dict(probs)
         model_only = _probability_dict((snapshot or {}).get("model_probs"))
         odds = (snapshot or {}).get("odds")
         market = _probability_dict(
@@ -243,7 +266,12 @@ def build_performance(matches: list[dict]) -> dict | None:
             except (KeyError, TypeError, ValueError):
                 continue
             market_name = value.get("market")
-            if market_name not in {"1x2", "ou25"} or edge <= 0.02:
+            valid_selection = (
+                str(value.get("selection")) in (SIGNS if market_name == "1x2" else ("over", "under"))
+            )
+            if (market_name not in {"1x2", "ou25"} or not valid_selection
+                    or not math.isfinite(edge) or not math.isfinite(odds_value)
+                    or odds_value <= 1 or edge <= 0.02):
                 continue
             if market_name not in by_market or edge > by_market[market_name][0]:
                 by_market[market_name] = (edge, value, odds_value)
@@ -256,13 +284,17 @@ def build_performance(matches: list[dict]) -> dict | None:
                 "hit": int(hit), "profit": odds_value - 1 if hit else -1,
             })
 
-        history = [item for item in (match.get("prediction_history") or []) if isinstance(item, dict)]
-        initial = next((item for item in history if item.get("window") == "initial"), None)
-        ten = next((item for item in reversed(history) if item.get("window") in {"10:00", "10:15"}), None)
-        if initial and ten and initial.get("probs") and ten.get("probs"):
+        history = _pre_match_items(match)
+        initial = next((item for item in history if item.get("window") == "initial"
+                        and _probability_dict(item.get("probs"))), None)
+        ten = next((item for item in reversed(history) if item.get("window") in {"10:00", "10:15"}
+                    and _probability_dict(item.get("probs"))), None)
+        if initial and ten:
+            initial_p = _probability_dict(initial["probs"])
+            ten_p = _probability_dict(ten["probs"])
             window_pairs.append({
-                "initial": _brier(initial["probs"], outcome),
-                "ten": _brier(ten["probs"], outcome),
+                "initial": _brier([initial_p[k] for k in SIGNS], outcome),
+                "ten": _brier([ten_p[k] for k in SIGNS], outcome),
             })
     if not brier_rows and not bets:
         return None

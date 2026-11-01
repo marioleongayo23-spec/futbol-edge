@@ -147,15 +147,18 @@ def latest_pre_match_snapshot(match: dict) -> dict | None:
     """Último snapshot estrictamente anterior al inicio del partido."""
 
     kickoff = _parse(match.get("kickoff"))
+    # Without a known kickoff there is no verifiable pre-match timestamp.
+    if kickoff is None:
+        return None
     valid = []
     for snapshot in match.get("prediction_history") or []:
         generated = _parse(snapshot.get("generated_at")) if isinstance(snapshot, dict) else None
-        if generated and (kickoff is None or generated < kickoff):
+        if generated and generated < kickoff:
             valid.append((generated, snapshot))
     current = match.get("prediction_snapshot")
     if isinstance(current, dict):
         generated = _parse(current.get("generated_at"))
-        if generated and (kickoff is None or generated < kickoff):
+        if generated and generated < kickoff:
             valid.append((generated, current))
     return deepcopy(max(valid, key=lambda item: item[0])[1]) if valid else None
 
@@ -228,7 +231,7 @@ def apply_prediction_snapshots(
         kickoff = _parse(match.get("kickoff"))
         kickoff_local = kickoff.astimezone(MADRID) if kickoff else None
         same_day = bool(kickoff_local and kickoff_local.date() == now.date())
-        before_kickoff = kickoff_local is None or now < kickoff_local
+        before_kickoff = kickoff_local is not None and now < kickoff_local
         in_legacy_window = now.hour in {0, 10} and 15 <= now.minute < 45
         has_previous = bool(history or old_current)
 
