@@ -47,11 +47,18 @@ export function confidence(m) {
 }
 
 // Mejor value bet del partido (edge máximo) si supera el umbral.
-export function bestValue(m, min = 0.03) {
-  if (m.recommendation?.decision === "no_pick") return null;
-  if (!Array.isArray(m.value) || !m.value.length) return null;
-  const b = m.value[0]; // ya viene ordenado por edge desc
-  return b.edge > min ? b : null;
+export function bestValue(m, min = 0.03, now = Date.now()) {
+  if (!m || m.finished || m.recommendation?.decision === "no_pick") return null;
+  // Las cuotas prepartido no deben seguir etiquetadas como value una vez comenzado.
+  const kickoff = Date.parse(m.kickoff || "");
+  if (Number.isFinite(kickoff) && kickoff <= now) return null;
+  if (!Array.isArray(m.value)) return null;
+  // Nunca presentar cuotas o edges corruptos como una oportunidad.
+  return m.value
+    .filter((item) => item && Number.isFinite(Number(item.edge))
+      && Number(item.edge) > min && Number.isFinite(Number(item.odds))
+      && Number(item.odds) > 1 && Number.isFinite(Number(item.model_prob ?? item.modelProb ?? 0.5)))
+    .sort((a, b) => Number(b.edge) - Number(a.edge))[0] || null;
 }
 
 // ¿El favorito del modelo NO es el favorito del mercado? (pick sorpresa)

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import math
 
 from .bankroll import BankrollPolicy
 
@@ -30,6 +31,14 @@ def find_value(
     bankroll: float | None = None,
     policy: BankrollPolicy | None = None,
 ) -> ValueBet:
+    try:
+        model_prob = float(model_prob)
+        odds = float(odds)
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise ValueError("Probabilidad o cuota no numérica") from exc
+    if not (math.isfinite(model_prob) and 0.0 <= model_prob <= 1.0
+            and math.isfinite(odds) and odds > 1.0):
+        raise ValueError("Probabilidad o cuota fuera del dominio válido")
     edge = model_prob * odds - 1.0
     fair = 1.0 / model_prob if model_prob > 0 else float("inf")
     bet = ValueBet(
@@ -62,9 +71,14 @@ def scan_market(
     for sel, p in probs.items():
         if sel not in market_odds:
             continue
-        bet = find_value(
-            p, market_odds[sel], market, sel, bankroll=bankroll, policy=policy
-        )
+        # Un proveedor puede entregar NaN, infinitos o cuotas incoherentes.
+        # Se descartan sin contaminar la lista ni las apuestas sugeridas.
+        try:
+            bet = find_value(
+                p, market_odds[sel], market, sel, bankroll=bankroll, policy=policy
+            )
+        except ValueError:
+            continue
         if bet.edge > min_edge:
             bets.append(bet)
     bets.sort(key=lambda b: b.edge, reverse=True)
