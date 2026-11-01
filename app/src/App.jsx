@@ -14,6 +14,9 @@ import { ALL_LEAGUES, competitionFilters, visibleMatchday } from "./dashboardFil
 import { picksForDay, wilsonInterval } from "./predictionEvidence";
 import { QualityBadge } from "./MatchQuality";
 import PlayerProfile from "./PlayerProfile";
+import PlayerAvatar from "./PlayerAvatar";
+import { photoForPlayer } from "./mediaIdentity.js";
+import { lineupPlayerRecord } from "./lineupVisualData.js";
 import TeamIntelligencePanel from "./TeamIntelligencePanel";
 import ProbabilityQualityPanel from "./ProbabilityQualityPanel";
 import ClvPanel from "./ClvPanel";
@@ -431,7 +434,7 @@ function Jugadores({ players, onPlayer }) {
                 {rk.players.slice(0, 10).map((p) => (
                   <tr key={p.rank} role="button" tabIndex={0} onClick={() => onPlayer?.(p)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onPlayer?.(p); }}>
                     <td style={{ width: 22, color: "var(--dim)" }}>{p.rank}</td>
-                    <td className="tl"><b>{p.player}</b><div className="mk-sub">{p.team}</div></td>
+                    <td className="tl"><div className="edge-roster-identity"><PlayerAvatar name={p.player} src={photoForPlayer(lineupPlayerRecord(players, p.player, p.team))} /><div><b>{p.player}</b><div className="mk-sub">{p.team}</div></div></div></td>
                     <td style={{ textAlign: "right" }}><b className="value-yes">{p.value != null ? (Number.isInteger(p.value) ? p.value : p.value.toFixed(0)) : "—"}</b></td>
                   </tr>
                 ))}
@@ -1285,7 +1288,7 @@ function TeamPage({ team, matches, players, onBack, onOpen, onPlayer, isFav, onF
             <tbody>
               {squad.map((s, i) => (
                 <tr key={i} className="team-player-row" role="button" tabIndex={0} onClick={() => onPlayer?.(s)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onPlayer?.(s); }}>
-                  <td className="tl"><b>{s.player}</b></td>
+                  <td className="tl"><div className="edge-roster-identity"><PlayerAvatar name={s.player} src={photoForPlayer(s)} /><b>{s.player}</b></div></td>
                   <td className="dim">{s.pos}</td>
                   <td>{s.goals || ""}</td>
                   <td>{s.assists || ""}</td>
@@ -1346,6 +1349,7 @@ export default function App() {
   const open = (m) => { setPlayerSel(null); setSel(m); window.scrollTo(0, 0); };
   const openTeam = (name) => { setPlayerSel(null); setTeamSel(name); setSel(null); setQ(""); window.scrollTo(0, 0); };
   const openPlayer = (player) => { setPlayerSel(player); setSel(null); setQ(""); window.scrollTo(0, 0); };
+  const openPlayerFromMatch = (player) => { setPlayerSel(player); setQ(""); window.scrollTo(0, 0); };
   const onFav = (name) => setFavs(new Set(toggleFav(name)));
   const goto = (v) => { setView(v); setSel(null); setTeamSel(null); setPlayerSel(null); setMenuOpen(false); window.scrollTo(0, 0); };
   const userName = session?.user?.email?.split("@")[0] || "Mario León";
@@ -1421,7 +1425,7 @@ export default function App() {
 
           {data && playerSel && <PlayerProfile candidate={playerSel} players={data.players} matches={matches} onBack={() => setPlayerSel(null)} onTeam={openTeam} />}
 
-          {data && !playerSel && sel && <MatchDetail m={matches.find(m => m.id === sel.id) || sel} onBack={() => setSel(null)} onTeam={openTeam} plan={plan} onUpgrade={() => { setSel(null); goto("planes"); }} />}
+          {data && !playerSel && sel && <MatchDetail m={matches.find(m => m.id === sel.id) || sel} onBack={() => setSel(null)} onTeam={openTeam} players={data.players} onPlayer={openPlayerFromMatch} plan={plan} onUpgrade={() => { setSel(null); goto("planes"); }} />}
 
           {data && !playerSel && !sel && teamSel && <TeamPage team={teamSel} matches={matches} players={data.players} onBack={() => setTeamSel(null)} onOpen={open} onPlayer={openPlayer} isFav={favs.has(teamSel)} onFav={onFav} />}
 

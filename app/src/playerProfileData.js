@@ -11,7 +11,7 @@ export function samePlayer(a, b) {
   const nameB = strip(b.player || b.jugador || b.name);
   const teamA = strip(a.team || a.equipo);
   const teamB = strip(b.team || b.equipo);
-  return Boolean(nameA && nameA === nameB && (!teamA || !teamB || teamA === teamB));
+  return Boolean(nameA && nameA === nameB && teamA && teamB && teamA === teamB);
 }
 
 export function flattenPlayers(players) {
@@ -21,7 +21,9 @@ export function flattenPlayers(players) {
 
 export function resolvePlayer(players, candidate) {
   const rows = flattenPlayers(players);
-  return rows.find((row) => samePlayer(row, candidate)) || candidate || null;
+  const matches = rows.filter((row) => samePlayer(row, candidate));
+  // Never silently pick the wrong homonym when multiple records are present.
+  return matches.length === 1 ? matches[0] : candidate || null;
 }
 
 export function positionGroup(position) {
@@ -34,6 +36,7 @@ export function positionGroup(position) {
 }
 
 const number = (value) => {
+  if (value == null || value === "") return null;
   const n = Number(value);
   return Number.isFinite(n) ? n : null;
 };

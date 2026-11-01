@@ -32,6 +32,9 @@ jobs:
       - name: Contratos, lint y build
         run: npm test && npm run lint && npm run build
         working-directory: app
+      - name: Medir cobertura real de escudos, fotos y XI
+        run: npm run audit:media
+        working-directory: app
       - name: Instalar Chromium
         run: npx playwright install --with-deps chromium
         working-directory: app

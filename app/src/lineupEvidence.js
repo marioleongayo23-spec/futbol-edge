@@ -1,3 +1,5 @@
+import { confirmedLineup } from "./lineupVisualData.js";
+
 function fmtDate(value) {
   if (!value) return null;
   const date = new Date(value);
@@ -38,9 +40,7 @@ function sideRow(side, team, raw) {
 export function lineupEvidenceView(match) {
   const lineup = match?.alineacion || {};
   const status = String(lineup.status || "").toLowerCase();
-  const official = status === "confirmado"
-    && (lineup.local || []).length === 11
-    && (lineup.visitante || []).length === 11;
+  const official = status === "confirmado" && confirmedLineup(lineup);
 
   if (official) {
     const checkedAt = lineup.official_poll_at || lineup.source_updated_at || lineup.generated_at || lineup.ts || null;
