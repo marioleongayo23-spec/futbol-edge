@@ -39,3 +39,16 @@ test("profileCompleteness no premia campos inexistentes", () => {
   assert.equal(profileCompleteness({ player: "Sin datos" }), 0);
   assert.ok(profileCompleteness({ profile: { photo: "x", age: 24 }, position: "Midfielder", rating: 7, season: { minutes: 900, per90: {}, per90_extended: {} } }) >= 75);
 });
+
+test("un valor ausente no se transforma en cero en las estadísticas del jugador", () => {
+  const players={laliga:{players:[{player:"Prueba",team:"A",position:"Attacker",season:{minutes:900,per90:{g:null}}}]}};
+  assert.equal(playerMetricRows(players, {player:"Prueba",team:"A"}).some(m=>m.key==="g"),false);
+});
+
+test("no se asigna la ficha de un homónimo de un equipo distinto", () => {
+  const one={player:"Alex García",team:"A",profile:{age:24}};
+  const two={player:"Alex García",team:"B",profile:{age:31}};
+  assert.equal(resolvePlayer({laliga:{players:[one,two]}},{player:"Alex García",team:"A"}),one);
+  assert.equal(resolvePlayer({laliga:{players:[one,two]}},{player:"Alex García"}).profile,undefined);
+  assert.equal(resolvePlayer({laliga:{players:[one,{...one}]}},{player:"Alex García",team:"A"}).profile,undefined);
+});
