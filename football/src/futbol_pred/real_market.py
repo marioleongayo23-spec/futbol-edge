@@ -256,7 +256,7 @@ def _featured_block(match: dict, quotes: list[Quote]) -> dict:
     # Evidence must come from the bookmakers, never from the polling timestamp.
     times = [q.updated_at for q in rows if q.market == "h2h" and
              (_key(q.selection) in {_key(home), _key(away)} or q.selection.casefold() == "draw")]
-    if times and all(times):
+    if times and all(times) and all(_dt(stamp) is not None for stamp in times):
         out["source_updated_at"] = min(times, key=lambda stamp: _dt(stamp))
     return out
 
