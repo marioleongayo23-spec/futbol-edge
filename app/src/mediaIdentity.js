@@ -1,7 +1,7 @@
 import mediaCatalog from "./verifiedPlayerMedia.js";
 
 /** No arbitrary host can become an image source in the browser. */
-const HOSTS=new Set(["media.api-sports.io","upload.wikimedia.org","commons.wikimedia.org","r2.thesportsdb.com","www.thesportsdb.com"]);
+const HOSTS=new Set(["media.api-sports.io","upload.wikimedia.org","thumb.wikimedia.org","commons.wikimedia.org","r2.thesportsdb.com","www.thesportsdb.com"]);
 const LICENSES=new Set([
  "https://creativecommons.org/licenses/by/3.0/",
  "https://creativecommons.org/licenses/by/4.0/",
