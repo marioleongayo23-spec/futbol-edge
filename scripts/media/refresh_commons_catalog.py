@@ -170,9 +170,21 @@ def build_entries(seed, *, fetch=get_json, previous=None):
         if not filename:
             rejected.append({"player": row["player"], "reason": "missing image or mismatching entity name"})
             continue
-        image = license_from_commons(fetch(commons_url(filename)))
+        commons_response = fetch(commons_url(filename))
+        image = license_from_commons(commons_response)
         if not image:
-            rejected.append({"player": row["player"], "reason": "unverifiable or incompatible file license"})
+            details = list((commons_response.get("query", {}).get("pages") or {}).values())
+            ii = (details[0].get("imageinfo") or [{}])[0] if details else {}
+            ext = ii.get("extmetadata") or {}
+            diagnostic = {
+                "thumb_host": __import__("urllib.parse", fromlist=["urlparse"]).urlparse(ii.get("thumburl") or "").hostname,
+                "description_host": __import__("urllib.parse", fromlist=["urlparse"]).urlparse(ii.get("descriptionurl") or "").hostname,
+                "license_url": (ext.get("LicenseUrl") or {}).get("value"),
+                "license_short": (ext.get("LicenseShortName") or {}).get("value"),
+                "artist": bool((ext.get("Artist") or {}).get("value")),
+                "attribution": bool((ext.get("Attribution") or {}).get("value")),
+            }
+            rejected.append({"player": row["player"], "reason": "unverifiable license or metadata", **diagnostic})
             continue
         record = {
             "player": row["player"],
