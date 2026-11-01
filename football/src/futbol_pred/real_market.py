@@ -47,6 +47,21 @@ def _dt(value) -> datetime | None:
         return None
 
 
+def _quote_is_explicitly_stale(updated_at, now: datetime, *, max_age_hours: float = 3.0) -> bool:
+    """Reject known-stale provider observations without pretending missing=recent.
+
+    Missing source timestamps are treated as unverified separately; this
+    predicate only prevents *known* stale/future prices from being promoted.
+    """
+    if not updated_at:
+        return False
+    source = _dt(updated_at)
+    if source is None:
+        return True
+    age = (now - source).total_seconds() / 3600.0
+    return not (-5.0 / 60 <= age <= max_age_hours)
+
+
 def _num(value) -> float | None:
     try:
         number = float(value)
@@ -274,14 +289,25 @@ def attach_closing_snapshots(
         if client.available and label in SPORT_KEYS:
             if label not in featured_cache:
                 featured_cache[label] = client.featured(label)
-            block = _featured_block(match, featured_cache[label])
+            block = _featured_block(
+                match, [q for q in featured_cache[label]
+                        if not _quote_is_explicitly_stale(q.updated_at, now)]
+            )
         if not block.get("1x2"):
             block = _co_uk_featured(match, co_cache)
         one = block.get("1x2")
         ou = block.get("ou25")
         if not one or not all(_num(one.get(k)) and one[k] > 1 for k in ("1", "X", "2")):
             continue
-        source = "The Odds API consensus" if client.available and label in featured_cache and _featured_block(match, featured_cache[label]).get("1x2") else "football-data.co.uk"
+        source = (
+            "The Odds API consensus"
+            if client.available and label in featured_cache
+            and _featured_block(
+                match, [q for q in featured_cache[label]
+                        if not _quote_is_explicitly_stale(q.updated_at, now)]
+            ).get("1x2")
+            else "football-data.co.uk"
+        )
         close = {
             "1x2": {k: round(float(one[k]), 3) for k in ("1", "X", "2")},
             "market_source": source,
@@ -476,6 +502,8 @@ def attach_extended_market_value(
                 if 0 <= hours_to <= 12 and requests_left > 0 and match.get("league") == "LaLiga":
                     quotes += client.event_odds(match.get("league"), event_id, player_props=True)
                     requests_left -= 1
+                # Never promote a quote with an explicitly old provider update.
+                quotes = [q for q in quotes if not _quote_is_explicitly_stale(q.updated_at, now)]
                 stats_model = (stats_models or {}).get(match.get("league"))
                 rows = _extra_value_rows(match, quotes, stats_model)
                 match["extended_market"] = {
