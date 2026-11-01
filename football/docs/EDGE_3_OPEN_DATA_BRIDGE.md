@@ -62,6 +62,37 @@ Los resultados se guardan con `phase=postmatch` y `available_at` igual a
 la primera observación del script, no a una hora de resultado inventada.
 El modelo rechaza explícitamente históricos sin hora de kickoff verificable.
 
+## Vía sin Sheets: archivo histórico automático en GitHub
+
+Para eliminar la necesidad de instalar Apps Script, este PR añade también
+`.github/workflows/openfootball-archive.yml`. Funciona como alternativa
+autónoma sin ningún token de proveedores ni servicios de pago:
+
+- Una vez al día (07:17, Europe/Madrid), recopila hasta 4 archivos JSON
+  de OpenFootball (Primera/Segunda, temporada actual y anterior).
+- Solo admite resultados finalizados y los normaliza al contrato común.
+- Archiva en `football/data/open_sources/openfootball_observations.csv`,
+  conservando el primer instante de observación y todas las revisiones.
+- No crea commit cuando el upstream no ha publicado cambios.
+- La base SQLite se reconstruye/valida desde ese CSV; no se añaden binarios
+  `.sqlite` al repositorio.
+- El archivo histórico **no activa** los workflows de predicción en vivo:
+  está expresamente excluido de esos disparadores.
+- Si el proveedor falla o la validación detecta datos incompatibles, el job
+  se detiene. No rellena huecos con resultados inventados.
+
+El colector se puede ejecutar localmente, sin Sheets:
+
+```bash
+cd football
+python -m futbol_pred.openfootball_archive --output data/open_sources/openfootball_observations.csv
+python -m futbol_pred.open_data_bridge data/open_sources/openfootball_observations.csv /tmp/edge-openfootball-shadow.sqlite
+```
+
+El Apps Script es opcional: añade una interfaz de revisión humana y sirve para
+otras fuentes compatibles que se autoricen más adelante. No es la vía para
+obtener datos cerrados por otros medios.
+
 ## Modelo de fuerza dinámica
 
 `football/src/futbol_pred/backtest/dynamic_strength.py` añade un modelo
