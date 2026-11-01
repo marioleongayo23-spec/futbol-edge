@@ -15,7 +15,7 @@ from pathlib import Path
 import sys
 
 from .backtest.metrics import aggregate, rps
-from .prediction_snapshots import latest_pre_match_snapshot
+from .prediction_snapshots import latest_pre_match_snapshot, _parse
 
 SIGNS = ("1", "X", "2")
 UNIFORM = {key: 1.0 / 3 for key in SIGNS}
@@ -93,10 +93,36 @@ def _block_bootstrap(paired: list[tuple[str, dict, dict, str]]) -> dict | None:
             "delta_rps_ci95": bounds(draws_rps)}
 
 
+def _snapshot_gap_reason(match: dict) -> str:
+    """Reason for absent historical evidence; do not reconstruct predictions."""
+    kickoff = _parse(match.get("kickoff"))
+    if kickoff is None:
+        return "kickoff_missing_or_invalid"
+    items = [
+        *(item for item in (match.get("prediction_history") or []) if isinstance(item, dict)),
+        *([match["prediction_snapshot"]] if isinstance(match.get("prediction_snapshot"), dict) else []),
+    ]
+    if not items:
+        return "no_snapshots_preserved"
+    dated = [(_parse(item.get("generated_at")), item) for item in items]
+    valid = [(when, item) for when, item in dated if when is not None]
+    if not valid:
+        return "capture_timestamps_missing_or_invalid"
+    pre = [item for when, item in valid if when < kickoff]
+    if not pre:
+        return "captured_only_after_kickoff"
+    if not any(_probs(item.get("probs")) for item in pre):
+        return "pre_kickoff_probs_invalid"
+    return "other"
+
+
 def _bucket():
     return {
         "matches": 0, "finished": 0, "finished_with_snapshot": 0,
         "finished_without_valid_snapshot": 0,
+        "missing_snapshot_reasons": defaultdict(int),
+        "upcoming_48h": 0,
+        "upcoming_48h_without_snapshot": 0,
         "future_with_valid_prediction": 0,
         "published": [], "model": [], "market": [], "uniform": [],
         "published_model": [], "paired_model": [],
@@ -110,6 +136,7 @@ def audit_payload(payload: dict) -> dict:
     if not isinstance(payload, dict) or not isinstance(payload.get("matches"), list):
         return {"status": "invalid_feed", "reason": "matches must be a list"}
     groups = defaultdict(_bucket)
+    observed_at = _parse(payload.get("generated_at"))
     for match in payload["matches"]:
         if not isinstance(match, dict):
             continue
@@ -118,14 +145,23 @@ def audit_payload(payload: dict) -> dict:
         group["matches"] += 1
         outcome = _outcome(match)
         if outcome is None:
-            if not match.get("finished") and _probs(match.get("probs")):
-                group["future_with_valid_prediction"] += 1
+            if not match.get("finished"):
+                if _probs(match.get("probs")):
+                    group["future_with_valid_prediction"] += 1
+                kickoff = _parse(match.get("kickoff"))
+                if observed_at is not None and kickoff is not None:
+                    hours_to = (kickoff - observed_at).total_seconds() / 3600
+                    if 0 < hours_to <= 48:
+                        group["upcoming_48h"] += 1
+                        if not _probs((latest_pre_match_snapshot(match) or {}).get("probs")):
+                            group["upcoming_48h_without_snapshot"] += 1
             continue
         group["finished"] += 1
         snapshot = latest_pre_match_snapshot(match)
         published = _probs((snapshot or {}).get("probs"))
         if not published:
             group["finished_without_valid_snapshot"] += 1
+            group["missing_snapshot_reasons"][_snapshot_gap_reason(match)] += 1
             continue
         group["finished_with_snapshot"] += 1
         group["published"].append((published, outcome))
@@ -151,8 +187,10 @@ def audit_payload(payload: dict) -> dict:
     for league, group in sorted(groups.items()):
         report = {key: group[key] for key in (
             "matches", "finished", "finished_with_snapshot",
-            "finished_without_valid_snapshot", "future_with_valid_prediction"
+            "finished_without_valid_snapshot", "future_with_valid_prediction",
+            "upcoming_48h", "upcoming_48h_without_snapshot",
         )}
+        report["missing_snapshot_reasons"] = dict(sorted(group["missing_snapshot_reasons"].items()))
         report["probability_quality"] = {key: _metrics(group[key]) for key in ("published", "model", "market", "uniform")}
         for label, lhs, rhs in (
             ("published_vs_model_paired", "published_model", "paired_model"),
