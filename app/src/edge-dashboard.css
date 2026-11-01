@@ -352,3 +352,31 @@
   .mrow,.league-filter,.cal-day,.analysis-button,.qlink{transition:none}
   .mrow:hover,.qlink:hover,.analysis-button:hover{transform:none}
 }
+
+/* One visible safety summary replaces stacks of repetitive oversized banners.
+   Source details are available on demand, including every critical alert. */
+.feed-health-strip{
+  margin:0 0 20px;padding:13px 17px;border:1px solid color-mix(in srgb,var(--amber) 54%,var(--line));
+  border-radius:14px;background:color-mix(in srgb,var(--amber) 4%,var(--card));
+  color:var(--tx);font-size:.8rem;line-height:1.5;
+}
+.feed-health-info{border-color:var(--line);background:var(--card)}
+.feed-health-topline{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+.feed-health-indicator{width:8px;height:8px;flex:0 0 8px;border-radius:50%;background:var(--amber)}
+.feed-health-info .feed-health-indicator{background:var(--blue)}
+.feed-health-topline strong{font-size:.78rem;letter-spacing:-.01em;font-weight:760}
+.feed-health-number{margin-left:auto;font-size:.66rem;font-weight:760;color:var(--muted);white-space:nowrap}
+.feed-health-strip p{margin:5px 0 0 17px;font-size:.73rem;line-height:1.5;color:var(--muted)}
+.feed-health-details{margin:5px 0 0 17px}
+.feed-health-details summary{display:list-item;cursor:pointer;width:fit-content;color:var(--tx);font-size:.71rem;font-weight:700;text-underline-offset:3px}
+.feed-health-details summary:hover{text-decoration:underline}
+.feed-health-details ul{margin:11px 0 0 0;padding:0 0 0 16px;display:grid;gap:8px}
+.feed-health-details li{padding-left:3px;overflow-wrap:anywhere;font-size:.75rem;line-height:1.5;color:var(--muted)}
+.feed-health-details li b{color:var(--tx)}
+.feed-health-details summary:focus-visible{outline:3px solid var(--blue);outline-offset:3px;border-radius:3px}
+@media(max-width:650px){
+  .feed-health-strip{padding:12px 13px;margin-bottom:17px;border-radius:12px}
+  .feed-health-strip p{margin-left:17px;font-size:.72rem;line-height:1.38}
+  .feed-health-details{margin-left:17px}
+  .feed-health-topline strong{font-size:.73rem}
+}
