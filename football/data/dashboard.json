@@ -1,6 +1,6 @@
 {
   "schema_version": 7,
-  "generated_at": "2026-11-03T16:39:57.050456+01:00",
+  "generated_at": "2026-11-03T21:57:30.133308+01:00",
   "season": 2026,
   "quiniela": {
     "jornada": "19",
@@ -104379,7 +104379,7 @@
   },
   "content_audit": {
     "window": "continuo",
-    "checked_at": "2026-11-03T16:14:58.723545+01:00",
+    "checked_at": "2026-11-03T21:57:34.973883+01:00",
     "matches_today": 9,
     "complete": 0,
     "incomplete": [
@@ -104389,6 +104389,7 @@
         "missing": [
           "clima",
           "once_probable",
+          "once_oficial",
           "cuotas"
         ]
       },
@@ -104398,6 +104399,7 @@
         "missing": [
           "clima",
           "once_probable",
+          "once_oficial",
           "cuotas"
         ]
       },
@@ -104406,6 +104408,8 @@
         "partido": "Feyenoord Rotterdam - FC Internazionale Milano",
         "missing": [
           "clima",
+          "once_probable",
+          "once_oficial",
           "cuotas"
         ]
       },
@@ -104413,6 +104417,7 @@
         "id": "football_data-575380",
         "partido": "FC Barcelona - Aston Villa FC",
         "missing": [
+          "once_oficial",
           "cuotas"
         ]
       },
@@ -104420,6 +104425,8 @@
         "id": "football_data-575381",
         "partido": "Club Atlético de Madrid - FC Bayern München",
         "missing": [
+          "once_probable",
+          "once_oficial",
           "cuotas"
         ]
       },
@@ -104427,6 +104434,8 @@
         "id": "football_data-575382",
         "partido": "Villarreal CF - Paris Saint-Germain FC",
         "missing": [
+          "once_probable",
+          "once_oficial",
           "cuotas"
         ]
       },
@@ -104435,6 +104444,8 @@
         "partido": "Manchester United FC - AS Roma",
         "missing": [
           "clima",
+          "once_probable",
+          "once_oficial",
           "cuotas"
         ]
       },
@@ -104443,6 +104454,8 @@
         "partido": "FK Bodø/Glimt - Lille OSC",
         "missing": [
           "clima",
+          "once_probable",
+          "once_oficial",
           "cuotas"
         ]
       },
@@ -104451,6 +104464,8 @@
         "partido": "LASK Linz - ŠK Slovan Bratislava",
         "missing": [
           "clima",
+          "once_probable",
+          "once_oficial",
           "cuotas"
         ]
       }
@@ -104488,12 +104503,11 @@
         "ok": 9
       },
       "lineup_probable": {
-        "estimated": 2,
-        "scheduled": 6,
+        "estimated": 8,
         "ok": 1
       },
       "lineup_official": {
-        "scheduled": 9
+        "missing": 9
       },
       "odds": {
         "missing": 9
@@ -133029,7 +133043,8 @@
       },
       "source_refs": {
         "football_data": "564631"
-      }
+      },
+      "api_football_fixture_id": 1570340
     },
     {
       "id": "football_data-564636",
@@ -149136,7 +149151,8 @@
       },
       "source_refs": {
         "football_data": "564655"
-      }
+      },
+      "api_football_fixture_id": 1570357
     },
     {
       "id": "football_data_uk-1299159830",
@@ -153967,7 +153983,8 @@
       },
       "source_refs": {
         "football_data": "564649"
-      }
+      },
+      "api_football_fixture_id": 1570362
     },
     {
       "id": "football_data_uk-1625096138",
@@ -156095,7 +156112,8 @@
       },
       "source_refs": {
         "football_data": "564656"
-      }
+      },
+      "api_football_fixture_id": 1570360
     },
     {
       "id": "football_data_uk-1745130232",
@@ -1038640,9 +1038658,9 @@
             "ttl_hours": 24
           },
           "lineup_official": {
-            "state": "scheduled",
-            "required": false,
-            "detail": "ventana T−60/T−30"
+            "state": "missing",
+            "required": true,
+            "detail": "sin comprobación oficial"
           },
           "odds": {
             "state": "missing",
@@ -1038655,6 +1038673,7 @@
         "missing_required": [
           "weather",
           "lineup_probable",
+          "lineup_official",
           "odds"
         ]
       },
@@ -1038665,6 +1038684,7 @@
         "required_missing": [
           "weather",
           "lineup_probable",
+          "lineup_official",
           "odds"
         ],
         "components": {
@@ -1040957,9 +1040977,9 @@
             "ttl_hours": 24
           },
           "lineup_official": {
-            "state": "scheduled",
-            "required": false,
-            "detail": "ventana T−60/T−30"
+            "state": "missing",
+            "required": true,
+            "detail": "sin comprobación oficial"
           },
           "odds": {
             "state": "missing",
@@ -1040972,6 +1040992,7 @@
         "missing_required": [
           "weather",
           "lineup_probable",
+          "lineup_official",
           "odds"
         ]
       },
@@ -1040982,6 +1041003,7 @@
         "required_missing": [
           "weather",
           "lineup_probable",
+          "lineup_official",
           "odds"
         ],
         "components": {
@@ -1042620,7 +1042642,7 @@
           "weather": false,
           "market_odds": false
         },
-        "refreshed_at": "2026-11-03T16:39:57.050456+01:00"
+        "refreshed_at": "2026-11-03T21:57:30.133308+01:00"
       },
       "prediction_factors": [
         {
@@ -1042656,7 +1042678,7 @@
           "desacuerdo alto entre modelos"
         ],
         "policy": "abstención automática por incertidumbre o falta de evidencia",
-        "refreshed_at": "2026-11-03T16:39:57.050456+01:00"
+        "refreshed_at": "2026-11-03T21:57:30.133308+01:00"
       },
       "prediction_snapshot": {
         "generated_at": "2026-11-03T09:00:41.377524+01:00",
@@ -1043822,7 +1043844,9 @@
         "absences_checked_at": "2026-11-03T16:12:05.070284+01:00",
         "absences_check_result": "fixture_not_found",
         "player_props_checked_at": "2026-11-03T16:32:51.782803+01:00",
-        "player_props_check_result": "complete_hybrid"
+        "player_props_check_result": "complete_hybrid",
+        "fixture_checked_at": "2026-11-03T21:56:38.969189+01:00",
+        "fixture_check_result": "not_found"
       },
       "matchday_player_rates": {
         "checked_at": "2026-11-03T16:32:51.782803+01:00",
@@ -1043834,7 +1043858,7 @@
         "visitante": []
       },
       "prediction_live_refresh": {
-        "checked_at": "2026-11-03T16:39:57.050456+01:00",
+        "checked_at": "2026-11-03T21:57:30.133308+01:00",
         "cadence_target_minutes": 5,
         "model_retrained": false,
         "pure_model_probs_changed": false,
@@ -1043852,9 +1043876,9 @@
           "fixture": {
             "state": "ok",
             "required": true,
-            "checked_at": "2026-11-03T16:08:41.359805+01:00",
+            "checked_at": "2026-11-03T21:56:38.969189+01:00",
             "source": "football_data",
-            "detail": "calendario cargado"
+            "detail": "not_found"
           },
           "weather": {
             "state": "missing",
@@ -1043873,18 +1043897,18 @@
             "ttl_hours": 12
           },
           "lineup_probable": {
-            "state": "scheduled",
-            "required": false,
+            "state": "estimated",
+            "required": true,
             "checked_at": "2026-11-03T16:12:09.253171+01:00",
             "source": "Gemini",
-            "detail": "ventana T−3h",
+            "detail": "solo estimación",
             "freshness_known": true,
             "ttl_hours": 24
           },
           "lineup_official": {
-            "state": "scheduled",
-            "required": false,
-            "detail": "ventana T−60/T−30"
+            "state": "missing",
+            "required": true,
+            "detail": "sin comprobación oficial"
           },
           "odds": {
             "state": "missing",
@@ -1043896,22 +1043920,26 @@
         },
         "missing_required": [
           "weather",
+          "lineup_probable",
+          "lineup_official",
           "odds"
         ]
       },
       "match_quality": {
-        "score": 40.0,
+        "score": 46.8,
         "tier": "insufficient",
-        "verified": 0.4,
+        "verified": 0.468,
         "required_missing": [
           "weather",
+          "lineup_probable",
+          "lineup_official",
           "odds"
         ],
         "components": {
           "fixture": 100.0,
           "weather": 0.0,
           "absences": 100.0,
-          "lineup_probable": 0.0,
+          "lineup_probable": 45.0,
           "lineup_official": 0.0,
           "odds": 0.0,
           "players": 50.0
@@ -1043938,7 +1043966,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "dixon-coles",
-      "updatedAt": "2026-11-03T16:25:38.171464+01:00",
+      "updatedAt": "2026-11-03T21:56:38.969189+01:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -1045784,40 +1045812,40 @@
       },
       "weather": {
         "forecast_for": "2026-11-03T21:00:00",
-        "temperature_c": 11.4,
+        "temperature_c": 11.8,
         "apparent_temperature_c": 10.0,
-        "humidity_pct": 86,
-        "precipitation_mm": 2.4,
-        "precipitation_probability_pct": 100,
-        "wind_kmh": 8.1,
-        "weather_code": 61,
+        "humidity_pct": 82,
+        "precipitation_mm": 3.0,
+        "precipitation_probability_pct": 95,
+        "wind_kmh": 10.8,
+        "weather_code": 63,
         "heat_stress": {
           "level": "bajo",
-          "index": 12.4,
+          "index": 12.7,
           "method": "temperatura aparente + humedad; no es WBGT"
         },
         "source": "Open-Meteo",
         "source_url": "https://open-meteo.com/",
         "license": "CC BY 4.0",
         "model_use": "ajuste_cuantitativo_contextual",
-        "source_updated_at": "2026-11-03T16:25:38.171464+01:00"
+        "source_updated_at": "2026-11-03T21:56:38.969189+01:00"
       },
       "weather_adjustment": {
         "applied": true,
-        "weather_source_updated_at": "2026-11-03T16:25:38.171464+01:00",
+        "weather_source_updated_at": "2026-11-03T21:56:38.969189+01:00",
         "weather_forecast_for": "2026-11-03T21:00:00",
         "weather_source": "Open-Meteo",
         "weather_snapshot": {
           "forecast_for": "2026-11-03T21:00:00",
-          "temperature_c": 11.4,
+          "temperature_c": 11.8,
           "apparent_temperature_c": 10.0,
-          "humidity_pct": 86,
-          "precipitation_mm": 2.4,
-          "precipitation_probability_pct": 100,
-          "wind_kmh": 8.1,
-          "weather_code": 61
+          "humidity_pct": 82,
+          "precipitation_mm": 3.0,
+          "precipitation_probability_pct": 95,
+          "wind_kmh": 10.8,
+          "weather_code": 63
         },
-        "applied_at": "2026-11-03T16:39:57.050456+01:00",
+        "applied_at": "2026-11-03T21:57:30.133308+01:00",
         "reason": null,
         "reasons": [
           "lluvia probable/intensa"
@@ -1047851,7 +1047879,7 @@
           "weather": true,
           "market_odds": false
         },
-        "refreshed_at": "2026-11-03T16:39:57.050456+01:00"
+        "refreshed_at": "2026-11-03T21:57:30.133308+01:00"
       },
       "prediction_factors": [
         {
@@ -1047887,7 +1047915,7 @@
           "desacuerdo alto entre modelos"
         ],
         "policy": "abstención automática por incertidumbre o falta de evidencia",
-        "refreshed_at": "2026-11-03T16:39:57.050456+01:00"
+        "refreshed_at": "2026-11-03T21:57:30.133308+01:00"
       },
       "prediction_snapshot": {
         "generated_at": "2026-11-03T09:00:41.377524+01:00",
@@ -1050137,22 +1050165,24 @@
         "fixture": {
           "source": "football_data",
           "source_id": "575380",
-          "available_at": "2026-11-03T15:25:38.171464+00:00",
+          "available_at": "2026-11-03T20:56:38.969189+00:00",
           "phase": "prematch",
           "quality": "observed",
-          "observed_at": "2026-11-03T15:25:38.171464+00:00"
+          "observed_at": "2026-11-03T20:56:38.969189+00:00"
         }
       },
       "source_refs": {
         "football_data": "575380"
       },
       "operational_checks": {
-        "weather_checked_at": "2026-11-03T16:38:56.154342+01:00",
+        "weather_checked_at": "2026-11-03T21:56:38.969189+01:00",
         "weather_check_result": "ok",
         "absences_checked_at": "2026-11-03T16:12:05.070284+01:00",
         "absences_check_result": "fixture_not_found",
         "player_props_checked_at": "2026-11-03T16:32:51.782803+01:00",
-        "player_props_check_result": "complete_hybrid"
+        "player_props_check_result": "complete_hybrid",
+        "fixture_checked_at": "2026-11-03T21:56:38.969189+01:00",
+        "fixture_check_result": "not_found"
       },
       "current_squads": {
         "season_context": 2026,
@@ -1050170,7 +1050200,7 @@
       },
       "value": [],
       "prediction_live_refresh": {
-        "checked_at": "2026-11-03T16:39:57.050456+01:00",
+        "checked_at": "2026-11-03T21:57:30.133308+01:00",
         "cadence_target_minutes": 5,
         "model_retrained": false,
         "pure_model_probs_changed": false,
@@ -1050188,14 +1050218,14 @@
           "fixture": {
             "state": "ok",
             "required": true,
-            "checked_at": "2026-11-03T16:25:38.171464+01:00",
+            "checked_at": "2026-11-03T21:56:38.969189+01:00",
             "source": "football_data",
-            "detail": "calendario cargado"
+            "detail": "not_found"
           },
           "weather": {
             "state": "ok",
             "required": true,
-            "checked_at": "2026-11-03T16:25:38.171464+01:00",
+            "checked_at": "2026-11-03T21:56:38.969189+01:00",
             "source": "Open-Meteo",
             "detail": "ok",
             "freshness_known": true,
@@ -1050212,7 +1050242,7 @@
           },
           "lineup_probable": {
             "state": "ok",
-            "required": false,
+            "required": true,
             "checked_at": "2026-11-03T16:12:09.253171+01:00",
             "source": "Gemini",
             "detail": "XI respaldado por fuente",
@@ -1050220,9 +1050250,9 @@
             "ttl_hours": 24
           },
           "lineup_official": {
-            "state": "scheduled",
-            "required": false,
-            "detail": "ventana T−60/T−30"
+            "state": "missing",
+            "required": true,
+            "detail": "sin comprobación oficial"
           },
           "odds": {
             "state": "missing",
@@ -1050233,6 +1050263,7 @@
           }
         },
         "missing_required": [
+          "lineup_official",
           "odds"
         ]
       },
@@ -1050241,6 +1050272,7 @@
         "tier": "limited",
         "verified": 0.65,
         "required_missing": [
+          "lineup_official",
           "odds"
         ],
         "components": {
@@ -1050274,7 +1050306,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "dixon-coles",
-      "updatedAt": "2026-11-03T16:19:06.420457+01:00",
+      "updatedAt": "2026-11-03T21:56:38.969189+01:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -1051044,40 +1051076,40 @@
       },
       "weather": {
         "forecast_for": "2026-11-03T21:00:00",
-        "temperature_c": 8.6,
-        "apparent_temperature_c": 5.5,
-        "humidity_pct": 48,
+        "temperature_c": 8.9,
+        "apparent_temperature_c": 6.0,
+        "humidity_pct": 51,
         "precipitation_mm": 0.0,
         "precipitation_probability_pct": 0,
-        "wind_kmh": 5.2,
+        "wind_kmh": 4.4,
         "weather_code": 0,
         "heat_stress": {
           "level": "bajo",
-          "index": 8.6,
+          "index": 8.9,
           "method": "temperatura aparente + humedad; no es WBGT"
         },
         "source": "Open-Meteo",
         "source_url": "https://open-meteo.com/",
         "license": "CC BY 4.0",
         "model_use": "ajuste_cuantitativo_contextual",
-        "source_updated_at": "2026-11-03T16:19:06.420457+01:00"
+        "source_updated_at": "2026-11-03T21:56:38.969189+01:00"
       },
       "weather_adjustment": {
         "applied": false,
-        "weather_source_updated_at": "2026-11-03T16:19:06.420457+01:00",
+        "weather_source_updated_at": "2026-11-03T21:56:38.969189+01:00",
         "weather_forecast_for": "2026-11-03T21:00:00",
         "weather_source": "Open-Meteo",
         "weather_snapshot": {
           "forecast_for": "2026-11-03T21:00:00",
-          "temperature_c": 8.6,
-          "apparent_temperature_c": 5.5,
-          "humidity_pct": 48,
+          "temperature_c": 8.9,
+          "apparent_temperature_c": 6.0,
+          "humidity_pct": 51,
           "precipitation_mm": 0.0,
           "precipitation_probability_pct": 0,
-          "wind_kmh": 5.2,
+          "wind_kmh": 4.4,
           "weather_code": 0
         },
-        "applied_at": "2026-11-03T16:39:57.050456+01:00",
+        "applied_at": "2026-11-03T21:57:30.133308+01:00",
         "reason": "condiciones dentro de umbrales neutros",
         "reasons": [],
         "multipliers": {
@@ -1051931,7 +1051963,7 @@
           "weather": true,
           "market_odds": false
         },
-        "refreshed_at": "2026-11-03T16:39:57.050456+01:00"
+        "refreshed_at": "2026-11-03T21:57:30.133308+01:00"
       },
       "prediction_factors": [
         {
@@ -1051965,7 +1051997,7 @@
         "label": "Pronóstico publicable",
         "reasons": [],
         "policy": "abstención automática por incertidumbre o falta de evidencia",
-        "refreshed_at": "2026-11-03T16:39:57.050456+01:00"
+        "refreshed_at": "2026-11-03T21:57:30.133308+01:00"
       },
       "prediction_snapshot": {
         "generated_at": "2026-11-03T09:00:41.377524+01:00",
@@ -1053125,22 +1053157,24 @@
         "fixture": {
           "source": "football_data",
           "source_id": "575381",
-          "available_at": "2026-11-03T15:19:06.420457+00:00",
+          "available_at": "2026-11-03T20:56:38.969189+00:00",
           "phase": "prematch",
           "quality": "observed",
-          "observed_at": "2026-11-03T15:19:06.420457+00:00"
+          "observed_at": "2026-11-03T20:56:38.969189+00:00"
         }
       },
       "source_refs": {
         "football_data": "575381"
       },
       "operational_checks": {
-        "weather_checked_at": "2026-11-03T16:38:56.154342+01:00",
+        "weather_checked_at": "2026-11-03T21:56:38.969189+01:00",
         "weather_check_result": "ok",
         "absences_checked_at": "2026-11-03T16:12:05.070284+01:00",
         "absences_check_result": "fixture_not_found",
         "player_props_checked_at": "2026-11-03T16:32:51.782803+01:00",
-        "player_props_check_result": "complete_hybrid"
+        "player_props_check_result": "complete_hybrid",
+        "fixture_checked_at": "2026-11-03T21:56:38.969189+01:00",
+        "fixture_check_result": "not_found"
       },
       "current_squads": {
         "season_context": 2026,
@@ -1053158,7 +1053192,7 @@
       },
       "value": [],
       "prediction_live_refresh": {
-        "checked_at": "2026-11-03T16:39:57.050456+01:00",
+        "checked_at": "2026-11-03T21:57:30.133308+01:00",
         "cadence_target_minutes": 5,
         "model_retrained": false,
         "pure_model_probs_changed": false,
@@ -1053176,14 +1053210,14 @@
           "fixture": {
             "state": "ok",
             "required": true,
-            "checked_at": "2026-11-03T16:19:06.420457+01:00",
+            "checked_at": "2026-11-03T21:56:38.969189+01:00",
             "source": "football_data",
-            "detail": "calendario cargado"
+            "detail": "not_found"
           },
           "weather": {
             "state": "ok",
             "required": true,
-            "checked_at": "2026-11-03T16:19:06.420457+01:00",
+            "checked_at": "2026-11-03T21:56:38.969189+01:00",
             "source": "Open-Meteo",
             "detail": "ok",
             "freshness_known": true,
@@ -1053199,18 +1053233,18 @@
             "ttl_hours": 12
           },
           "lineup_probable": {
-            "state": "scheduled",
-            "required": false,
+            "state": "estimated",
+            "required": true,
             "checked_at": "2026-09-10T06:57:55.233753+00:00",
             "source": "Motor estadístico local",
-            "detail": "ventana T−3h",
+            "detail": "solo estimación",
             "freshness_known": true,
             "ttl_hours": 24
           },
           "lineup_official": {
-            "state": "scheduled",
-            "required": false,
-            "detail": "ventana T−60/T−30"
+            "state": "missing",
+            "required": true,
+            "detail": "sin comprobación oficial"
           },
           "odds": {
             "state": "missing",
@@ -1053221,21 +1053255,25 @@
           }
         },
         "missing_required": [
+          "lineup_probable",
+          "lineup_official",
           "odds"
         ]
       },
       "match_quality": {
-        "score": 50.0,
+        "score": 56.8,
         "tier": "insufficient",
-        "verified": 0.5,
+        "verified": 0.568,
         "required_missing": [
+          "lineup_probable",
+          "lineup_official",
           "odds"
         ],
         "components": {
           "fixture": 100.0,
           "weather": 100.0,
           "absences": 100.0,
-          "lineup_probable": 0.0,
+          "lineup_probable": 45.0,
           "lineup_official": 0.0,
           "odds": 0.0,
           "players": 50.0
@@ -1053262,7 +1053300,7 @@
       "finished": false,
       "source": "football_data",
       "engine": "dixon-coles",
-      "updatedAt": "2026-11-03T16:19:06.420457+01:00",
+      "updatedAt": "2026-11-03T21:56:38.969189+01:00",
       "players": "pendiente_fuente_de_pago",
       "odds": "pendiente_odds_api",
       "probs": [
@@ -1055456,11 +1055494,11 @@
       "weather": {
         "forecast_for": "2026-11-03T21:00:00",
         "temperature_c": 13.7,
-        "apparent_temperature_c": 11.7,
-        "humidity_pct": 54,
+        "apparent_temperature_c": 11.8,
+        "humidity_pct": 56,
         "precipitation_mm": 0.0,
-        "precipitation_probability_pct": 3,
-        "wind_kmh": 4.6,
+        "precipitation_probability_pct": 0,
+        "wind_kmh": 4.7,
         "weather_code": 2,
         "heat_stress": {
           "level": "bajo",
@@ -1055471,24 +1055509,24 @@
         "source_url": "https://open-meteo.com/",
         "license": "CC BY 4.0",
         "model_use": "ajuste_cuantitativo_contextual",
-        "source_updated_at": "2026-11-03T16:19:06.420457+01:00"
+        "source_updated_at": "2026-11-03T21:56:38.969189+01:00"
       },
       "weather_adjustment": {
         "applied": false,
-        "weather_source_updated_at": "2026-11-03T16:19:06.420457+01:00",
+        "weather_source_updated_at": "2026-11-03T21:56:38.969189+01:00",
         "weather_forecast_for": "2026-11-03T21:00:00",
         "weather_source": "Open-Meteo",
         "weather_snapshot": {
           "forecast_for": "2026-11-03T21:00:00",
           "temperature_c": 13.7,
-          "apparent_temperature_c": 11.7,
-          "humidity_pct": 54,
+          "apparent_temperature_c": 11.8,
+          "humidity_pct": 56,
           "precipitation_mm": 0.0,
-          "precipitation_probability_pct": 3,
-          "wind_kmh": 4.6,
+          "precipitation_probability_pct": 0,
+          "wind_kmh": 4.7,
           "weather_code": 2
         },
-        "applied_at": "2026-11-03T16:39:57.050456+01:00",
+        "applied_at": "2026-11-03T21:57:30.133308+01:00",
         "reason": "condiciones dentro de umbrales neutros",
         "reasons": [],
         "multipliers": {
@@ -1057162,7 +1057200,7 @@
           "weather": true,
           "market_odds": false
         },
-        "refreshed_at": "2026-11-03T16:39:57.050456+01:00"
+        "refreshed_at": "2026-11-03T21:57:30.133308+01:00"
       },
       "prediction_factors": [
         {
@@ -1057193,7 +1057231,7 @@
           "desacuerdo alto entre modelos"
         ],
         "policy": "abstención automática por incertidumbre o falta de evidencia",
-        "refreshed_at": "2026-11-03T16:39:57.050456+01:00"
+        "refreshed_at": "2026-11-03T21:57:30.133308+01:00"
       },
       "prediction_snapshot": {
         "generated_at": "2026-11-03T09:00:41.377524+01:00",
@@ -1059330,22 +1059368,24 @@
         "fixture": {
           "source": "football_data",
           "source_id": "575382",
-          "available_at": "2026-11-03T15:19:06.420457+00:00",
+          "available_at": "2026-11-03T20:56:38.969189+00:00",
           "phase": "prematch",
           "quality": "observed",
-          "observed_at": "2026-11-03T15:19:06.420457+00:00"
+          "observed_at": "2026-11-03T20:56:38.969189+00:00"
         }
       },
       "source_refs": {
         "football_data": "575382"
       },
       "operational_checks": {
-        "weather_checked_at": "2026-11-03T16:38:56.154342+01:00",
+        "weather_checked_at": "2026-11-03T21:56:38.969189+01:00",
         "weather_check_result": "ok",
         "absences_checked_at": "2026-11-03T16:12:05.070284+01:00",
         "absences_check_result": "fixture_not_found",
         "player_props_checked_at": "2026-11-03T16:32:51.782803+01:00",
-        "player_props_check_result": "complete_hybrid"
+        "player_props_check_result": "complete_hybrid",
+        "fixture_checked_at": "2026-11-03T21:56:38.969189+01:00",
+        "fixture_check_result": "not_found"
       },
       "current_squads": {
         "season_context": 2026,
@@ -1059363,7 +1059403,7 @@
       },
       "value": [],
       "prediction_live_refresh": {
-        "checked_at": "2026-11-03T16:39:57.050456+01:00",
+        "checked_at": "2026-11-03T21:57:30.133308+01:00",
         "cadence_target_minutes": 5,
         "model_retrained": false,
         "pure_model_probs_changed": false,
@@ -1059381,14 +1059421,14 @@
           "fixture": {
             "state": "ok",
             "required": true,
-            "checked_at": "2026-11-03T16:19:06.420457+01:00",
+            "checked_at": "2026-11-03T21:56:38.969189+01:00",
             "source": "football_data",
-            "detail": "calendario cargado"
+            "detail": "not_found"
           },
           "weather": {
             "state": "ok",
             "required": true,
-            "checked_at": "2026-11-03T16:19:06.420457+01:00",
+            "checked_at": "2026-11-03T21:56:38.969189+01:00",
             "source": "Open-Meteo",
             "detail": "ok",
             "freshness_known": true,
@@ -1059404,18 +1059444,18 @@
             "ttl_hours": 12
           },
           "lineup_probable": {
-            "state": "scheduled",
-            "required": false,
+            "state": "estimated",
+            "required": true,
             "checked_at": "2026-10-05T14:40:32.522292+00:00",
             "source": "Motor estadístico local",
-            "detail": "ventana T−3h",
+            "detail": "solo estimación",
             "freshness_known": true,
             "ttl_hours": 24
           },
           "lineup_official": {
-            "state": "scheduled",
-            "required": false,
-            "detail": "ventana T−60/T−30"
+            "state": "missing",
+            "required": true,
+            "detail": "sin comprobación oficial"
           },
           "odds": {
             "state": "missing",
@@ -1059426,21 +1059466,25 @@
           }
         },
         "missing_required": [
+          "lineup_probable",
+          "lineup_official",
           "odds"
         ]
       },
       "match_quality": {
-        "score": 50.0,
+        "score": 56.8,
         "tier": "insufficient",
-        "verified": 0.5,
+        "verified": 0.568,
         "required_missing": [
+          "lineup_probable",
+          "lineup_official",
           "odds"
         ],
         "components": {
           "fixture": 100.0,
           "weather": 100.0,
           "absences": 100.0,
-          "lineup_probable": 0.0,
+          "lineup_probable": 45.0,
           "lineup_official": 0.0,
           "odds": 0.0,
           "players": 50.0
@@ -1063143,7 +1063187,7 @@
           "weather": false,
           "market_odds": false
         },
-        "refreshed_at": "2026-11-03T16:39:57.050456+01:00"
+        "refreshed_at": "2026-11-03T21:57:30.133308+01:00"
       },
       "prediction_factors": [
         {
@@ -1063177,7 +1063221,7 @@
         "label": "Pronóstico publicable",
         "reasons": [],
         "policy": "abstención automática por incertidumbre o falta de evidencia",
-        "refreshed_at": "2026-11-03T16:39:57.050456+01:00"
+        "refreshed_at": "2026-11-03T21:57:30.133308+01:00"
       },
       "prediction_snapshot": {
         "generated_at": "2026-11-03T09:00:41.377524+01:00",
@@ -1065361,7 +1065405,9 @@
         "absences_checked_at": "2026-11-03T16:12:05.070284+01:00",
         "absences_check_result": "fixture_not_found",
         "player_props_checked_at": "2026-11-03T16:32:51.782803+01:00",
-        "player_props_check_result": "complete_hybrid"
+        "player_props_check_result": "complete_hybrid",
+        "fixture_checked_at": "2026-11-03T21:56:38.969189+01:00",
+        "fixture_check_result": "not_found"
       },
       "matchday_player_rates": {
         "checked_at": "2026-11-03T16:32:51.782803+01:00",
@@ -1065373,7 +1065419,7 @@
         "visitante": []
       },
       "prediction_live_refresh": {
-        "checked_at": "2026-11-03T16:39:57.050456+01:00",
+        "checked_at": "2026-11-03T21:57:30.133308+01:00",
         "cadence_target_minutes": 5,
         "model_retrained": false,
         "pure_model_probs_changed": false,
@@ -1065391,9 +1065437,9 @@
           "fixture": {
             "state": "ok",
             "required": true,
-            "checked_at": "2026-11-03T16:08:41.359805+01:00",
+            "checked_at": "2026-11-03T21:56:38.969189+01:00",
             "source": "football_data",
-            "detail": "calendario cargado"
+            "detail": "not_found"
           },
           "weather": {
             "state": "missing",
@@ -1065412,18 +1065458,18 @@
             "ttl_hours": 12
           },
           "lineup_probable": {
-            "state": "scheduled",
-            "required": false,
+            "state": "estimated",
+            "required": true,
             "checked_at": "2026-11-03T16:12:09.253171+01:00",
             "source": "Gemini",
-            "detail": "ventana T−3h",
+            "detail": "solo estimación",
             "freshness_known": true,
             "ttl_hours": 24
           },
           "lineup_official": {
-            "state": "scheduled",
-            "required": false,
-            "detail": "ventana T−60/T−30"
+            "state": "missing",
+            "required": true,
+            "detail": "sin comprobación oficial"
           },
           "odds": {
             "state": "missing",
@@ -1065435,22 +1065481,26 @@
         },
         "missing_required": [
           "weather",
+          "lineup_probable",
+          "lineup_official",
           "odds"
         ]
       },
       "match_quality": {
-        "score": 40.0,
+        "score": 46.8,
         "tier": "insufficient",
-        "verified": 0.4,
+        "verified": 0.468,
         "required_missing": [
           "weather",
+          "lineup_probable",
+          "lineup_official",
           "odds"
         ],
         "components": {
           "fixture": 100.0,
           "weather": 0.0,
           "absences": 100.0,
-          "lineup_probable": 0.0,
+          "lineup_probable": 45.0,
           "lineup_official": 0.0,
           "odds": 0.0,
           "players": 50.0
@@ -1067013,7 +1067063,7 @@
           "weather": false,
           "market_odds": false
         },
-        "refreshed_at": "2026-11-03T16:39:57.050456+01:00"
+        "refreshed_at": "2026-11-03T21:57:30.133308+01:00"
       },
       "prediction_factors": [
         {
@@ -1067049,7 +1067099,7 @@
           "desacuerdo alto entre modelos"
         ],
         "policy": "abstención automática por incertidumbre o falta de evidencia",
-        "refreshed_at": "2026-11-03T16:39:57.050456+01:00"
+        "refreshed_at": "2026-11-03T21:57:30.133308+01:00"
       },
       "prediction_snapshot": {
         "generated_at": "2026-11-03T09:00:41.377524+01:00",
@@ -1068195,7 +1068245,9 @@
         "absences_checked_at": "2026-11-03T16:12:05.070284+01:00",
         "absences_check_result": "fixture_not_found",
         "player_props_checked_at": "2026-11-03T16:32:51.782803+01:00",
-        "player_props_check_result": "complete_hybrid"
+        "player_props_check_result": "complete_hybrid",
+        "fixture_checked_at": "2026-11-03T21:56:38.969189+01:00",
+        "fixture_check_result": "not_found"
       },
       "matchday_player_rates": {
         "checked_at": "2026-11-03T16:32:51.782803+01:00",
@@ -1068207,7 +1068259,7 @@
         "visitante": []
       },
       "prediction_live_refresh": {
-        "checked_at": "2026-11-03T16:39:57.050456+01:00",
+        "checked_at": "2026-11-03T21:57:30.133308+01:00",
         "cadence_target_minutes": 5,
         "model_retrained": false,
         "pure_model_probs_changed": false,
@@ -1068225,9 +1068277,9 @@
           "fixture": {
             "state": "ok",
             "required": true,
-            "checked_at": "2026-11-03T16:08:41.359805+01:00",
+            "checked_at": "2026-11-03T21:56:38.969189+01:00",
             "source": "football_data",
-            "detail": "calendario cargado"
+            "detail": "not_found"
           },
           "weather": {
             "state": "missing",
@@ -1068246,18 +1068298,18 @@
             "ttl_hours": 12
           },
           "lineup_probable": {
-            "state": "scheduled",
-            "required": false,
+            "state": "estimated",
+            "required": true,
             "checked_at": "2026-09-10T06:57:55.233753+00:00",
             "source": "Motor estadístico local",
-            "detail": "ventana T−3h",
+            "detail": "solo estimación",
             "freshness_known": true,
             "ttl_hours": 24
           },
           "lineup_official": {
-            "state": "scheduled",
-            "required": false,
-            "detail": "ventana T−60/T−30"
+            "state": "missing",
+            "required": true,
+            "detail": "sin comprobación oficial"
           },
           "odds": {
             "state": "missing",
@@ -1068269,22 +1068321,26 @@
         },
         "missing_required": [
           "weather",
+          "lineup_probable",
+          "lineup_official",
           "odds"
         ]
       },
       "match_quality": {
-        "score": 40.0,
+        "score": 46.8,
         "tier": "insufficient",
-        "verified": 0.4,
+        "verified": 0.468,
         "required_missing": [
           "weather",
+          "lineup_probable",
+          "lineup_official",
           "odds"
         ],
         "components": {
           "fixture": 100.0,
           "weather": 0.0,
           "absences": 100.0,
-          "lineup_probable": 0.0,
+          "lineup_probable": 45.0,
           "lineup_official": 0.0,
           "odds": 0.0,
           "players": 50.0
@@ -1069877,7 +1069933,7 @@
           "weather": false,
           "market_odds": false
         },
-        "refreshed_at": "2026-11-03T16:39:57.050456+01:00"
+        "refreshed_at": "2026-11-03T21:57:30.133308+01:00"
       },
       "prediction_factors": [
         {
@@ -1069911,7 +1069967,7 @@
         "label": "Pronóstico publicable",
         "reasons": [],
         "policy": "abstención automática por incertidumbre o falta de evidencia",
-        "refreshed_at": "2026-11-03T16:39:57.050456+01:00"
+        "refreshed_at": "2026-11-03T21:57:30.133308+01:00"
       },
       "prediction_snapshot": {
         "generated_at": "2026-11-03T09:00:41.377524+01:00",
@@ -1071040,7 +1071096,9 @@
         "absences_checked_at": "2026-11-03T16:12:05.070284+01:00",
         "absences_check_result": "fixture_not_found",
         "player_props_checked_at": "2026-11-03T16:32:51.782803+01:00",
-        "player_props_check_result": "complete_hybrid"
+        "player_props_check_result": "complete_hybrid",
+        "fixture_checked_at": "2026-11-03T21:56:38.969189+01:00",
+        "fixture_check_result": "not_found"
       },
       "matchday_player_rates": {
         "checked_at": "2026-11-03T16:32:51.782803+01:00",
@@ -1071052,7 +1071110,7 @@
         "visitante": []
       },
       "prediction_live_refresh": {
-        "checked_at": "2026-11-03T16:39:57.050456+01:00",
+        "checked_at": "2026-11-03T21:57:30.133308+01:00",
         "cadence_target_minutes": 5,
         "model_retrained": false,
         "pure_model_probs_changed": false,
@@ -1071070,9 +1071128,9 @@
           "fixture": {
             "state": "ok",
             "required": true,
-            "checked_at": "2026-11-03T16:08:41.359805+01:00",
+            "checked_at": "2026-11-03T21:56:38.969189+01:00",
             "source": "football_data",
-            "detail": "calendario cargado"
+            "detail": "not_found"
           },
           "weather": {
             "state": "missing",
@@ -1071091,18 +1071149,18 @@
             "ttl_hours": 12
           },
           "lineup_probable": {
-            "state": "scheduled",
-            "required": false,
+            "state": "estimated",
+            "required": true,
             "checked_at": "2026-11-03T16:12:09.253171+01:00",
             "source": "Gemini",
-            "detail": "ventana T−3h",
+            "detail": "solo estimación",
             "freshness_known": true,
             "ttl_hours": 24
           },
           "lineup_official": {
-            "state": "scheduled",
-            "required": false,
-            "detail": "ventana T−60/T−30"
+            "state": "missing",
+            "required": true,
+            "detail": "sin comprobación oficial"
           },
           "odds": {
             "state": "missing",
@@ -1071114,22 +1071172,26 @@
         },
         "missing_required": [
           "weather",
+          "lineup_probable",
+          "lineup_official",
           "odds"
         ]
       },
       "match_quality": {
-        "score": 40.0,
+        "score": 46.8,
         "tier": "insufficient",
-        "verified": 0.4,
+        "verified": 0.468,
         "required_missing": [
           "weather",
+          "lineup_probable",
+          "lineup_official",
           "odds"
         ],
         "components": {
           "fixture": 100.0,
           "weather": 0.0,
           "absences": 100.0,
-          "lineup_probable": 0.0,
+          "lineup_probable": 45.0,
           "lineup_official": 0.0,
           "odds": 0.0,
           "players": 50.0
@@ -1072690,6 +1072752,10 @@
         "season_context": 2026,
         "local": null,
         "visitante": null
+      },
+      "operational_checks": {
+        "absences_checked_at": "2026-11-03T21:57:00.235426+01:00",
+        "absences_check_result": "fixture_not_found"
       }
     },
     {
@@ -1074231,6 +1074297,10 @@
         "season_context": 2026,
         "local": null,
         "visitante": null
+      },
+      "operational_checks": {
+        "absences_checked_at": "2026-11-03T21:57:00.235426+01:00",
+        "absences_check_result": "fixture_not_found"
       }
     },
     {
@@ -1076788,6 +1076858,10 @@
         "season_context": 2026,
         "local": null,
         "visitante": null
+      },
+      "operational_checks": {
+        "absences_checked_at": "2026-11-03T21:57:00.235426+01:00",
+        "absences_check_result": "fixture_not_found"
       }
     },
     {
@@ -1078338,6 +1078412,10 @@
         "season_context": 2026,
         "local": null,
         "visitante": null
+      },
+      "operational_checks": {
+        "absences_checked_at": "2026-11-03T21:57:00.235426+01:00",
+        "absences_check_result": "fixture_not_found"
       }
     },
     {
@@ -1079890,6 +1079968,10 @@
         "season_context": 2026,
         "local": null,
         "visitante": null
+      },
+      "operational_checks": {
+        "absences_checked_at": "2026-11-03T21:57:00.235426+01:00",
+        "absences_check_result": "fixture_not_found"
       }
     },
     {
@@ -1081446,6 +1081528,10 @@
         "season_context": 2026,
         "local": null,
         "visitante": null
+      },
+      "operational_checks": {
+        "absences_checked_at": "2026-11-03T21:57:00.235426+01:00",
+        "absences_check_result": "fixture_not_found"
       }
     },
     {
@@ -1082983,6 +1083069,10 @@
         "season_context": 2026,
         "local": null,
         "visitante": null
+      },
+      "operational_checks": {
+        "absences_checked_at": "2026-11-03T21:57:00.235426+01:00",
+        "absences_check_result": "fixture_not_found"
       }
     },
     {
@@ -1084520,6 +1084610,10 @@
         "season_context": 2026,
         "local": null,
         "visitante": null
+      },
+      "operational_checks": {
+        "absences_checked_at": "2026-11-03T21:57:00.235426+01:00",
+        "absences_check_result": "fixture_not_found"
       }
     },
     {
@@ -1087034,6 +1087128,10 @@
         "season_context": 2026,
         "local": null,
         "visitante": null
+      },
+      "operational_checks": {
+        "absences_checked_at": "2026-11-03T21:57:00.235426+01:00",
+        "absences_check_result": "fixture_not_found"
       }
     },
     {
@@ -1550959,7 +1551057,7 @@
       "daily_remaining": 99,
       "minute_limit": 10,
       "minute_remaining": 9,
-      "checked_at": "2026-11-02T17:32:21.646447+00:00",
+      "checked_at": "2026-11-03T20:56:43.563717+00:00",
       "policy": "polling prepartido prioritario + backoff por cuota restante"
     },
     "the_odds_api": {
@@ -1550996,7 +1551094,7 @@
       "predictions": 599,
       "previews": 608,
       "lineups": 600,
-      "upcoming_content_required": 359,
+      "upcoming_content_required": 357,
       "blank_matches": 0,
       "empty_lineups_upcoming": 0,
       "leagues": [
@@ -1551035,14 +1551133,14 @@
     }
   },
   "feature_truth_table": {
-    "generated_at": "2026-11-03T16:39:57.050456+01:00",
+    "generated_at": "2026-11-03T21:57:30.133308+01:00",
     "principle": "candidate -> leakage-safe snapshot -> walk-forward -> compare vs accepted engine + no-vig market -> promote only on improvement",
     "eligible_matches": 359,
     "features": [
       {
         "feature": "dixon_coles_score_model",
         "source": "Resultados históricos reales · Football-Data/API-Football + score model Dixon-Coles",
-        "available_at": "2026-11-03T16:39:57.050456+01:00",
+        "available_at": "2026-11-03T21:57:30.133308+01:00",
         "coverage": {
           "covered": 359,
           "eligible": 359,
@@ -1551064,7 +1551162,7 @@
       {
         "feature": "elo",
         "source": "Resultados históricos reales transformados en rating Elo",
-        "available_at": "2026-11-03T16:39:57.050456+01:00",
+        "available_at": "2026-11-03T21:57:30.133308+01:00",
         "coverage": {
           "covered": 359,
           "eligible": 359,
@@ -1551085,7 +1551183,7 @@
       {
         "feature": "team_stat_model",
         "source": "football-data.co.uk · históricos de remates, SOT, córners, faltas y tarjetas",
-        "available_at": "2026-11-03T16:39:57.050456+01:00",
+        "available_at": "2026-11-03T21:57:30.133308+01:00",
         "coverage": {
           "covered": 270,
           "eligible": 359,
@@ -1551169,7 +1551267,7 @@
       {
         "feature": "weather_forecast",
         "source": "Open-Meteo forecast horario; histórico archivado separado",
-        "available_at": "2026-11-03T21:00:00",
+        "available_at": "2026-11-03T21:56:38.969189+01:00",
         "coverage": {
           "covered": 3,
           "eligible": 359,
@@ -1551231,7 +1551329,7 @@
       {
         "feature": "tactical_matchup",
         "source": "Perfiles observados casa/fuera derivados de football-data.co.uk",
-        "available_at": "2026-11-03T16:39:57.050456+01:00",
+        "available_at": "2026-11-03T21:57:30.133308+01:00",
         "coverage": {
           "covered": 270,
           "eligible": 359,
