@@ -1,6 +1,6 @@
 {
   "schema_version": 7,
-  "generated_at": "2026-11-06T04:42:55.556350+01:00",
+  "generated_at": "2026-11-06T04:48:59.626278+01:00",
   "season": 2026,
   "quiniela": {
     "jornada": "20",
@@ -1069877,9 +1069877,9 @@
           ]
         },
         "display_warning": "XI probable reconstruido con la plantilla vigente: se sustituyeron jugadores que ya no constan en el club por titulares probables de la plantilla actual.",
-        "critical_probable_checked_at": "2026-11-06T02:47:04.352754+01:00",
-        "critical_media_fingerprint": "aa8818900896344a",
-        "critical_media_fingerprint_previous": "aa8818900896344a",
+        "critical_probable_checked_at": "2026-11-06T04:48:24.151082+01:00",
+        "critical_media_fingerprint": "82c9e263fe1bc80c",
+        "critical_media_fingerprint_previous": "82c9e263fe1bc80c",
         "position_source": "model_unverified",
         "position_history_supported": 0,
         "position_history_overrides": 0,
@@ -1070011,7 +1070011,7 @@
         "source_updated_at": "2026-11-06T02:47:04.352754+01:00",
         "critical_probable_generated_at": "2026-11-06T02:47:04.352754+01:00",
         "player_props_source": "Predictivo híbrido · 0/22 con muestra individual real",
-        "player_props_checked_at": "2026-11-06T04:25:49.624908+01:00",
+        "player_props_checked_at": "2026-11-06T04:48:24.151082+01:00",
         "player_props_lineup_status": "estimado"
       },
       "venue_meta": {
@@ -1070806,7 +1070806,7 @@
           "weather": false,
           "market_odds": false
         },
-        "refreshed_at": "2026-11-06T04:42:55.556350+01:00"
+        "refreshed_at": "2026-11-06T04:48:59.626278+01:00"
       },
       "prediction_factors": [
         {
@@ -1070850,7 +1070850,7 @@
         "label": "Pronóstico publicable",
         "reasons": [],
         "policy": "abstención automática por incertidumbre o falta de evidencia",
-        "refreshed_at": "2026-11-06T04:42:55.556350+01:00"
+        "refreshed_at": "2026-11-06T04:48:59.626278+01:00"
       },
       "state_simulation": {
         "method": "monte_carlo_5min_game_state_v1",
@@ -1072110,11 +1072110,11 @@
       "operational_checks": {
         "absences_checked_at": "2026-11-06T04:25:46.030791+01:00",
         "absences_check_result": "fixture_not_found",
-        "player_props_checked_at": "2026-11-06T04:25:49.624908+01:00",
+        "player_props_checked_at": "2026-11-06T04:48:24.151082+01:00",
         "player_props_check_result": "complete_hybrid"
       },
       "matchday_player_rates": {
-        "checked_at": "2026-11-06T04:25:49.624908+01:00",
+        "checked_at": "2026-11-06T04:48:24.151082+01:00",
         "source": "API-Football · players",
         "season": 2026,
         "league_id": 140,
@@ -1072123,7 +1072123,7 @@
         "visitante": []
       },
       "prediction_live_refresh": {
-        "checked_at": "2026-11-06T04:42:55.556350+01:00",
+        "checked_at": "2026-11-06T04:48:59.626278+01:00",
         "cadence_target_minutes": 5,
         "model_retrained": false,
         "pure_model_probs_changed": false,
@@ -1535443,7 +1535443,7 @@
       "policy": "TTL dinámico por kickoff y créditos restantes"
     },
     "current_squads": {
-      "checked_at": "2026-11-06T04:25:49.624908+01:00",
+      "checked_at": "2026-11-06T04:48:24.151082+01:00",
       "season_context": 2026,
       "scope": "LaLiga+Segunda completas; Champions/próximos por fallback",
       "roster_ttl_hours": 24,
@@ -1535508,14 +1535508,14 @@
     }
   },
   "feature_truth_table": {
-    "generated_at": "2026-11-06T04:42:55.556350+01:00",
+    "generated_at": "2026-11-06T04:48:59.626278+01:00",
     "principle": "candidate -> leakage-safe snapshot -> walk-forward -> compare vs accepted engine + no-vig market -> promote only on improvement",
     "eligible_matches": 341,
     "features": [
       {
         "feature": "dixon_coles_score_model",
         "source": "Resultados históricos reales · Football-Data/API-Football + score model Dixon-Coles",
-        "available_at": "2026-11-06T04:42:55.556350+01:00",
+        "available_at": "2026-11-06T04:48:59.626278+01:00",
         "coverage": {
           "covered": 341,
           "eligible": 341,
@@ -1535537,7 +1535537,7 @@
       {
         "feature": "elo",
         "source": "Resultados históricos reales transformados en rating Elo",
-        "available_at": "2026-11-06T04:42:55.556350+01:00",
+        "available_at": "2026-11-06T04:48:59.626278+01:00",
         "coverage": {
           "covered": 341,
           "eligible": 341,
@@ -1535558,7 +1535558,7 @@
       {
         "feature": "team_stat_model",
         "source": "football-data.co.uk · históricos de remates, SOT, córners, faltas y tarjetas",
-        "available_at": "2026-11-06T04:42:55.556350+01:00",
+        "available_at": "2026-11-06T04:48:59.626278+01:00",
         "coverage": {
           "covered": 270,
           "eligible": 341,
@@ -1535704,7 +1535704,7 @@
       {
         "feature": "tactical_matchup",
         "source": "Perfiles observados casa/fuera derivados de football-data.co.uk",
-        "available_at": "2026-11-06T04:42:55.556350+01:00",
+        "available_at": "2026-11-06T04:48:59.626278+01:00",
         "coverage": {
           "covered": 270,
           "eligible": 341,
