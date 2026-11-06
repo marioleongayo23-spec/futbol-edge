@@ -1,6 +1,6 @@
 {
   "schema_version": 7,
-  "generated_at": "2026-11-06T16:19:21.571625+01:00",
+  "generated_at": "2026-11-06T16:25:22.093273+01:00",
   "season": 2026,
   "quiniela": {
     "jornada": "20",
@@ -1069163,7 +1069163,7 @@
           "modelProb": 0.4689,
           "edge": 0.144,
           "weather_adjusted": true,
-          "prediction_refreshed_at": "2026-11-06T16:19:21.571625+01:00"
+          "prediction_refreshed_at": "2026-11-06T16:25:22.093273+01:00"
         },
         {
           "market": "1x2",
@@ -1069186,7 +1069186,7 @@
           "modelProb": 0.5311,
           "edge": -0.217,
           "weather_adjusted": true,
-          "prediction_refreshed_at": "2026-11-06T16:19:21.571625+01:00"
+          "prediction_refreshed_at": "2026-11-06T16:25:22.093273+01:00"
         }
       ],
       "prediction_history": [
@@ -1072543,7 +1072543,7 @@
           "weather": true,
           "market_odds": false
         },
-        "refreshed_at": "2026-11-06T16:19:21.571625+01:00"
+        "refreshed_at": "2026-11-06T16:25:22.093273+01:00"
       },
       "prediction_factors": [
         {
@@ -1072587,7 +1072587,7 @@
         "label": "Pronóstico publicable",
         "reasons": [],
         "policy": "abstención automática por incertidumbre o falta de evidencia",
-        "refreshed_at": "2026-11-06T16:19:21.571625+01:00"
+        "refreshed_at": "2026-11-06T16:25:22.093273+01:00"
       },
       "prediction_snapshot": {
         "generated_at": "2026-11-06T09:00:41.970060+01:00",
@@ -1074137,7 +1074137,7 @@
           "wind_kmh": 2.6,
           "weather_code": 3
         },
-        "applied_at": "2026-11-06T16:19:21.571625+01:00",
+        "applied_at": "2026-11-06T16:25:22.093273+01:00",
         "reason": "condiciones dentro de umbrales neutros",
         "reasons": [],
         "multipliers": {
@@ -1074969,7 +1074969,7 @@
         "football_data": "564740"
       },
       "operational_checks": {
-        "weather_checked_at": "2026-11-06T16:18:43.757319+01:00",
+        "weather_checked_at": "2026-11-06T16:24:46.582572+01:00",
         "weather_check_result": "ok",
         "absences_checked_at": "2026-11-06T16:09:07.585845+01:00",
         "absences_check_result": "fixture_not_found",
@@ -1075367,7 +1075367,7 @@
         "visitante": []
       },
       "prediction_live_refresh": {
-        "checked_at": "2026-11-06T16:19:21.571625+01:00",
+        "checked_at": "2026-11-06T16:25:22.093273+01:00",
         "cadence_target_minutes": 5,
         "model_retrained": false,
         "pure_model_probs_changed": false,
@@ -1576484,14 +1576484,14 @@
     }
   },
   "feature_truth_table": {
-    "generated_at": "2026-11-06T16:19:21.571625+01:00",
+    "generated_at": "2026-11-06T16:25:22.093273+01:00",
     "principle": "candidate -> leakage-safe snapshot -> walk-forward -> compare vs accepted engine + no-vig market -> promote only on improvement",
     "eligible_matches": 349,
     "features": [
       {
         "feature": "dixon_coles_score_model",
         "source": "Resultados históricos reales · Football-Data/API-Football + score model Dixon-Coles",
-        "available_at": "2026-11-06T16:19:21.571625+01:00",
+        "available_at": "2026-11-06T16:25:22.093273+01:00",
         "coverage": {
           "covered": 349,
           "eligible": 349,
@@ -1576513,7 +1576513,7 @@
       {
         "feature": "elo",
         "source": "Resultados históricos reales transformados en rating Elo",
-        "available_at": "2026-11-06T16:19:21.571625+01:00",
+        "available_at": "2026-11-06T16:25:22.093273+01:00",
         "coverage": {
           "covered": 349,
           "eligible": 349,
@@ -1576534,7 +1576534,7 @@
       {
         "feature": "team_stat_model",
         "source": "football-data.co.uk · históricos de remates, SOT, córners, faltas y tarjetas",
-        "available_at": "2026-11-06T16:19:21.571625+01:00",
+        "available_at": "2026-11-06T16:25:22.093273+01:00",
         "coverage": {
           "covered": 278,
           "eligible": 349,
@@ -1576680,7 +1576680,7 @@
       {
         "feature": "tactical_matchup",
         "source": "Perfiles observados casa/fuera derivados de football-data.co.uk",
-        "available_at": "2026-11-06T16:19:21.571625+01:00",
+        "available_at": "2026-11-06T16:25:22.093273+01:00",
         "coverage": {
           "covered": 278,
           "eligible": 349,
