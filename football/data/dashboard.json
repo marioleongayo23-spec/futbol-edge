@@ -1,6 +1,6 @@
 {
   "schema_version": 7,
-  "generated_at": "2026-11-08T20:36:22.410102+01:00",
+  "generated_at": "2026-11-08T23:51:39.627114+01:00",
   "season": 2026,
   "quiniela": {
     "jornada": "21",
@@ -1135897,7 +1135897,7 @@
       "operational_checks": {
         "weather_checked_at": "2026-11-08T20:35:49.196403+01:00",
         "weather_check_result": "ok",
-        "fixture_checked_at": "2026-11-08T20:35:49.196403+01:00",
+        "fixture_checked_at": "2026-11-08T23:51:24.609975+01:00",
         "fixture_check_result": "not_found",
         "lineup_checked_at": "2026-11-08T20:35:49.196403+01:00",
         "lineup_check_result": "fixture_not_found",
@@ -1136422,7 +1136422,7 @@
           "fixture": {
             "state": "ok",
             "required": true,
-            "checked_at": "2026-11-08T20:35:49.196403+01:00",
+            "checked_at": "2026-11-08T23:51:24.609975+01:00",
             "source": "football_data",
             "detail": "not_found"
           },
@@ -1140346,7 +1140346,7 @@
         "visitante": null
       },
       "operational_checks": {
-        "absences_checked_at": "2026-11-08T20:13:42.909992+01:00",
+        "absences_checked_at": "2026-11-08T23:51:39.627114+01:00",
         "absences_check_result": "fixture_not_found"
       }
     },
@@ -1581651,7 +1581651,7 @@
       "daily_remaining": 99,
       "minute_limit": 10,
       "minute_remaining": 9,
-      "checked_at": "2026-11-08T19:35:53.440858+00:00",
+      "checked_at": "2026-11-08T22:51:28.482967+00:00",
       "policy": "polling prepartido prioritario + backoff por cuota restante"
     },
     "the_odds_api": {
@@ -1581727,14 +1581727,14 @@
     }
   },
   "feature_truth_table": {
-    "generated_at": "2026-11-08T20:36:22.410102+01:00",
+    "generated_at": "2026-11-08T23:51:39.627114+01:00",
     "principle": "candidate -> leakage-safe snapshot -> walk-forward -> compare vs accepted engine + no-vig market -> promote only on improvement",
     "eligible_matches": 340,
     "features": [
       {
         "feature": "dixon_coles_score_model",
         "source": "Resultados históricos reales · Football-Data/API-Football + score model Dixon-Coles",
-        "available_at": "2026-11-08T20:36:22.410102+01:00",
+        "available_at": "2026-11-08T23:51:39.627114+01:00",
         "coverage": {
           "covered": 340,
           "eligible": 340,
@@ -1581756,7 +1581756,7 @@
       {
         "feature": "elo",
         "source": "Resultados históricos reales transformados en rating Elo",
-        "available_at": "2026-11-08T20:36:22.410102+01:00",
+        "available_at": "2026-11-08T23:51:39.627114+01:00",
         "coverage": {
           "covered": 340,
           "eligible": 340,
@@ -1581777,7 +1581777,7 @@
       {
         "feature": "team_stat_model",
         "source": "football-data.co.uk · históricos de remates, SOT, córners, faltas y tarjetas",
-        "available_at": "2026-11-08T20:36:22.410102+01:00",
+        "available_at": "2026-11-08T23:51:39.627114+01:00",
         "coverage": {
           "covered": 269,
           "eligible": 340,
@@ -1581923,7 +1581923,7 @@
       {
         "feature": "tactical_matchup",
         "source": "Perfiles observados casa/fuera derivados de football-data.co.uk",
-        "available_at": "2026-11-08T20:36:22.410102+01:00",
+        "available_at": "2026-11-08T23:51:39.627114+01:00",
         "coverage": {
           "covered": 269,
           "eligible": 340,
