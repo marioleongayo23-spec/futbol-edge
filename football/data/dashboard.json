@@ -1,6 +1,6 @@
 {
   "schema_version": 7,
-  "generated_at": "2026-11-16T01:28:28.137384+01:00",
+  "generated_at": "2026-11-16T01:32:14.499659+01:00",
   "season": 2026,
   "quiniela": {
     "jornada": "22",
@@ -1174079,27 +1174079,27 @@
         "status": "estimado",
         "evidence": "baja",
         "home": {
-          "key_players": 0,
-          "expected_minutes_avg": null,
-          "starter_probability_avg_pct": null,
-          "attack_presence_index": null,
+          "key_players": 11,
+          "expected_minutes_avg": 76.0,
+          "starter_probability_avg_pct": 74,
+          "attack_presence_index": 19.41,
           "listed_absences": 0,
           "official_absences": 0,
           "confidence_penalty_pp": 0.0
         },
         "away": {
-          "key_players": 0,
-          "expected_minutes_avg": null,
-          "starter_probability_avg_pct": null,
-          "attack_presence_index": null,
+          "key_players": 11,
+          "expected_minutes_avg": 76.0,
+          "starter_probability_avg_pct": 74,
+          "attack_presence_index": 15.47,
           "listed_absences": 0,
           "official_absences": 0,
           "confidence_penalty_pp": 0.0
         },
-        "attack_presence_edge": null,
+        "attack_presence_edge": 3.94,
         "confidence_penalty_pp": 5.0,
         "probability_adjustment": "not_applied",
-        "method": "minutos × probabilidad de titularidad × producción observada; las bajas oficiales penalizan confianza. No altera el 1X2 sin validación histórica."
+        "method": "actualización intradía de minutos/producción/bajas; no altera 1X2 puro sin gate histórico"
       },
       "state_simulation": {
         "method": "monte_carlo_5min_game_state_v1",
@@ -1174177,7 +1174177,7 @@
         }
       },
       "prediction_confidence": {
-        "score": 73,
+        "score": 74,
         "level": "alta",
         "model_disagreement_pp": 3.5,
         "availability_penalty_pp": 5.0,
@@ -1174191,7 +1174191,8 @@
           "official_lineup": false,
           "weather": false,
           "market_odds": true
-        }
+        },
+        "refreshed_at": "2026-11-16T01:32:14.499659+01:00"
       },
       "prediction_factors": [
         {
@@ -1174229,7 +1174230,8 @@
         "decision": "eligible",
         "label": "Pronóstico publicable",
         "reasons": [],
-        "policy": "abstención automática por incertidumbre o falta de evidencia"
+        "policy": "abstención automática por incertidumbre o falta de evidencia",
+        "refreshed_at": "2026-11-16T01:32:14.499659+01:00"
       },
       "prediction_snapshot": {
         "generated_at": "2026-11-13T16:24:01.612530+01:00",
@@ -1175923,6 +1175925,18 @@
           "odds": 100.0,
           "players": 50.0
         }
+      },
+      "prediction_live_refresh": {
+        "checked_at": "2026-11-16T01:32:14.499659+01:00",
+        "cadence_target_minutes": 5,
+        "model_retrained": false,
+        "pure_model_probs_changed": false,
+        "reacts_to": [
+          "weather",
+          "lineup",
+          "absences",
+          "market"
+        ]
       }
     },
     {
@@ -1638186,14 +1638200,14 @@
     }
   },
   "feature_truth_table": {
-    "generated_at": "2026-11-16T01:28:28.137384+01:00",
+    "generated_at": "2026-11-16T01:32:14.499659+01:00",
     "principle": "candidate -> leakage-safe snapshot -> walk-forward -> compare vs accepted engine + no-vig market -> promote only on improvement",
     "eligible_matches": 342,
     "features": [
       {
         "feature": "dixon_coles_score_model",
         "source": "Resultados históricos reales · Football-Data/API-Football + score model Dixon-Coles",
-        "available_at": "2026-11-16T01:28:28.137384+01:00",
+        "available_at": "2026-11-16T01:32:14.499659+01:00",
         "coverage": {
           "covered": 342,
           "eligible": 342,
@@ -1638215,7 +1638229,7 @@
       {
         "feature": "elo",
         "source": "Resultados históricos reales transformados en rating Elo",
-        "available_at": "2026-11-16T01:28:28.137384+01:00",
+        "available_at": "2026-11-16T01:32:14.499659+01:00",
         "coverage": {
           "covered": 342,
           "eligible": 342,
@@ -1638236,7 +1638250,7 @@
       {
         "feature": "team_stat_model",
         "source": "football-data.co.uk · históricos de remates, SOT, córners, faltas y tarjetas",
-        "available_at": "2026-11-16T01:28:28.137384+01:00",
+        "available_at": "2026-11-16T01:32:14.499659+01:00",
         "coverage": {
           "covered": 271,
           "eligible": 342,
@@ -1638382,7 +1638396,7 @@
       {
         "feature": "tactical_matchup",
         "source": "Perfiles observados casa/fuera derivados de football-data.co.uk",
-        "available_at": "2026-11-16T01:28:28.137384+01:00",
+        "available_at": "2026-11-16T01:32:14.499659+01:00",
         "coverage": {
           "covered": 271,
           "eligible": 342,
