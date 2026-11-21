@@ -1,6 +1,6 @@
 {
   "schema_version": 7,
-  "generated_at": "2026-11-21T05:00:38.188010+01:00",
+  "generated_at": "2026-11-21T05:05:52.116687+01:00",
   "season": 2026,
   "quiniela": {
     "jornada": "23",
@@ -111513,17 +111513,10 @@
   },
   "content_audit": {
     "window": "continuo",
-    "checked_at": "2026-11-21T05:00:42.792565+01:00",
+    "checked_at": "2026-11-21T05:05:57.468933+01:00",
     "matches_today": 8,
-    "complete": 3,
+    "complete": 4,
     "incomplete": [
-      {
-        "id": "football_data_uk-143894856",
-        "partido": "Sabadell - Granada",
-        "missing": [
-          "clima"
-        ]
-      },
       {
         "id": "football_data-564755",
         "partido": "Deportivo Alavés - RC Deportivo La Coruña",
@@ -111581,7 +111574,7 @@
         "ok": 8
       },
       "weather": {
-        "missing": 1,
+        "ok": 1,
         "scheduled": 7
       },
       "absences": {
@@ -1182321,7 +1182314,7 @@
       "finished": false,
       "source": "football_data_uk",
       "engine": "residual",
-      "updatedAt": "2026-11-21T04:55:15.005826+01:00",
+      "updatedAt": "2026-11-21T05:05:07.028587+01:00",
       "players": "pendiente_fuente_de_pago",
       "odds": {
         "1x2": {
@@ -1182399,10 +1182392,10 @@
         }
       },
       "markets": {
-        "over_2_5": 0.263,
-        "over_1_5": 0.524,
-        "over_3_5": 0.105,
-        "btts": 0.341,
+        "over_2_5": 0.264,
+        "over_1_5": 0.531,
+        "over_3_5": 0.106,
+        "btts": 0.347,
         "marcador": "0-0"
       },
       "score_distribution": {
@@ -1183424,8 +1183417,10 @@
           "market": "ou25",
           "selection": "under",
           "odds": 1.58,
-          "modelProb": 0.737,
-          "edge": 0.164
+          "modelProb": 0.736,
+          "edge": 0.1628,
+          "weather_adjusted": true,
+          "prediction_refreshed_at": "2026-11-21T05:05:52.116687+01:00"
         },
         {
           "market": "1x2",
@@ -1183445,8 +1183440,10 @@
           "market": "ou25",
           "selection": "over",
           "odds": 2.25,
-          "modelProb": 0.263,
-          "edge": -0.408
+          "modelProb": 0.264,
+          "edge": -0.4059,
+          "weather_adjusted": true,
+          "prediction_refreshed_at": "2026-11-21T05:05:52.116687+01:00"
         }
       ],
       "prediction_history": [
@@ -1185149,7 +1185146,7 @@
         "level": "media",
         "model_disagreement_pp": 4.0,
         "availability_penalty_pp": 5.0,
-        "data_completeness_pct": 90,
+        "data_completeness_pct": 95,
         "evidence": {
           "probabilities": true,
           "model_agreement": true,
@@ -1185157,10 +1185154,10 @@
           "tactical_profile": true,
           "lineup": true,
           "official_lineup": false,
-          "weather": false,
+          "weather": true,
           "market_odds": true
         },
-        "refreshed_at": "2026-11-21T05:00:38.188010+01:00"
+        "refreshed_at": "2026-11-21T05:05:52.116687+01:00"
       },
       "prediction_factors": [
         {
@@ -1185199,7 +1185196,7 @@
         "label": "Pronóstico publicable",
         "reasons": [],
         "policy": "abstención automática por incertidumbre o falta de evidencia",
-        "refreshed_at": "2026-11-21T05:00:38.188010+01:00"
+        "refreshed_at": "2026-11-21T05:05:52.116687+01:00"
       },
       "prediction_snapshot": {
         "generated_at": "2026-11-20T17:09:57.037664+01:00",
@@ -1186810,10 +1186807,10 @@
         "fixture": {
           "source": "football_data_uk",
           "source_id": "143894856",
-          "available_at": "2026-11-21T03:55:15.005826+00:00",
+          "available_at": "2026-11-21T04:05:07.028587+00:00",
           "phase": "prematch",
           "quality": "observed",
-          "observed_at": "2026-11-21T03:55:15.005826+00:00"
+          "observed_at": "2026-11-21T04:05:07.028587+00:00"
         }
       },
       "source_refs": {
@@ -1186825,7 +1186822,9 @@
         "absences_checked_at": "2026-11-21T04:58:06.104399+01:00",
         "absences_check_result": "fixture_not_found",
         "player_props_checked_at": "2026-11-21T04:58:30.139404+01:00",
-        "player_props_check_result": "complete_hybrid"
+        "player_props_check_result": "complete_hybrid",
+        "weather_checked_at": "2026-11-21T05:05:07.028587+01:00",
+        "weather_check_result": "ok"
       },
       "current_squads": {
         "season_context": 2026,
@@ -1186842,7 +1186841,7 @@
         "visitante": []
       },
       "prediction_live_refresh": {
-        "checked_at": "2026-11-21T05:00:38.188010+01:00",
+        "checked_at": "2026-11-21T05:05:52.116687+01:00",
         "cadence_target_minutes": 5,
         "model_retrained": false,
         "pure_model_probs_changed": false,
@@ -1186855,7 +1186854,7 @@
       },
       "coverage": {
         "schema_version": 2,
-        "complete": false,
+        "complete": true,
         "items": {
           "fixture": {
             "state": "ok",
@@ -1186865,10 +1186864,12 @@
             "detail": "not_found"
           },
           "weather": {
-            "state": "missing",
+            "state": "ok",
             "required": true,
-            "detail": "sin previsión",
-            "freshness_known": false,
+            "checked_at": "2026-11-21T05:05:07.028587+01:00",
+            "source": "Open-Meteo",
+            "detail": "ok",
+            "freshness_known": true,
             "ttl_hours": 12
           },
           "absences": {
@@ -1186902,26 +1186903,115 @@
             "ttl_hours": 6
           }
         },
-        "missing_required": [
-          "weather"
-        ]
+        "missing_required": []
       },
       "match_quality": {
-        "score": 55.0,
-        "tier": "insufficient",
-        "verified": 0.55,
-        "required_missing": [
-          "weather"
-        ],
+        "score": 65.0,
+        "tier": "limited",
+        "verified": 0.65,
+        "required_missing": [],
         "components": {
           "fixture": 100.0,
-          "weather": 0.0,
+          "weather": 100.0,
           "absences": 100.0,
           "lineup_probable": 0.0,
           "lineup_official": 0.0,
           "odds": 100.0,
           "players": 50.0
         }
+      },
+      "weather": {
+        "forecast_for": "2026-11-21T13:00:00",
+        "temperature_c": 16.8,
+        "apparent_temperature_c": 15.4,
+        "humidity_pct": 56,
+        "precipitation_mm": 0.0,
+        "precipitation_probability_pct": 0,
+        "wind_kmh": 6.2,
+        "weather_code": 3,
+        "heat_stress": {
+          "level": "bajo",
+          "index": 16.8,
+          "method": "temperatura aparente + humedad; no es WBGT"
+        },
+        "source": "Open-Meteo",
+        "source_url": "https://open-meteo.com/",
+        "license": "CC BY 4.0",
+        "model_use": "ajuste_cuantitativo_contextual",
+        "source_updated_at": "2026-11-21T05:05:07.028587+01:00"
+      },
+      "weather_adjustment": {
+        "applied": false,
+        "weather_source_updated_at": "2026-11-21T05:05:07.028587+01:00",
+        "weather_forecast_for": "2026-11-21T13:00:00",
+        "weather_source": "Open-Meteo",
+        "weather_snapshot": {
+          "forecast_for": "2026-11-21T13:00:00",
+          "temperature_c": 16.8,
+          "apparent_temperature_c": 15.4,
+          "humidity_pct": 56,
+          "precipitation_mm": 0.0,
+          "precipitation_probability_pct": 0,
+          "wind_kmh": 6.2,
+          "weather_code": 3
+        },
+        "applied_at": "2026-11-21T05:05:52.116687+01:00",
+        "reason": "condiciones dentro de umbrales neutros",
+        "reasons": [],
+        "multipliers": {
+          "goals": 1.0,
+          "shots": 1.0,
+          "fouls": 1.0,
+          "cards": 1.0
+        },
+        "xg": {
+          "before": [
+            0.88,
+            0.9
+          ],
+          "after": [
+            0.88,
+            0.9
+          ],
+          "delta": [
+            0.0,
+            0.0
+          ]
+        },
+        "stats": {
+          "goals": {
+            "before": 1.78,
+            "after": 1.78,
+            "delta": 0.0
+          },
+          "shots": {
+            "before": 26.5,
+            "after": 26.5,
+            "delta": 0.0
+          },
+          "sot": {
+            "before": 8.1,
+            "after": 8.1,
+            "delta": 0.0
+          },
+          "fouls": {
+            "before": 27.52,
+            "after": 27.52,
+            "delta": 0.0
+          },
+          "yellows": {
+            "before": 5.47,
+            "after": 5.47,
+            "delta": 0.0
+          },
+          "reds": {
+            "before": 0.13,
+            "after": 0.13,
+            "delta": 0.0
+          }
+        },
+        "one_x_two_adjusted": false,
+        "method": "recálculo intradía conservador; 1X2 puro intacto hasta gate histórico"
       }
     },
     {
@@ -1188974,7 +1189064,7 @@
           "weather": false,
           "market_odds": false
         },
-        "refreshed_at": "2026-11-21T05:00:38.188010+01:00"
+        "refreshed_at": "2026-11-21T05:05:52.116687+01:00"
       },
       "prediction_factors": [
         {
@@ -1189018,7 +1189108,7 @@
         "label": "Pronóstico publicable",
         "reasons": [],
         "policy": "abstención automática por incertidumbre o falta de evidencia",
-        "refreshed_at": "2026-11-21T05:00:38.188010+01:00"
+        "refreshed_at": "2026-11-21T05:05:52.116687+01:00"
       },
       "state_simulation": {
         "method": "monte_carlo_5min_game_state_v1",
@@ -1190305,7 +1190395,7 @@
         "visitante": []
       },
       "prediction_live_refresh": {
-        "checked_at": "2026-11-21T05:00:38.188010+01:00",
+        "checked_at": "2026-11-21T05:05:52.116687+01:00",
         "cadence_target_minutes": 5,
         "model_retrained": false,
         "pure_model_probs_changed": false,
@@ -1193195,7 +1193285,7 @@
           "weather": false,
           "market_odds": true
         },
-        "refreshed_at": "2026-11-21T05:00:38.188010+01:00"
+        "refreshed_at": "2026-11-21T05:05:52.116687+01:00"
       },
       "prediction_factors": [
         {
@@ -1193234,7 +1193324,7 @@
         "label": "Pronóstico publicable",
         "reasons": [],
         "policy": "abstención automática por incertidumbre o falta de evidencia",
-        "refreshed_at": "2026-11-21T05:00:38.188010+01:00"
+        "refreshed_at": "2026-11-21T05:05:52.116687+01:00"
       },
       "prediction_snapshot": {
         "generated_at": "2026-11-20T17:09:57.037664+01:00",
@@ -1194861,7 +1194951,7 @@
         "visitante": []
       },
       "prediction_live_refresh": {
-        "checked_at": "2026-11-21T05:00:38.188010+01:00",
+        "checked_at": "2026-11-21T05:05:52.116687+01:00",
         "cadence_target_minutes": 5,
         "model_retrained": false,
         "pure_model_probs_changed": false,
@@ -1197709,7 +1197799,7 @@
           "weather": false,
           "market_odds": false
         },
-        "refreshed_at": "2026-11-21T05:00:38.188010+01:00"
+        "refreshed_at": "2026-11-21T05:05:52.116687+01:00"
       },
       "prediction_factors": [
         {
@@ -1197753,7 +1197843,7 @@
         "label": "Pronóstico publicable",
         "reasons": [],
         "policy": "abstención automática por incertidumbre o falta de evidencia",
-        "refreshed_at": "2026-11-21T05:00:38.188010+01:00"
+        "refreshed_at": "2026-11-21T05:05:52.116687+01:00"
       },
       "prediction_snapshot": {
         "generated_at": "2026-11-21T04:31:51.577124+01:00",
@@ -1199691,7 +1199781,7 @@
         "visitante": []
       },
       "prediction_live_refresh": {
-        "checked_at": "2026-11-21T05:00:38.188010+01:00",
+        "checked_at": "2026-11-21T05:05:52.116687+01:00",
         "cadence_target_minutes": 5,
         "model_retrained": false,
         "pure_model_probs_changed": false,
@@ -1202647,7 +1202737,7 @@
           "weather": false,
           "market_odds": true
         },
-        "refreshed_at": "2026-11-21T05:00:38.188010+01:00"
+        "refreshed_at": "2026-11-21T05:05:52.116687+01:00"
       },
       "prediction_factors": [
         {
@@ -1202686,7 +1202776,7 @@
         "label": "Pronóstico publicable",
         "reasons": [],
         "policy": "abstención automática por incertidumbre o falta de evidencia",
-        "refreshed_at": "2026-11-21T05:00:38.188010+01:00"
+        "refreshed_at": "2026-11-21T05:05:52.116687+01:00"
       },
       "prediction_snapshot": {
         "generated_at": "2026-11-20T17:09:57.037664+01:00",
@@ -1204326,7 +1204416,7 @@
         "visitante": []
       },
       "prediction_live_refresh": {
-        "checked_at": "2026-11-21T05:00:38.188010+01:00",
+        "checked_at": "2026-11-21T05:05:52.116687+01:00",
         "cadence_target_minutes": 5,
         "model_retrained": false,
         "pure_model_probs_changed": false,
@@ -1206558,7 +1206648,7 @@
           "weather": false,
           "market_odds": false
         },
-        "refreshed_at": "2026-11-21T05:00:38.188010+01:00"
+        "refreshed_at": "2026-11-21T05:05:52.116687+01:00"
       },
       "prediction_factors": [
         {
@@ -1206602,7 +1206692,7 @@
         "label": "Pronóstico publicable",
         "reasons": [],
         "policy": "abstención automática por incertidumbre o falta de evidencia",
-        "refreshed_at": "2026-11-21T05:00:38.188010+01:00"
+        "refreshed_at": "2026-11-21T05:05:52.116687+01:00"
       },
       "state_simulation": {
         "method": "monte_carlo_5min_game_state_v1",
@@ -1207875,7 +1207965,7 @@
         "visitante": []
       },
       "prediction_live_refresh": {
-        "checked_at": "2026-11-21T05:00:38.188010+01:00",
+        "checked_at": "2026-11-21T05:05:52.116687+01:00",
         "cadence_target_minutes": 5,
         "model_retrained": false,
         "pure_model_probs_changed": false,
@@ -1210783,7 +1210873,7 @@
           "weather": false,
           "market_odds": true
         },
-        "refreshed_at": "2026-11-21T05:00:38.188010+01:00"
+        "refreshed_at": "2026-11-21T05:05:52.116687+01:00"
       },
       "prediction_factors": [
         {
@@ -1210822,7 +1210912,7 @@
         "label": "Pronóstico publicable",
         "reasons": [],
         "policy": "abstención automática por incertidumbre o falta de evidencia",
-        "refreshed_at": "2026-11-21T05:00:38.188010+01:00"
+        "refreshed_at": "2026-11-21T05:05:52.116687+01:00"
       },
       "prediction_snapshot": {
         "generated_at": "2026-11-20T17:09:57.037664+01:00",
@@ -1212448,7 +1212538,7 @@
         "visitante": []
       },
       "prediction_live_refresh": {
-        "checked_at": "2026-11-21T05:00:38.188010+01:00",
+        "checked_at": "2026-11-21T05:05:52.116687+01:00",
         "cadence_target_minutes": 5,
         "model_retrained": false,
         "pure_model_probs_changed": false,
@@ -1214603,7 +1214693,7 @@
           "weather": false,
           "market_odds": false
         },
-        "refreshed_at": "2026-11-21T05:00:38.188010+01:00"
+        "refreshed_at": "2026-11-21T05:05:52.116687+01:00"
       },
       "prediction_factors": [
         {
@@ -1214647,7 +1214737,7 @@
         "label": "Pronóstico publicable",
         "reasons": [],
         "policy": "abstención automática por incertidumbre o falta de evidencia",
-        "refreshed_at": "2026-11-21T05:00:38.188010+01:00"
+        "refreshed_at": "2026-11-21T05:05:52.116687+01:00"
       },
       "state_simulation": {
         "method": "monte_carlo_5min_game_state_v1",
@@ -1215927,7 +1216017,7 @@
         "visitante": []
       },
       "prediction_live_refresh": {
-        "checked_at": "2026-11-21T05:00:38.188010+01:00",
+        "checked_at": "2026-11-21T05:05:52.116687+01:00",
         "cadence_target_minutes": 5,
         "model_retrained": false,
         "pure_model_probs_changed": false,
@@ -1698708,14 +1698798,14 @@
     }
   },
   "feature_truth_table": {
-    "generated_at": "2026-11-21T05:00:38.188010+01:00",
+    "generated_at": "2026-11-21T05:05:52.116687+01:00",
     "principle": "candidate -> leakage-safe snapshot -> walk-forward -> compare vs accepted engine + no-vig market -> promote only on improvement",
     "eligible_matches": 341,
     "features": [
       {
         "feature": "dixon_coles_score_model",
         "source": "Resultados históricos reales · Football-Data/API-Football + score model Dixon-Coles",
-        "available_at": "2026-11-21T05:00:38.188010+01:00",
+        "available_at": "2026-11-21T05:05:52.116687+01:00",
         "coverage": {
           "covered": 341,
           "eligible": 341,
@@ -1698737,7 +1698827,7 @@
       {
         "feature": "elo",
         "source": "Resultados históricos reales transformados en rating Elo",
-        "available_at": "2026-11-21T05:00:38.188010+01:00",
+        "available_at": "2026-11-21T05:05:52.116687+01:00",
         "coverage": {
           "covered": 341,
           "eligible": 341,
@@ -1698758,7 +1698848,7 @@
       {
         "feature": "team_stat_model",
         "source": "football-data.co.uk · históricos de remates, SOT, córners, faltas y tarjetas",
-        "available_at": "2026-11-21T05:00:38.188010+01:00",
+        "available_at": "2026-11-21T05:05:52.116687+01:00",
         "coverage": {
           "covered": 270,
           "eligible": 341,
@@ -1698842,11 +1698932,11 @@
       {
         "feature": "weather_forecast",
         "source": "Open-Meteo forecast horario; histórico archivado separado",
-        "available_at": "2026-11-20T21:00:00",
+        "available_at": "2026-11-21T13:00:00",
         "coverage": {
-          "covered": 1,
+          "covered": 2,
           "eligible": 341,
-          "pct": 0.3,
+          "pct": 0.6,
           "scope": "upcoming_with_prediction"
         },
         "uses": [
@@ -1698904,7 +1698994,7 @@
       {
         "feature": "tactical_matchup",
         "source": "Perfiles observados casa/fuera derivados de football-data.co.uk",
-        "available_at": "2026-11-21T05:00:38.188010+01:00",
+        "available_at": "2026-11-21T05:05:52.116687+01:00",
         "coverage": {
           "covered": 270,
           "eligible": 341,
