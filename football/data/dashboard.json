@@ -1,6 +1,6 @@
 {
   "schema_version": 7,
-  "generated_at": "2026-11-26T18:47:15.051907+01:00",
+  "generated_at": "2026-11-27T02:42:21.274916+01:00",
   "season": 2026,
   "quiniela": {
     "jornada": "25",
@@ -116832,11 +116832,19 @@
   },
   "content_audit": {
     "window": "continuo",
-    "checked_at": "2026-11-26T18:47:22.815724+01:00",
-    "matches_today": 0,
+    "checked_at": "2026-11-27T02:42:32.059171+01:00",
+    "matches_today": 1,
     "complete": 0,
-    "incomplete": [],
-    "status": "ok",
+    "incomplete": [
+      {
+        "id": "football_data-564765",
+        "partido": "Levante UD - Real Racing Club de Santander",
+        "missing": [
+          "cuotas"
+        ]
+      }
+    ],
+    "status": "warning",
     "selective_retries": 0,
     "prefinal_lineup_updates": {
       "candidates": 0,
@@ -116857,7 +116865,26 @@
     "extended_market_updates": 1,
     "archived_weather_updates": 0,
     "state_simulations": 303,
-    "coverage_summary": {}
+    "coverage_summary": {
+      "fixture": {
+        "ok": 1
+      },
+      "weather": {
+        "scheduled": 1
+      },
+      "absences": {
+        "ok": 1
+      },
+      "lineup_probable": {
+        "scheduled": 1
+      },
+      "lineup_official": {
+        "scheduled": 1
+      },
+      "odds": {
+        "missing": 1
+      }
+    }
   },
   "postmatch_stats_updates": 0,
   "ai_usage": {
@@ -1256327,86 +1256354,802 @@
       },
       "alineacion": {
         "local": [
-          "Maty Ryan",
-          "Aïssa Mandi",
-          "Jeremy Toljan",
-          "Adrián de la Fuente",
-          "Manuel Sánchez",
+          "Jorge Cabello",
           "Oriol Rey",
           "Carlos Álvarez",
-          "Jon Olasagasti",
-          "Roger Brugué",
-          "Víctor García",
-          "Iván Romero"
+          "Iván Romero",
+          "Maty Ryan",
+          "Jeremy Toljan",
+          "Manuel Sánchez",
+          "Adrián de la Fuente",
+          "Nacho Pérez",
+          "Enzo Bardeli",
+          "Víctor García"
         ],
         "visitante": [
-          "Julen Agirrezabala",
-          "José Manuel",
-          "Pablo Ramon",
-          "Álvaro Mantilla",
-          "Facundo González",
-          "Canales",
-          "Iván Martín",
           "Íñigo Sainz Maza",
           "Andrés Martín",
-          "Asier Villalibre",
-          "Iñigo Vicente"
+          "Iñigo Vicente",
+          "Arana",
+          "Julen Agirrezabala",
+          "Pablo Ramon",
+          "Pedro Felipe",
+          "Álvaro Mantilla",
+          "José Manuel",
+          "Maguette Gueye",
+          "Canales"
         ],
         "posiciones_local": [
-          "POR",
           "LI",
+          "MC",
+          "MCD",
+          "EI",
+          "POR",
           "DFC",
           "DFC",
           "LD",
+          "LD",
           "MC",
-          "MCD",
-          "MC",
-          "EI",
-          "DC",
-          "ED"
+          "DC"
         ],
         "posiciones_visitante": [
+          "MC",
+          "EI",
+          "DC",
+          "ED",
           "POR",
           "LI",
           "DFC",
           "DFC",
           "LD",
-          "MC",
           "MCD",
-          "MC",
-          "EI",
-          "DC",
-          "ED"
+          "MC"
         ],
-        "formacion_local": "4-3-3",
+        "formacion_local": "5-3-2",
         "formacion_visitante": "4-3-3",
         "positions_inferred": true,
         "bajas_local": [],
         "bajas_visitante": [],
-        "clave_local": [],
-        "clave_visitante": [],
+        "clave_local": [
+          {
+            "jugador": "Andrés Fernández",
+            "position": "POR",
+            "g": 0.0,
+            "a": 0.0,
+            "r": 0.02,
+            "rp": 0.01,
+            "fc": 0.27,
+            "fr": 0.12,
+            "t": 0.03,
+            "min": 82.0,
+            "tit": 0.88,
+            "sample_minutes": 0,
+            "sample_quality": "sin_muestra_individual",
+            "source": "Modelo · rol + predicción de equipo",
+            "evidence_type": "model_estimate",
+            "prediction_kind": "role_team_residual_allocation",
+            "team_prediction_totals": {
+              "g": 1.52,
+              "a": 1.09,
+              "r": 14.9,
+              "rp": 4.8,
+              "fc": 12.51,
+              "fr": 13.3,
+              "t": 2.16
+            }
+          },
+          {
+            "jugador": "Andrés García",
+            "position": "LD",
+            "g": 0.04,
+            "a": 0.11,
+            "r": 0.74,
+            "rp": 0.19,
+            "fc": 1.26,
+            "fr": 1.01,
+            "t": 0.23,
+            "min": 82.0,
+            "tit": 0.88,
+            "sample_minutes": 0,
+            "sample_quality": "sin_muestra_individual",
+            "source": "Modelo · rol + predicción de equipo",
+            "evidence_type": "model_estimate",
+            "prediction_kind": "role_team_residual_allocation",
+            "team_prediction_totals": {
+              "g": 1.52,
+              "a": 1.09,
+              "r": 14.9,
+              "rp": 4.8,
+              "fc": 12.51,
+              "fr": 13.3,
+              "t": 2.16
+            }
+          },
+          {
+            "jugador": "Unai Elgezabal",
+            "position": "DFC",
+            "g": 0.05,
+            "a": 0.02,
+            "r": 0.62,
+            "rp": 0.15,
+            "fc": 1.48,
+            "fr": 0.65,
+            "t": 0.31,
+            "min": 82.0,
+            "tit": 0.88,
+            "sample_minutes": 0,
+            "sample_quality": "sin_muestra_individual",
+            "source": "Modelo · rol + predicción de equipo",
+            "evidence_type": "model_estimate",
+            "prediction_kind": "role_team_residual_allocation",
+            "team_prediction_totals": {
+              "g": 1.52,
+              "a": 1.09,
+              "r": 14.9,
+              "rp": 4.8,
+              "fc": 12.51,
+              "fr": 13.3,
+              "t": 2.16
+            }
+          },
+          {
+            "jugador": "Jorge Cabello",
+            "position": "DFC",
+            "g": 0.05,
+            "a": 0.02,
+            "r": 0.62,
+            "rp": 0.15,
+            "fc": 1.48,
+            "fr": 0.65,
+            "t": 0.31,
+            "min": 82.0,
+            "tit": 0.88,
+            "sample_minutes": 0,
+            "sample_quality": "sin_muestra_individual",
+            "source": "Modelo · rol + predicción de equipo",
+            "evidence_type": "model_estimate",
+            "prediction_kind": "role_team_residual_allocation",
+            "team_prediction_totals": {
+              "g": 1.52,
+              "a": 1.09,
+              "r": 14.9,
+              "rp": 4.8,
+              "fc": 12.51,
+              "fr": 13.3,
+              "t": 2.16
+            }
+          },
+          {
+            "jugador": "Diego Pampín",
+            "position": "LI",
+            "g": 0.04,
+            "a": 0.11,
+            "r": 0.74,
+            "rp": 0.19,
+            "fc": 1.26,
+            "fr": 1.01,
+            "t": 0.23,
+            "min": 82.0,
+            "tit": 0.88,
+            "sample_minutes": 0,
+            "sample_quality": "sin_muestra_individual",
+            "source": "Modelo · rol + predicción de equipo",
+            "evidence_type": "model_estimate",
+            "prediction_kind": "role_team_residual_allocation",
+            "team_prediction_totals": {
+              "g": 1.52,
+              "a": 1.09,
+              "r": 14.9,
+              "rp": 4.8,
+              "fc": 12.51,
+              "fr": 13.3,
+              "t": 2.16
+            }
+          },
+          {
+            "jugador": "Oriol Rey",
+            "position": "MCD",
+            "g": 0.07,
+            "a": 0.09,
+            "r": 0.97,
+            "rp": 0.26,
+            "fc": 1.63,
+            "fr": 1.21,
+            "t": 0.3,
+            "min": 82.0,
+            "tit": 0.88,
+            "sample_minutes": 0,
+            "sample_quality": "sin_muestra_individual",
+            "source": "Modelo · rol + predicción de equipo",
+            "evidence_type": "model_estimate",
+            "prediction_kind": "role_team_residual_allocation",
+            "team_prediction_totals": {
+              "g": 1.52,
+              "a": 1.09,
+              "r": 14.9,
+              "rp": 4.8,
+              "fc": 12.51,
+              "fr": 13.3,
+              "t": 2.16
+            }
+          },
+          {
+            "jugador": "Unai Vencedor",
+            "position": "MC",
+            "g": 0.11,
+            "a": 0.13,
+            "r": 1.36,
+            "rp": 0.39,
+            "fc": 1.3,
+            "fr": 1.47,
+            "t": 0.21,
+            "min": 82.0,
+            "tit": 0.88,
+            "sample_minutes": 0,
+            "sample_quality": "sin_muestra_individual",
+            "source": "Modelo · rol + predicción de equipo",
+            "evidence_type": "model_estimate",
+            "prediction_kind": "role_team_residual_allocation",
+            "team_prediction_totals": {
+              "g": 1.52,
+              "a": 1.09,
+              "r": 14.9,
+              "rp": 4.8,
+              "fc": 12.51,
+              "fr": 13.3,
+              "t": 2.16
+            }
+          },
+          {
+            "jugador": "Pablo Martínez",
+            "position": "MC",
+            "g": 0.11,
+            "a": 0.13,
+            "r": 1.36,
+            "rp": 0.39,
+            "fc": 1.3,
+            "fr": 1.47,
+            "t": 0.21,
+            "min": 82.0,
+            "tit": 0.88,
+            "sample_minutes": 0,
+            "sample_quality": "sin_muestra_individual",
+            "source": "Modelo · rol + predicción de equipo",
+            "evidence_type": "model_estimate",
+            "prediction_kind": "role_team_residual_allocation",
+            "team_prediction_totals": {
+              "g": 1.52,
+              "a": 1.09,
+              "r": 14.9,
+              "rp": 4.8,
+              "fc": 12.51,
+              "fr": 13.3,
+              "t": 2.16
+            }
+          },
+          {
+            "jugador": "Carlos Álvarez",
+            "position": "ED",
+            "g": 0.3,
+            "a": 0.18,
+            "r": 2.63,
+            "rp": 0.94,
+            "fc": 0.74,
+            "fr": 2.01,
+            "t": 0.1,
+            "min": 82.0,
+            "tit": 0.88,
+            "sample_minutes": 0,
+            "sample_quality": "sin_muestra_individual",
+            "source": "Modelo · rol + predicción de equipo",
+            "evidence_type": "model_estimate",
+            "prediction_kind": "role_team_residual_allocation",
+            "team_prediction_totals": {
+              "g": 1.52,
+              "a": 1.09,
+              "r": 14.9,
+              "rp": 4.8,
+              "fc": 12.51,
+              "fr": 13.3,
+              "t": 2.16
+            }
+          },
+          {
+            "jugador": "José Morales",
+            "position": "EI",
+            "g": 0.3,
+            "a": 0.18,
+            "r": 2.63,
+            "rp": 0.94,
+            "fc": 0.74,
+            "fr": 2.01,
+            "t": 0.1,
+            "min": 82.0,
+            "tit": 0.88,
+            "sample_minutes": 0,
+            "sample_quality": "sin_muestra_individual",
+            "source": "Modelo · rol + predicción de equipo",
+            "evidence_type": "model_estimate",
+            "prediction_kind": "role_team_residual_allocation",
+            "team_prediction_totals": {
+              "g": 1.52,
+              "a": 1.09,
+              "r": 14.9,
+              "rp": 4.8,
+              "fc": 12.51,
+              "fr": 13.3,
+              "t": 2.16
+            }
+          },
+          {
+            "jugador": "Iván Romero",
+            "position": "DC",
+            "g": 0.45,
+            "a": 0.12,
+            "r": 3.21,
+            "rp": 1.19,
+            "fc": 1.05,
+            "fr": 1.69,
+            "t": 0.13,
+            "min": 82.0,
+            "tit": 0.88,
+            "sample_minutes": 0,
+            "sample_quality": "sin_muestra_individual",
+            "source": "Modelo · rol + predicción de equipo",
+            "evidence_type": "model_estimate",
+            "prediction_kind": "role_team_residual_allocation",
+            "team_prediction_totals": {
+              "g": 1.52,
+              "a": 1.09,
+              "r": 14.9,
+              "rp": 4.8,
+              "fc": 12.51,
+              "fr": 13.3,
+              "t": 2.16
+            }
+          }
+        ],
+        "clave_visitante": [
+          {
+            "jugador": "Jokin Ezkieta",
+            "position": "POR",
+            "g": 0.0,
+            "a": 0.0,
+            "r": 0.01,
+            "rp": 0.01,
+            "fc": 0.29,
+            "fr": 0.11,
+            "t": 0.03,
+            "min": 82.0,
+            "tit": 0.88,
+            "sample_minutes": 0,
+            "sample_quality": "sin_muestra_individual",
+            "source": "Modelo · rol + predicción de equipo",
+            "evidence_type": "model_estimate",
+            "prediction_kind": "role_team_residual_allocation",
+            "team_prediction_totals": {
+              "g": 1.2,
+              "a": 0.86,
+              "r": 11.7,
+              "rp": 3.8,
+              "fc": 13.3,
+              "fr": 12.51,
+              "t": 2.36
+            }
+          },
+          {
+            "jugador": "Clément Michelin",
+            "position": "LD",
+            "g": 0.03,
+            "a": 0.08,
+            "r": 0.55,
+            "rp": 0.14,
+            "fc": 1.39,
+            "fr": 0.91,
+            "t": 0.26,
+            "min": 82.0,
+            "tit": 0.88,
+            "sample_minutes": 0,
+            "sample_quality": "sin_muestra_individual",
+            "source": "Modelo · rol + predicción de equipo",
+            "evidence_type": "model_estimate",
+            "prediction_kind": "role_team_residual_allocation",
+            "team_prediction_totals": {
+              "g": 1.2,
+              "a": 0.86,
+              "r": 11.7,
+              "rp": 3.8,
+              "fc": 13.3,
+              "fr": 12.51,
+              "t": 2.36
+            }
+          },
+          {
+            "jugador": "Manu Hernando",
+            "position": "DFC",
+            "g": 0.04,
+            "a": 0.01,
+            "r": 0.46,
+            "rp": 0.11,
+            "fc": 1.64,
+            "fr": 0.59,
+            "t": 0.36,
+            "min": 82.0,
+            "tit": 0.88,
+            "sample_minutes": 0,
+            "sample_quality": "sin_muestra_individual",
+            "source": "Modelo · rol + predicción de equipo",
+            "evidence_type": "model_estimate",
+            "prediction_kind": "role_team_residual_allocation",
+            "team_prediction_totals": {
+              "g": 1.2,
+              "a": 0.86,
+              "r": 11.7,
+              "rp": 3.8,
+              "fc": 13.3,
+              "fr": 12.51,
+              "t": 2.36
+            }
+          },
+          {
+            "jugador": "Javi Montero",
+            "position": "DFC",
+            "g": 0.04,
+            "a": 0.01,
+            "r": 0.46,
+            "rp": 0.11,
+            "fc": 1.64,
+            "fr": 0.59,
+            "t": 0.36,
+            "min": 82.0,
+            "tit": 0.88,
+            "sample_minutes": 0,
+            "sample_quality": "sin_muestra_individual",
+            "source": "Modelo · rol + predicción de equipo",
+            "evidence_type": "model_estimate",
+            "prediction_kind": "role_team_residual_allocation",
+            "team_prediction_totals": {
+              "g": 1.2,
+              "a": 0.86,
+              "r": 11.7,
+              "rp": 3.8,
+              "fc": 13.3,
+              "fr": 12.51,
+              "t": 2.36
+            }
+          },
+          {
+            "jugador": "Saúl García",
+            "position": "LI",
+            "g": 0.03,
+            "a": 0.08,
+            "r": 0.55,
+            "rp": 0.14,
+            "fc": 1.39,
+            "fr": 0.91,
+            "t": 0.26,
+            "min": 82.0,
+            "tit": 0.88,
+            "sample_minutes": 0,
+            "sample_quality": "sin_muestra_individual",
+            "source": "Modelo · rol + predicción de equipo",
+            "evidence_type": "model_estimate",
+            "prediction_kind": "role_team_residual_allocation",
+            "team_prediction_totals": {
+              "g": 1.2,
+              "a": 0.86,
+              "r": 11.7,
+              "rp": 3.8,
+              "fc": 13.3,
+              "fr": 12.51,
+              "t": 2.36
+            }
+          },
+          {
+            "jugador": "Aritz Aldasoro",
+            "position": "MCD",
+            "g": 0.05,
+            "a": 0.06,
+            "r": 0.72,
+            "rp": 0.19,
+            "fc": 1.8,
+            "fr": 1.1,
+            "t": 0.34,
+            "min": 82.0,
+            "tit": 0.88,
+            "sample_minutes": 0,
+            "sample_quality": "sin_muestra_individual",
+            "source": "Modelo · rol + predicción de equipo",
+            "evidence_type": "model_estimate",
+            "prediction_kind": "role_team_residual_allocation",
+            "team_prediction_totals": {
+              "g": 1.2,
+              "a": 0.86,
+              "r": 11.7,
+              "rp": 3.8,
+              "fc": 13.3,
+              "fr": 12.51,
+              "t": 2.36
+            }
+          },
+          {
+            "jugador": "Íñigo Sainz-Maza",
+            "position": "MC",
+            "g": 0.08,
+            "a": 0.1,
+            "r": 1.01,
+            "rp": 0.29,
+            "fc": 1.44,
+            "fr": 1.34,
+            "t": 0.24,
+            "min": 82.0,
+            "tit": 0.88,
+            "sample_minutes": 0,
+            "sample_quality": "sin_muestra_individual",
+            "source": "Modelo · rol + predicción de equipo",
+            "evidence_type": "model_estimate",
+            "prediction_kind": "role_team_residual_allocation",
+            "team_prediction_totals": {
+              "g": 1.2,
+              "a": 0.86,
+              "r": 11.7,
+              "rp": 3.8,
+              "fc": 13.3,
+              "fr": 12.51,
+              "t": 2.36
+            }
+          },
+          {
+            "jugador": "Pablo Rodríguez",
+            "position": "MP",
+            "g": 0.18,
+            "a": 0.16,
+            "r": 1.66,
+            "rp": 0.56,
+            "fc": 0.9,
+            "fr": 1.76,
+            "t": 0.14,
+            "min": 82.0,
+            "tit": 0.88,
+            "sample_minutes": 0,
+            "sample_quality": "sin_muestra_individual",
+            "source": "Modelo · rol + predicción de equipo",
+            "evidence_type": "model_estimate",
+            "prediction_kind": "role_team_residual_allocation",
+            "team_prediction_totals": {
+              "g": 1.2,
+              "a": 0.86,
+              "r": 11.7,
+              "rp": 3.8,
+              "fc": 13.3,
+              "fr": 12.51,
+              "t": 2.36
+            }
+          },
+          {
+            "jugador": "Andrés Martín",
+            "position": "ED",
+            "g": 0.22,
+            "a": 0.13,
+            "r": 1.95,
+            "rp": 0.7,
+            "fc": 0.82,
+            "fr": 1.83,
+            "t": 0.12,
+            "min": 82.0,
+            "tit": 0.88,
+            "sample_minutes": 0,
+            "sample_quality": "sin_muestra_individual",
+            "source": "Modelo · rol + predicción de equipo",
+            "evidence_type": "model_estimate",
+            "prediction_kind": "role_team_residual_allocation",
+            "team_prediction_totals": {
+              "g": 1.2,
+              "a": 0.86,
+              "r": 11.7,
+              "rp": 3.8,
+              "fc": 13.3,
+              "fr": 12.51,
+              "t": 2.36
+            }
+          },
+          {
+            "jugador": "Íñigo Vicente",
+            "position": "EI",
+            "g": 0.22,
+            "a": 0.13,
+            "r": 1.95,
+            "rp": 0.7,
+            "fc": 0.82,
+            "fr": 1.83,
+            "t": 0.12,
+            "min": 82.0,
+            "tit": 0.88,
+            "sample_minutes": 0,
+            "sample_quality": "sin_muestra_individual",
+            "source": "Modelo · rol + predicción de equipo",
+            "evidence_type": "model_estimate",
+            "prediction_kind": "role_team_residual_allocation",
+            "team_prediction_totals": {
+              "g": 1.2,
+              "a": 0.86,
+              "r": 11.7,
+              "rp": 3.8,
+              "fc": 13.3,
+              "fr": 12.51,
+              "t": 2.36
+            }
+          },
+          {
+            "jugador": "Juan Carlos Arana",
+            "position": "DC",
+            "g": 0.31,
+            "a": 0.1,
+            "r": 2.38,
+            "rp": 0.85,
+            "fc": 1.17,
+            "fr": 1.54,
+            "t": 0.13,
+            "min": 82.0,
+            "tit": 0.88,
+            "sample_minutes": 0,
+            "sample_quality": "sin_muestra_individual",
+            "source": "Modelo · rol + predicción de equipo",
+            "evidence_type": "model_estimate",
+            "prediction_kind": "role_team_residual_allocation",
+            "team_prediction_totals": {
+              "g": 1.2,
+              "a": 0.86,
+              "r": 11.7,
+              "rp": 3.8,
+              "fc": 13.3,
+              "fr": 12.51,
+              "t": 2.36
+            }
+          }
+        ],
         "disponibilidad_local": [],
         "disponibilidad_visitante": [],
-        "best_props": [],
-        "numeric_props_source": "pending_real_data",
+        "best_props": [
+          {
+            "jugador": "Iván Romero",
+            "lado": "local",
+            "score": 5.28,
+            "motivo": "82 min · 3.2 remates · 1.2 a puerta",
+            "tipo": "ventaja_estadistica_sin_cuota"
+          },
+          {
+            "jugador": "Carlos Álvarez",
+            "lado": "local",
+            "score": 4.25,
+            "motivo": "82 min · 2.6 remates · 0.9 a puerta",
+            "tipo": "ventaja_estadistica_sin_cuota"
+          },
+          {
+            "jugador": "José Morales",
+            "lado": "local",
+            "score": 4.25,
+            "motivo": "82 min · 2.6 remates · 0.9 a puerta",
+            "tipo": "ventaja_estadistica_sin_cuota"
+          }
+        ],
+        "numeric_props_source": "Predictivo híbrido · 0/22 con muestra individual real",
         "status": "estimado",
-        "provider": "Motor estadístico local",
-        "model": "squad-only-v3",
+        "provider": "Gemini",
+        "model": "gemini-3.6-flash",
         "quality": {
           "complete": true,
           "lineup_players": 22,
-          "props_players": 0,
+          "props_players": 22,
           "positions_players": 22,
-          "score": 0.72,
-          "provisional": true,
+          "score": 1.0,
           "numeric_props_source": "pending_real_data",
-          "real_player_props": 0
+          "real_player_props": 0,
+          "predicted_player_props": 22,
+          "model_player_props": 22,
+          "player_props_source": "Predictivo híbrido · 0/22 con muestra individual real"
         },
-        "generated_at": "2026-08-31T08:21:28.703587+00:00",
-        "ts": "2026-08-31T08:21:28.703587+00:00",
-        "fuente": "Motor estadístico local",
+        "generated_at": "2026-11-27T02:41:30.645519+01:00",
+        "ts": "2026-11-27T02:41:30.645519+01:00",
+        "fuente": "T-1098m · medios recientes para ambos equipos + continuidad oficial + IA",
         "input_fingerprint": "9295054e70832c96",
-        "cache_status": "recuperado_de_cache"
+        "cache_status": "recuperado_de_cache",
+        "critical_probable_checked_at": "2026-11-27T02:41:30.645519+01:00",
+        "critical_media_fingerprint": "e2f1f619184ea695",
+        "critical_media_fingerprint_previous": "e2f1f619184ea695",
+        "position_source": "model_unverified",
+        "position_history_supported": 0,
+        "position_history_overrides": 0,
+        "position_history_evidence": [],
+        "phase": "same_day_probable",
+        "lineup_kind": "roster_reconstructed",
+        "media_sources": [
+          {
+            "source": "AS",
+            "title": "Alineación posible del Levante ante el Racing en LaLiga EA Sports - Diario AS",
+            "published_at": "2026-11-27T01:00:34+00:00",
+            "snippet": "Alineación posible del Levante ante el Racing en LaLiga EA Sports Diario AS",
+            "url": "https://news.google.com/rss/articles/CBMiqgFBVV95cUxQWXNhaDdPY3g3TlZSbFdBRW9zY2xUaDI4NVRrbnVldm5YVVNGYXE1VWtnd0QyZWZXN2VNdkVfSVNpVWNiamRiSDJhR1VPeWJsYjFZNkRqYTdZSFhlTldJSFU3NW1lZTFULTFXTXZxWkJ0YmJTbjBXdHFXaHZ5eEI2TGNWcmR5YUh3Q2s1Z0RLVUpkU0NzMXVsUWtnR0tDYXFLM0hyUElubWVPZw?oc=5",
+            "role": "probable_lineup_evidence",
+            "covered_sides": [
+              "local",
+              "visitante"
+            ],
+            "evidence_level": "trusted_media_recent",
+            "evidence_rank": 2,
+            "search_query": "levante racing santander (\"alineación posible\" OR \"alineación probable\" OR \"once probable\" OR \"posibles alineaciones\")",
+            "resolved_url": "https://news.google.com/rss/articles/CBMiqgFBVV95cUxQWXNhaDdPY3g3TlZSbFdBRW9zY2xUaDI4NVRrbnVldm5YVVNGYXE1VWtnd0QyZWZXN2VNdkVfSVNpVWNiamRiSDJhR1VPeWJsYjFZNkRqYTdZSFhlTldJSFU3NW1lZTFULTFXTXZxWkJ0YmJTbjBXdHFXaHZ5eEI2TGNWcmR5YUh3Q2s1Z0RLVUpkU0NzMXVsUWtnR0tDYXFLM0hyUElubWVPZw?oc=5&hl=es-419&gl=US&ceid=US:es-419"
+          }
+        ],
+        "lineup_evidence": {
+          "policy": "both_sides_required_for_probable",
+          "hierarchy": [
+            "official_lineup",
+            "trusted_media_both_sides",
+            "official_history",
+            "model_estimate"
+          ],
+          "level": "trusted_media_both_sides",
+          "local": {
+            "grounded": true,
+            "sources": [
+              {
+                "source": "AS",
+                "title": "Alineación posible del Levante ante el Racing en LaLiga EA Sports - Diario AS",
+                "published_at": "2026-11-27T01:00:34+00:00",
+                "url": "https://news.google.com/rss/articles/CBMiqgFBVV95cUxQWXNhaDdPY3g3TlZSbFdBRW9zY2xUaDI4NVRrbnVldm5YVVNGYXE1VWtnd0QyZWZXN2VNdkVfSVNpVWNiamRiSDJhR1VPeWJsYjFZNkRqYTdZSFhlTldJSFU3NW1lZTFULTFXTXZxWkJ0YmJTbjBXdHFXaHZ5eEI2TGNWcmR5YUh3Q2s1Z0RLVUpkU0NzMXVsUWtnR0tDYXFLM0hyUElubWVPZw?oc=5",
+                "evidence_level": "trusted_media_recent",
+                "evidence_rank": 2
+              }
+            ]
+          },
+          "visitante": {
+            "grounded": true,
+            "sources": [
+              {
+                "source": "AS",
+                "title": "Alineación posible del Levante ante el Racing en LaLiga EA Sports - Diario AS",
+                "published_at": "2026-11-27T01:00:34+00:00",
+                "url": "https://news.google.com/rss/articles/CBMiqgFBVV95cUxQWXNhaDdPY3g3TlZSbFdBRW9zY2xUaDI4NVRrbnVldm5YVVNGYXE1VWtnd0QyZWZXN2VNdkVfSVNpVWNiamRiSDJhR1VPeWJsYjFZNkRqYTdZSFhlTldJSFU3NW1lZTFULTFXTXZxWkJ0YmJTbjBXdHFXaHZ5eEI2TGNWcmR5YUh3Q2s1Z0RLVUpkU0NzMXVsUWtnR0tDYXFLM0hyUElubWVPZw?oc=5",
+                "evidence_level": "trusted_media_recent",
+                "evidence_rank": 2
+              }
+            ]
+          }
+        },
+        "evidence_scope": "trusted_media_both_sides",
+        "source_quality": "roster_grounded",
+        "display_warning": "XI probable reconstruido con la plantilla vigente: se sustituyeron jugadores que ya no constan en el club por titulares probables de la plantilla actual.",
+        "probable_refresh_windows": {
+          "T-1098m": "2026-11-27T02:41:30.645519+01:00"
+        },
+        "probable_refresh_window_last": "T-1098m",
+        "source_updated_at": "2026-11-27T02:41:30.645519+01:00",
+        "critical_probable_generated_at": "2026-11-27T02:41:30.645519+01:00",
+        "player_props_source": "Predictivo híbrido · 0/22 con muestra individual real",
+        "player_props_checked_at": "2026-11-27T02:41:30.645519+01:00",
+        "player_props_lineup_status": "probable",
+        "current_squad_validated_at": "2026-11-27T02:42:21.274916+01:00",
+        "current_squad_conflicts": {
+          "local": [
+            "Andrés Fernández",
+            "Andrés García",
+            "Unai Elgezabal",
+            "Diego Pampín",
+            "Unai Vencedor",
+            "Pablo Martínez",
+            "José Morales"
+          ],
+          "visitante": [
+            "Jokin Ezkieta",
+            "Clément Michelin",
+            "Manu Hernando",
+            "Javi Montero",
+            "Saúl García",
+            "Aritz Aldasoro",
+            "Pablo Rodríguez"
+          ]
+        }
       },
       "venue_meta": {
         "name": "Ciutat de València",
@@ -1257731,6 +1258474,91 @@
               "photo": null
             }
           ]
+        }
+      },
+      "operational_checks": {
+        "absences_checked_at": "2026-11-27T02:41:27.401935+01:00",
+        "absences_check_result": "fixture_not_found",
+        "player_props_checked_at": "2026-11-27T02:41:30.645519+01:00",
+        "player_props_check_result": "complete_hybrid"
+      },
+      "matchday_player_rates": {
+        "checked_at": "2026-11-27T02:41:30.645519+01:00",
+        "source": "API-Football · players",
+        "season": 2026,
+        "league_id": 140,
+        "min_sample_minutes": 45,
+        "local": [],
+        "visitante": []
+      },
+      "coverage": {
+        "schema_version": 2,
+        "complete": false,
+        "items": {
+          "fixture": {
+            "state": "ok",
+            "required": true,
+            "checked_at": "2026-11-26T18:43:51.233836+01:00",
+            "source": "football_data",
+            "detail": "calendario cargado"
+          },
+          "weather": {
+            "state": "scheduled",
+            "required": false,
+            "detail": "ventana T−8h",
+            "freshness_known": false,
+            "ttl_hours": 12
+          },
+          "absences": {
+            "state": "ok",
+            "required": false,
+            "checked_at": "2026-11-27T02:41:27.401935+01:00",
+            "source": "API-Football",
+            "detail": "fixture_not_found",
+            "freshness_known": true,
+            "ttl_hours": 12
+          },
+          "lineup_probable": {
+            "state": "scheduled",
+            "required": false,
+            "checked_at": "2026-11-27T02:41:30.645519+01:00",
+            "source": "Gemini",
+            "detail": "ventana T−3h",
+            "freshness_known": true,
+            "ttl_hours": 24
+          },
+          "lineup_official": {
+            "state": "scheduled",
+            "required": false,
+            "detail": "ventana T−60/T−30"
+          },
+          "odds": {
+            "state": "missing",
+            "required": true,
+            "detail": "se exige en las 24 h previas",
+            "freshness_known": false,
+            "ttl_hours": 6
+          }
+        },
+        "missing_required": [
+          "odds"
+        ]
+      },
+      "match_quality": {
+        "score": 40.0,
+        "tier": "insufficient",
+        "verified": 0.4,
+        "required_missing": [
+          "odds"
+        ],
+        "components": {
+          "fixture": 100.0,
+          "weather": 0.0,
+          "absences": 100.0,
+          "lineup_probable": 0.0,
+          "lineup_official": 0.0,
+          "odds": 0.0,
+          "players": 50.0
         }
       }
     },
@@ -1259966,6 +1260794,387 @@
       },
       "source_refs": {
         "football_data": "564760"
+      },
+      "current_squads": {
+        "season_context": 2026,
+        "local": {
+          "team": "Real Betis Balompié",
+          "source": "cache current squad",
+          "checked_at": "2026-11-26T10:42:54.376532+01:00",
+          "players": [
+            {
+              "name": "Rodrigo Riquelme",
+              "position": "Offence",
+              "player_id": null,
+              "number": null,
+              "photo": null
+            },
+            {
+              "name": "Héctor Bellerín",
+              "position": "Defence",
+              "player_id": null,
+              "number": null,
+              "photo": null
+            },
+            {
+              "name": "Isco",
+              "position": "Midfield",
+              "player_id": null,
+              "number": null,
+              "photo": null
+            },
+            {
+              "name": "Pablo Fornals",
+              "position": "Midfield",
+              "player_id": null,
+              "number": null,
+              "photo": null
+            },
+            {
+              "name": "Marc Roca",
+              "position": "Midfield",
+              "player_id": null,
+              "number": null,
+              "photo": null
+            },
+            {
+              "name": "Antony",
+              "position": "Offence",
+              "player_id": null,
+              "number": null,
+              "photo": null
+            },
+            {
+              "name": "Natan",
+              "position": "Defence",
+              "player_id": null,
+              "number": null,
+              "photo": null
+            },
+            {
+              "name": "Nelson Deossa",
+              "position": "Midfield",
+              "player_id": null,
+              "number": null,
+              "photo": null
+            },
+            {
+              "name": "Facundo Bernal",
+              "position": "Midfield",
+              "player_id": null,
+              "number": null,
+              "photo": null
+            },
+            {
+              "name": "Álvaro Vallés Rosa",
+              "position": "Goalkeeper",
+              "player_id": null,
+              "number": null,
+              "photo": null
+            },
+            {
+              "name": "Diego Conde",
+              "position": "Goalkeeper",
+              "player_id": null,
+              "number": null,
+              "photo": null
+            },
+            {
+              "name": "Diego Llorente",
+              "position": "Defence",
+              "player_id": null,
+              "number": null,
+              "photo": null
+            },
+            {
+              "name": "Júnior Firpo",
+              "position": "Defence",
+              "player_id": null,
+              "number": null,
+              "photo": null
+            },
+            {
+              "name": "Bartra",
+              "position": "Defence",
+              "player_id": null,
+              "number": null,
+              "photo": null
+            },
+            {
+              "name": "Francisco Garcia",
+              "position": "Defence",
+              "player_id": null,
+              "number": null,
+              "photo": null
+            },
+            {
+              "name": "Valentín Gómez",
+              "position": "Defence",
+              "player_id": null,
+              "number": null,
+              "photo": null
+            },
+            {
+              "name": "Ángel Ortiz",
+              "position": "Defence",
+              "player_id": null,
+              "number": null,
+              "photo": null
+            },
+            {
+              "name": "Giovani Lo Celso",
+              "position": "Midfield",
+              "player_id": null,
+              "number": null,
+              "photo": null
+            },
+            {
+              "name": "Álvaro Fidalgo",
+              "position": "Midfield",
+              "player_id": null,
+              "number": null,
+              "photo": null
+            },
+            {
+              "name": "Cucho Hernández",
+              "position": "Offence",
+              "player_id": null,
+              "number": null,
+              "photo": null
+            },
+            {
+              "name": "Aitor Ruibal",
+              "position": "Offence",
+              "player_id": null,
+              "number": null,
+              "photo": null
+            },
+            {
+              "name": "Iker Losada",
+              "position": "Midfield",
+              "player_id": null,
+              "number": null,
+              "photo": null
+            },
+            {
+              "name": "Troy Parrott",
+              "position": "Offence",
+              "player_id": null,
+              "number": null,
+              "photo": null
+            },
+            {
+              "name": "Abdessamad Ezzalzouli",
+              "position": "Offence",
+              "player_id": null,
+              "number": null,
+              "photo": null
+            },
+            {
+              "name": "Dani Ceballos",
+              "position": "Midfield",
+              "player_id": null,
+              "number": null,
+              "photo": null
+            }
+          ]
+        },
+        "visitante": {
+          "team": "Rayo Vallecano de Madrid",
+          "source": "cache current squad",
+          "checked_at": "2026-11-26T10:42:54.376532+01:00",
+          "players": [
+            {
+              "name": "Álvaro García",
+              "position": "Offence",
+              "player_id": null,
+              "number": null,
+              "photo": null
+            },
+            {
+              "name": "Sergio Camello",
+              "position": "Offence",
+              "player_id": null,
+              "number": null,
+              "photo": null
+            },
+            {
+              "name": "Jorge de Frutos",
+              "position": "Offence",
+              "player_id": null,
+              "number": null,
+              "photo": null
+            },
+            {
+              "name": "Unai López",
+              "position": "Midfield",
+              "player_id": null,
+              "number": null,
+              "photo": null
+            },
+            {
+              "name": "Florian Lejeune",
+              "position": "Defence",
+              "player_id": null,
+              "number": null,
+              "photo": null
+            },
+            {
+              "name": "Iván Balliu",
+              "position": "Defence",
+              "player_id": null,
+              "number": null,
+              "photo": null
+            },
+            {
+              "name": "Óscar Valentín",
+              "position": "Midfield",
+              "player_id": null,
+              "number": null,
+              "photo": null
+            },
+            {
+              "name": "Isi Palazón",
+              "position": "Offence",
+              "player_id": null,
+              "number": null,
+              "photo": null
+            },
+            {
+              "name": "Pathé Ciss",
+              "position": "Midfield",
+              "player_id": null,
+              "number": null,
+              "photo": null
+            },
+            {
+              "name": "Augusto Batalla",
+              "position": "Goalkeeper",
+              "player_id": null,
+              "number": null,
+              "photo": null
+            },
+            {
+              "name": "Pedro Díaz",
+              "position": "Midfield",
+              "player_id": null,
+              "number": null,
+              "photo": null
+            },
+            {
+              "name": "Pelayo Fernández",
+              "position": "Defence",
+              "player_id": null,
+              "number": null,
+              "photo": null
+            },
+            {
+              "name": "Jozhua Vertrouwd",
+              "position": "Defence",
+              "player_id": null,
+              "number": null,
+              "photo": null
+            },
+            {
+              "name": "Dani Cárdenas",
+              "position": "Goalkeeper",
+              "player_id": null,
+              "number": null,
+              "photo": null
+            },
+            {
+              "name": "Luiz Felipe",
+              "position": "Defence",
+              "player_id": null,
+              "number": null,
+              "photo": null
+            },
+            {
+              "name": "Marash Kumbulla",
+              "position": "Defence",
+              "player_id": null,
+              "number": null,
+              "photo": null
+            },
+            {
+              "name": "Andrei Rațiu",
+              "position": "Defence",
+              "player_id": null,
+              "number": null,
+              "photo": null
+            },
+            {
+              "name": "Randy Ntekja",
+              "position": "Midfield",
+              "player_id": null,
+              "number": null,
+              "photo": null
+            },
+            {
+              "name": "Raúl de Tomás",
+              "position": "Offence",
+              "player_id": null,
+              "number": null,
+              "photo": null
+            },
+            {
+              "name": "Alexandre Alemão",
+              "position": "Offence",
+              "player_id": null,
+              "number": null,
+              "photo": null
+            },
+            {
+              "name": "Fran Perez",
+              "position": "Offence",
+              "player_id": null,
+              "number": null,
+              "photo": null
+            },
+            {
+              "name": "Georgiy Tsitaishvili",
+              "position": "Offence",
+              "player_id": null,
+              "number": null,
+              "photo": null
+            },
+            {
+              "name": "Pedrosa",
+              "position": "Defence",
+              "player_id": null,
+              "number": null,
+              "photo": null
+            },
+            {
+              "name": "Gnangoro Bouare",
+              "position": "Midfield",
+              "player_id": null,
+              "number": null,
+              "photo": null
+            },
+            {
+              "name": "Emil Audero",
+              "position": "Goalkeeper",
+              "player_id": null,
+              "number": null,
+              "photo": null
+            },
+            {
+              "name": "Morro",
+              "position": "Goalkeeper",
+              "player_id": null,
+              "number": null,
+              "photo": null
+            },
+            {
+              "name": "Mujaid Sadick",
+              "position": "Defence",
+              "player_id": null,
+              "number": null,
+              "photo": null
+            }
+          ]
+        }
       }
     },
     {
@@ -1682971,18 +1684180,18 @@
       "policy": "TTL dinámico por kickoff y créditos restantes"
     },
     "current_squads": {
-      "checked_at": "2026-11-26T18:46:43.533317+01:00",
+      "checked_at": "2026-11-27T02:42:21.274916+01:00",
       "season_context": 2026,
       "scope": "LaLiga+Segunda completas; Champions/próximos por fallback",
       "roster_ttl_hours": 24,
-      "target_matches": 1,
+      "target_matches": 2,
       "football_data_leagues_refreshed": [],
       "teams_fetched": 0,
       "api_fallback_teams_fetched": 0,
       "stale_players_purged": 0,
       "players_added": 0,
       "players_metadata_updated": 0,
-      "lineup_conflicts": 0,
+      "lineup_conflicts": 14,
       "api_quota_remaining_before": 99,
       "api_quota_reserve": 30
     }
@@ -1683036,14 +1684245,14 @@
     }
   },
   "feature_truth_table": {
-    "generated_at": "2026-11-26T18:47:15.051907+01:00",
+    "generated_at": "2026-11-27T02:42:21.274916+01:00",
     "principle": "candidate -> leakage-safe snapshot -> walk-forward -> compare vs accepted engine + no-vig market -> promote only on improvement",
     "eligible_matches": 303,
     "features": [
       {
         "feature": "dixon_coles_score_model",
         "source": "Resultados históricos reales · Football-Data/API-Football + score model Dixon-Coles",
-        "available_at": "2026-11-26T18:47:15.051907+01:00",
+        "available_at": "2026-11-27T02:42:21.274916+01:00",
         "coverage": {
           "covered": 303,
           "eligible": 303,
@@ -1683065,7 +1684274,7 @@
       {
         "feature": "elo",
         "source": "Resultados históricos reales transformados en rating Elo",
-        "available_at": "2026-11-26T18:47:15.051907+01:00",
+        "available_at": "2026-11-27T02:42:21.274916+01:00",
         "coverage": {
           "covered": 303,
           "eligible": 303,
@@ -1683086,7 +1684295,7 @@
       {
         "feature": "team_stat_model",
         "source": "football-data.co.uk · históricos de remates, SOT, córners, faltas y tarjetas",
-        "available_at": "2026-11-26T18:47:15.051907+01:00",
+        "available_at": "2026-11-27T02:42:21.274916+01:00",
         "coverage": {
           "covered": 250,
           "eligible": 303,
@@ -1683191,7 +1684400,7 @@
       {
         "feature": "lineups_absences_minutes",
         "source": "API-Football oficial + medios recientes + continuidad histórica + snapshots pre-match",
-        "available_at": "2026-11-25T19:01:51.173892+01:00",
+        "available_at": "2026-11-27T02:41:30.645519+01:00",
         "coverage": {
           "covered": 303,
           "eligible": 303,
@@ -1683212,11 +1684421,11 @@
       {
         "feature": "player_props",
         "source": "API-Football /players + XI probable/oficial; estimación trazable solo para huecos sin muestra",
-        "available_at": "2026-11-25T19:01:51.173892+01:00",
+        "available_at": "2026-11-27T02:41:30.645519+01:00",
         "coverage": {
-          "covered": 0,
+          "covered": 1,
           "eligible": 303,
-          "pct": 0.0,
+          "pct": 0.3,
           "scope": "upcoming_with_prediction"
         },
         "uses": [
@@ -1683232,7 +1684441,7 @@
       {
         "feature": "tactical_matchup",
         "source": "Perfiles observados casa/fuera derivados de football-data.co.uk",
-        "available_at": "2026-11-26T18:47:15.051907+01:00",
+        "available_at": "2026-11-27T02:42:21.274916+01:00",
         "coverage": {
           "covered": 250,
           "eligible": 303,
